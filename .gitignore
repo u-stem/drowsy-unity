@@ -114,3 +114,6 @@ Unity_lic.*
 # Claude Code: settings.json のみコミット対象、他のローカル状態(local 設定・サブエージェントログ等)は除外
 .claude/*
 !.claude/settings.json
+
+# lefthook のユーザーローカルカスタマイズ(コミット対象外)
+lefthook-local.yml

@@ -1,0 +1,44 @@
+# drowsy-unity の Git フック設定
+# https://lefthook.dev/configuration/
+# CLAUDE.md「7. 機械検知方針」「8. ワークフロー: PR ベース」を参照
+#
+# 初回セットアップ: lefthook install (リポジトリ clone 後 1 回実行)
+# 動作確認: lefthook run pre-commit
+
+pre-commit:
+  parallel: true
+  commands:
+    # 機密情報検出 (handle / Cloud ID / API key 等)
+    gitleaks:
+      run: gitleaks protect --staged --redact --no-banner
+
+    # ProjectSettings.asset の Unity Cloud 値混入チェック
+    cloud-credentials:
+      glob: "ProjectSettings/*.asset"
+      run: bash scripts/check-cloud-credentials.sh
+
+    # NUnit テストに Size + Type の Category が必須
+    test-categories:
+      glob: "Assets/_Project/Scripts/Tests/**/*.cs"
+      run: bash scripts/check-test-categories.sh {staged_files}
+
+    # Domain 配下の新規 .cs に対応する EARS 仕様 (.md) が必須
+    spec-files:
+      glob: "Assets/_Project/Scripts/Domain/**/*.cs"
+      run: bash scripts/check-spec-files.sh {staged_files}
+
+    # C# フォーマットの整合性チェック
+    dotnet-format:
+      glob: "Assets/_Project/**/*.cs"
+      run: dotnet format whitespace --verify-no-changes --include {staged_files}
+
+commit-msg:
+  commands:
+    # Conventional Commits 規約検証
+    conventional:
+      run: |
+        head -1 {1} | grep -qE "^(feat|fix|docs|refactor|test|chore|build|ci|perf|style)(\(.+\))?: " \
+          || { echo "❌ Conventional Commits 違反"; \
+               echo "   形式: '<type>: <日本語説明>' または '<type>(<scope>): <日本語説明>'"; \
+               echo "   有効な type: feat / fix / docs / refactor / test / chore / build / ci / perf / style"; \
+               exit 1; }

@@ -1,0 +1,42 @@
+# drowsy-unity 用 gitleaks 設定
+# Unity 固有 + プロジェクト固有のシークレット検出ルール
+# CLAUDE.md「7. 機械検知方針」を参照
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "False positives と意図的な許容パス"
+paths = [
+  '''Library/.*''',
+  '''Logs/.*''',
+  '''Temp/.*''',
+  # 仕様テンプレート(プレースホルダのみ)
+  '''docs/specs/\.template\.(md|feature)''',
+  # gitleaks 設定自体に正規表現として書かれた検出パターンを誤検出しないため
+  '''\.gitleaks\.toml''',
+]
+regexes = [
+  # Unity の guid: 32 桁 hex は機密ではない (asset の参照 ID)
+  '''guid:\s*[a-f0-9]{32}''',
+]
+
+[[rules]]
+id = "unity-cloud-organization-id"
+description = "Unity Cloud organization id (空欄でない値の混入を検出)"
+regex = '''organizationId:\s*\S+'''
+path = '''ProjectSettings/.*\.asset'''
+tags = ["unity", "cloud", "organization"]
+
+[[rules]]
+id = "unity-cloud-project-uuid"
+description = "Unity Cloud project UUID (空欄でない値の混入を検出)"
+regex = '''cloudProjectId:\s*[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'''
+path = '''ProjectSettings/.*\.asset'''
+tags = ["unity", "cloud", "uuid"]
+
+[[rules]]
+id = "unity-license-content"
+description = "Unity license file (.ulf / .alf) のコンテンツ"
+regex = '''<License id="Terms">'''
+tags = ["unity", "license"]
