@@ -105,3 +105,12 @@ InitTestScene*.unity*
 
 # Auto-generated scenes by play mode tests
 /[Aa]ssets/[Ii]nit[Tt]est[Ss]cene*.unity*
+
+# Unity ライセンスファイル(個人シリアルを含み得るためコミット禁止)
+*.ulf
+*.alf
+Unity_lic.*
+
+# Claude Code: settings.json のみコミット対象、他のローカル状態(local 設定・サブエージェントログ等)は除外
+.claude/*
+!.claude/settings.json
