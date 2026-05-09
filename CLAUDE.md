@@ -47,3 +47,13 @@ public Card DrawTopCard(IRandomSource rng) { ... }
 - アーキテクチャ: Domain / Application / Infrastructure / Presentation の asmdef 分割(Phase 1 で構築予定)
 - DI / 非同期 / Pub-Sub / Reactive: VContainer + UniTask + MessagePipe + R3 を採用予定
 - Unity Cloud Services: 利用しない方針(`organizationId` / `cloudProjectId` は空欄を維持)。Unity Editor を起動した際に自動再リンクされた場合は速やかに Unlink すること
+
+## 5. アーキテクチャ依存ルール
+
+`Assets/_Project/Scripts/` は Clean Architecture 寄りの 4 層 + Bootstrap 構成を採用する。依存方向: `Bootstrap → {Infrastructure, Presentation} → Application → Domain`(逆方向は不可)。
+
+- **Domain** は純粋 C# (`noEngineReferences: true`) で UnityEngine への依存を持たない
+- 内側のレイヤは外側を知らない(Domain は Application を知らない、Application は Infrastructure を知らない)
+- **Infrastructure → Application** の参照は「Application が定義したインターフェースを Infrastructure が実装する」(Ports & Adapters パターン)目的のみ。Application の具象 UseCase クラスを Infrastructure から直接呼ばない
+- **Presentation → Application** も同様にインターフェース経由。Domain への直接参照も許可するが View に Domain エンティティを直接バインドせず Presenter / DTO 経由を推奨
+- 依存方向の違反は将来 Roslyn Analyzer または lefthook で機械検出することを検討

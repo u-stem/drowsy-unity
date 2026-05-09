@@ -1,0 +1,19 @@
+{
+  "name": "Drowsy.Domain.Tests",
+  "rootNamespace": "Drowsy.Domain.Tests",
+  "references": [
+    "Drowsy.Domain",
+    "UnityEngine.TestRunner",
+    "UnityEditor.TestRunner"
+  ],
+  "autoReferenced": false,
+  "noEngineReferences": false,
+  "allowUnsafeCode": false,
+  "overrideReferences": true,
+  "precompiledReferences": ["nunit.framework.dll"],
+  "includePlatforms": ["Editor"],
+  "excludePlatforms": [],
+  "defineConstraints": ["UNITY_INCLUDE_TESTS"],
+  "versionDefines": [],
+  "optionalUnityReferences": []
+}

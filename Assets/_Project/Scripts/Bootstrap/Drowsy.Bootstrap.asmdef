@@ -1,0 +1,20 @@
+{
+  "name": "Drowsy.Bootstrap",
+  "rootNamespace": "Drowsy.Bootstrap",
+  "references": [
+    "Drowsy.Domain",
+    "Drowsy.Application",
+    "Drowsy.Infrastructure",
+    "Drowsy.Presentation"
+  ],
+  "autoReferenced": false,
+  "noEngineReferences": false,
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "defineConstraints": [],
+  "versionDefines": [],
+  "optionalUnityReferences": []
+}

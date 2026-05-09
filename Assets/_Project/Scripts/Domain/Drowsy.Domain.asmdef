@@ -1,0 +1,15 @@
+{
+  "name": "Drowsy.Domain",
+  "rootNamespace": "Drowsy.Domain",
+  "references": [],
+  "autoReferenced": false,
+  "noEngineReferences": true,
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "defineConstraints": [],
+  "versionDefines": [],
+  "optionalUnityReferences": []
+}
