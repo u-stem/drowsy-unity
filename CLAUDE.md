@@ -235,3 +235,19 @@ Phase 0 段階では CI 未整備のため Required status checks は空。
 - 機密 grep / JSON validate / lefthook 動作確認
 - commit 後は push、PR 作成、Self-Review チェックリスト記入まで一貫して支援
 - main への直接 push を試みない(branch protection 有効化前でも feature ブランチ経由)
+
+## 11. 意思決定記録 (ADR)
+
+アーキテクチャ判断・機械的ガードレールの新設撤去・既存設計を覆す変更は ADR (Architecture Decision Record) として残す。運用規約とインデックスは [`docs/adr/README.md`](docs/adr/README.md) に集約する。
+
+- 配置: `docs/adr/NNNN-kebab-case-title.md`(4 桁ゼロ埋め連番、欠番禁止)
+- 必須セクション: Context / Decision / Consequences / Related
+- Status 語彙: Proposed / Accepted / Rejected / Withdrawn / Deprecated / Superseded by NNNN
+- 起票時の Status: 原則 `Accepted`(議論を残したい場合のみ `Proposed` で起票し合意後に書き換える。詳細は `docs/adr/README.md`)
+- コミット規約: `docs(adr): <日本語説明>`(Conventional Commits)
+- Decider 欄に本名・新規連絡先・自分の handle literal を書かない(ユーザーグローバル「出力衛生」継承)
+- Public 文書から Private リソースへのリンクを書かない(Public/Private 境界規約継承)
+
+ADR を起票しない判断: 単純なバグ修正・typo・1 ファイル内リファクタ・パッケージのマイナー更新・軽微な文言調整。
+
+ADR-0001 で本運用を確立、ADR-0002 で Phase 1 Domain 拡張(集約境界・Card 抽象・Immutability・Player 想定)を確定済。
