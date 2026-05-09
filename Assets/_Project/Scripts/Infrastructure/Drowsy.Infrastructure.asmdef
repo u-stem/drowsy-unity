@@ -1,7 +1,12 @@
 {
   "name": "Drowsy.Infrastructure",
   "rootNamespace": "Drowsy.Infrastructure",
-  "references": ["Drowsy.Domain", "Drowsy.Application"],
+  "references": [
+    "Drowsy.Domain",
+    "Drowsy.Application",
+    "UniTask",
+    "VContainer"
+  ],
   "autoReferenced": false,
   "noEngineReferences": false,
   "allowUnsafeCode": false,
