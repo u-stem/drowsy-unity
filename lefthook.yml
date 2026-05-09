@@ -27,6 +27,11 @@ pre-commit:
       glob: "Assets/_Project/Scripts/Domain/**/*.cs"
       run: bash scripts/check-spec-files.sh {staged_files}
 
+    # 要件トレーサビリティ: EARS ID ↔ NUnit Test Property の双方向整合性
+    # (staged ファイルではなくリポジトリ全体を対象、軽量なため毎 commit 実行)
+    traceability:
+      run: bash scripts/check-traceability.sh
+
     # C# フォーマットの整合性チェック
     # Unity が生成する drowsy-unity.slnx (slnx 形式の solution) を workspace として指定。
     # Unity Editor が *.csproj を複数生成するため明示しないと "複数のプロジェクトが見つかった" エラーになる。

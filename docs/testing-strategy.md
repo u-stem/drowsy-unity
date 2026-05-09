@@ -125,7 +125,69 @@ public class PileTests
 
 `*` は短絡評価により評価されない条件。
 
-## 4. TDD ループ
+## 4. 要件トレーサビリティ
+
+### 4.1 ID 体系
+
+各 EARS 要件には `[<MODULE>-<NUMBER>]` 形式の一意 ID を付与する。
+
+- **MODULE**: モジュール短縮名(`CARD`, `PILE`, `RND`, `PLY`, `ST` 等、3〜5 文字大文字)
+- **NUMBER**: 単純連番(`001` から開始、3 桁ゼロ埋め)
+  - 空き番号は許容(削除した ID の番号は再利用しない)
+  - カテゴリ(普遍/事象駆動/異常等)で番号を分けない(柔軟性確保)
+
+### 4.2 マーカー
+
+要件種別と直交する「テスト適用可否」のマーカー:
+
+| マーカー | 意味 | 例 |
+| ---- | ---- | ---- |
+| `[Ubiquitous]` | 構造的性質(immutable / read-only / sealed 等)で、テスト直接検証を免除 | `[CARD-001] [Ubiquitous] The CardId shall be immutable.` |
+| `[Optional]` | 設定によって有効化される機能で、テスト対応は任意 | `[RND-005] [Optional] Where seed == 0, ...` |
+
+これらのマーカーが付いた要件はトレーサビリティ機械検証から除外される(警告レベルで通知のみ)。
+
+### 4.3 各レイヤへの埋め込み
+
+| レイヤ | 記法 | 例 |
+| ---- | ---- | ---- |
+| EARS Markdown | `[<ID>]` を要件文の先頭に | `- [PILE-005] When AddTop(card)...` |
+| Gherkin .feature | `@<ID>` をシナリオの直前に(複数可) | `@PILE-005`<br>`シナリオ: AddTop で先頭...` |
+| NUnit テスト | `[Property("Requirement", "<ID>")]` 属性(複数可) | `[Test, Category("Small"), Category("Normal"), Property("Requirement", "PILE-005")]` |
+
+複数 ID をまとめてカバーするテストには複数 Property を付与可能:
+
+```csharp
+[Property("Requirement", "RND-002"), Property("Requirement", "RND-003")]
+public void Given_同じseed_When_NextInt_Then_同じ系列を生成() { ... }
+```
+
+### 4.4 機械検証
+
+`scripts/check-traceability.sh` が lefthook の pre-commit で実行され、以下を双方向検証:
+
+| 検出 | レベル | 対処 |
+| ---- | ---- | ---- |
+| テスト Property に存在するが EARS にない ID(typo) | ERROR | EARS への追加か typo 修正 |
+| EARS の必須要件(マーカーなし)でテスト未対応 | ERROR | 対応テストを追加 |
+| EARS の `[Ubiquitous]` / `[Optional]` 要件でテスト未対応 | INFO(無視可) | 構造的性質として許容、必要なら reflection テスト追加 |
+
+### 4.5 ID 体系図(Phase 0 時点)
+
+| Module | Prefix | 範囲(Phase 0) |
+| ---- | ---- | ---- |
+| Cards.CardId | CARD | CARD-001〜008 |
+| Cards.Pile | PILE | PILE-001〜013 |
+| Random | RND | RND-001〜005 |
+| (将来) Players | PLY | — |
+| (将来) State | ST | — |
+| (将来) Action | ACT | — |
+| (将来) Rule | RULE | — |
+| (将来) Token | TKN | — |
+
+新規モジュール追加時は本表を更新する。
+
+## 5. TDD ループ
 
 1. **Red**: 失敗するテストを書く(EARS / Gherkin の 1 シナリオに対応)
 2. **Green**: 最小実装でテストを通す(over-engineering 禁止)
@@ -139,7 +201,7 @@ public class PileTests
 4. 実装(成功確認)
 5. リファクタ + カバレッジ確認
 
-## 5. テストファイル配置
+## 6. テストファイル配置
 
 ```
 Assets/_Project/Scripts/Tests/
@@ -157,7 +219,7 @@ Assets/_Project/Scripts/Tests/
 
 ディレクトリ構造は `Assets/_Project/Scripts/<Layer>/<Module>/` と対応させる。
 
-## 6. 機械検知
+## 7. 機械検知
 
 仕様 / テスト規約の機械検知は CLAUDE.md「7. 機械検知方針」を参照。本ドキュメントの規約はすべて以下のいずれかで強制される:
 
@@ -167,7 +229,7 @@ Assets/_Project/Scripts/Tests/
 - GitHub Actions / GameCI(将来)
 - Unity Code Coverage パッケージ
 
-## 7. 参考
+## 8. 参考
 
 - [EARS: A Short History](https://alistairmavin.com/ears/)
 - [Gherkin Reference](https://cucumber.io/docs/gherkin/reference/)
