@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
-# 新規 Domain 配下の *.cs に対応する EARS 仕様 (.md) が存在するか簡易チェック
+# 新規 Domain 配下の *.cs に対応する EARS 仕様が存在するか簡易チェック
 #
 # 規律レベル: Domain 層は仕様駆動開発 (SBE) を必須とするため、
-# 対応する docs/specs/domain/<module>/<feature>.md が無い場合エラー。
+# 対応する docs/specs/domain/<module>/ ディレクトリに EARS 仕様 (*.md) が
+# 1 つ以上存在することを必須とする。
+# (同じ機能を複数クラスでカバーする場合は機能単位の spec で 1 ファイルにまとめて良い。
+#  例: IRandomSource.cs / XorShiftRandom.cs に対する random-source.md)
 #
 # CLAUDE.md「6. テスト方針」/ docs/testing-strategy.md「1. 仕様駆動開発」を参照
 
@@ -23,24 +26,32 @@ for file in "$@"; do
     *) continue ;;
   esac
 
-  # 例: Assets/_Project/Scripts/Domain/Cards/Pile.cs → docs/specs/domain/cards/pile.md
+  # 例: Assets/_Project/Scripts/Domain/Cards/Pile.cs → docs/specs/domain/cards/
   rel="${file#Assets/_Project/Scripts/Domain/}"
   module=$(dirname "$rel" | tr '[:upper:]' '[:lower:]')
-  feature=$(basename "$rel" .cs | tr '[:upper:]' '[:lower:]')
 
-  spec="docs/specs/domain/${module}/${feature}.md"
-  feature_file="docs/specs/domain/${module}/${feature}.feature"
+  spec_dir="docs/specs/domain/${module}"
 
-  if [ ! -f "$spec" ]; then
-    echo "❌ $file: 対応する EARS 仕様が見つかりません ($spec)"
-    echo "   作成方法: cp docs/specs/.template.md $spec"
+  # ディレクトリ存在チェック
+  if [ ! -d "$spec_dir" ]; then
+    echo "❌ $file: 対応する spec ディレクトリが存在しません ($spec_dir/)"
+    echo "   作成方法: mkdir -p $spec_dir && cp docs/specs/.template.md $spec_dir/<feature>.md"
+    failed=1
+    continue
+  fi
+
+  # ディレクトリ内に .md ファイル(.template.* 以外)が 1 つ以上必要
+  md_count=$(find "$spec_dir" -maxdepth 1 -name "*.md" -not -name ".template.*" 2>/dev/null | wc -l | tr -d ' ')
+  if [ "$md_count" -eq 0 ]; then
+    echo "❌ $file: $spec_dir/ に EARS 仕様 (*.md) が存在しません"
+    echo "   作成方法: cp docs/specs/.template.md $spec_dir/<feature>.md"
     failed=1
   fi
 
-  # .feature は推奨のみ(警告だが失敗にしない)
-  if [ ! -f "$feature_file" ]; then
-    echo "⚠ $file: 対応する Gherkin シナリオがありません ($feature_file)"
-    echo "   推奨: cp docs/specs/.template.feature $feature_file"
+  # .feature の存在は推奨(警告のみ、failed にはしない)
+  feature_count=$(find "$spec_dir" -maxdepth 1 -name "*.feature" -not -name ".template.*" 2>/dev/null | wc -l | tr -d ' ')
+  if [ "$feature_count" -eq 0 ]; then
+    echo "⚠ $file: $spec_dir/ に Gherkin シナリオ (*.feature) が見つかりません(推奨)"
   fi
 done
 
