@@ -1,2 +1,4 @@
 ﻿<Solution>
+  <Project Path="Drowsy.Domain.csproj" />
+  <Project Path="Drowsy.Domain.Tests.csproj" />
 </Solution>
