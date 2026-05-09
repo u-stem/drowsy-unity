@@ -117,3 +117,7 @@ Unity_lic.*
 
 # lefthook のユーザーローカルカスタマイズ(コミット対象外)
 lefthook-local.yml
+
+# NuGetForUnity が Packages/ 配下に置く NuGet メタデータディレクトリ
+# (NuGet.config の repositoryPath="./Packages" に起因、tools/install.ps1 等のみで Unity に不要)
+/Packages/Microsoft.*/

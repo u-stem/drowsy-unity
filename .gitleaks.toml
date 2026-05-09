@@ -15,6 +15,10 @@ paths = [
   '''docs/specs/\.template\.(md|feature)''',
   # gitleaks 設定自体に正規表現として書かれた検出パターンを誤検出しないため
   '''\.gitleaks\.toml''',
+  # NuGet 経由でインストールされた Microsoft 公式 Roslyn Analyzer のドキュメント類
+  # (Microsoft 公式のドキュメント XML / README に暗号 API の説明文が含まれ
+  #  generic-api-key ルールに誤検知されるため除外)
+  '''Assets/Packages/.*\.(xml|md|txt|nuspec|sarif)''',
 ]
 regexes = [
   # Unity の guid: 32 桁 hex は機密ではない (asset の参照 ID)

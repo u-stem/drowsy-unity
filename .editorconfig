@@ -80,6 +80,32 @@ dotnet_naming_rule.public_members_pascal.style = pascal_case
 dotnet_naming_symbols.public_members.applicable_kinds = property,method,event,field
 dotnet_naming_symbols.public_members.applicable_accessibilities = public,internal,protected
 
+# ─── Roslyn Analyzer severity 制御 ───
+# Microsoft.CodeAnalysis.NetAnalyzers (CA-prefix) と Microsoft.Unity.Analyzers (UNT-prefix)
+# C# コンパイラ警告 (CS-prefix) も含めて重要ルールを error レベルに引き上げる
+
+# Null 安全 (C# nullable reference types)
+dotnet_diagnostic.CS8600.severity = error    # null リテラルを非 nullable 型に代入
+dotnet_diagnostic.CS8602.severity = error    # null 参照の可能性がある参照の逆参照
+dotnet_diagnostic.CS8603.severity = error    # null 参照の可能性がある戻り値
+dotnet_diagnostic.CS8618.severity = error    # コンストラクターで非 nullable フィールド未初期化
+
+# Unity 固有 (Microsoft.Unity.Analyzers)
+dotnet_diagnostic.UNT0001.severity = warning # 空の Unity メッセージ
+dotnet_diagnostic.UNT0006.severity = error   # コルーチンの不正な戻り型
+dotnet_diagnostic.UNT0013.severity = warning # 無効または重複した SerializeField 属性
+dotnet_diagnostic.UNT0014.severity = warning # GetComponent の不正な型引数
+dotnet_diagnostic.UNT0017.severity = warning # SetPixels で計算可能な引数
+
+# 品質 (Microsoft.CodeAnalysis.NetAnalyzers)
+dotnet_diagnostic.CA1822.severity = warning  # static にできるメソッド
+dotnet_diagnostic.CA2000.severity = warning  # IDisposable のスコープ外リーク
+dotnet_diagnostic.CA1052.severity = silent   # static class に関する警告は Unity の MonoBehaviour パターンで頻出のため silent
+
+# 命名規則 (Microsoft.CodeAnalysis.NetAnalyzers の CA17xx は本ファイルの dotnet_naming_rule で代替)
+dotnet_diagnostic.CA1707.severity = silent   # 識別子のアンダースコアを許可 (private field _camelCase との整合)
+dotnet_diagnostic.CA1716.severity = silent   # 言語予約語との衝突警告は本プロジェクトの英語命名で十分回避
+
 # ───────────────────────────────────────────────
 # 設定ファイル
 # ───────────────────────────────────────────────
