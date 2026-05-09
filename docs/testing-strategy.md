@@ -83,18 +83,21 @@ public class PileTests
 
 ### 3.1 層別目標
 
-| レイヤ | C0 (Statement) | C1 (Branch) | MC/DC 相当のケース設計 |
-| ---- | ---- | ---- | ---- |
-| Domain | **95%+** | **100%** | 重要なルール判定(合法手・終了判定)で必須。`docs/specs/.../<feature>.md` にケース表を併記 |
-| Application | 80% | 80% | 主要 UseCase の正常 / 異常分岐のみ |
-| Infrastructure | 60% | 50% | I/O 系はモックで主要経路のみ |
-| Presentation | **計測対象外** | — | MonoBehaviour 中心。手動 QA / E2E でカバー |
+| レイヤ | C0 (Statement) | 重要分岐の網羅 |
+| ---- | ---- | ---- |
+| Domain | **95%+** | **MC/DC 相当のケース設計を必須**。重要なルール判定(合法手・終了判定)では `docs/specs/.../<feature>.md` にケース表を併記 |
+| Application | 80% | 主要 UseCase の正常 / 異常分岐 |
+| Infrastructure | 60% | I/O 系はモックで主要経路のみ |
+| Presentation | **計測対象外** | MonoBehaviour 中心、手動 QA / E2E でカバー |
 
 ### 3.2 計測ツール
 
-`com.unity.testtools.codecoverage` (Unity 公式)を使用。
+`com.unity.testtools.codecoverage` v1.3.0 (Unity 公式)を使用。
 
-- C0 / C1 計測対応(MCC / MC/DC は計測不可、ケース設計で意識)
+- **C0 (Statement Coverage) のみサポート**
+- **C1 (Branch Coverage) は v1.3.0 時点で未実装**(常に 0、[公式ドキュメント明記](https://docs.unity3d.com/Packages/com.unity.testtools.codecoverage@1.2/manual/TechnicalDetails.html))
+  - 代替として MC/DC ケース表をテスト設計時に併記し、Self-Review で担保する
+  - 将来 dotCover 等の外部ツールを併用する選択肢はあるが Phase 0 では不採用
 - HTML レポート + Cobertura XML 出力(SonarQube 互換)
 - asmdef 単位でフィルタリング可能
 

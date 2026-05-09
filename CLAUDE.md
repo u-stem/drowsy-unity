@@ -86,12 +86,14 @@ public Card DrawTopCard(IRandomSource rng) { ... }
 
 ### カバレッジ目標(`com.unity.testtools.codecoverage` で計測)
 
-| レイヤ | C0 | C1 | 重要分岐 |
-| ---- | ---- | ---- | ---- |
-| Domain | 95%+ | **100%** | MC/DC 相当のケース表を `docs/specs/.../<feature>.md` に併記 |
-| Application | 80% | 80% | — |
-| Infrastructure | 60% | 50% | — |
-| Presentation | 計測対象外 | — | — |
+| レイヤ | C0 (Statement) | 重要分岐の網羅 |
+| ---- | ---- | ---- |
+| Domain | **95%+** | **MC/DC 相当のケース設計を必須**。`docs/specs/.../<feature>.md` にケース表を併記 |
+| Application | 80% | 主要 UseCase の正常 / 異常分岐 |
+| Infrastructure | 60% | I/O 系はモックで主要経路のみ |
+| Presentation | 計測対象外 | MonoBehaviour 中心、手動 QA / E2E でカバー |
+
+> 注: `com.unity.testtools.codecoverage` v1.3.0 時点で C1 (Branch Coverage) は **未実装**(常に 0、公式ドキュメント明記)。そのため C0 計測 + MC/DC ケース設計で C1 相当を担保する。
 
 CI で SonarQube 互換 Cobertura XML を出力し、PR で差分カバレッジを可視化する。
 カバレッジ閾値割れは CI を失敗させる(後続フェーズで実装)。

@@ -7,6 +7,7 @@
         "com.cysharp.unitask",
         "com.cysharp.r3",
         "jp.hadashikick.vcontainer",
+        "com.github-glitchenzo",
         "org.nuget"
       ]
     }
@@ -14,6 +15,7 @@
   "dependencies": {
     "com.cysharp.r3": "1.3.0",
     "com.cysharp.unitask": "2.5.10",
+    "com.github-glitchenzo.nugetforunity": "4.5.0",
     "com.unity.2d.animation": "14.0.4",
     "com.unity.2d.aseprite": "4.0.2",
     "com.unity.2d.psdimporter": "13.0.3",
@@ -29,6 +31,7 @@
     "com.unity.multiplayer.center": "1.0.1",
     "com.unity.render-pipelines.universal": "17.4.0",
     "com.unity.test-framework": "1.6.0",
+    "com.unity.testtools.codecoverage": "1.3.0",
     "com.unity.timeline": "1.8.12",
     "com.unity.ugui": "2.0.0",
     "com.unity.visualscripting": "1.9.11",
