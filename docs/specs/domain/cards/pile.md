@@ -4,7 +4,7 @@
 
 ## 概要
 
-`Pile` は `CardId` を順序付きで保持する Immutable コレクション。すべての変更操作は新インスタンスを返す純関数として定義される。内部実装は `ImmutableArray<CardId>`(小規模 / ランダムアクセス重視のため)。
+`Pile` は `CardId` を順序付きで保持する Immutable コレクション。すべての変更操作は新インスタンスを返す純関数として定義される。内部実装は `CardId[]`(配列)を private で保持し、`IReadOnlyList<CardId>` 経由で読み取り専用公開する形を採る(Unity 6 では `System.Collections.Immutable` が internal アクセシビリティのため `ImmutableArray<T>` は利用不可)。
 
 ## 普遍要件 (Ubiquitous)
 

@@ -28,9 +28,11 @@ pre-commit:
       run: bash scripts/check-spec-files.sh {staged_files}
 
     # C# フォーマットの整合性チェック
+    # Unity が生成する drowsy-unity.slnx (slnx 形式の solution) を workspace として指定。
+    # Unity Editor が *.csproj を複数生成するため明示しないと "複数のプロジェクトが見つかった" エラーになる。
     dotnet-format:
       glob: "Assets/_Project/**/*.cs"
-      run: dotnet format whitespace --verify-no-changes --include {staged_files}
+      run: dotnet format whitespace --verify-no-changes drowsy-unity.slnx --include {staged_files}
 
 commit-msg:
   commands:
