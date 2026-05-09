@@ -179,11 +179,13 @@ public void Given_同じseed_When_NextInt_Then_同じ系列を生成() { ... }
 | Cards.CardId | CARD | CARD-001〜008 |
 | Cards.Pile | PILE | PILE-001〜013 |
 | Random | RND | RND-001〜005 |
+| Configuration (IGameConfig) | CFG | CFG-001〜003 |
 | (将来) Players | PLY | — |
 | (将来) State | ST | — |
 | (将来) Action | ACT | — |
 | (将来) Rule | RULE | — |
 | (将来) Token | TKN | — |
+| (将来) UserSettings | USR | — |
 
 新規モジュール追加時は本表を更新する。
 
