@@ -7,7 +7,7 @@ namespace Drowsy.Domain.Tests.Cards
     [TestFixture]
     public class CardIdTests
     {
-        [Test, Category("Small"), Category("Normal")]
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "CARD-004")]
         public void Given_有効な値_When_Ofを呼ぶ_Then_インスタンスが生成され_Valueは入力と同じ()
         {
             // Given
@@ -18,25 +18,25 @@ namespace Drowsy.Domain.Tests.Cards
             Assert.That(id.Value, Is.EqualTo(input));
         }
 
-        [Test, Category("Small"), Category("Abnormal")]
+        [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "CARD-006")]
         public void Given_null_When_Ofを呼ぶ_Then_ArgumentExceptionを投げる()
         {
             Assert.Throws<ArgumentException>(() => CardId.Of(null));
         }
 
-        [Test, Category("Small"), Category("Abnormal")]
+        [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "CARD-007")]
         public void Given_空文字列_When_Ofを呼ぶ_Then_ArgumentExceptionを投げる()
         {
             Assert.Throws<ArgumentException>(() => CardId.Of(""));
         }
 
-        [Test, Category("Small"), Category("Abnormal")]
+        [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "CARD-008")]
         public void Given_空白のみの文字列_When_Ofを呼ぶ_Then_ArgumentExceptionを投げる()
         {
             Assert.Throws<ArgumentException>(() => CardId.Of("   "));
         }
 
-        [Test, Category("Small"), Category("Normal")]
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "CARD-003")]
         public void Given_同じ値の2つのCardId_When_等価比較_Then_等価()
         {
             // Given
@@ -46,7 +46,7 @@ namespace Drowsy.Domain.Tests.Cards
             Assert.That(a, Is.EqualTo(b));
         }
 
-        [Test, Category("Small"), Category("Normal")]
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "CARD-003")]
         public void Given_異なる値の2つのCardId_When_等価比較_Then_非等価()
         {
             var a = CardId.Of("X");
@@ -54,7 +54,7 @@ namespace Drowsy.Domain.Tests.Cards
             Assert.That(a, Is.Not.EqualTo(b));
         }
 
-        [Test, Category("Small"), Category("Normal")]
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "CARD-005")]
         public void Given_CardId_When_ToString_Then_Valueを返す()
         {
             var id = CardId.Of("clubs-Q");

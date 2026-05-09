@@ -7,7 +7,7 @@ namespace Drowsy.Domain.Tests.Random
     [TestFixture]
     public class XorShiftRandomTests
     {
-        [Test, Category("Small"), Category("Normal")]
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "RND-001")]
         public void Given_seed42_When_NextIntを範囲内で100回呼ぶ_Then_全て範囲内の整数を返す()
         {
             var rng = new XorShiftRandom(42);
@@ -19,7 +19,7 @@ namespace Drowsy.Domain.Tests.Random
             }
         }
 
-        [Test, Category("Small"), Category("Normal")]
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "RND-002"), Property("Requirement", "RND-003")]
         public void Given_同じseedの2つのインスタンス_When_NextIntを繰り返し呼ぶ_Then_同じ系列を生成()
         {
             var rng1 = new XorShiftRandom(42);
@@ -30,7 +30,7 @@ namespace Drowsy.Domain.Tests.Random
             }
         }
 
-        [Test, Category("Small"), Category("SemiNormal")]
+        [Test, Category("Small"), Category("SemiNormal"), Property("Requirement", "RND-005")]
         public void Given_seed0とseed1_When_NextIntを呼ぶ_Then_両者の系列は完全一致()
         {
             // Given (seed 0 は内部で 1 に補正される)
@@ -43,14 +43,14 @@ namespace Drowsy.Domain.Tests.Random
             }
         }
 
-        [Test, Category("Small"), Category("Abnormal")]
+        [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "RND-004")]
         public void Given_maxExclusiveがminより小さい_When_NextInt_Then_ArgumentException()
         {
             var rng = new XorShiftRandom(1);
             Assert.Throws<ArgumentException>(() => rng.NextInt(10, 5));
         }
 
-        [Test, Category("Small"), Category("Abnormal")]
+        [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "RND-004")]
         public void Given_maxExclusiveがminと同じ_When_NextInt_Then_ArgumentException()
         {
             var rng = new XorShiftRandom(1);
