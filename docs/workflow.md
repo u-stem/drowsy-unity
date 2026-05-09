@@ -1,6 +1,6 @@
 # ワークフロー
 
-drowsy-unity の開発ワークフロー詳細。CLAUDE.md §8 の補足。
+drowsy-unity の開発ワークフロー詳細。CLAUDE.md「8. ワークフロー: PR ベース」の補足。
 
 ---
 

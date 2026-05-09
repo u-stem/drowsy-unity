@@ -1,6 +1,6 @@
 # テスト戦略
 
-drowsy-unity のテスト方針詳細。CLAUDE.md §6 / §7 の補足ドキュメント。
+drowsy-unity のテスト方針詳細。CLAUDE.md「6. テスト方針」「7. 機械検知方針」の補足ドキュメント。
 
 ---
 
@@ -156,7 +156,7 @@ Assets/_Project/Scripts/Tests/
 
 ## 6. 機械検知
 
-仕様 / テスト規約の機械検知は CLAUDE.md §7 を参照。本ドキュメントの規約はすべて以下のいずれかで強制される:
+仕様 / テスト規約の機械検知は CLAUDE.md「7. 機械検知方針」を参照。本ドキュメントの規約はすべて以下のいずれかで強制される:
 
 - lefthook (pre-commit / commit-msg)
 - Roslyn Analyzer(`Microsoft.CodeAnalysis.NetAnalyzers`, `Roslynator.Analyzers`)
