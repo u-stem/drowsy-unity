@@ -5,7 +5,10 @@
     "Drowsy.Domain",
     "Drowsy.Application",
     "Drowsy.Infrastructure",
-    "Drowsy.Presentation"
+    "Drowsy.Presentation",
+    "UniTask",
+    "VContainer",
+    "R3.Unity"
   ],
   "autoReferenced": false,
   "noEngineReferences": false,
