@@ -250,9 +250,9 @@ Phase 0 段階では CI 未整備のため Required status checks は空。
 
 ADR を起票しない判断: 単純なバグ修正・typo・1 ファイル内リファクタ・パッケージのマイナー更新・軽微な文言調整。
 
-確立済み ADR: ADR-0001(本運用)/ ADR-0002(Phase 1 Domain 拡張: 集約境界・Card 抽象・Immutability・Player 想定)/ ADR-0003(TODO 運用)/ ADR-0004(`record + init + with` 利用のための `IsExternalInit` polyfill)。
+確立済み ADR: ADR-0001(本運用)/ ADR-0002(Phase 1 Domain 拡張: 集約境界・Card 抽象・Immutability・Player 想定)/ ADR-0003(TODO 運用)/ ADR-0004(`record + init + with` 利用のための `IsExternalInit` polyfill)/ ADR-0005(Phase 2 Roadmap: 本命ゲーム DrowZzz の段階的縦串実装)。
 
-**Phase 1(Domain 拡張)は完結済み**(ADR-0002 実装順序表 6 項目すべて完了、Domain 全 9 クラス C0 100%、NUnit 189 件全緑)。
+**Phase 1(Domain 拡張)は完結済み**(ADR-0002 実装順序表 6 項目すべて完了、Domain 全 9 クラス C0 100%、NUnit 189 件全緑)。**Phase 2 は計画確定済み**(ADR-0005、M1〜M5 マイルストーン分割、M1 着手前)。
 
 ## 12. TODO 追跡
 
