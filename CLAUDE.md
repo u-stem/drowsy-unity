@@ -250,4 +250,15 @@ Phase 0 段階では CI 未整備のため Required status checks は空。
 
 ADR を起票しない判断: 単純なバグ修正・typo・1 ファイル内リファクタ・パッケージのマイナー更新・軽微な文言調整。
 
-ADR-0001 で本運用を確立、ADR-0002 で Phase 1 Domain 拡張(集約境界・Card 抽象・Immutability・Player 想定)を確定済。
+ADR-0001 で本運用を確立、ADR-0002 で Phase 1 Domain 拡張(集約境界・Card 抽象・Immutability・Player 想定)を確定、ADR-0003 で TODO 運用を確立。
+
+## 12. TODO 追跡
+
+ADR / EARS / .feature の重さに達しない小規模タスク(技術的負債・改善・後追い chore)は [`docs/todo.md`](docs/todo.md) で追跡する。運用規約の根拠 / テンプレート / 入れる対象・入れない対象の詳細は [ADR-0003](docs/adr/0003-todo-operations.md) および `docs/todo.md` 冒頭の運用ルールセクションに集約する(本 §12 と詳細を二重管理しない)。
+
+- 配置: `docs/todo.md`(完了済み 30 件超で `docs/todo-archive.md` に切り出し)
+- 状態管理: 未着手 / 進行中 / 完了済み の 3 セクション
+- 完了処理: エントリを「完了済み」へ移動し `Related` に完了 PR / コミット番号を追記(削除しない)
+- コミット規約: `docs(todo): <日本語説明>`(Conventional Commits)
+
+詳細(テンプレート / 優先度 / 入れる対象・入れない対象)は ADR-0003 / `docs/todo.md` を参照。

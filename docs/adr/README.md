@@ -76,3 +76,4 @@ docs/adr/NNNN-kebab-case-title.md
 | ---- | ---- | ---- | ---- |
 | [0001](0001-adr-operations.md) | ADR Operations | Accepted | 本プロジェクトで ADR 運用を開始する。配置・命名・書式を確立 |
 | [0002](0002-phase1-domain-boundaries.md) | Phase 1 Domain 拡張の集約境界と概念モデル | Accepted | GameState 単一ルート集約、CardId+CardData(等値性 override 必須)、Domain 全体 immutable に統一、N 人プレイヤー想定 |
+| [0003](0003-todo-operations.md) | TODO 運用と docs/todo.md の新設 | Accepted | リポジトリ内 `docs/todo.md` で TODO 追跡。Title/Why/Done when/Related/Notes テンプレート、未着手/進行中/完了済み 3 セクション、30 件アーカイブ |

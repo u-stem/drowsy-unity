@@ -6,6 +6,8 @@
 | Date | 2026-05-09 |
 | Decider | プロジェクトオーナー |
 
+> **Date の意味**: `Date` は **起票・承認日**(エントリの本文を確定した日付)。コミット日とずれる場合がある(複数 ADR をまとめて 1 PR で起票するときなど)。後続 ADR もこの解釈を踏襲する。
+
 ## Context
 
 Phase 0 では環境セットアップ(lefthook / gitleaks / Roslyn Analyzer / asmdef 4 層構成)と最初の Domain 骨格(`CardId` / `Pile` / `IRandomSource` / `XorShiftRandom`)を整え、要件トレーサビリティ ID 体系と定数管理 L1〜L5 を確立した。これらの判断は CLAUDE.md 各章および `docs/architecture/*.md` に断片的に記録されているが、
