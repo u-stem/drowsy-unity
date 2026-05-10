@@ -25,6 +25,12 @@
     もし new GameState で生成
     ならば GameState.Field は入力 Field と等価
 
+  @GS-003
+  シナリオ: 有効な引数で生成 - Turn が保持される (正常系・Small)
+    前提 任意の players / Deck / Discard / Field、特定の Turn
+    もし new GameState で生成
+    ならば GameState.Turn は入力 Turn と等価
+
   @GS-004
   シナリオ: N=1 全フィールド一致は等価 (正常系・Small)
     前提 同じ Players(1 人) と同じ Deck/Discard/Field の 2 つの GameState
@@ -64,6 +70,12 @@
   @GS-004
   シナリオ: Field が異なる場合は非等価 (正常系・Small)
     前提 同じ Players / Deck / Discard、異なる Field
+    もし Equals 比較
+    ならば 非等価
+
+  @GS-004
+  シナリオ: Turn が異なる場合は非等価 (正常系・Small)
+    前提 同じ Players / Deck / Discard / Field、異なる Turn (TurnNumber 異)
     もし Equals 比較
     ならば 非等価
 
@@ -229,3 +241,33 @@
     前提 任意の GameState
     もし with { Field = null } を評価
     ならば ArgumentNullException が発生
+
+  @GS-020
+  シナリオ: コンストラクタ turn が null (異常系・Small)
+    前提 null turn
+    もし new GameState(players, deck, discard, field, null) で生成
+    ならば ArgumentNullException が発生
+
+  @GS-021
+  シナリオ: with 式で Turn を null に (異常系・Small)
+    前提 任意の GameState
+    もし with { Turn = null } を評価
+    ならば ArgumentNullException が発生
+
+  @GS-022
+  シナリオ: Turn の CurrentPlayerIndex が Players 範囲外 - コンストラクタ経由 (異常系・Small)
+    前提 1 人の Players と CurrentPlayerIndex=1 の Turn(範囲外)
+    もし new GameState で生成
+    ならば ArgumentException が発生
+
+  @GS-022
+  シナリオ: with 式で Turn を Players 範囲外に差し替え (異常系・Small)
+    前提 1 人の Players の GameState
+    もし with { Turn = TurnState(1, 5) } を評価
+    ならば ArgumentException が発生
+
+  @GS-022
+  シナリオ: with 式で Players を縮小して既存 Turn が範囲外に (異常系・Small)
+    前提 2 人の Players + CurrentPlayerIndex=1 の Turn の GameState
+    もし with { Players = 1 人 } を評価
+    ならば ArgumentException が発生
