@@ -15,8 +15,12 @@ namespace Drowsy.Domain.Cards
     /// 代替として配列を private で保持し、<see cref="Cards"/> プロパティ経由で
     /// <see cref="IReadOnlyList{T}"/> として読み取り専用公開する。
     /// 全変更操作は新しい配列を割り当てて新 Pile を返す純関数として実装する。
+    ///
+    /// 等値性は順序付きシーケンス同値で <see cref="Equals(Pile)"/> / <see cref="GetHashCode"/> /
+    /// <see cref="op_Equality"/> / <see cref="op_Inequality"/> を override する
+    /// (設計判断は ADR-0002 §「Domain 集合型の値同値性方針」、Hand と同じパターン)。
     /// </remarks>
-    public sealed class Pile
+    public sealed class Pile : IEquatable<Pile>
     {
         private readonly CardId[] _cards;
 
@@ -106,6 +110,51 @@ namespace Drowsy.Domain.Cards
                 (array[i], array[j]) = (array[j], array[i]);
             }
             return new Pile(array);
+        }
+
+        /// <summary>順序付きシーケンス同値で比較する。</summary>
+        public bool Equals(Pile other)
+        {
+            if (other is null)
+            {
+                return false;
+            }
+            if (ReferenceEquals(this, other))
+            {
+                return true;
+            }
+            if (_cards.Length != other._cards.Length)
+            {
+                return false;
+            }
+            for (int i = 0; i < _cards.Length; i++)
+            {
+                if (!_cards[i].Equals(other._cards[i]))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        public override bool Equals(object obj) => obj is Pile other && Equals(other);
+
+        /// <summary>値同値で == 比較する。両方 null は等価、片方のみ null は非等価。</summary>
+        public static bool operator ==(Pile left, Pile right) =>
+            left is null ? right is null : left.Equals(right);
+
+        /// <summary>値同値で != 比較する。</summary>
+        public static bool operator !=(Pile left, Pile right) => !(left == right);
+
+        /// <summary>順序依存ハッシュ。<see cref="HashCode"/> struct に各 CardId を <c>Add</c> で順次合成する。</summary>
+        public override int GetHashCode()
+        {
+            var hash = new HashCode();
+            for (int i = 0; i < _cards.Length; i++)
+            {
+                hash.Add(_cards[i]);
+            }
+            return hash.ToHashCode();
         }
     }
 }

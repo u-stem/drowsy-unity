@@ -56,18 +56,6 @@
 
 ## 未着手
 
-- [ ] **Pile に値同値性を追加する** `priority: medium`
-  - **Why**: PR-2 で Hand に値同値性(`Equals` / `GetHashCode` / `operator==` / `!=`)を導入したが、既存 `Pile` は参照同値のまま残っている。Domain 集合型(`Pile` / `Hand` / `CardData`)を全て値同値で揃え、後続 PR(PR-4 GameState など)での比較を一貫させる
-  - **Done when**:
-    - `Pile` に `Equals(Pile)` / `Equals(object)` / `GetHashCode` / `operator==` / `operator!=` を順序依存シーケンス同値で override
-    - `IEquatable<Pile>` 実装を追加
-    - `PileTests` に対応テスト追加(同順序同要素 / 順序異 / カード異 / 枚数異 / 同一参照 / null / n=0 / Equals(object) null・異型 / operator== の両 null・片 null × 2)
-    - `pile.md` に等値性関連の要件を追加(PILE-NNN 新規採番)
-    - Domain C0 カバレッジ 100% を維持
-    - `Pile.cs` の XML doc remarks に値同値性方針を追記
-  - **Related**: [ADR-0002](adr/0002-phase1-domain-boundaries.md) §「Domain 集合型の値同値性方針」, PR #13 (Hand 値同値導入)
-  - **Notes**: PR-3 (PlayerState) または PR-4 (GameState) 着手前までに完了させたい。`Pile` の Phase 0 実装は immutable なので追加のみで済み破壊的変更は不要
-
 - [ ] **Roslynator.Analyzers の導入 or CLAUDE.md §7 訂正** `priority: low`
   - **Why**: CLAUDE.md §7「Roslyn Analyzer 構成」に `Roslynator.Analyzers` が公開 Analyzer として導入予定と記載されているが、現状 NuGetForUnity (`Assets/Packages/`) に未配置。ドキュメントと実態が乖離しており、新規参加者(将来の自分含む)が混乱する
   - **Done when**:
@@ -93,4 +81,14 @@
 
 ## 完了済み
 
-(完了したエントリをここに移動し、`Related` に完了 PR / コミット番号を追記)
+- [x] **Pile に値同値性を追加する** `priority: medium`
+  - **Why**: PR-2 で Hand に値同値性(`Equals` / `GetHashCode` / `operator==` / `!=`)を導入したが、既存 `Pile` は参照同値のまま残っていた。Domain 集合型(`Pile` / `Hand` / `CardData`)を全て値同値で揃え、後続 PR(PR-4 GameState など)での比較を一貫させる
+  - **Done when** (all met):
+    - `Pile` に `Equals(Pile)` / `Equals(object)` / `GetHashCode` / `operator==` / `operator!=` を順序依存シーケンス同値で override(Hand と完全対称)
+    - `IEquatable<Pile>` 実装を追加
+    - `PileTests` に対応テスト追加(同順序同要素 / 順序異 / カード異 / 枚数異 / 同一参照 / null / n=0 / Equals(object) null・異型 / operator== の両 null・片 null × 2)
+    - `pile.md` に PILE-014〜017 を追加
+    - Domain C0 カバレッジ 100% を維持
+    - `Pile.cs` の XML doc remarks に値同値性方針を追記
+  - **Related**: [ADR-0002](adr/0002-phase1-domain-boundaries.md) §「Domain 集合型の値同値性方針」, PR #13 (Hand 値同値導入), 本 PR (TODO-1 完了 PR、マージ後に番号追記)
+  - **Notes**: ADR-0003 で確立した TODO 運用の初回完了適用

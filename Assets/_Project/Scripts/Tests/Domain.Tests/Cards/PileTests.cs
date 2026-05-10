@@ -121,5 +121,150 @@ namespace Drowsy.Domain.Tests.Cards
             Assert.That(Pile.Empty.IsEmpty, Is.True);
             Assert.That(Pile.Empty.Count, Is.EqualTo(0));
         }
+
+        // ===== PILE-014: 順序付きシーケンス同値 (n=0/n=1/n=2 サイズ網羅 + 不一致 + ReferenceEquals + null) =====
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "PILE-014")]
+        public void Given_同順序同要素のPile_When_Equals_Then_等価()
+        {
+            var x = new Pile(new[] { Card("a"), Card("b") });
+            var y = new Pile(new[] { Card("a"), Card("b") });
+            Assert.That(x, Is.EqualTo(y));
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "PILE-014")]
+        public void Given_同枚数で異なる順序のPile_When_Equals_Then_非等価()
+        {
+            var x = new Pile(new[] { Card("a"), Card("b") });
+            var y = new Pile(new[] { Card("b"), Card("a") });
+            Assert.That(x, Is.Not.EqualTo(y));
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "PILE-014")]
+        public void Given_同枚数で異なるカードのPile_When_Equals_Then_非等価()
+        {
+            var x = new Pile(new[] { Card("a"), Card("b") });
+            var y = new Pile(new[] { Card("a"), Card("c") });
+            Assert.That(x, Is.Not.EqualTo(y));
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "PILE-014")]
+        public void Given_異なる枚数のPile_When_Equals_Then_非等価()
+        {
+            var x = new Pile(new[] { Card("a") });
+            var y = new Pile(new[] { Card("a"), Card("b") });
+            Assert.That(x, Is.Not.EqualTo(y));
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "PILE-014")]
+        public void Given_同一インスタンスのPile_When_Equals_Then_等価()
+        {
+            var pile = new Pile(new[] { Card("a") });
+            Assert.That(pile.Equals(pile), Is.True);
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "PILE-014")]
+        public void Given_両方空Pile_When_Equals_Then_等価()
+        {
+            // Given: n=0 で別インスタンス同士が Equals 一致する(Hand 対称)
+            var x = new Pile(Array.Empty<CardId>());
+            var y = new Pile(Array.Empty<CardId>());
+            Assert.That(x, Is.EqualTo(y));
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "PILE-014")]
+        public void Given_null_When_EqualsPile_Then_false()
+        {
+            var pile = new Pile(new[] { Card("a") });
+            Pile other = null;
+            Assert.That(pile.Equals(other), Is.False);
+        }
+
+        // ===== PILE-015: GetHashCode =====
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "PILE-015")]
+        public void Given_等価な2つのPile_When_GetHashCode_Then_同じ値を返す()
+        {
+            var x = new Pile(new[] { Card("a"), Card("b") });
+            var y = new Pile(new[] { Card("a"), Card("b") });
+            Assert.That(x.GetHashCode(), Is.EqualTo(y.GetHashCode()));
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "PILE-015")]
+        public void Given_両方空Pile_When_GetHashCode_Then_同じ値を返す()
+        {
+            // Given: n=0 のハッシュ一致(HashCode struct の初期状態が安定値を返すことを担保、Hand 対称)
+            var x = new Pile(Array.Empty<CardId>());
+            var y = new Pile(Array.Empty<CardId>());
+            Assert.That(x.GetHashCode(), Is.EqualTo(y.GetHashCode()));
+        }
+
+        // ===== PILE-016: operator== / operator!= =====
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "PILE-016")]
+        public void Given_等価な2つのPile_When_operator_等価_Then_true()
+        {
+            var x = new Pile(new[] { Card("a") });
+            var y = new Pile(new[] { Card("a") });
+            Assert.That(x == y, Is.True);
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "PILE-016")]
+        public void Given_非等価な2つのPile_When_operator_等価_Then_false()
+        {
+            var x = new Pile(new[] { Card("a") });
+            var y = new Pile(new[] { Card("b") });
+            Assert.That(x == y, Is.False);
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "PILE-016")]
+        public void Given_非等価な2つのPile_When_operator_非等価_Then_true()
+        {
+            var x = new Pile(new[] { Card("a") });
+            var y = new Pile(new[] { Card("b") });
+            Assert.That(x != y, Is.True);
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "PILE-016")]
+        public void Given_両方null_When_operator_等価_Then_true()
+        {
+            Pile x = null;
+            Pile y = null;
+            Assert.That(x == y, Is.True);
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "PILE-016")]
+        public void Given_片方nullで他方非null_When_operator_等価_Then_false()
+        {
+            // Given: 左側 null、右側 非 null(operator== 実装の `left is null ? right is null` の右側 false 経路)
+            Pile x = null;
+            var y = Pile.Empty;
+            Assert.That(x == y, Is.False);
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "PILE-016")]
+        public void Given_左側非nullで右側null_When_operator_等価_Then_false()
+        {
+            // Given: operator== 実装の `left.Equals(right)` 経路 (right=null) をカバー
+            var x = Pile.Empty;
+            Pile y = null;
+            Assert.That(x == y, Is.False);
+        }
+
+        // ===== PILE-017: Equals(object) =====
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "PILE-017")]
+        public void Given_null_When_PileEqualsオブジェクト_Then_false()
+        {
+            var pile = Pile.Empty;
+            Assert.That(pile.Equals((object)null), Is.False);
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "PILE-017")]
+        public void Given_異なる型_When_PileEqualsオブジェクト_Then_false()
+        {
+            var pile = Pile.Empty;
+            Assert.That(pile.Equals((object)"not a Pile"), Is.False);
+        }
     }
 }
