@@ -133,6 +133,14 @@ public sealed record CardData(string Name, IReadOnlyDictionary<string, int> Attr
 
 防御的コピーは値オブジェクトのコンストラクタ側で行う(`Attributes` を内部で `new Dictionary<string, int>(source)` してから `IReadOnlyDictionary` として保持)。`record` の auto-equals は `Dictionary` を参照同値で比較するため値同値性が壊れる。Decision テーブルに従い `Equals` / `GetHashCode` の override は **必須**(同値ペアキーを順序非依存で比較し、ハッシュも順序非依存で合成)。具体的な要件文と要件 ID は PR-1 の EARS 仕様で `[CDATA-NNN]` として明記する。
 
+### Domain 集合型の値同値性方針(PR-2 で確定)
+
+PR-1 で `CardData` に値同値性(`Equals` / `GetHashCode` / `operator==` / `operator!=` を override)を導入し、PR-2 で `Hand` にも順序付きシーケンス同値の値同値性を導入した。一方、Phase 0 で実装済みの `Pile` は値同値性を持たず参照同値のままで残っている。
+
+この非対称性は意図的で、Phase 1 の中で別途 chore PR(参照: 後続 PR-2.5 相当、コミット粒度の都合で本 ADR では PR 番号予約しない)で `Pile` にも順序付きシーケンス同値の値同値性を追加し、Domain 集合型(`Pile` / `Hand` / `CardData`)を全て値同値で揃える方針とする。タイミングは Phase 1 のいずれかの PR-2〜PR-5 の前後で実施する(本 ADR では PR 番号を確定しない)。
+
+`Pile` の値同値性追加時は本 ADR の本セクションに「Pile も完了」を追記し、トレーサビリティを閉じる。
+
 ### N=1 と N=2 のテスト網羅
 
 PR-3 (`PlayerState`) と PR-4 (`GameState`) では、N=1(単一プレイヤー想定の最小ケース)と N=2(複数プレイヤー想定の最小ケース)の双方に対し、初期配布・手札追加・ターン開始の各シナリオをテストする。N=3 以降は MC/DC 観点で「N=1 と N=2 のテストで網羅できない分岐があるか」を検討してから追加する。
