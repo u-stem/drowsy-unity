@@ -26,6 +26,12 @@ for file in "$@"; do
     *) continue ;;
   esac
 
+  # 例外: Compat/ は BCL 不足を補う互換 polyfill 置き場のため仕様駆動の対象外
+  # (採用根拠: docs/adr/0004-init-setter-polyfill.md)
+  case "$file" in
+    Assets/_Project/Scripts/Domain/Compat/*) continue ;;
+  esac
+
   # 例: Assets/_Project/Scripts/Domain/Cards/Pile.cs → docs/specs/domain/cards/
   rel="${file#Assets/_Project/Scripts/Domain/}"
   module=$(dirname "$rel" | tr '[:upper:]' '[:lower:]')
