@@ -32,10 +32,10 @@
     ならば 1 が返る
 
   @DZ-012
-  シナリオ: skeleton 段階の DrowZzzRule.IsLegalMove (異常系・Small)
-    前提 DrowZzzRule のインスタンスと有効な session / action
+  シナリオ: M1-PR3 段階の DrowZzzRule.IsLegalMove (DrawCardAction、non-StartGameAction) (異常系・Small)
+    前提 DrowZzzRule のインスタンスと有効な session、action = DrawCardAction
     もし IsLegalMove(session, action) を呼ぶ
-    ならば NotImplementedException が発生する
+    ならば NotImplementedException が発生する (M1-PR4 で本格実装)
 
   @DZ-013
   シナリオ: skeleton 段階の DrowZzzRule.Apply (異常系・Small)
@@ -66,3 +66,15 @@
     前提 N=2 の有効な DrowZzzGameSession (FDP keys = [p1, p2])
     もし with { GameState = Players が [p1, p3] の新 GameState } を適用する
     ならば ArgumentException が発生する
+
+  @DZ-036
+  シナリオ: 同フィールド値の 2 Session は等価 (正常系・Small)
+    前提 同じ GameState / FirstDrowsyPoints / TurnPhase を持つ 2 つの DrowZzzGameSession
+    もし Equals で等価比較する
+    ならば 等価である
+
+  @DZ-036
+  シナリオ: FirstDrowsyPoints 挿入順が異なっても等価 (正常系・Small)
+    前提 GameState / TurnPhase が同一で、FirstDrowsyPoints の (key, value) は同一だが Dictionary 挿入順が異なる 2 つの DrowZzzGameSession
+    もし Equals で等価比較する
+    ならば 等価である (順序非依存マルチセット同値)

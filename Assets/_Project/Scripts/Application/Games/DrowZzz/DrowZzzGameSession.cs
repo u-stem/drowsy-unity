@@ -18,6 +18,12 @@ namespace Drowsy.Application.Games.DrowZzz
     /// (<see cref="FirstDrowsyPoints"/> のキー集合が <see cref="GameState"/>.Players の <see cref="PlayerId"/> 集合と一致するか)
     /// が走る。詳細は ADR-0006 §2.2 を参照。
     /// 各プレイヤー視点での隠し情報フィルタは Presentation 層 (M5) で実装し、本クラスは完全可視オラクルとする。
+    /// <para>
+    /// <see cref="Equals(DrowZzzGameSession)"/> / <see cref="GetHashCode"/> は record の auto-generated を上書きする。
+    /// 内部 <see cref="_firstDrowsyPoints"/> が <see cref="Dictionary{TKey, TValue}"/> のため auto-equals は
+    /// 参照同値にフォールバックして値同値が壊れる(<see cref="GameState"/> と同じ判断軸、ADR-0002)。
+    /// 順序非依存マルチセット同値で比較する。
+    /// </para>
     /// </remarks>
     public sealed record DrowZzzGameSession
     {
@@ -124,6 +130,57 @@ namespace Drowsy.Application.Games.DrowZzz
                     $"FDP keys: [{string.Join(", ", fdpKeys.Select(id => id.Value))}])",
                     paramName);
             }
+        }
+
+        /// <summary>
+        /// 順序非依存マルチセット同値で比較する。<see cref="_firstDrowsyPoints"/> はキー順を問わず
+        /// 各 <see cref="PlayerId"/>-<see cref="int"/> ペアの一致で判定する。
+        /// </summary>
+        public bool Equals(DrowZzzGameSession other)
+        {
+            if (other is null)
+            {
+                return false;
+            }
+            if (ReferenceEquals(this, other))
+            {
+                return true;
+            }
+            if (!_gameState.Equals(other._gameState))
+            {
+                return false;
+            }
+            if (_turnPhase != other._turnPhase)
+            {
+                return false;
+            }
+            if (_firstDrowsyPoints.Count != other._firstDrowsyPoints.Count)
+            {
+                return false;
+            }
+            foreach (var kv in _firstDrowsyPoints)
+            {
+                if (!other._firstDrowsyPoints.TryGetValue(kv.Key, out var v) || v != kv.Value)
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// 順序非依存ハッシュ。<see cref="_gameState"/> / <see cref="_turnPhase"/> および
+        /// <see cref="_firstDrowsyPoints"/> の各 (key, value) ペアハッシュを XOR 合成する
+        /// (CardData と同じパターン、ADR-0002)。
+        /// </summary>
+        public override int GetHashCode()
+        {
+            int hash = HashCode.Combine(_gameState, _turnPhase);
+            foreach (var kv in _firstDrowsyPoints)
+            {
+                hash ^= HashCode.Combine(kv.Key, kv.Value);
+            }
+            return hash;
         }
     }
 }

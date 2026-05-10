@@ -195,5 +195,40 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             // When / Then
             Assert.Throws<ArgumentException>(() => _ = session with { GameState = mismatchedGameState });
         }
+
+        // ===== DZ-036: 値同値性(順序非依存マルチセット同値)=====
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-036")]
+        public void Given_同フィールド値の2つのDrowZzzGameSession_When_等価比較_Then_等価()
+        {
+            // Given(同じ GameState / FirstDrowsyPoints / TurnPhase で別 instance を 2 つ生成)
+            var gs = NewGameState();
+            var fdp = Fdp(("p1", 0), ("p2", 10));
+            var s1 = new DrowZzzGameSession(gs, fdp, DrowZzzTurnPhase.WaitingForDraw);
+            var s2 = new DrowZzzGameSession(gs, fdp, DrowZzzTurnPhase.WaitingForDraw);
+            // When / Then
+            Assert.That(s1, Is.EqualTo(s2));
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-036")]
+        public void Given_FirstDrowsyPoints挿入順が異なる2つのDrowZzzGameSession_When_等価比較_Then_等価()
+        {
+            // Given(GameState / TurnPhase は同一、FirstDrowsyPoints は同じ key-value だが挿入順が逆)
+            var gs = NewGameState();
+            var fdpA = new Dictionary<PlayerId, int>
+            {
+                [PlayerId.Of("p1")] = 0,
+                [PlayerId.Of("p2")] = 10,
+            };
+            var fdpB = new Dictionary<PlayerId, int>
+            {
+                [PlayerId.Of("p2")] = 10,
+                [PlayerId.Of("p1")] = 0,
+            };
+            var s1 = new DrowZzzGameSession(gs, fdpA, DrowZzzTurnPhase.WaitingForDraw);
+            var s2 = new DrowZzzGameSession(gs, fdpB, DrowZzzTurnPhase.WaitingForDraw);
+            // When / Then
+            Assert.That(s1, Is.EqualTo(s2));
+        }
     }
 }

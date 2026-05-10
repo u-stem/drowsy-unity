@@ -12,15 +12,19 @@
 
 ## 普遍要件 (Ubiquitous)
 
-- [CFG-001] [Ubiquitous] The `IGameConfig` shall be a pure interface in the `Drowsy.Domain.Configuration` namespace.
-- [CFG-002] [Ubiquitous] The `IGameConfig` shall not depend on `UnityEngine` (Domain asmdef の `noEngineReferences: true` で物理保証).
-- [CFG-003] [Ubiquitous] The `IGameConfig` shall expose only read-only properties (no setters).
+- [CFG-001] [Ubiquitous] The `IGameConfig` shall be a pure interface in the `Drowsy.Domain.Configuration` namespace(ADR-0002 / `IGameConfig.cs`)。
+- [CFG-002] [Ubiquitous] The `IGameConfig` shall not depend on `UnityEngine` (Domain asmdef の `noEngineReferences: true` で物理保証)。
+- [CFG-003] [Ubiquitous] The `IGameConfig` shall expose only read-only properties (no setters)。
+- [CFG-101] [Ubiquitous] The `IGameConfig` shall expose `FdpPool` as `IReadOnlyList<int>` (read-only)(ADR-0006 §1.4 / §M1、M1-PR3 で追加)。
 
 ## 事象駆動要件 (Event-driven)
 
-Phase 2 以降で具体プロパティを追加する際に、各プロパティに対する Event-driven 要件を別 ID(CFG-101 〜 等)で追記する。
+Phase 2 以降で具体プロパティを追加する際に、各プロパティに対する Event-driven 要件を CFG-101 〜 系統で追記する。
 
-(現状 Phase 1 完結時点でも具体プロパティなしのまま、Phase 2 で追加予定)
+| プロパティ | 追加 PR | 関連要件 ID | 備考 |
+| ---- | ---- | ---- | ---- |
+| `FdpPool` | M1-PR3(本 PR) | CFG-101 | DrowZzz の現行値は `[0, 10, 20, 30, 35, 40, 45, 50, 55, 60]`、ADR-0006 §1.4 / §M1 |
+| `MaxRoundNumber` | M3 着手 PR(予定) | CFG-102(予定) | ゲーム終了判定、DrowZzz の現行値は `20` |
 
 ## 関連
 
@@ -36,5 +40,6 @@ Phase 2 以降で具体プロパティを追加する際に、各プロパティ
 | CFG-001 | (テスト免除: Ubiquitous) | namespace + interface 宣言で構造的に保証 |
 | CFG-002 | (テスト免除: Ubiquitous) | asmdef `noEngineReferences: true` で物理保証 |
 | CFG-003 | (テスト免除: Ubiquitous) | interface に setter を定義しない構造で保証 |
+| CFG-101 | (テスト免除: Ubiquitous) | `IGameConfig.FdpPool` の signature で構造的に保証(値の妥当性は `StartGameUseCase` の利用テストで間接的に検証) |
 
 Phase 2 以降で具体プロパティを追加した際は、対応するテストケースを追加し本表を更新する。
