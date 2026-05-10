@@ -66,6 +66,14 @@
   - **Related**: [`CLAUDE.md`](../CLAUDE.md) §7「Roslyn Analyzer 構成」
   - **Notes**: Phase 1 中の任意のタイミングで判断。導入しない場合の Phase 1 後半までに訂正だけは入れたい
 
+- [ ] **`turn-state.md` から ADR-0006 §7 への相互参照を追加** `priority: low`
+  - **Why**: ADR-0006 §7 で Phase 1 `TurnState.TurnNumber` を「サブターン番号」と解釈し、DrowZzz の「ターン (=ラウンド)」は `(TurnNumber + 1) / 2` で計算する旨を確定した。一方で ADR-0006 は「`turn-state.md` 本体には手を入れない」(後方互換維持) と判断したため、`turn-state.md` 単独の読者には DrowZzz 用語との対応関係が見えない
+  - **Done when**:
+    - `docs/specs/domain/game/turn-state.md` の「関連」セクションに「DrowZzz での用語解釈: [ADR-0006 §7](../../../adr/0006-m1-detail-application-interfaces.md)」を 1 行追記
+    - 機械検証(traceability / spec-files)が通過
+  - **Related**: [ADR-0006 §7](adr/0006-m1-detail-application-interfaces.md)、PR #20 (本 TODO の発生源)
+  - **Notes**: 本 PR (ADR-0006 起票) のスコープ外にした理由は code-reviewer S-2 指摘で「双方向参照は別 PR に切り出す方が筋」と判断したため。M1-PR1 着手前または同時に対応する
+
 - [ ] **NRT (Nullable Reference Types) 有効化を検討する** `priority: low`
   - **Why**: PR-1 (CardData) で `CardData?` / `object?` のアノテーション 7 箇所に対し CS8632 警告が発生し、既存パターン(NRT 無効)に揃えて `?` を削除した経緯がある。Domain 全体で null 安全な API を表現したい場合、NRT 有効化が筋。判断は設計判断レベルになる可能性あり(ADR-0004 候補)
   - **Done when**:
