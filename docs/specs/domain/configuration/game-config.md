@@ -18,16 +18,16 @@
 
 ## 事象駆動要件 (Event-driven)
 
-Phase 1 以降で具体プロパティを追加する際に、各プロパティに対する Event-driven 要件を別 ID(CFG-101 〜 等)で追記する。
+Phase 2 以降で具体プロパティを追加する際に、各プロパティに対する Event-driven 要件を別 ID(CFG-101 〜 等)で追記する。
 
-(現状 Phase 0 では具体プロパティなし)
+(現状 Phase 1 完結時点でも具体プロパティなしのまま、Phase 2 で追加予定)
 
 ## 関連
 
-- 実装: `Assets/_Project/Scripts/Domain/Configuration/IGameConfig.cs`(Phase 0 では空ひな形)
+- 実装: `Assets/_Project/Scripts/Domain/Configuration/IGameConfig.cs`(Phase 0 で空ひな形を導入、Phase 1 完結時点でも具体プロパティ未追加)
 - 設計: `docs/architecture/constants-management.md`(L1〜L5 階層、運用)
-- 実装(将来): `Assets/_Project/Scripts/Infrastructure/Configuration/GameConfigSO.cs`(Phase 1)
-- DI 登録(将来): `Assets/_Project/Scripts/Bootstrap/AppLifetimeScope.cs`(Phase 1)
+- 実装(将来): `Assets/_Project/Scripts/Infrastructure/Configuration/GameConfigSO.cs`(Phase 2)
+- DI 登録(将来): `Assets/_Project/Scripts/Bootstrap/AppLifetimeScope.cs`(Phase 2)
 
 ## トレーサビリティ
 
@@ -37,4 +37,4 @@ Phase 1 以降で具体プロパティを追加する際に、各プロパティ
 | CFG-002 | (テスト免除: Ubiquitous) | asmdef `noEngineReferences: true` で物理保証 |
 | CFG-003 | (テスト免除: Ubiquitous) | interface に setter を定義しない構造で保証 |
 
-Phase 1 以降で具体プロパティを追加した際は、対応するテストケースを追加し本表を更新する。
+Phase 2 以降で具体プロパティを追加した際は、対応するテストケースを追加し本表を更新する。

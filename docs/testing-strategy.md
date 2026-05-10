@@ -77,7 +77,7 @@ public class PileTests
 - AAA (Arrange-Act-Assert) パターンを徹底し、コメント `// Given / When / Then` で区切る
 - 1 テスト 1 アサーション原則(複合検証は SubTest 化)
 
-このルールは Phase 0 では lefthook の grep ベース簡易検知、Phase 1 以降でカスタム Roslyn Analyzer に格上げする。
+このルールは Phase 0〜1 では lefthook の grep ベース簡易検知、Phase 2 以降でカスタム Roslyn Analyzer に格上げする。
 
 ## 3. カバレッジ目標
 
