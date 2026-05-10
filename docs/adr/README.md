@@ -78,3 +78,4 @@ docs/adr/NNNN-kebab-case-title.md
 | [0002](0002-phase1-domain-boundaries.md) | Phase 1 Domain 拡張の集約境界と概念モデル | Accepted | GameState 単一ルート集約、CardId+CardData(等値性 override 必須)、Domain 全体 immutable に統一、N 人プレイヤー想定 |
 | [0003](0003-todo-operations.md) | TODO 運用と docs/todo.md の新設 | Accepted | リポジトリ内 `docs/todo.md` で TODO 追跡。Title/Why/Done when/Related/Notes テンプレート、未着手/進行中/完了済み 3 セクション、30 件アーカイブ |
 | [0004](0004-init-setter-polyfill.md) | C# 9 init setter / record with 式のための IsExternalInit polyfill 採用 | Accepted | Unity 6 / Mono に欠ける `System.Runtime.CompilerServices.IsExternalInit` を `internal static class` として Domain assembly に追加。record + init + with 式を Domain で使えるようにする |
+| [0005](0005-phase2-roadmap-drowzzz.md) | Phase 2 Roadmap — DrowZzz の段階的縦串実装 | Accepted | 本命ゲーム DrowZzz を `drowsy-unity` 同居で段階的縦串実装、M1〜M5 マイルストーン分割、ロジック先行 + ルール最適化と並行 EARS 化 |
