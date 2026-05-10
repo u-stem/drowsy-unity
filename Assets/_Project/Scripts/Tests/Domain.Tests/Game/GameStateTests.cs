@@ -29,64 +29,77 @@ namespace Drowsy.Domain.Tests.Game
             IReadOnlyList<PlayerState> players = null,
             Pile deck = null,
             Pile discard = null,
-            Pile field = null)
+            Pile field = null,
+            TurnState turn = null)
         {
             return new GameState(
                 players ?? new[] { Player("p1") },
                 deck ?? Pile.Empty,
                 discard ?? Pile.Empty,
-                field ?? Pile.Empty);
+                field ?? Pile.Empty,
+                turn ?? TurnState.Initial(0));
         }
 
         // 普遍要件 GS-001 / GS-002 は record class + init-only + IReadOnlyList で構造保証
 
-        // ===== GS-003: コンストラクタの値保持(1 テスト 1 アサーションで 4 フィールド分離)=====
+        // ===== GS-003: コンストラクタの値保持(1 テスト 1 アサーションで 5 フィールド分離)=====
 
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "GS-003")]
-        public void Given_有効な4引数_When_コンストラクタ_Then_Playersが入力と同じ()
+        public void Given_有効な5引数_When_コンストラクタ_Then_Playersが入力と同じ()
         {
             // Given
             var players = new[] { Player("p1") };
             // When
-            var state = new GameState(players, Pile.Empty, Pile.Empty, Pile.Empty);
+            var state = new GameState(players, Pile.Empty, Pile.Empty, Pile.Empty, TurnState.Initial(0));
             // Then
             Assert.That(state.Players, Is.EqualTo(players));
         }
 
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "GS-003")]
-        public void Given_有効な4引数_When_コンストラクタ_Then_Deckが入力と同じ()
+        public void Given_有効な5引数_When_コンストラクタ_Then_Deckが入力と同じ()
         {
             // Given
             var deck = new Pile(new[] { CardId.Of("a") });
             // When
-            var state = new GameState(new[] { Player("p1") }, deck, Pile.Empty, Pile.Empty);
+            var state = new GameState(new[] { Player("p1") }, deck, Pile.Empty, Pile.Empty, TurnState.Initial(0));
             // Then
             Assert.That(state.Deck, Is.EqualTo(deck));
         }
 
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "GS-003")]
-        public void Given_有効な4引数_When_コンストラクタ_Then_Discardが入力と同じ()
+        public void Given_有効な5引数_When_コンストラクタ_Then_Discardが入力と同じ()
         {
             // Given
             var discard = new Pile(new[] { CardId.Of("b") });
             // When
-            var state = new GameState(new[] { Player("p1") }, Pile.Empty, discard, Pile.Empty);
+            var state = new GameState(new[] { Player("p1") }, Pile.Empty, discard, Pile.Empty, TurnState.Initial(0));
             // Then
             Assert.That(state.Discard, Is.EqualTo(discard));
         }
 
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "GS-003")]
-        public void Given_有効な4引数_When_コンストラクタ_Then_Fieldが入力と同じ()
+        public void Given_有効な5引数_When_コンストラクタ_Then_Fieldが入力と同じ()
         {
             // Given
             var field = new Pile(new[] { CardId.Of("c") });
             // When
-            var state = new GameState(new[] { Player("p1") }, Pile.Empty, Pile.Empty, field);
+            var state = new GameState(new[] { Player("p1") }, Pile.Empty, Pile.Empty, field, TurnState.Initial(0));
             // Then
             Assert.That(state.Field, Is.EqualTo(field));
         }
 
-        // ===== GS-004: 値同値性(N=1 / N=2 / 4 フィールド異 / 順序異 / Players 数異 / RefEq / null) =====
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "GS-003")]
+        public void Given_有効な5引数_When_コンストラクタ_Then_Turnが入力と同じ()
+        {
+            // Given
+            var turn = new TurnState(3, 0);
+            // When
+            var state = new GameState(new[] { Player("p1") }, Pile.Empty, Pile.Empty, Pile.Empty, turn);
+            // Then
+            Assert.That(state.Turn, Is.EqualTo(turn));
+        }
+
+        // ===== GS-004: 値同値性(N=1 / N=2 / 5 フィールド異 / 順序異 / Players 数異 / RefEq / null) =====
 
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "GS-004")]
         public void Given_全フィールド一致N1_When_Equals_Then_等価()
@@ -142,6 +155,15 @@ namespace Drowsy.Domain.Tests.Game
         {
             var x = NewState(field: new Pile(new[] { CardId.Of("a") }));
             var y = NewState(field: Pile.Empty);
+            Assert.That(x, Is.Not.EqualTo(y));
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "GS-004")]
+        public void Given_Turn異_When_Equals_Then_非等価()
+        {
+            // Given: Turn だけが異なる(TurnNumber 異)
+            var x = NewState(turn: new TurnState(1, 0));
+            var y = NewState(turn: new TurnState(2, 0));
             Assert.That(x, Is.Not.EqualTo(y));
         }
 
@@ -295,41 +317,41 @@ namespace Drowsy.Domain.Tests.Game
         {
             // Given
             var source = new List<PlayerState> { Player("p1") };
-            var state = new GameState(source, Pile.Empty, Pile.Empty, Pile.Empty);
+            var state = new GameState(source, Pile.Empty, Pile.Empty, Pile.Empty, TurnState.Initial(0));
             // When
             source.Add(Player("p2"));
             // Then
             Assert.That(state.Players.Count, Is.EqualTo(1));
         }
 
-        // ===== GS-010 〜 013: コンストラクタの 4 フィールド null =====
+        // ===== GS-010 〜 013: コンストラクタの 5 フィールドのうち 4 フィールド null(Turn null は GS-020) =====
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "GS-010")]
         public void Given_nullPlayers_When_コンストラクタ_Then_ArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(
-                () => new GameState(null, Pile.Empty, Pile.Empty, Pile.Empty));
+                () => new GameState(null, Pile.Empty, Pile.Empty, Pile.Empty, TurnState.Initial(0)));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "GS-011")]
         public void Given_nullDeck_When_コンストラクタ_Then_ArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(
-                () => new GameState(new[] { Player("p1") }, null, Pile.Empty, Pile.Empty));
+                () => new GameState(new[] { Player("p1") }, null, Pile.Empty, Pile.Empty, TurnState.Initial(0)));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "GS-012")]
         public void Given_nullDiscard_When_コンストラクタ_Then_ArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(
-                () => new GameState(new[] { Player("p1") }, Pile.Empty, null, Pile.Empty));
+                () => new GameState(new[] { Player("p1") }, Pile.Empty, null, Pile.Empty, TurnState.Initial(0)));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "GS-013")]
         public void Given_nullField_When_コンストラクタ_Then_ArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(
-                () => new GameState(new[] { Player("p1") }, Pile.Empty, Pile.Empty, null));
+                () => new GameState(new[] { Player("p1") }, Pile.Empty, Pile.Empty, null, TurnState.Initial(0)));
         }
 
         // ===== GS-014: players に null 要素 =====
@@ -339,7 +361,7 @@ namespace Drowsy.Domain.Tests.Game
         {
             var players = new PlayerState[] { Player("p1"), null };
             Assert.Throws<ArgumentException>(
-                () => new GameState(players, Pile.Empty, Pile.Empty, Pile.Empty));
+                () => new GameState(players, Pile.Empty, Pile.Empty, Pile.Empty, TurnState.Initial(0)));
         }
 
         // ===== GS-015: players に重複 PlayerId =====
@@ -349,7 +371,7 @@ namespace Drowsy.Domain.Tests.Game
         {
             var players = new[] { Player("p1"), PlayerWithHand("p1", "a") };
             Assert.Throws<ArgumentException>(
-                () => new GameState(players, Pile.Empty, Pile.Empty, Pile.Empty));
+                () => new GameState(players, Pile.Empty, Pile.Empty, Pile.Empty, TurnState.Initial(0)));
         }
 
         // ===== GS-016 〜 019: with 式での null 防御 =====
@@ -380,6 +402,55 @@ namespace Drowsy.Domain.Tests.Game
         {
             var state = NewState();
             Assert.Throws<ArgumentNullException>(() => _ = state with { Field = null });
+        }
+
+        // ===== GS-020 / GS-021 / GS-022: PR-5 で追加した Turn 関連の異常系 =====
+
+        [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "GS-020")]
+        public void Given_nullTurn_When_コンストラクタ_Then_ArgumentNullException()
+        {
+            Assert.Throws<ArgumentNullException>(
+                () => new GameState(new[] { Player("p1") }, Pile.Empty, Pile.Empty, Pile.Empty, null));
+        }
+
+        [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "GS-021")]
+        public void Given_GameState_When_with式でTurnをnullに_Then_ArgumentNullException()
+        {
+            var state = NewState();
+            Assert.Throws<ArgumentNullException>(() => _ = state with { Turn = null });
+        }
+
+        [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "GS-022")]
+        public void Given_TurnのCurrentPlayerIndexがPlayers範囲外_When_コンストラクタ_Then_ArgumentException()
+        {
+            // Given: 1 人しかいないが Turn が CurrentPlayerIndex=1 を指す(範囲外)
+            var players = new[] { Player("p1") };
+            var outOfRangeTurn = new TurnState(1, 1);
+            // When / Then
+            Assert.Throws<ArgumentException>(
+                () => new GameState(players, Pile.Empty, Pile.Empty, Pile.Empty, outOfRangeTurn));
+        }
+
+        [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "GS-022")]
+        public void Given_GameState_When_with式でTurnを範囲外に_Then_ArgumentException()
+        {
+            // Given: with 式経由でも GS-022 の範囲検証が動くか
+            var state = NewState(players: new[] { Player("p1") });
+            var outOfRangeTurn = new TurnState(1, 5);
+            // When / Then
+            Assert.Throws<ArgumentException>(() => _ = state with { Turn = outOfRangeTurn });
+        }
+
+        [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "GS-022")]
+        public void Given_GameState_When_with式でPlayersを縮小して既存Turnが範囲外に_Then_ArgumentException()
+        {
+            // Given: 2 人 + Index=1 の Turn → Players を 1 人に縮小すると既存 Turn が範囲外になる
+            var state = NewState(
+                players: new[] { Player("p1"), Player("p2") },
+                turn: new TurnState(1, 1));
+            // When / Then
+            Assert.Throws<ArgumentException>(
+                () => _ = state with { Players = new[] { Player("p1") } });
         }
     }
 }

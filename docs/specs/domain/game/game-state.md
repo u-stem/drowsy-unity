@@ -1,6 +1,6 @@
 # GameState
 
-ゲーム全体の状態を表す不変ルート集約。Phase 1 では `Players` / `Deck` / `Discard` / `Field` の 4 フィールドを保持する(`Turn` は PR-5 で `TurnState` と一緒に追加予定)。
+ゲーム全体の状態を表す不変ルート集約。Phase 1 完結時点で `Players` / `Deck` / `Discard` / `Field` / `Turn` の 5 フィールドを保持する(`Turn` は PR-5 で TurnState と一緒に追加)。
 
 ## 概要
 
@@ -11,7 +11,8 @@ GameState (root, immutable record)
 ├── Players  : IReadOnlyList<PlayerState>   (順序付き、PlayerId 重複拒否)
 ├── Deck     : Pile                         (山札)
 ├── Discard  : Pile                         (捨て札)
-└── Field    : Pile                         (場、Pile.Empty で「場なし」を表現)
+├── Field    : Pile                         (場、Pile.Empty で「場なし」を表現)
+└── Turn     : TurnState                    (ターン進行状態、PR-5 で追加)
 ```
 
 `record class` として実装し、`init` setter + バッキングフィールド + `value ?? throw` で **コンストラクタ + `with` 式の両経路で null 防御** が走る(PR-3 PlayerState と同パターン、ADR-0004 polyfill 前提)。
@@ -23,12 +24,12 @@ GameState (root, immutable record)
 ## 普遍要件 (Ubiquitous)
 
 - [GS-001] [Ubiquitous] The `GameState` shall be immutable.
-- [GS-002] [Ubiquitous] The `GameState` shall expose `Players` (`IReadOnlyList<PlayerState>`), `Deck` (`Pile`), `Discard` (`Pile`), and `Field` (`Pile`) as read-only properties.
+- [GS-002] [Ubiquitous] The `GameState` shall expose `Players` (`IReadOnlyList<PlayerState>`), `Deck` (`Pile`), `Discard` (`Pile`), `Field` (`Pile`), and `Turn` (`TurnState`) as read-only properties.
 
 ## 事象駆動要件 (Event-driven)
 
-- [GS-003] When `new GameState(players, deck, discard, field)` is called with valid arguments, the constructed instance shall hold the same values via a defensive copy of `players`.
-- [GS-004] When two `GameState` instances are compared with `Equals`, they shall be equal if and only if `Players` (in order, by value) and each of `Deck` / `Discard` / `Field` are value-equal.
+- [GS-003] When `new GameState(players, deck, discard, field, turn)` is called with valid arguments, the constructed instance shall hold the same values via a defensive copy of `players`.
+- [GS-004] When two `GameState` instances are compared with `Equals`, they shall be equal if and only if `Players` (in order, by value) and each of `Deck` / `Discard` / `Field` / `Turn` are value-equal.
 - [GS-005] When `GetHashCode` is called on two equal `GameState` instances, they shall return the same hash value.
 - [GS-006] When two `GameState` references are compared with `operator==` or `operator!=`, the result shall be value-equal consistent with `Equals`. Both null operands compare as equal; one-sided null compares as not equal.
 - [GS-007] When `Equals(object)` is called with `null` or an argument that is not a `GameState`, the `GameState` shall return `false`.
@@ -47,6 +48,9 @@ GameState (root, immutable record)
 - [GS-017] If `state with { Deck = null }` is evaluated, then the `init` setter shall throw `ArgumentNullException`.
 - [GS-018] If `state with { Discard = null }` is evaluated, then the `init` setter shall throw `ArgumentNullException`.
 - [GS-019] If `state with { Field = null }` is evaluated, then the `init` setter shall throw `ArgumentNullException`.
+- [GS-020] If `turn` is null, then the constructor shall throw `ArgumentNullException`.
+- [GS-021] If `state with { Turn = null }` is evaluated, then the `init` setter shall throw `ArgumentNullException`.
+- [GS-022] If `turn.CurrentPlayerIndex >= players.Count`, then the constructor shall throw `ArgumentException` (Players の範囲外を Turn が指す不整合は不許容).
 
 ## 実装メモ
 
@@ -71,9 +75,21 @@ GameState (root, immutable record)
 
 ADR-0002 の「N 人プレイヤー想定」を本要件で具体化する。GS-004 のテストでは N=1(単一プレイヤーの GameState 同士の値同値)と N=2(2 プレイヤーの GameState 同士の値同値、順序異 → 非等価、Players 数異 → 非等価)を両方カバー。
 
-### Phase 1 残作業
+### Phase 1 完結(PR-5 で達成)
 
-PR-5 (`TurnState`) で本 GameState に `Turn` プロパティを追加する。`init` setter + null 検証 + Equals/GetHashCode の更新が必要。本 PR の範囲外。
+PR-5 で `Turn: TurnState` プロパティを追加し、Phase 1 が完結した。コンストラクタに `turn` 引数追加 + `init` setter で null 検証(GS-020 / GS-021)+ `Equals` / `GetHashCode` に Turn を反映 + GS-022 で `Turn.CurrentPlayerIndex >= Players.Count` の不整合を拒否。
+
+### CurrentPlayerIndex の範囲検証(コンストラクタ + with 式の両経路で防御)
+
+`TurnState` 単体では下限(`>= 0`)のみ検証(`turn-state.md` TURN-010)。上限(`< Players.Count`)は GameState の `Players` / `Turn` の **両 init setter で** クロスフィールド検証する(GS-022)。これにより以下の 3 経路すべてで不整合な GameState の生成を拒否できる:
+
+1. **コンストラクタ経由**: `new GameState(...)` 内で `Players → ... → Turn` の順に init setter が走り、Turn 設定時に `_players` を参照して範囲検証
+2. **`with { Turn = newTurn }` 経由**: `MemberwiseClone` で `_players` がコピー済み → Turn の init setter で範囲検証
+3. **`with { Players = newPlayers }` 経由**: 同じく `_turn` がコピー済み → Players の init setter で「Players を縮小して既存 Turn が範囲外」を検証
+
+`TurnState` は GameState から独立して使え、GameState 側で「Players と Turn の整合性」を担保する責務分担となる。
+
+`with { Turn = newTurn }` / `with { Players = newPlayers }` で範囲外を渡した場合は `ArgumentException` が走る(GS-022 のテスト 3 ケース: コンストラクタ経由 / Turn 差し替え経由 / Players 縮小経由)。
 
 ## 関連
 
@@ -82,7 +98,7 @@ PR-5 (`TurnState`) で本 GameState に `Turn` プロパティを追加する。
 - シナリオ: `game-state.feature`
 - 設計根拠: [`docs/adr/0002-phase1-domain-boundaries.md`](../../../adr/0002-phase1-domain-boundaries.md)(集約境界 / N 人想定 / Domain 全体 immutable)
 - 依存技術: [`docs/adr/0004-init-setter-polyfill.md`](../../../adr/0004-init-setter-polyfill.md)(`record + init + with` 利用の前提)
-- 依存仕様: [`pile.md`](../cards/pile.md)(`Deck` / `Discard` / `Field` の値同値性)、[`hand.md`](../cards/hand.md)、[`player-state.md`](../players/player-state.md)、[`player-id.md`](../players/player-id.md)
+- 依存仕様: [`pile.md`](../cards/pile.md)(`Deck` / `Discard` / `Field` の値同値性)、[`hand.md`](../cards/hand.md)、[`player-state.md`](../players/player-state.md)、[`player-id.md`](../players/player-id.md)、[`turn-state.md`](turn-state.md)(Turn フィールド、PR-5 で追加)
 
 ## トレーサビリティ
 
@@ -90,8 +106,8 @@ PR-5 (`TurnState`) で本 GameState に `Turn` プロパティを追加する。
 | ---- | ---- | ---- |
 | GS-001 | (テスト免除: Ubiquitous) | `record class` + `init`-only バッキングで構造保証 |
 | GS-002 | (テスト免除: Ubiquitous) | `IReadOnlyList<PlayerState>` / `Pile` プロパティで構造保証 |
-| GS-003 | `Given_有効な4引数_When_コンストラクタ_Then_Playersが入力と同じ` / `Given_有効な4引数_..._Then_Deckが入力と同じ` / `Given_有効な4引数_..._Then_Discardが入力と同じ` / `Given_有効な4引数_..._Then_Fieldが入力と同じ` | 1 テスト 1 アサーションで 4 フィールドを分離 |
-| GS-004 | `Given_全フィールド一致_..._Then_等価` (N=1) / `Given_2人で全フィールド一致_..._Then_等価` (N=2) / `Given_Players順序異_..._Then_非等価` / `Given_Players数異_..._Then_非等価` / `Given_Deck異_..._Then_非等価` / `Given_Discard異_..._Then_非等価` / `Given_Field異_..._Then_非等価` / `Given_同一インスタンス_..._Then_等価` / `Given_Equalsにnull_..._Then_false` | N=1 / N=2 + 4 フィールドそれぞれ異 + Players 順序異 + ReferenceEquals + null |
+| GS-003 | `Given_有効な5引数_When_コンストラクタ_Then_Playersが入力と同じ` / `Given_有効な5引数_..._Then_Deckが入力と同じ` / `Given_有効な5引数_..._Then_Discardが入力と同じ` / `Given_有効な5引数_..._Then_Fieldが入力と同じ` / `Given_有効な5引数_..._Then_Turnが入力と同じ` | 1 テスト 1 アサーションで 5 フィールドを分離(Turn 含む、PR-5 で追加) |
+| GS-004 | `Given_全フィールド一致_..._Then_等価` (N=1) / `Given_2人で全フィールド一致_..._Then_等価` (N=2) / `Given_Players順序異_..._Then_非等価` / `Given_Players数異_..._Then_非等価` / `Given_Deck異_..._Then_非等価` / `Given_Discard異_..._Then_非等価` / `Given_Field異_..._Then_非等価` / `Given_Turn異_..._Then_非等価` / `Given_同一インスタンス_..._Then_等価` / `Given_Equalsにnull_..._Then_false` | N=1 / N=2 + 5 フィールドそれぞれ異 + Players 順序異 + ReferenceEquals + null |
 | GS-005 | `Given_等価な2つのGameState_When_GetHashCode_Then_同じ値を返す` | |
 | GS-006 | `Given_等価な2つのGameState_When_operator_等価_Then_true` / `Given_非等価_..._operator_等価_Then_false` / `Given_非等価_..._operator_非等価_Then_true` / `Given_両方null_..._operator_等価_Then_true` / `Given_片方nullで他方非null_..._operator_等価_Then_false` (左 null) / `Given_左側非nullで右側null_..._operator_等価_Then_false` (右 null) | |
 | GS-007 | `Given_null_When_Equalsオブジェクト_Then_false` / `Given_異なる型_When_Equalsオブジェクト_Then_false` | |
@@ -107,5 +123,8 @@ PR-5 (`TurnState`) で本 GameState に `Turn` プロパティを追加する。
 | GS-017 | `Given_GameState_When_with式でDeckをnullに_Then_ArgumentNullException` | |
 | GS-018 | `Given_GameState_When_with式でDiscardをnullに_Then_ArgumentNullException` | |
 | GS-019 | `Given_GameState_When_with式でFieldをnullに_Then_ArgumentNullException` | |
+| GS-020 | `Given_nullTurn_When_コンストラクタ_Then_ArgumentNullException` | PR-5 で Turn フィールド追加と同時に異常系も整備 |
+| GS-021 | `Given_GameState_When_with式でTurnをnullに_Then_ArgumentNullException` | |
+| GS-022 | `Given_TurnのCurrentPlayerIndexがPlayers範囲外_When_コンストラクタ_Then_ArgumentException` / `Given_GameState_When_with式でTurnを範囲外に_Then_ArgumentException` / `Given_GameState_When_with式でPlayersを縮小して既存Turnが範囲外に_Then_ArgumentException` | Players と Turn の整合性検証(コンストラクタ + Turn 差し替え + Players 縮小の 3 経路) |
 
 ID 規約全体は [`docs/testing-strategy.md`](../../../testing-strategy.md) を参照。
