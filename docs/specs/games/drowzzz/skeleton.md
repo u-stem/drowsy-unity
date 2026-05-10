@@ -76,8 +76,8 @@ ADR-0006 §2 の決定に基づき、DrowZzz の Application 層型骨格を `Dr
 | DZ-009 | キー集合不一致を 2 ケース分離: `Given_FirstDrowsyPointsのキー数がPlayersより少ない_...` / `Given_FirstDrowsyPointsのキーがPlayersと部分的に異なる_...` (Then 共通: `ArgumentException`) | コンストラクタ cross-field 検証 |
 | DZ-010 | N=2 想定を 3 ケース分離: TurnNumber=1→1 / TurnNumber=2→1 / TurnNumber=3→2 | `(TurnNumber + 1) / 2` 計算検証 |
 | DZ-011 | (テスト免除: Ubiquitous) | `class DrowZzzRule : IGameRule<DrowZzzAction, DrowZzzGameSession>` で構造的に保証 |
-| DZ-012 | `Given_DrowZzzRule_When_DrawCardActionでIsLegalMoveを呼ぶ_Then_NotImplementedExceptionを投げる` | non-`StartGameAction` の skeleton 段階意図(M1-PR4〜PR6 で本格実装) |
-| DZ-013 | `Given_DrowZzzRule_When_Applyを呼ぶ_Then_NotImplementedExceptionを投げる` | skeleton 段階の意図 |
+| DZ-012 | `Given_DrowZzzRule_When_PlayCardActionでIsLegalMoveを呼ぶ_Then_NotImplementedExceptionを投げる` | M1-PR4 で `DrawCardAction` が実装済になったため `PlayCardAction` で代用、本格 PlayCard 実装は M1-PR5 |
+| DZ-013 | `Given_DrowZzzRule_When_PlayCardActionでApplyを呼ぶ_Then_NotImplementedExceptionを投げる` | 同上、本格 PlayCard Apply は M1-PR5 |
 | DZ-014 | `Given_既存Session_When_with_GameStateにnull_Then_ArgumentNullExceptionを投げる` | with 式経由 null 防御 |
 | DZ-015 | `Given_既存Session_When_with_FirstDrowsyPointsにnull_Then_ArgumentNullExceptionを投げる` | with 式経由 null 防御 |
 | DZ-016 | `Given_既存Session_When_with_FirstDrowsyPointsをキー不一致に変更_Then_ArgumentExceptionを投げる` | with 式経由 cross-field 検証 |
