@@ -174,7 +174,7 @@ namespace Drowsy.Domain.Configuration
 
 `.editorconfig` で `dotnet_diagnostic.CA1802.severity = warning` に設定し、IDE / コンパイル時に警告として現れる。
 
-### カスタム Roslyn Analyzer(Phase 1 以降)
+### カスタム Roslyn Analyzer(Phase 2 以降)
 
 公開 Analyzer ではマジックナンバー検出が弱いため、カスタム Analyzer の検討候補:
 
@@ -182,7 +182,7 @@ namespace Drowsy.Domain.Configuration
 - `0`、`1`、`-1`、`""`、`null` 等の自明リテラルは例外
 - 配列インデックス `[0]` `[1]` も例外
 
-これは Phase 1 以降で工数次第。
+これは Phase 2 以降で工数次第。
 
 ---
 

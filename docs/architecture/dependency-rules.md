@@ -143,5 +143,5 @@ hand.Cards.Add(newCard);  // ← Hand は immutable
 | ---- | ---- | ---- |
 | Domain で `using UnityEngine` | asmdef `noEngineReferences: true` でコンパイルエラー | 物理保証 |
 | 逆方向の参照 | asmdef `references` の依存グラフで Unity が拒否 | 物理保証 |
-| Application 具象 UseCase を Infrastructure から直接呼ぶ | カスタム Roslyn Analyzer | Phase 1 以降で実装 |
+| Application 具象 UseCase を Infrastructure から直接呼ぶ | カスタム Roslyn Analyzer | Phase 2 以降で実装 |
 | autoReferenced=false の徹底 | asmdef Inspector で目視 + lefthook の簡易検知 | Phase 0 |
