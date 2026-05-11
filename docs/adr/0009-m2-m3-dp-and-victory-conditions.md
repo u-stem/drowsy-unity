@@ -516,21 +516,48 @@ ADR-0007 / ADR-0008 と同じく、本 ADR 起票 PR では `README.md` / `CLAUD
 
 #### M2-PR4 進行中の JIT 確定・訂正同梱
 
-- **DDP プール枚数の計算誤記訂正(36 → 39)**: 本 ADR 起票時 §「DDP プールの構造」で「13 種 × 3 枚 = 36 枚」「総抽選 10 枚 ≤ プール 36 枚で余裕 26 枚」と書いていたが、数学的に 13 × 3 = 39 で**計算誤記**。実装着手後の NUnit テスト失敗(Expected 36, but was 39)で発覚、プロジェクトオーナー JIT 確認(2026-05-11)で「39 枚が正、ADR 表記を訂正」と確定。本 PR で ADR-0009 / `docs/adr/README.md` / 仕様 / 実装 xmldoc / テスト / `docs/todo.md` の「36 枚」を一括 39 に訂正同梱(訂正経緯は「起票時 36 枚と書いた」注記で各箇所に残す、ADR-0001「Accepted 直接編集」運用、ADR-0007 / ADR-0008 の境界訂正同梱と同パターン)
-- **`DrowZzzRule` constructor への `IRandomSource` 注入を採用しない判断**: 本 ADR §4 で「rng を Rule に注入する案」が JIT 判断候補とされていたが、`StartGameUseCase` で `DdpPool` を 1 回事前 Shuffle 済のため Rule 内 rng は不要と再評価。ADR-0007 §3「`DrowZzzRule` constructor 引数は `ICardCatalog<IEffect>` / `EffectInterpreter` のみ」を破壊せずに済む。`dp-mechanism-ddp.md` §「設計判断」§「`DrowZzzRule` constructor」に経緯記録
-- **`DdpPool` 専用値オブジェクトの新設(Pile 流用案を不採用)**: 本 ADR §3 では「`Pile` 型を再利用」と書いていたが、`Pile` は `CardId[]` 専用で整数プール (-30〜+30) には semantic 違反のため、専用 `DdpPool` 値オブジェクトを Application 層に新設(Pile と同 API パターン)。`dp-mechanism-ddp.md` §「設計判断」§「`DdpPool` 値オブジェクト」に根拠記録
+##### 1. DDP プール枚数の計算誤記訂正(36 → 39)
+
+- **経緯**: 本 ADR 起票時 §「DDP プールの構造」で「13 種 × 3 枚 = 36 枚」「総抽選 10 枚 ≤ プール 36 枚で余裕 26 枚」と書いていたが、数学的に 13 × 3 = 39 で**計算誤記**
+- **発覚**: 実装着手後の NUnit テスト失敗(`Expected 36, but was 39`)で検出
+- **JIT 確認**: プロジェクトオーナー JIT 確認(2026-05-11)で「39 枚が正、ADR 表記を訂正」と確定
+- **訂正範囲**: 本 PR で ADR-0009 / `docs/adr/README.md` / 仕様 / 実装 xmldoc / テスト / `docs/todo.md` の「36 枚」を一括 39 に訂正同梱
+- **訂正運用**: 経緯は「起票時 36 枚と書いた」注記で各箇所に残す(ADR-0001「Accepted 直接編集」運用、ADR-0007 / ADR-0008 の境界訂正同梱と同パターン)
+
+##### 2. `DrowZzzRule` constructor への `IRandomSource` 注入を採用しない判断
+
+- **判断**: 本 ADR §4 で「rng を Rule に注入する案」が JIT 判断候補とされていたが、本 PR で**不採用**と確定
+- **根拠**: `StartGameUseCase` で `DdpPool` を 1 回事前 Shuffle 済のため Rule 内 rng は不要と再評価
+- **影響**: ADR-0007 §3「`DrowZzzRule` constructor 引数は `ICardCatalog<IEffect>` / `EffectInterpreter` のみ」を破壊せずに済む
+- **記録**: `dp-mechanism-ddp.md` §「設計判断」§「`DrowZzzRule` constructor」に経緯記録
+
+##### 3. `DdpPool` 専用値オブジェクトの新設(Pile 流用案を不採用)
+
+- **判断**: 本 ADR §3 では「`Pile` 型を再利用」と書いていたが、本 PR で**専用型新設**と確定
+- **根拠**: `Pile` は `CardId[]` 専用で整数プール (-30〜+30) には semantic 違反のため
+- **配置**: Application 層に `Drowsy.Application.Games.DrowZzz.DdpPool` を新設(`Pile` と同 API パターン: Shuffle / Draw / Equals / GetHashCode)
+- **記録**: `dp-mechanism-ddp.md` §「設計判断」§「`DdpPool` 値オブジェクト」に根拠記録
 
 #### code-reviewer subagent 反映(警告 4 / 提案 5 → 7 件反映)
 
-- W-1: `dp-mechanism-ddp.md` §「設計判断」§「`DrowZzzRule` constructor」で「採用する」と書いていた誤記を「採用しない判断」に訂正(実装と整合)
-- W-2: `DdpPoolTests` の `IdentityRandom` 説明を「`maxExclusive - 1` を返す → Fisher-Yates で `j=i` = no-op」に正確化
-- W-3: `DrowZzzRuleTests` の `[Category]/[Property]` を `[TestCase]` の前に配置(NUnit 標準慣例)
-- W-4: `IGameConfig.cs` の DdpPool xmldoc から Application 層具体クラス名(`DdpPoolConstants.BuildDefaultPool`)を削除
-- P-1〜P-3: TestName 簡素化 / `Assert.Multiple` 採用根拠コメント / テストパラメータ単位コメント
+警告(W):
+
+- **W-1**: `dp-mechanism-ddp.md` §「設計判断」§「`DrowZzzRule` constructor」で「採用する」と書いていた誤記を「採用しない判断」に訂正(実装と整合)
+- **W-2**: `DdpPoolTests` の `IdentityRandom` 説明を「`maxExclusive - 1` を返す → Fisher-Yates で `j=i` = no-op」に正確化
+- **W-3**: `DrowZzzRuleTests` の `[Category]/[Property]` を `[TestCase]` の前に配置(NUnit 標準慣例)
+- **W-4**: `IGameConfig.cs` の `DdpPool` xmldoc から Application 層具体クラス名(`DdpPoolConstants.BuildDefaultPool`)を削除
+
+提案(P)反映分:
+
+- **P-1**: TestName から冗長な時刻表現(例: 「23:00 23時抽選」)を簡素化
+- **P-2**: `Assert.Multiple` 採用根拠コメントを追記(後に Unity NUnit 制約で個別 `Assert.That` 並列に変更)
+- **P-3**: テストパラメータ単位(`TurnNumber` vs `Round`)を Given コメントで明示
 
 #### Unity Test Framework 制約に伴う実装上の調整
 
-- `Assert.Multiple` 未対応のため、DZ-141/142/143/144 の複合不変条件検証は個別 `Assert.That` を並列に並べる(最初の失敗で停止)。`DrowZzzRuleTests` 内コメントで「1 ドメインイベントの複合不変条件」採用根拠と Unity NUnit 制約を明記
+- **問題**: Unity Test Framework の NUnit は `Assert.Multiple` 未対応
+- **対応**: DZ-141/142/143/144 の複合不変条件検証は個別 `Assert.That` を並列に並べる(最初の失敗で停止)
+- **記録**: `DrowZzzRuleTests` 内コメントで「1 ドメインイベントの複合不変条件」採用根拠と Unity NUnit 制約を明記
 
 #### NUnit Property 増加(実測)
 

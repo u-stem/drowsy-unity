@@ -483,11 +483,40 @@ EARS / NUnit 増加:
 
 #### M2-PR4 進行中の学び
 
-- **ADR 内の数値計算誤記の発覚**: ADR-0009 §「DDP プールの構造」起票時「13 種 × 3 枚 = 36 枚」と書かれていたが、数学的に 13 × 3 = 39 で計算誤記。実装着手後の NUnit テスト失敗(`Expected 36, but was 39`)で発覚、プロジェクトオーナー JIT 確認で「39 枚が正、ADR 表記を訂正」と確定。本 PR で ADR-0009 / 関連仕様 / 実装 xmldoc / テスト / TODO を一括訂正同梱(ADR-0001「Accepted 直接編集」運用)。**今後 ADR 起票時の Self-Review に「列挙値の積算と総数の整合性チェック」項目を追加すべき(`docs/todo.md` 追跡候補)**
-- **breaking change の波及最小化**: `DrowZzzGameSession` の 4 引数 → 6 引数 constructor 変更は全 11 テストファイルに波及したが、各ファイルのヘルパー(`NewSession` / `Sdp()`)に `ddp` パラメータと `EmptyDdpPool` を追加することで既存テストの修正は最小限に。M2-PR3 の 3→4 引数拡張で確立した「ヘルパー再利用」パターンが M2-PR4 でも有効
-- **専用値オブジェクト vs Domain 流用の判断**: ADR-0009 §3 が「`Pile` 型を再利用」と書いていたが、`Pile` は `CardId[]` 専用で整数プールには semantic 違反のため専用 `DdpPool` を Application 層に新設。`Pile` ジェネリック化案(`Pile<T>`)は影響範囲が広く本 PR スコープ外で不採用。**型の semantic と利用先の意味的整合を ADR の「再利用」記述より優先する判断軸を確立**
-- **Unity NUnit が `Assert.Multiple` 未対応**: Unity Test Framework の NUnit バージョンが `Assert.Multiple` を含まないため、複合不変条件の検証は個別 `Assert.That` 並列に変更(最初の失敗で停止)。`docs/todo.md` 追跡候補(`Assert.Multiple` サポート版への upgrade 可能性 / 代替パターンの確立)
-- **code-reviewer 9 件指摘の反映**: 警告 4 件すべて反映(設計判断文の反転誤記訂正 / `IdentityRandom` コメント正確化 / `[TestCase]` 慣例 / Domain xmldoc から Application 名削除)、提案 5 件中 3 件反映、2 件 Skip(命名議論 / M1IntegrationTests 命名は別 PR / ADR 候補)
+##### 学び 1: ADR 内の数値計算誤記の発覚と訂正運用
+
+- **事象**: ADR-0009 §「DDP プールの構造」起票時「13 種 × 3 枚 = 36 枚」と書かれていたが、数学的に 13 × 3 = 39 で計算誤記
+- **発覚**: 実装着手後の NUnit テスト失敗(`Expected 36, but was 39`)
+- **対応**: プロジェクトオーナー JIT 確認で「39 枚が正、ADR 表記を訂正」と確定。本 PR で ADR-0009 / 関連仕様 / 実装 xmldoc / テスト / TODO を一括訂正同梱(ADR-0001「Accepted 直接編集」運用)
+- **再発防止**: **今後 ADR 起票時の Self-Review に「列挙値の積算と総数の整合性チェック」項目を追加すべき**(`docs/todo.md` 追跡候補)
+
+##### 学び 2: breaking change の波及最小化
+
+- **事象**: `DrowZzzGameSession` の 4 引数 → 6 引数 constructor 変更は全 11 テストファイルに波及
+- **対応**: 各ファイルのヘルパー(`NewSession` / `Sdp()`)に `ddp` パラメータと `EmptyDdpPool` を追加することで既存テストの修正は最小限に
+- **教訓**: M2-PR3 の 3→4 引数拡張で確立した「ヘルパー再利用」パターンが M2-PR4 でも有効
+
+##### 学び 3: 専用値オブジェクト vs Domain 流用の判断軸
+
+- **事象**: ADR-0009 §3 が「`Pile` 型を再利用」と書いていたが、`Pile` は `CardId[]` 専用で整数プールには semantic 違反
+- **対応**: 専用 `DdpPool` を Application 層に新設
+- **不採用案**: `Pile` ジェネリック化(`Pile<T>`)は影響範囲が広く本 PR スコープ外
+- **教訓**: **型の semantic と利用先の意味的整合を ADR の「再利用」記述より優先する判断軸を確立**
+
+##### 学び 4: Unity NUnit が `Assert.Multiple` 未対応
+
+- **事象**: Unity Test Framework の NUnit バージョンが `Assert.Multiple` を含まない
+- **対応**: 複合不変条件の検証は個別 `Assert.That` 並列に変更(最初の失敗で停止)
+- **追跡**: `docs/todo.md` 追跡候補(`Assert.Multiple` サポート版への upgrade 可能性 / 代替パターンの確立)
+
+##### 学び 5: code-reviewer 9 件指摘の反映
+
+- **警告 4 件すべて反映**:
+  - 設計判断文の反転誤記訂正
+  - `IdentityRandom` コメント正確化
+  - `[TestCase]` 慣例
+  - Domain xmldoc から Application 名削除
+- **提案 5 件中 3 件反映、2 件 Skip**: 命名議論 / `M1IntegrationTests` 命名は別 PR / ADR 候補
 
 ### M2 完成記録の追記タイミング(後続 PR で実施)
 
