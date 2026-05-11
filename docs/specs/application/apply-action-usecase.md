@@ -32,7 +32,7 @@ ADR-0006 §3 / §M1-PR6 の決定に基づく。`ApplyActionUseCase.Execute(sess
 
 - **`DrowZzzRule` 直接 DI**: 設計上は `IGameRule<DrowZzzAction, DrowZzzGameSession>` 抽象を DI する選択肢もあるが、ADR-0006 §3 「namespace 配置の判断」で「両 UseCase は `Drowsy.Application.Games.DrowZzz` 配下、DrowZzz 固有」と明記済のため `DrowZzzRule` を直接受け取る形で OK。M2 以降で別ゲームを追加する際に汎用 `ApplyActionUseCase<TAction, TSession>` を `Drowsy.Application` 直下に検討(YAGNI、現時点は不要)。
 - **null 検証**: `session` / `action` の null は `ArgumentNullException`。`DrowZzzRule.IsLegalMove` 自体も null 検証するため二重防御だが、UseCase 層の責務として独立保持(将来 UseCase 単体で他 Rule に切替可能性を残す)。
-- **InvalidOperationException メッセージ**: 「IsLegalMove が false を返したため Apply できない」旨と Action 種別 + TurnPhase を明示。
+- **InvalidOperationException メッセージ**: 「IsLegalMove が false を返したため Apply できない」旨と Action 種別 + PhaseState を明示。
 
 ## 関連
 

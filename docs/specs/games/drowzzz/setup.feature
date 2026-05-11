@@ -38,10 +38,10 @@
     ならば 結果の Deck.Count は 10 (= 20 - 5 * 2)
 
   @DZ-025
-  シナリオ: TurnPhase が WaitingForDraw (正常系・Small)
+  シナリオ: PhaseState が WaitingForDraw (正常系・Small)
     前提 N=2 の players と有効な initialDeck
     もし Execute を呼ぶ
-    ならば 結果の TurnPhase は WaitingForDraw
+    ならば 結果の PhaseState は WaitingForDraw
 
   @DZ-026
   シナリオ: Turn が Initial(0) (正常系・Small)
