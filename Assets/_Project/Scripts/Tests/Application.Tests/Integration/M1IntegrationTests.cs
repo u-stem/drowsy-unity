@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using NUnit.Framework;
 using Drowsy.Application.Catalog;
 using Drowsy.Application.Games.DrowZzz;
+using Drowsy.Application.Games.DrowZzz.Effects;
 using Drowsy.Application.Tests.Stubs;
 using Drowsy.Domain.Cards;
 using Drowsy.Domain.Players;
@@ -36,11 +37,14 @@ namespace Drowsy.Application.Tests.Integration
         }
 
         // (StartGameUseCase, ApplyActionUseCase) のペアを生成
+        // M2-PR1: DrowZzzRule の依存追加 (catalog / interpreter) に追従。catalog は StartGameUseCase と
+        // DrowZzzRule で共有(同一型 ICardCatalog<IEffect> を両者が受け取り、空効果列を返す)。
         private static (StartGameUseCase start, ApplyActionUseCase apply) NewUseCases(IRandomSource rng = null)
         {
             rng ??= new IdentityRandom();
-            var rule = new DrowZzzRule();
             var catalog = new InMemoryCardCatalog(new KeyValuePair<CardId, CardData>[0]);
+            var interpreter = new EffectInterpreter();
+            var rule = new DrowZzzRule(catalog, interpreter);
             var config = new StubGameConfig();
             var start = new StartGameUseCase(rng, catalog, config);
             var apply = new ApplyActionUseCase(rule);

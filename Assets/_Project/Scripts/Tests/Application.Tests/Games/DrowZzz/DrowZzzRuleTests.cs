@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using NUnit.Framework;
+using Drowsy.Application.Catalog;
 using Drowsy.Application.Games.DrowZzz;
+using Drowsy.Application.Games.DrowZzz.Effects;
 using Drowsy.Domain.Cards;
 using Drowsy.Domain.Game;
 using Drowsy.Domain.Players;
@@ -11,8 +13,17 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
     [TestFixture]
     public class DrowZzzRuleTests
     {
-        // ===== ヘルパー(全引数オプション、デフォルトは N=2 / WaitingForDraw / 空 Deck / 空 Hand)=====
+        // ===== ヘルパー =====
 
+        // M2-PR1: DrowZzzRule の constructor は ICardCatalog<IEffect> / EffectInterpreter を要求するようになった
+        // (ADR-0007 §3)。M1-PR5 までと同じ挙動を維持するため、効果定義のない catalog (= 全カード空効果列) +
+        // 標準 Interpreter を渡す。共通テストヘルパー抽出は docs/todo.md TODO で別途追跡。
+        private static DrowZzzRule NewRule() =>
+            new DrowZzzRule(
+                new InMemoryCardCatalog(new KeyValuePair<CardId, CardData>[0]),
+                new EffectInterpreter());
+
+        // 全引数オプション、デフォルトは N=2 / WaitingForDraw / 空 Deck / 空 Hand
         private static DrowZzzGameSession NewSession(
             DrowZzzTurnPhase phase = DrowZzzTurnPhase.WaitingForDraw,
             int currentPlayerIndex = 0,
@@ -58,7 +69,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_DrowZzzRule_When_未知のDrowZzzAction派生型でIsLegalMoveを呼ぶ_Then_NotImplementedExceptionを投げる()
         {
             // Given(M1 範囲外派生型、`_` ケースのフォールバック)
-            var rule = new DrowZzzRule();
+            var rule = NewRule();
             var session = NewSession();
             var action = new UnknownDrowZzzAction();
             // When / Then
@@ -69,7 +80,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_DrowZzzRule_When_未知のDrowZzzAction派生型でApplyを呼ぶ_Then_NotImplementedExceptionを投げる()
         {
             // Given(M1 範囲外派生型、`_` ケースのフォールバック。StartGameAction も同経路に来る)
-            var rule = new DrowZzzRule();
+            var rule = NewRule();
             var session = NewSession();
             var action = new UnknownDrowZzzAction();
             // When / Then
@@ -82,7 +93,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_DrowZzzRule_When_StartGameActionでIsLegalMoveを呼ぶ_Then_falseを返す()
         {
             // Given(StartGameAction はセッション未生成用、StartGameUseCase 経由で扱うため常に false)
-            var rule = new DrowZzzRule();
+            var rule = NewRule();
             var session = NewSession();
             // When
             var legal = rule.IsLegalMove(session, new StartGameAction());
@@ -96,7 +107,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_WaitingForDrawフェーズ_When_DrawCardActionでIsLegalMoveを呼ぶ_Then_trueを返す()
         {
             // Given
-            var rule = new DrowZzzRule();
+            var rule = NewRule();
             var session = NewSession(phase: DrowZzzTurnPhase.WaitingForDraw);
             // When
             var legal = rule.IsLegalMove(session, new DrawCardAction());
@@ -108,7 +119,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_WaitingForPlayフェーズ_When_DrawCardActionでIsLegalMoveを呼ぶ_Then_falseを返す()
         {
             // Given
-            var rule = new DrowZzzRule();
+            var rule = NewRule();
             var session = NewSession(phase: DrowZzzTurnPhase.WaitingForPlay);
             // When
             var legal = rule.IsLegalMove(session, new DrawCardAction());
@@ -120,7 +131,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_WaitingForEndTurnフェーズ_When_DrawCardActionでIsLegalMoveを呼ぶ_Then_falseを返す()
         {
             // Given(WaitingForEndTurn でも DrawCardAction は非合法、3 値 enum の MC/DC 相当カバー)
-            var rule = new DrowZzzRule();
+            var rule = NewRule();
             var session = NewSession(phase: DrowZzzTurnPhase.WaitingForEndTurn);
             // When
             var legal = rule.IsLegalMove(session, new DrawCardAction());
@@ -134,7 +145,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_合法状態_When_DrawCardActionをApply_Then_現プレイヤーの手札枚数が1増える()
         {
             // Given
-            var rule = new DrowZzzRule();
+            var rule = NewRule();
             var session = NewSession(deck: NewDeck("c1", "c2", "c3"));
             int before = session.GameState.Players[0].Hand.Count;
             // When
@@ -147,7 +158,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_合法状態_When_DrawCardActionをApply_Then_山札枚数が1減る()
         {
             // Given
-            var rule = new DrowZzzRule();
+            var rule = NewRule();
             var session = NewSession(deck: NewDeck("c1", "c2", "c3"));
             // When
             var result = rule.Apply(session, new DrawCardAction());
@@ -159,7 +170,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_合法状態_When_DrawCardActionをApply_Then_山札Topのカードが現プレイヤーの手札に追加される()
         {
             // Given(山札 Top = c1)
-            var rule = new DrowZzzRule();
+            var rule = NewRule();
             var session = NewSession(deck: NewDeck("c1", "c2", "c3"));
             // When
             var result = rule.Apply(session, new DrawCardAction());
@@ -171,7 +182,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_合法状態_When_DrawCardActionをApply_Then_TurnPhaseがWaitingForPlayに遷移する()
         {
             // Given
-            var rule = new DrowZzzRule();
+            var rule = NewRule();
             var session = NewSession(deck: NewDeck("c1"));
             // When
             var result = rule.Apply(session, new DrawCardAction());
@@ -183,7 +194,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_合法状態_When_DrawCardActionをApply_Then_GameStateTurnは不変()
         {
             // Given(Turn = (3, 1))
-            var rule = new DrowZzzRule();
+            var rule = NewRule();
             var session = NewSession(
                 deck: NewDeck("c1"),
                 currentPlayerIndex: 1,
@@ -199,7 +210,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_合法状態_When_DrawCardActionをApply_Then_他プレイヤーの手札は不変()
         {
             // Given(CurrentPlayerIndex=0、p1.Hand=[a]、p2.Hand=[b])
-            var rule = new DrowZzzRule();
+            var rule = NewRule();
             var p1Hand = new Hand(new[] { CardId.Of("a") });
             var p2Hand = new Hand(new[] { CardId.Of("b") });
             var session = NewSession(
@@ -218,7 +229,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_WaitingForPlayフェーズ_When_DrawCardActionをApply_Then_InvalidOperationExceptionを投げる()
         {
             // Given
-            var rule = new DrowZzzRule();
+            var rule = NewRule();
             var session = NewSession(
                 phase: DrowZzzTurnPhase.WaitingForPlay,
                 deck: NewDeck("c1"));
@@ -230,7 +241,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_山札枯渇_When_DrawCardActionをApply_Then_InvalidOperationExceptionを投げる()
         {
             // Given(WaitingForDraw だが Deck = Pile.Empty)
-            var rule = new DrowZzzRule();
+            var rule = NewRule();
             var session = NewSession(deck: Pile.Empty);
             // When / Then(Pile.Draw が空 Pile で InvalidOperationException を投げる)
             Assert.Throws<InvalidOperationException>(() => rule.Apply(session, new DrawCardAction()));
@@ -241,14 +252,14 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-048")]
         public void Given_sessionにnull_When_IsLegalMoveを呼ぶ_Then_ArgumentNullExceptionを投げる()
         {
-            var rule = new DrowZzzRule();
+            var rule = NewRule();
             Assert.Throws<ArgumentNullException>(() => rule.IsLegalMove(null, new DrawCardAction()));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-049")]
         public void Given_actionにnull_When_IsLegalMoveを呼ぶ_Then_ArgumentNullExceptionを投げる()
         {
-            var rule = new DrowZzzRule();
+            var rule = NewRule();
             var session = NewSession();
             Assert.Throws<ArgumentNullException>(() => rule.IsLegalMove(session, null));
         }
@@ -256,14 +267,14 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-050")]
         public void Given_sessionにnull_When_Applyを呼ぶ_Then_ArgumentNullExceptionを投げる()
         {
-            var rule = new DrowZzzRule();
+            var rule = NewRule();
             Assert.Throws<ArgumentNullException>(() => rule.Apply(null, new DrawCardAction()));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-051")]
         public void Given_actionにnull_When_Applyを呼ぶ_Then_ArgumentNullExceptionを投げる()
         {
-            var rule = new DrowZzzRule();
+            var rule = NewRule();
             var session = NewSession();
             Assert.Throws<ArgumentNullException>(() => rule.Apply(session, null));
         }
@@ -274,7 +285,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_WaitingForPlayかつCardが手札にある_When_PlayCardActionでIsLegalMoveを呼ぶ_Then_trueを返す()
         {
             // Given(WaitingForPlay / 現プレイヤー Hand = [c1, c2])
-            var rule = new DrowZzzRule();
+            var rule = NewRule();
             var p0Hand = new Hand(new[] { CardId.Of("c1"), CardId.Of("c2") });
             var session = NewSession(phase: DrowZzzTurnPhase.WaitingForPlay, p0Hand: p0Hand);
             // When
@@ -287,7 +298,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_WaitingForDraw_When_PlayCardActionでIsLegalMoveを呼ぶ_Then_falseを返す()
         {
             // Given
-            var rule = new DrowZzzRule();
+            var rule = NewRule();
             var p0Hand = new Hand(new[] { CardId.Of("c1") });
             var session = NewSession(phase: DrowZzzTurnPhase.WaitingForDraw, p0Hand: p0Hand);
             // When
@@ -300,7 +311,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_WaitingForEndTurn_When_PlayCardActionでIsLegalMoveを呼ぶ_Then_falseを返す()
         {
             // Given(3 値 enum の MC/DC 相当カバー)
-            var rule = new DrowZzzRule();
+            var rule = NewRule();
             var p0Hand = new Hand(new[] { CardId.Of("c1") });
             var session = NewSession(phase: DrowZzzTurnPhase.WaitingForEndTurn, p0Hand: p0Hand);
             // When
@@ -313,7 +324,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_WaitingForPlayだがCardが手札にない_When_IsLegalMoveを呼ぶ_Then_falseを返す()
         {
             // Given(WaitingForPlay だが手札に "cX" がない)
-            var rule = new DrowZzzRule();
+            var rule = NewRule();
             var p0Hand = new Hand(new[] { CardId.Of("c1") });
             var session = NewSession(phase: DrowZzzTurnPhase.WaitingForPlay, p0Hand: p0Hand);
             // When
@@ -328,7 +339,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_合法状態_When_PlayCardActionをApply_Then_現プレイヤーHandから指定Cardが除かれる()
         {
             // Given
-            var rule = new DrowZzzRule();
+            var rule = NewRule();
             var p0Hand = new Hand(new[] { CardId.Of("c1"), CardId.Of("c2") });
             var session = NewSession(phase: DrowZzzTurnPhase.WaitingForPlay, p0Hand: p0Hand);
             // When
@@ -341,7 +352,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_合法状態_When_PlayCardActionをApply_Then_現プレイヤーHandCountが1減る()
         {
             // Given
-            var rule = new DrowZzzRule();
+            var rule = NewRule();
             var p0Hand = new Hand(new[] { CardId.Of("c1"), CardId.Of("c2") });
             var session = NewSession(phase: DrowZzzTurnPhase.WaitingForPlay, p0Hand: p0Hand);
             int before = session.GameState.Players[0].Hand.Count;
@@ -355,7 +366,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_合法状態_When_PlayCardActionをApply_Then_FieldのTopが指定Card()
         {
             // Given(Field = 空、AddTop で c1 が Field.Cards[0] になる想定)
-            var rule = new DrowZzzRule();
+            var rule = NewRule();
             var p0Hand = new Hand(new[] { CardId.Of("c1") });
             var session = NewSession(phase: DrowZzzTurnPhase.WaitingForPlay, p0Hand: p0Hand);
             // When
@@ -368,7 +379,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_合法状態_When_PlayCardActionをApply_Then_FieldCountが1増える()
         {
             // Given(Field = 空)
-            var rule = new DrowZzzRule();
+            var rule = NewRule();
             var p0Hand = new Hand(new[] { CardId.Of("c1") });
             var session = NewSession(phase: DrowZzzTurnPhase.WaitingForPlay, p0Hand: p0Hand);
             // When
@@ -381,7 +392,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_合法状態_When_PlayCardActionをApply_Then_TurnPhaseがWaitingForEndTurnに遷移する()
         {
             // Given
-            var rule = new DrowZzzRule();
+            var rule = NewRule();
             var p0Hand = new Hand(new[] { CardId.Of("c1") });
             var session = NewSession(phase: DrowZzzTurnPhase.WaitingForPlay, p0Hand: p0Hand);
             // When
@@ -394,7 +405,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_合法状態_When_PlayCardActionをApply_Then_GameStateTurnは不変()
         {
             // Given
-            var rule = new DrowZzzRule();
+            var rule = NewRule();
             var p0Hand = new Hand(new[] { CardId.Of("c1") });
             var session = NewSession(
                 phase: DrowZzzTurnPhase.WaitingForPlay,
@@ -412,7 +423,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_合法状態_When_PlayCardActionをApply_Then_GameStateDeckは不変()
         {
             // Given(Deck = [d1, d2, d3])
-            var rule = new DrowZzzRule();
+            var rule = NewRule();
             var p0Hand = new Hand(new[] { CardId.Of("c1") });
             var deck = NewDeck("d1", "d2", "d3");
             var session = NewSession(
@@ -429,7 +440,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_合法状態_When_PlayCardActionをApply_Then_他プレイヤーの手札は不変()
         {
             // Given(CurrentPlayerIndex=0、p1.Hand=[c1]、p2.Hand=[b])
-            var rule = new DrowZzzRule();
+            var rule = NewRule();
             var p0Hand = new Hand(new[] { CardId.Of("c1") });
             var p1Hand = new Hand(new[] { CardId.Of("b") });
             var session = NewSession(
@@ -448,7 +459,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_WaitingForDraw_When_PlayCardActionをApply_Then_InvalidOperationExceptionを投げる()
         {
             // Given(TurnPhase 違反)
-            var rule = new DrowZzzRule();
+            var rule = NewRule();
             var p0Hand = new Hand(new[] { CardId.Of("c1") });
             var session = NewSession(phase: DrowZzzTurnPhase.WaitingForDraw, p0Hand: p0Hand);
             // When / Then
@@ -460,7 +471,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_Cardが手札にない_When_PlayCardActionをApply_Then_InvalidOperationExceptionを投げる()
         {
             // Given(WaitingForPlay だが手札に "cX" がない)
-            var rule = new DrowZzzRule();
+            var rule = NewRule();
             var p0Hand = new Hand(new[] { CardId.Of("c1") });
             var session = NewSession(phase: DrowZzzTurnPhase.WaitingForPlay, p0Hand: p0Hand);
             // When / Then
@@ -473,7 +484,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-067")]
         public void Given_WaitingForEndTurn_When_EndTurnActionでIsLegalMoveを呼ぶ_Then_trueを返す()
         {
-            var rule = new DrowZzzRule();
+            var rule = NewRule();
             var session = NewSession(phase: DrowZzzTurnPhase.WaitingForEndTurn);
             var legal = rule.IsLegalMove(session, new EndTurnAction());
             Assert.That(legal, Is.True);
@@ -482,7 +493,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         [Test, Category("Small"), Category("SemiNormal"), Property("Requirement", "DZ-068")]
         public void Given_WaitingForDraw_When_EndTurnActionでIsLegalMoveを呼ぶ_Then_falseを返す()
         {
-            var rule = new DrowZzzRule();
+            var rule = NewRule();
             var session = NewSession(phase: DrowZzzTurnPhase.WaitingForDraw);
             var legal = rule.IsLegalMove(session, new EndTurnAction());
             Assert.That(legal, Is.False);
@@ -492,7 +503,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_WaitingForPlay_When_EndTurnActionでIsLegalMoveを呼ぶ_Then_falseを返す()
         {
             // 3 値 enum の MC/DC 相当カバー
-            var rule = new DrowZzzRule();
+            var rule = NewRule();
             var session = NewSession(phase: DrowZzzTurnPhase.WaitingForPlay);
             var legal = rule.IsLegalMove(session, new EndTurnAction());
             Assert.That(legal, Is.False);
@@ -504,7 +515,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_合法状態_When_EndTurnActionをApply_Then_TurnNumberが1増える()
         {
             // Given(Turn = (3, 0))
-            var rule = new DrowZzzRule();
+            var rule = NewRule();
             var session = NewSession(
                 phase: DrowZzzTurnPhase.WaitingForEndTurn,
                 currentPlayerIndex: 0,
@@ -519,7 +530,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_合法状態_CurrentPlayer0_When_EndTurnActionをApply_Then_CurrentPlayerIndexが1に進む()
         {
             // Given(N=2、CurrentPlayerIndex=0)
-            var rule = new DrowZzzRule();
+            var rule = NewRule();
             var session = NewSession(
                 phase: DrowZzzTurnPhase.WaitingForEndTurn,
                 currentPlayerIndex: 0);
@@ -533,7 +544,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_合法状態_CurrentPlayer1_When_EndTurnActionをApply_Then_CurrentPlayerIndexが0にラップする()
         {
             // Given(N=2、CurrentPlayerIndex=1、(1+1)%2=0 にラップ)
-            var rule = new DrowZzzRule();
+            var rule = NewRule();
             var session = NewSession(
                 phase: DrowZzzTurnPhase.WaitingForEndTurn,
                 currentPlayerIndex: 1);
@@ -546,7 +557,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-071")]
         public void Given_合法状態_When_EndTurnActionをApply_Then_TurnPhaseがWaitingForDrawに戻る()
         {
-            var rule = new DrowZzzRule();
+            var rule = NewRule();
             var session = NewSession(phase: DrowZzzTurnPhase.WaitingForEndTurn);
             var result = rule.Apply(session, new EndTurnAction());
             Assert.That(result.TurnPhase, Is.EqualTo(DrowZzzTurnPhase.WaitingForDraw));
@@ -556,7 +567,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_合法状態_When_EndTurnActionをApply_Then_Players全員のHandは不変()
         {
             // Given(p1.Hand=[a]、p2.Hand=[b])
-            var rule = new DrowZzzRule();
+            var rule = NewRule();
             var p0Hand = new Hand(new[] { CardId.Of("a") });
             var p1Hand = new Hand(new[] { CardId.Of("b") });
             var session = NewSession(
@@ -575,7 +586,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_合法状態_When_EndTurnActionをApply_Then_Deckは不変()
         {
             // Given
-            var rule = new DrowZzzRule();
+            var rule = NewRule();
             var deck = NewDeck("d1", "d2");
             var session = NewSession(
                 phase: DrowZzzTurnPhase.WaitingForEndTurn,
@@ -590,7 +601,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_合法状態_When_EndTurnActionをApply_Then_Fieldは不変()
         {
             // Given(Field に既に c1 を出してある状態を with で構築する代わりに、PlayCardAction で 1 枚出してから検証)
-            var rule = new DrowZzzRule();
+            var rule = NewRule();
             var p0Hand = new Hand(new[] { CardId.Of("c1") });
             var playSession = NewSession(phase: DrowZzzTurnPhase.WaitingForPlay, p0Hand: p0Hand);
             var afterPlay = rule.Apply(playSession, new PlayCardAction(CardId.Of("c1")));
@@ -605,7 +616,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_合法状態_When_EndTurnActionをApply_Then_FirstDrowsyPointsは不変()
         {
             // Given(FDP は NewSession のデフォルト {p1: 0, p2: 10})
-            var rule = new DrowZzzRule();
+            var rule = NewRule();
             var session = NewSession(phase: DrowZzzTurnPhase.WaitingForEndTurn);
             var fdpBefore = session.FirstDrowsyPoints;
             // When
@@ -619,9 +630,97 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-076")]
         public void Given_WaitingForDraw_When_EndTurnActionをApply_Then_InvalidOperationExceptionを投げる()
         {
-            var rule = new DrowZzzRule();
+            var rule = NewRule();
             var session = NewSession(phase: DrowZzzTurnPhase.WaitingForDraw);
             Assert.Throws<InvalidOperationException>(() => rule.Apply(session, new EndTurnAction()));
+        }
+
+        // ===== DZ-083 / DZ-084: 効果メカニズム (M2-PR1)、ADR-0007 §3 =====
+
+        // spy catalog: GetEffects 呼び出しを記録する
+        private sealed class SpyCatalog : ICardCatalog<IEffect>
+        {
+            private static readonly IReadOnlyList<IEffect> Empty = System.Array.Empty<IEffect>();
+
+            public int GetEffectsCallCount { get; private set; }
+            public List<CardId> GetEffectsCalledWith { get; } = new List<CardId>();
+
+            public CardData Get(CardId id) =>
+                throw new KeyNotFoundException($"SpyCatalog.Get は本テストでは呼ばれない想定 (id: {id?.Value})");
+
+            public bool TryGet(CardId id, out CardData data)
+            {
+                data = null;
+                return false;
+            }
+
+            public IReadOnlyList<IEffect> GetEffects(CardId id)
+            {
+                GetEffectsCallCount++;
+                GetEffectsCalledWith.Add(id);
+                return Empty;
+            }
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-083")]
+        public void Given_合法状態_When_PlayCardActionをApply_Then_catalog_GetEffectsが1回呼ばれる()
+        {
+            // Given(spy catalog + 標準 EffectInterpreter で DrowZzzRule を組む)
+            var spy = new SpyCatalog();
+            var rule = new DrowZzzRule(spy, new EffectInterpreter());
+            var p0Hand = new Hand(new[] { CardId.Of("c1") });
+            var session = NewSession(phase: DrowZzzTurnPhase.WaitingForPlay, p0Hand: p0Hand);
+            // When
+            rule.Apply(session, new PlayCardAction(CardId.Of("c1")));
+            // Then
+            Assert.That(spy.GetEffectsCallCount, Is.EqualTo(1));
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-083")]
+        public void Given_合法状態_When_PlayCardActionをApply_Then_catalog_GetEffectsが指定Cardで呼ばれる()
+        {
+            // Given
+            var spy = new SpyCatalog();
+            var rule = new DrowZzzRule(spy, new EffectInterpreter());
+            var p0Hand = new Hand(new[] { CardId.Of("c1") });
+            var session = NewSession(phase: DrowZzzTurnPhase.WaitingForPlay, p0Hand: p0Hand);
+            // When
+            rule.Apply(session, new PlayCardAction(CardId.Of("c1")));
+            // Then(呼び出し引数 CardId が PlayCardAction.Card と一致する)
+            Assert.That(spy.GetEffectsCalledWith, Is.EqualTo(new[] { CardId.Of("c1") }));
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-084")]
+        public void Given_効果空のcatalog_When_PlayCardActionをApply_Then_例外を投げずに完走する()
+        {
+            // Given(空 catalog ならば Interpreter.Apply は呼ばれないため NotImplementedException が出ない)
+            var rule = NewRule();
+            var p0Hand = new Hand(new[] { CardId.Of("c1") });
+            var session = NewSession(phase: DrowZzzTurnPhase.WaitingForPlay, p0Hand: p0Hand);
+            // When / Then
+            Assert.DoesNotThrow(() => rule.Apply(session, new PlayCardAction(CardId.Of("c1"))));
+        }
+
+        // ===== DZ-087 / DZ-088: DrowZzzRule constructor null 防御 =====
+
+        [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-087")]
+        public void Given_catalogにnull_When_DrowZzzRule生成_Then_ArgumentNullException_ParamName_catalog_を投げる()
+        {
+            // Given / When / Then
+            var ex = Assert.Throws<ArgumentNullException>(() =>
+                _ = new DrowZzzRule(null, new EffectInterpreter()));
+            Assert.That(ex!.ParamName, Is.EqualTo("catalog"));
+        }
+
+        [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-088")]
+        public void Given_interpreterにnull_When_DrowZzzRule生成_Then_ArgumentNullException_ParamName_interpreter_を投げる()
+        {
+            // Given
+            var catalog = new InMemoryCardCatalog(new KeyValuePair<CardId, CardData>[0]);
+            // When / Then
+            var ex = Assert.Throws<ArgumentNullException>(() =>
+                _ = new DrowZzzRule(catalog, null));
+            Assert.That(ex!.ParamName, Is.EqualTo("interpreter"));
         }
     }
 }

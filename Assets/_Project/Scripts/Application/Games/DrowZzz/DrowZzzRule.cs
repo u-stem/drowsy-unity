@@ -1,4 +1,6 @@
 using System;
+using System.Linq;
+using Drowsy.Application.Games.DrowZzz.Effects;
 using Drowsy.Domain.Cards;
 using Drowsy.Domain.Game;
 using Drowsy.Domain.Players;
@@ -22,9 +24,29 @@ namespace Drowsy.Application.Games.DrowZzz
     /// </list>
     /// 引数 (<paramref name="session"/> / <paramref name="action"/>) の null は <see cref="ArgumentNullException"/>。
     /// (M1-PR4 で全 Action 種別共通の null 検証として導入、M1-PR3 reviewer 申し送り N-7 反映)
+    /// <para>
+    /// M2-PR1 で constructor injection に <see cref="ICardCatalog{TEffect}"/>(<c>TEffect = IEffect</c>)/
+    /// <see cref="EffectInterpreter"/> を追加(ADR-0007 §3)。<see cref="PlayCardAction"/> の Apply 後、
+    /// catalog から効果列を取得し、<c>Aggregate</c> で左から順に逐次評価する。効果 0 個なら M1 と完全互換。
+    /// </para>
     /// </remarks>
     public sealed class DrowZzzRule : IGameRule<DrowZzzAction, DrowZzzGameSession>
     {
+        private readonly ICardCatalog<IEffect> _catalog;
+        private readonly EffectInterpreter _interpreter;
+
+        /// <summary>
+        /// <see cref="DrowZzzRule"/> を生成する。
+        /// </summary>
+        /// <param name="catalog">カード→効果列の引きに利用する <see cref="ICardCatalog{TEffect}"/></param>
+        /// <param name="interpreter">効果適用を担う <see cref="EffectInterpreter"/></param>
+        /// <exception cref="ArgumentNullException"><paramref name="catalog"/> または <paramref name="interpreter"/> が null</exception>
+        public DrowZzzRule(ICardCatalog<IEffect> catalog, EffectInterpreter interpreter)
+        {
+            _catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
+            _interpreter = interpreter ?? throw new ArgumentNullException(nameof(interpreter));
+        }
+
         /// <summary>
         /// 与えられた <paramref name="session"/> 状態で <paramref name="action"/> が合法かを返す。
         /// </summary>
@@ -140,7 +162,9 @@ namespace Drowsy.Application.Games.DrowZzz
         // PlayCardAction の状態遷移:
         // 現プレイヤーの Hand から指定 Card を Remove → Field に AddTop で追加 + TurnPhase = WaitingForEndTurn。
         // GameState.Turn / Deck は不変。
-        private static DrowZzzGameSession ApplyPlayCard(DrowZzzGameSession session, PlayCardAction action)
+        // M2-PR1 で末尾に効果評価を追加: catalog から取得した IEffect 列を左から順に Aggregate で適用する。
+        // 効果 0 個なら afterPlay がそのまま返るため M1 完全互換(ADR-0007 §3)。
+        private DrowZzzGameSession ApplyPlayCard(DrowZzzGameSession session, PlayCardAction action)
         {
             // 防御的 IsLegalMove 検証 (TurnPhase + Card 不在の両方を分けて投げる、原因明示のため)
             if (session.TurnPhase != DrowZzzTurnPhase.WaitingForPlay)
@@ -178,11 +202,18 @@ namespace Drowsy.Application.Games.DrowZzz
                 Field = newField,
             };
 
-            return session with
+            // M1-PR5 互換のプレイ後セッション(効果評価前)
+            var afterPlay = session with
             {
                 GameState = newGameState,
                 TurnPhase = DrowZzzTurnPhase.WaitingForEndTurn,
             };
+
+            // M2-PR1: プレイされたカードの効果列を catalog から取得し、左から順に Interpreter で逐次評価。
+            // M2-PR1 段階では InMemoryCardCatalog.GetEffects が常に空列を返すため、Aggregate の初期値
+            // (afterPlay) がそのまま返り、結果として M1 と完全互換になる。
+            var effects = _catalog.GetEffects(action.Card);
+            return effects.Aggregate(afterPlay, (s, e) => _interpreter.Apply(s, e));
         }
 
         // EndTurnAction の状態遷移:

@@ -55,3 +55,16 @@
     前提 entries に CardId.Of("X") と null CardData の組を含む
     もし InMemoryCardCatalog を生成する
     ならば ArgumentException が発生する
+
+  @APP-037
+  シナリオ: 登録済 CardId に対して GetEffects が空配列を返す (正常系・Small)
+    前提 InMemoryCardCatalog に CardId.Of("X") と CardData を登録
+    もし GetEffects(CardId.Of("X")) を呼ぶ
+    ならば 戻り値は空の IReadOnlyList<IEffect> である (M2-PR1 段階の全カード共通挙動)
+
+  @APP-038
+  シナリオ: 未登録 CardId に対して GetEffects が例外を投げず空配列を返す (正常系・Small)
+    前提 空の InMemoryCardCatalog
+    もし GetEffects(CardId.Of("Y")) を呼ぶ
+    ならば 戻り値は空の IReadOnlyList<IEffect> である
+    かつ 例外は発生しない (Get / TryGet と異なる契約)
