@@ -22,7 +22,7 @@ namespace Drowsy.Application.Games.DrowZzz
     /// <item>先後ランダム決定: <see cref="IRandomSource"/> で <c>players</c> を Fisher-Yates シャッフル</item>
     /// <item>FDP 抽選: <see cref="IGameConfig.FdpPool"/> を Fisher-Yates シャッフルし、先頭 N 個をシャッフル後の Players 順に割り当て</item>
     /// <item>初期手札配布: シャッフル後 Players 順に 1 枚ずつ交互、5 サイクル(計 5 × N 枚)</item>
-    /// <item><see cref="DrowZzzGameSession"/> 構築 (<see cref="DrowZzzTurnPhase.WaitingForDraw"/>)</item>
+    /// <item><see cref="DrowZzzGameSession"/> 構築 (<see cref="DrowZzzPhaseState.WaitingForDraw"/>)</item>
     /// </list>
     /// <para>
     /// <see cref="ICardCatalog{TEffect}"/> は本 UseCase では参照しない(<see cref="CardId"/> の移動のみ、
@@ -113,7 +113,7 @@ namespace Drowsy.Application.Games.DrowZzz
             return new DrowZzzGameSession(
                 gameState,
                 fdpDict,
-                DrowZzzTurnPhase.WaitingForDraw);
+                DrowZzzPhaseState.WaitingForDraw);
         }
 
         // 引数検証を 1 メソッドに集約(out で fdpPool を返し本体ロジックの再アクセスを省略)

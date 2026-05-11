@@ -3,19 +3,19 @@
 
   @DZ-038
   シナリオ: WaitingForDraw で IsLegalMove(DrawCardAction) は true (正常系・Small)
-    前提 TurnPhase = WaitingForDraw の DrowZzzGameSession
+    前提 PhaseState = WaitingForDraw の DrowZzzGameSession
     もし IsLegalMove(session, DrawCardAction) を呼ぶ
     ならば true が返る
 
   @DZ-039
   シナリオ: WaitingForPlay で IsLegalMove(DrawCardAction) は false (準正常系・Small)
-    前提 TurnPhase = WaitingForPlay の DrowZzzGameSession
+    前提 PhaseState = WaitingForPlay の DrowZzzGameSession
     もし IsLegalMove(session, DrawCardAction) を呼ぶ
     ならば false が返る
 
   @DZ-039
   シナリオ: WaitingForEndTurn で IsLegalMove(DrawCardAction) は false (準正常系・Small)
-    前提 TurnPhase = WaitingForEndTurn の DrowZzzGameSession
+    前提 PhaseState = WaitingForEndTurn の DrowZzzGameSession
     もし IsLegalMove(session, DrawCardAction) を呼ぶ
     ならば false が返る
 
@@ -38,10 +38,10 @@
     ならば 結果の現プレイヤー Hand.Cards に c1 が含まれる
 
   @DZ-043
-  シナリオ: TurnPhase が WaitingForPlay に遷移 (正常系・Small)
+  シナリオ: PhaseState が WaitingForPlay に遷移 (正常系・Small)
     前提 WaitingForDraw の DrowZzzGameSession
     もし Apply(session, DrawCardAction) を呼ぶ
-    ならば 結果の TurnPhase = WaitingForPlay
+    ならば 結果の PhaseState = WaitingForPlay
 
   @DZ-044
   シナリオ: GameState.Turn は不変 (正常系・Small)
@@ -57,7 +57,7 @@
 
   @DZ-046
   シナリオ: WaitingForPlay で Apply は InvalidOperationException (異常系・Small)
-    前提 TurnPhase = WaitingForPlay の DrowZzzGameSession
+    前提 PhaseState = WaitingForPlay の DrowZzzGameSession
     もし Apply(session, DrawCardAction) を呼ぶ
     ならば InvalidOperationException が発生する
 

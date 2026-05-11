@@ -47,7 +47,7 @@ namespace Drowsy.Application.Games.DrowZzz
             if (!_rule.IsLegalMove(session, action))
             {
                 throw new InvalidOperationException(
-                    $"ApplyActionUseCase: {action.GetType().Name} は現セッション (TurnPhase: {session.TurnPhase}) では合法ではありません");
+                    $"ApplyActionUseCase: {action.GetType().Name} は現セッション (PhaseState: {session.PhaseState}) では合法ではありません");
             }
             return _rule.Apply(session, action);
         }

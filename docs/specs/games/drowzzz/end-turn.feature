@@ -3,19 +3,19 @@
 
   @DZ-067
   シナリオ: WaitingForEndTurn で IsLegalMove(EndTurnAction) は true (正常系・Small)
-    前提 TurnPhase = WaitingForEndTurn の DrowZzzGameSession
+    前提 PhaseState = WaitingForEndTurn の DrowZzzGameSession
     もし IsLegalMove(session, EndTurnAction) を呼ぶ
     ならば true が返る
 
   @DZ-068
   シナリオ: WaitingForDraw で IsLegalMove(EndTurnAction) は false (準正常系・Small)
-    前提 TurnPhase = WaitingForDraw の DrowZzzGameSession
+    前提 PhaseState = WaitingForDraw の DrowZzzGameSession
     もし IsLegalMove(session, EndTurnAction) を呼ぶ
     ならば false が返る
 
   @DZ-068
   シナリオ: WaitingForPlay で IsLegalMove(EndTurnAction) は false (準正常系・Small)
-    前提 TurnPhase = WaitingForPlay の DrowZzzGameSession
+    前提 PhaseState = WaitingForPlay の DrowZzzGameSession
     もし IsLegalMove(session, EndTurnAction) を呼ぶ
     ならば false が返る
 
@@ -38,10 +38,10 @@
     ならば 結果の CurrentPlayerIndex = 0 (= (1 + 1) % 2)
 
   @DZ-071
-  シナリオ: Apply で TurnPhase が WaitingForDraw に戻る (正常系・Small)
+  シナリオ: Apply で PhaseState が WaitingForDraw に戻る (正常系・Small)
     前提 WaitingForEndTurn
     もし Apply(session, EndTurnAction) を呼ぶ
-    ならば 結果の TurnPhase = WaitingForDraw
+    ならば 結果の PhaseState = WaitingForDraw
 
   @DZ-072
   シナリオ: Apply で Players (Hand 含む) は不変 (正常系・Small)
@@ -69,12 +69,12 @@
 
   @DZ-076
   シナリオ: WaitingForDraw で Apply は InvalidOperationException (異常系・Small)
-    前提 TurnPhase = WaitingForDraw
+    前提 PhaseState = WaitingForDraw
     もし Apply(session, EndTurnAction) を呼ぶ
     ならば InvalidOperationException が発生する
 
   @DZ-076
   シナリオ: WaitingForPlay で Apply は InvalidOperationException (異常系・Small)
-    前提 TurnPhase = WaitingForPlay
+    前提 PhaseState = WaitingForPlay
     もし Apply(session, EndTurnAction) を呼ぶ
     ならば InvalidOperationException が発生する

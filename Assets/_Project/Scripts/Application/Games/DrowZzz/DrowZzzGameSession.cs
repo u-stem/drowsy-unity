@@ -9,7 +9,7 @@ namespace Drowsy.Application.Games.DrowZzz
     /// <summary>
     /// DrowZzz の完全状態(オラクルビュー、隠し情報含む)を表す record class。
     /// Domain <see cref="GameState"/> をラップし、DrowZzz 固有の追加状態
-    /// (<see cref="FirstDrowsyPoints"/> / <see cref="TurnPhase"/>) を保持する。
+    /// (<see cref="FirstDrowsyPoints"/> / <see cref="PhaseState"/>) を保持する。
     /// </summary>
     /// <remarks>
     /// <c>record class</c> + <c>init</c> setter + バッキングフィールド + <c>value ?? throw</c> パターン
@@ -29,7 +29,7 @@ namespace Drowsy.Application.Games.DrowZzz
     {
         private readonly GameState _gameState;
         private readonly Dictionary<PlayerId, int> _firstDrowsyPoints;
-        private readonly DrowZzzTurnPhase _turnPhase;
+        private readonly DrowZzzPhaseState _phaseState;
 
         /// <summary>Domain ルート集約。</summary>
         public GameState GameState
@@ -69,10 +69,10 @@ namespace Drowsy.Application.Games.DrowZzz
         }
 
         /// <summary>ターン内フェーズ(Application 層管理のステートマシン)。</summary>
-        public DrowZzzTurnPhase TurnPhase
+        public DrowZzzPhaseState PhaseState
         {
-            get => _turnPhase;
-            init => _turnPhase = value;
+            get => _phaseState;
+            init => _phaseState = value;
         }
 
         /// <summary>
@@ -89,13 +89,13 @@ namespace Drowsy.Application.Games.DrowZzz
         public DrowZzzGameSession(
             GameState gameState,
             IReadOnlyDictionary<PlayerId, int> firstDrowsyPoints,
-            DrowZzzTurnPhase turnPhase)
+            DrowZzzPhaseState phaseState)
         {
             // 順序が重要: GameState を先に確定 → FirstDrowsyPoints の init setter で _gameState を参照して cross-field 検証。
             // (GameState init setter 時点では _firstDrowsyPoints が null なので cross-field はスキップされる)
             GameState = gameState;
             FirstDrowsyPoints = firstDrowsyPoints;
-            TurnPhase = turnPhase;
+            PhaseState = phaseState;
         }
 
         // FirstDrowsyPoints の防御コピー + null 検証
@@ -150,7 +150,7 @@ namespace Drowsy.Application.Games.DrowZzz
             {
                 return false;
             }
-            if (_turnPhase != other._turnPhase)
+            if (_phaseState != other._phaseState)
             {
                 return false;
             }
@@ -169,13 +169,13 @@ namespace Drowsy.Application.Games.DrowZzz
         }
 
         /// <summary>
-        /// 順序非依存ハッシュ。<see cref="_gameState"/> / <see cref="_turnPhase"/> および
+        /// 順序非依存ハッシュ。<see cref="_gameState"/> / <see cref="_phaseState"/> および
         /// <see cref="_firstDrowsyPoints"/> の各 (key, value) ペアハッシュを XOR 合成する
         /// (CardData と同じパターン、ADR-0002)。
         /// </summary>
         public override int GetHashCode()
         {
-            int hash = HashCode.Combine(_gameState, _turnPhase);
+            int hash = HashCode.Combine(_gameState, _phaseState);
             foreach (var kv in _firstDrowsyPoints)
             {
                 hash ^= HashCode.Combine(kv.Key, kv.Value);

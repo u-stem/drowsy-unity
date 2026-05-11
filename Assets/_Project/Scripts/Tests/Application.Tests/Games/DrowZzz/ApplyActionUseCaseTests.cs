@@ -24,7 +24,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 new EffectInterpreter());
 
         private static DrowZzzGameSession NewSession(
-            DrowZzzTurnPhase phase = DrowZzzTurnPhase.WaitingForDraw,
+            DrowZzzPhaseState phase = DrowZzzPhaseState.WaitingForDraw,
             int currentPlayerIndex = 0,
             Pile deck = null,
             Hand p0Hand = null,
@@ -79,7 +79,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var rule = NewRule();
             var useCase = new ApplyActionUseCase(rule);
             var p0Hand = new Hand(new[] { CardId.Of("c1") });
-            var session = NewSession(phase: DrowZzzTurnPhase.WaitingForPlay, p0Hand: p0Hand);
+            var session = NewSession(phase: DrowZzzPhaseState.WaitingForPlay, p0Hand: p0Hand);
             var action = new PlayCardAction(CardId.Of("c1"));
             // When
             var direct = rule.Apply(session, action);
@@ -94,7 +94,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             // Given
             var rule = NewRule();
             var useCase = new ApplyActionUseCase(rule);
-            var session = NewSession(phase: DrowZzzTurnPhase.WaitingForEndTurn);
+            var session = NewSession(phase: DrowZzzPhaseState.WaitingForEndTurn);
             // When
             var direct = rule.Apply(session, new EndTurnAction());
             var viaUseCase = useCase.Execute(session, new EndTurnAction());
@@ -110,7 +110,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             // Given(WaitingForPlay は DrawCardAction 非合法)
             var rule = NewRule();
             var useCase = new ApplyActionUseCase(rule);
-            var session = NewSession(phase: DrowZzzTurnPhase.WaitingForPlay, deck: NewDeck("c1"));
+            var session = NewSession(phase: DrowZzzPhaseState.WaitingForPlay, deck: NewDeck("c1"));
             // When / Then
             Assert.Throws<InvalidOperationException>(() => useCase.Execute(session, new DrawCardAction()));
         }

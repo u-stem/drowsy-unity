@@ -51,8 +51,8 @@ namespace Drowsy.Application.Tests.Integration
             return (start, apply);
         }
 
-        // 1 サブターン完走 (Draw → Play(現プレイヤー手札 Top カード) → EndTurn)
-        private static DrowZzzGameSession PlayOneSubturn(ApplyActionUseCase useCase, DrowZzzGameSession session)
+        // 1 フェーズ完走 (Draw → Play(現プレイヤー手札 Top カード) → EndTurn)
+        private static DrowZzzGameSession PlayOnePhase(ApplyActionUseCase useCase, DrowZzzGameSession session)
         {
             session = useCase.Execute(session, new DrawCardAction());
             int currentIndex = session.GameState.Turn.CurrentPlayerIndex;
@@ -62,15 +62,15 @@ namespace Drowsy.Application.Tests.Integration
             return session;
         }
 
-        // 指定回数サブターンを連続実行
-        private static DrowZzzGameSession PlaySubturns(
+        // 指定回数フェーズを連続実行
+        private static DrowZzzGameSession PlayPhases(
             ApplyActionUseCase useCase,
             DrowZzzGameSession session,
             int count)
         {
             for (int i = 0; i < count; i++)
             {
-                session = PlayOneSubturn(useCase, session);
+                session = PlayOnePhase(useCase, session);
             }
             return session;
         }
@@ -78,11 +78,11 @@ namespace Drowsy.Application.Tests.Integration
         // ===== DZ-077: StartGameUseCase 直後の状態 (4 不変条件を 1 テスト 1 アサーションで分離) =====
 
         [Test, Category("Medium"), Category("Normal"), Property("Requirement", "DZ-077")]
-        public void Given_有効な引数_When_StartGameUseCase_Execute_Then_TurnPhaseがWaitingForDraw()
+        public void Given_有効な引数_When_StartGameUseCase_Execute_Then_PhaseStateがWaitingForDraw()
         {
             var (start, _) = NewUseCases();
             var session = start.Execute(NewPlayers(), NewDeck());
-            Assert.That(session.TurnPhase, Is.EqualTo(DrowZzzTurnPhase.WaitingForDraw));
+            Assert.That(session.PhaseState, Is.EqualTo(DrowZzzPhaseState.WaitingForDraw));
         }
 
         [Test, Category("Medium"), Category("Normal"), Property("Requirement", "DZ-077")]
@@ -111,7 +111,7 @@ namespace Drowsy.Application.Tests.Integration
                 Is.EqualTo(new[] { InitialHandSize, InitialHandSize }));
         }
 
-        // ===== DZ-078: 1 サブターン完走の TurnPhase 遷移 + Turn 進行 =====
+        // ===== DZ-078: 1 フェーズ完走の PhaseState 遷移 + Turn 進行 =====
 
         [Test, Category("Medium"), Category("Normal"), Property("Requirement", "DZ-078")]
         public void Given_StartGame直後_When_Drawを実行_Then_WaitingForPlayに遷移()
@@ -119,7 +119,7 @@ namespace Drowsy.Application.Tests.Integration
             var (start, apply) = NewUseCases();
             var s0 = start.Execute(NewPlayers(), NewDeck());
             var s1 = apply.Execute(s0, new DrawCardAction());
-            Assert.That(s1.TurnPhase, Is.EqualTo(DrowZzzTurnPhase.WaitingForPlay));
+            Assert.That(s1.PhaseState, Is.EqualTo(DrowZzzPhaseState.WaitingForPlay));
         }
 
         [Test, Category("Medium"), Category("Normal"), Property("Requirement", "DZ-078")]
@@ -130,7 +130,7 @@ namespace Drowsy.Application.Tests.Integration
             var s1 = apply.Execute(s0, new DrawCardAction());
             var card = s1.GameState.Players[0].Hand.Cards[0];
             var s2 = apply.Execute(s1, new PlayCardAction(card));
-            Assert.That(s2.TurnPhase, Is.EqualTo(DrowZzzTurnPhase.WaitingForEndTurn));
+            Assert.That(s2.PhaseState, Is.EqualTo(DrowZzzPhaseState.WaitingForEndTurn));
         }
 
         [Test, Category("Medium"), Category("Normal"), Property("Requirement", "DZ-078")]
@@ -138,21 +138,21 @@ namespace Drowsy.Application.Tests.Integration
         {
             var (start, apply) = NewUseCases();
             var s0 = start.Execute(NewPlayers(), NewDeck());
-            var s3 = PlayOneSubturn(apply, s0);
-            Assert.That(s3.TurnPhase, Is.EqualTo(DrowZzzTurnPhase.WaitingForDraw));
+            var s3 = PlayOnePhase(apply, s0);
+            Assert.That(s3.PhaseState, Is.EqualTo(DrowZzzPhaseState.WaitingForDraw));
         }
 
         [Test, Category("Medium"), Category("Normal"), Property("Requirement", "DZ-078")]
-        public void Given_StartGame直後_When_1サブターン完走_Then_TurnNumberが1増える()
+        public void Given_StartGame直後_When_1フェーズ完走_Then_TurnNumberが1増える()
         {
             var (start, apply) = NewUseCases();
             var s0 = start.Execute(NewPlayers(), NewDeck());
             int before = s0.GameState.Turn.TurnNumber;
-            var s3 = PlayOneSubturn(apply, s0);
+            var s3 = PlayOnePhase(apply, s0);
             Assert.That(s3.GameState.Turn.TurnNumber, Is.EqualTo(before + 1));
         }
 
-        // ===== DZ-079: 1 ラウンド完走 (N=2 サブターン) =====
+        // ===== DZ-079: 1 ラウンド完走 (N=2 フェーズ) =====
 
         [Test, Category("Medium"), Category("Normal"), Property("Requirement", "DZ-079")]
         public void Given_StartGame直後_When_1ラウンド完走_Then_TurnNumberが2増える()
@@ -160,7 +160,7 @@ namespace Drowsy.Application.Tests.Integration
             var (start, apply) = NewUseCases();
             var s0 = start.Execute(NewPlayers(), NewDeck());
             int before = s0.GameState.Turn.TurnNumber;
-            var sN = PlaySubturns(apply, s0, 2);
+            var sN = PlayPhases(apply, s0, 2);
             Assert.That(sN.GameState.Turn.TurnNumber, Is.EqualTo(before + 2));
         }
 
@@ -169,11 +169,11 @@ namespace Drowsy.Application.Tests.Integration
         {
             var (start, apply) = NewUseCases();
             var s0 = start.Execute(NewPlayers(), NewDeck());
-            var sN = PlaySubturns(apply, s0, 2);
+            var sN = PlayPhases(apply, s0, 2);
             Assert.That(sN.GameState.Turn.CurrentPlayerIndex, Is.EqualTo(0));
         }
 
-        // ===== DZ-080: 3 ラウンド完走 (6 サブターン) =====
+        // ===== DZ-080: 3 ラウンド完走 (6 フェーズ) =====
 
         [Test, Category("Medium"), Category("Normal"), Property("Requirement", "DZ-080")]
         public void Given_StartGame直後_When_3ラウンド完走_Then_TurnNumberが6増える()
@@ -181,27 +181,27 @@ namespace Drowsy.Application.Tests.Integration
             var (start, apply) = NewUseCases();
             var s0 = start.Execute(NewPlayers(), NewDeck());
             int before = s0.GameState.Turn.TurnNumber;
-            var sN = PlaySubturns(apply, s0, 6);
+            var sN = PlayPhases(apply, s0, 6);
             Assert.That(sN.GameState.Turn.TurnNumber, Is.EqualTo(before + 6));
         }
 
         [Test, Category("Medium"), Category("Normal"), Property("Requirement", "DZ-080")]
         public void Given_StartGame直後_When_3ラウンド完走_Then_FieldCountが6()
         {
-            // 各サブターンで 1 枚 Play されるため、6 サブターン後の Field は 6 枚累積
+            // 各フェーズで 1 枚 Play されるため、6 フェーズ後の Field は 6 枚累積
             var (start, apply) = NewUseCases();
             var s0 = start.Execute(NewPlayers(), NewDeck());
-            var sN = PlaySubturns(apply, s0, 6);
+            var sN = PlayPhases(apply, s0, 6);
             Assert.That(sN.GameState.Field.Count, Is.EqualTo(6));
         }
 
         [Test, Category("Medium"), Category("Normal"), Property("Requirement", "DZ-080")]
         public void Given_StartGame直後_When_3ラウンド完走_Then_各プレイヤーHandCountが5維持()
         {
-            // 各サブターンで Draw 1 + Play 1 = ±0 のため、Hand.Count は初期 5 維持
+            // 各フェーズで Draw 1 + Play 1 = ±0 のため、Hand.Count は初期 5 維持
             var (start, apply) = NewUseCases();
             var s0 = start.Execute(NewPlayers(), NewDeck());
-            var sN = PlaySubturns(apply, s0, 6);
+            var sN = PlayPhases(apply, s0, 6);
             Assert.That(
                 new[] { sN.GameState.Players[0].Hand.Count, sN.GameState.Players[1].Hand.Count },
                 Is.EqualTo(new[] { InitialHandSize, InitialHandSize }));
@@ -219,10 +219,10 @@ namespace Drowsy.Application.Tests.Integration
 
             // When(各々で StartGame → 1 ラウンド完走)
             var sessionA = start1.Execute(NewPlayers(), NewDeck());
-            sessionA = PlaySubturns(apply1, sessionA, 2);
+            sessionA = PlayPhases(apply1, sessionA, 2);
 
             var sessionB = start2.Execute(NewPlayers(), NewDeck());
-            sessionB = PlaySubturns(apply2, sessionB, 2);
+            sessionB = PlayPhases(apply2, sessionB, 2);
 
             // Then
             Assert.That(sessionA, Is.EqualTo(sessionB));

@@ -4,7 +4,7 @@
 
 ## 概要
 
-ADR-0006 §2.4 / §M1-PR5 の決定に基づく。`PlayCardAction(card)` は `WaitingForPlay` フェーズで現プレイヤーが行う「手札の指定 `card` を場 (Field) に出す」アクション。Apply 後 `TurnPhase` は `WaitingForEndTurn` に遷移する。Field への追加方向は **`AddTop`**(直近プレイカードが index 0、プロジェクトオーナー JIT 確定 2026-05-11)。
+ADR-0006 §2.4 / §M1-PR5 の決定に基づく。`PlayCardAction(card)` は `WaitingForPlay` フェーズで現プレイヤーが行う「手札の指定 `card` を場 (Field) に出す」アクション。Apply 後 `PhaseState` は `WaitingForEndTurn` に遷移する。Field への追加方向は **`AddTop`**(直近プレイカードが index 0、プロジェクトオーナー JIT 確定 2026-05-11)。
 
 `PlayCardAction.Card` の null は **`PlayCardAction` の生成時** に `ArgumentNullException` で弾く(record positional + init setter で `Card ?? throw` パターン、Phase 1 `Hand` / `Pile` の null 検証パターンと整合)。`with { Card = null }` 経由でも同様に弾かれる。
 
@@ -14,12 +14,12 @@ ADR-0006 §2.4 / §M1-PR5 の決定に基づく。`PlayCardAction(card)` は `Wa
 
 ## 事象駆動要件 (Event-driven)
 
-- [DZ-054] When `IsLegalMove(session, PlayCardAction(card))` is called and `session.TurnPhase == WaitingForPlay` and the current player's `Hand` contains `card`, then it shall return `true`.
+- [DZ-054] When `IsLegalMove(session, PlayCardAction(card))` is called and `session.PhaseState == WaitingForPlay` and the current player's `Hand` contains `card`, then it shall return `true`.
 - [DZ-057] When `Apply(session, PlayCardAction(card))` is called and `IsLegalMove` returns `true`, then `result.GameState.Players[CurrentPlayerIndex].Hand` shall not contain `card`.
 - [DZ-058] When `Apply(session, PlayCardAction(card))` is called and `IsLegalMove` returns `true`, then `result.GameState.Players[CurrentPlayerIndex].Hand.Count` shall equal `session.GameState.Players[CurrentPlayerIndex].Hand.Count - 1`.
 - [DZ-059] When `Apply(session, PlayCardAction(card))` is called and `IsLegalMove` returns `true`, then `result.GameState.Field.Cards[0]` shall equal `card` (`AddTop` 採用、直近プレイが Top)。
 - [DZ-060] When `Apply(session, PlayCardAction(card))` is called and `IsLegalMove` returns `true`, then `result.GameState.Field.Count` shall equal `session.GameState.Field.Count + 1`.
-- [DZ-061] When `Apply(session, PlayCardAction(card))` is called and `IsLegalMove` returns `true`, then `result.TurnPhase` shall be `WaitingForEndTurn`.
+- [DZ-061] When `Apply(session, PlayCardAction(card))` is called and `IsLegalMove` returns `true`, then `result.PhaseState` shall be `WaitingForEndTurn`.
 - [DZ-062] When `Apply(session, PlayCardAction(card))` is called and `IsLegalMove` returns `true`, then `result.GameState.Turn` shall remain unchanged.
 - [DZ-063] When `Apply(session, PlayCardAction(card))` is called and `IsLegalMove` returns `true`, then `result.GameState.Deck` shall remain unchanged.
 - [DZ-064] When `Apply(session, PlayCardAction(card))` is called and `IsLegalMove` returns `true`, then non-current Players' `Hand` shall remain unchanged.
@@ -27,9 +27,9 @@ ADR-0006 §2.4 / §M1-PR5 の決定に基づく。`PlayCardAction(card)` は `Wa
 ## 異常要件 (Unwanted)
 
 - [DZ-053] If `new PlayCardAction(null)` is called, then it shall throw `ArgumentNullException`.
-- [DZ-055] If `IsLegalMove(session, PlayCardAction(card))` is called and `session.TurnPhase != WaitingForPlay`, then it shall return `false`(`WaitingForDraw` / `WaitingForEndTurn` 各々検証)。
+- [DZ-055] If `IsLegalMove(session, PlayCardAction(card))` is called and `session.PhaseState != WaitingForPlay`, then it shall return `false`(`WaitingForDraw` / `WaitingForEndTurn` 各々検証)。
 - [DZ-056] If `IsLegalMove(session, PlayCardAction(card))` is called and the current player's `Hand` does not contain `card`, then it shall return `false`.
-- [DZ-065] If `Apply(session, PlayCardAction(card))` is called and `session.TurnPhase != WaitingForPlay` (IsLegalMove false), then it shall throw `InvalidOperationException`.
+- [DZ-065] If `Apply(session, PlayCardAction(card))` is called and `session.PhaseState != WaitingForPlay` (IsLegalMove false), then it shall throw `InvalidOperationException`.
 - [DZ-066] If `Apply(session, PlayCardAction(card))` is called and the current player's `Hand` does not contain `card` (IsLegalMove false), then it shall throw `InvalidOperationException`.
 
 ## 定数依存
@@ -44,7 +44,7 @@ ADR-0006 §2.4 / §M1-PR5 の決定に基づく。`PlayCardAction(card)` は `Wa
   1. **バッキングフィールド `_card` の初期化式** (`= Card ?? throw new ArgumentNullException(nameof(Card))`) で positional ctor 経由の null を弾く。`Card` 引数を初期化式で参照することで CS8907 警告 (「Parameter 'Card' is unread」) も回避する。
   2. **init setter 本体** (`init => _card = value ?? throw new ArgumentNullException(nameof(value))`) で `with { Card = null }` 経由の null を弾く。初期化式は constructor 1 回のみ評価で with 経路をカバーしないため、Phase 1 `GameState` と同じ「getter/setter 全置換 init setter」パターンを採用 (ADR-0002 / ADR-0004)。
 - **`session.GameState.Turn` / `Deck` は不変**: ターン進行は `EndTurnAction.Apply` (M1-PR6)、ドローは `DrawCardAction.Apply` (M1-PR4) の責務。`PlayCardAction.Apply` では `Hand` と `Field` のみ変更する。
-- **`InvalidOperationException` の二重防御**: `DrowZzzRule.Apply` 内部で IsLegalMove 違反 (TurnPhase / Card 不在の両方) を検証して投げる(ADR-0006 §3 方針)。
+- **`InvalidOperationException` の二重防御**: `DrowZzzRule.Apply` 内部で IsLegalMove 違反 (PhaseState / Card 不在の両方) を検証して投げる(ADR-0006 §3 方針)。
 
 ## 関連
 
@@ -71,9 +71,9 @@ ADR-0006 §2.4 / §M1-PR5 の決定に基づく。`PlayCardAction(card)` は `Wa
 | DZ-058 | `Given_合法状態_When_PlayCardActionをApply_Then_現プレイヤーHandCount-1` | |
 | DZ-059 | `Given_合法状態_When_PlayCardActionをApply_Then_FieldのTopが指定Card` | AddTop 検証 |
 | DZ-060 | `Given_合法状態_When_PlayCardActionをApply_Then_FieldCount+1` | |
-| DZ-061 | `Given_合法状態_When_PlayCardActionをApply_Then_TurnPhaseがWaitingForEndTurnに遷移する` | |
+| DZ-061 | `Given_合法状態_When_PlayCardActionをApply_Then_PhaseStateがWaitingForEndTurnに遷移する` | |
 | DZ-062 | `Given_合法状態_When_PlayCardActionをApply_Then_GameStateTurnは不変` | |
 | DZ-063 | `Given_合法状態_When_PlayCardActionをApply_Then_GameStateDeckは不変` | |
 | DZ-064 | `Given_合法状態_When_PlayCardActionをApply_Then_他プレイヤーの手札は不変` | |
-| DZ-065 | `Given_WaitingForDraw_When_PlayCardActionをApply_Then_InvalidOperationExceptionを投げる` | TurnPhase 違反 |
+| DZ-065 | `Given_WaitingForDraw_When_PlayCardActionをApply_Then_InvalidOperationExceptionを投げる` | PhaseState 違反 |
 | DZ-066 | `Given_Cardが手札にない_When_PlayCardActionをApply_Then_InvalidOperationExceptionを投げる` | Card 不在違反 |

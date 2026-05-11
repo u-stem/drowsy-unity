@@ -3,7 +3,7 @@
 
   @DZ-006
   シナリオ: 有効な引数で DrowZzzGameSession を生成 (正常系・Small)
-    前提 N=2 の有効な GameState と PlayerId をキーに持つ FirstDrowsyPoints と DrowZzzTurnPhase
+    前提 N=2 の有効な GameState と PlayerId をキーに持つ FirstDrowsyPoints と DrowZzzPhaseState
     もし DrowZzzGameSession を生成する
     ならば 各プロパティが入力と一致する
 
@@ -69,12 +69,12 @@
 
   @DZ-036
   シナリオ: 同フィールド値の 2 Session は等価 (正常系・Small)
-    前提 同じ GameState / FirstDrowsyPoints / TurnPhase を持つ 2 つの DrowZzzGameSession
+    前提 同じ GameState / FirstDrowsyPoints / PhaseState を持つ 2 つの DrowZzzGameSession
     もし Equals で等価比較する
     ならば 等価である
 
   @DZ-036
   シナリオ: FirstDrowsyPoints 挿入順が異なっても等価 (正常系・Small)
-    前提 GameState / TurnPhase が同一で、FirstDrowsyPoints の (key, value) は同一だが Dictionary 挿入順が異なる 2 つの DrowZzzGameSession
+    前提 GameState / PhaseState が同一で、FirstDrowsyPoints の (key, value) は同一だが Dictionary 挿入順が異なる 2 つの DrowZzzGameSession
     もし Equals で等価比較する
     ならば 等価である (順序非依存マルチセット同値)

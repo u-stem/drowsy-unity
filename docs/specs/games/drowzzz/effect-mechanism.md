@@ -8,14 +8,14 @@
 
 ## 概要
 
-ADR-0007 §3 / §1 の決定に基づく。M1-PR5 で実装した `PlayCardAction.Apply` の「手札 → Field 移動 + `TurnPhase = WaitingForEndTurn`」の末尾に、catalog から取得した効果列 (`IReadOnlyList<IEffect>`) を `EffectInterpreter.Apply` で **左から順に逐次評価** する処理を追加する。
+ADR-0007 §3 / §1 の決定に基づく。M1-PR5 で実装した `PlayCardAction.Apply` の「手札 → Field 移動 + `PhaseState = WaitingForEndTurn`」の末尾に、catalog から取得した効果列 (`IReadOnlyList<IEffect>`) を `EffectInterpreter.Apply` で **左から順に逐次評価** する処理を追加する。
 
 設計上のポイント:
 
 - 効果は `ICardCatalog<IEffect>.GetEffects(action.Card)` で取得(catalog が効果の所有者)
 - 評価は `effects.Aggregate(afterPlay, (s, e) => _interpreter.Apply(s, e))` で左から順(Linq の `Aggregate` overload で初期値あり)
 - 効果 0 個なら `afterPlay` がそのまま返り、M1-PR5 と完全互換になる(M2-PR1 段階の保証)
-- 効果は `GameState` を変更可能だが、M2 範囲では `TurnPhase` を変えない原則(変える効果は M2 範囲外、ADR-0007 §3 / §8)
+- 効果は `GameState` を変更可能だが、M2 範囲では `PhaseState` を変えない原則(変える効果は M2 範囲外、ADR-0007 §3 / §8)
 - `DrowZzzRule` constructor は `(ICardCatalog<IEffect>, EffectInterpreter)` の 2 引数を要求し、いずれも null で `ArgumentNullException`(ADR-0007 §3 「DrowZzzRule の依存追加」)
 
 `StartGameUseCase` / `ApplyActionUseCase` の挙動は本仕様の影響を受けない:
@@ -28,7 +28,7 @@ ADR-0007 §3 / §1 の決定に基づく。M1-PR5 で実装した `PlayCardActio
 - [DZ-082] [Ubiquitous] The `DrowZzzRule` shall require `ICardCatalog<IEffect>` and `EffectInterpreter` via constructor injection.
 - [DZ-085] [Ubiquitous] When `DrowZzzRule.Apply(session, PlayCardAction(card))` is called with an effect list `[e1, e2, ..., en]`, the effects shall be applied left-to-right via `Aggregate(afterPlay, (s, e) => _interpreter.Apply(s, e))` (`e1` applied to `afterPlay`, `e2` applied to the result, …)。
    `EffectInterpreter` が `sealed` のため M2-PR1 段階で order 検証用 spy を差し込めない。実 effect record が登場する M2-PR2 で本要件は「最初の effect が記録 / 反映され、続く effect が累積する」観測可能な挙動として再検証する。本 PR では `Aggregate(seed, fn)` という構造で「左から順」が保証されている。
-- [DZ-086] [Ubiquitous] During M2 scope, no `IEffect` derived type shall alter `TurnPhase`(effects modify `GameState` only)。M2-PR2 以降で TurnPhase を変える効果が登場した場合は本要件を見直し、ADR-0007 §3 後継として別 ADR を起票する。
+- [DZ-086] [Ubiquitous] During M2 scope, no `IEffect` derived type shall alter `PhaseState`(effects modify `GameState` only)。M2-PR2 以降で PhaseState を変える効果が登場した場合は本要件を見直し、ADR-0007 §3 後継として別 ADR を起票する。
 
 ## 事象駆動要件 (Event-driven)
 

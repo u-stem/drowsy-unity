@@ -15,25 +15,25 @@
 
   @DZ-054
   シナリオ: WaitingForPlay かつ Card が手札にある (正常系・Small)
-    前提 TurnPhase = WaitingForPlay / 現プレイヤー Hand = [c1, c2] の DrowZzzGameSession
+    前提 PhaseState = WaitingForPlay / 現プレイヤー Hand = [c1, c2] の DrowZzzGameSession
     もし IsLegalMove(session, PlayCardAction(CardId.Of("c1"))) を呼ぶ
     ならば true が返る
 
   @DZ-055
   シナリオ: WaitingForDraw で IsLegalMove(PlayCardAction) は false (準正常系・Small)
-    前提 TurnPhase = WaitingForDraw の DrowZzzGameSession
+    前提 PhaseState = WaitingForDraw の DrowZzzGameSession
     もし IsLegalMove(session, PlayCardAction(任意 card)) を呼ぶ
     ならば false が返る
 
   @DZ-055
   シナリオ: WaitingForEndTurn で IsLegalMove(PlayCardAction) は false (準正常系・Small)
-    前提 TurnPhase = WaitingForEndTurn の DrowZzzGameSession
+    前提 PhaseState = WaitingForEndTurn の DrowZzzGameSession
     もし IsLegalMove(session, PlayCardAction(任意 card)) を呼ぶ
     ならば false が返る
 
   @DZ-056
   シナリオ: WaitingForPlay だが Card が手札にない (準正常系・Small)
-    前提 TurnPhase = WaitingForPlay / 現プレイヤー Hand = [c1] の DrowZzzGameSession
+    前提 PhaseState = WaitingForPlay / 現プレイヤー Hand = [c1] の DrowZzzGameSession
     もし IsLegalMove(session, PlayCardAction(CardId.Of("cX"))) を呼ぶ
     ならば false が返る
 
@@ -62,10 +62,10 @@
     ならば 結果の Field.Count = 1
 
   @DZ-061
-  シナリオ: Apply で TurnPhase が WaitingForEndTurn に遷移 (正常系・Small)
+  シナリオ: Apply で PhaseState が WaitingForEndTurn に遷移 (正常系・Small)
     前提 WaitingForPlay
     もし Apply を呼ぶ
-    ならば 結果の TurnPhase = WaitingForEndTurn
+    ならば 結果の PhaseState = WaitingForEndTurn
 
   @DZ-062
   シナリオ: Apply で Turn は不変 (正常系・Small)
@@ -87,7 +87,7 @@
 
   @DZ-065
   シナリオ: WaitingForDraw で Apply は InvalidOperationException (異常系・Small)
-    前提 TurnPhase = WaitingForDraw
+    前提 PhaseState = WaitingForDraw
     もし Apply を呼ぶ
     ならば InvalidOperationException が発生する
 

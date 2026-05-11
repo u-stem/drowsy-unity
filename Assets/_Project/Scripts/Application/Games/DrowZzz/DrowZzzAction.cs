@@ -45,7 +45,7 @@ namespace Drowsy.Application.Games.DrowZzz
     }
 
     /// <summary>
-    /// ターン終了アクション。<c>GameState.Turn</c> を <c>Next(playerCount)</c> で次サブターンへ進める。
+    /// ターン終了アクション。<c>GameState.Turn</c> を <c>Next(playerCount)</c> で次フェーズへ進める。
     /// </summary>
     public sealed record EndTurnAction : DrowZzzAction;
 }

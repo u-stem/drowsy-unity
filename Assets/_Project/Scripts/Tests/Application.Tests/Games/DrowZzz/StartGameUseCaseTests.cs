@@ -162,17 +162,17 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             Assert.That(session.GameState.Deck.Count, Is.EqualTo(20 - 5 * 2));
         }
 
-        // ===== DZ-025: TurnPhase が WaitingForDraw =====
+        // ===== DZ-025: PhaseState が WaitingForDraw =====
 
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-025")]
-        public void Given_有効な引数_When_Execute_Then_TurnPhaseがWaitingForDraw()
+        public void Given_有効な引数_When_Execute_Then_PhaseStateがWaitingForDraw()
         {
             // Given
             var useCase = NewUseCase();
             // When
             var session = useCase.Execute(NewPlayers("p1", "p2"), NewDeck(20));
             // Then
-            Assert.That(session.TurnPhase, Is.EqualTo(DrowZzzTurnPhase.WaitingForDraw));
+            Assert.That(session.PhaseState, Is.EqualTo(DrowZzzPhaseState.WaitingForDraw));
         }
 
         // ===== DZ-026: Turn が Initial(0) =====

@@ -65,9 +65,9 @@ namespace Drowsy.Application.Games.DrowZzz
             return action switch
             {
                 StartGameAction => false, // ADR-0006 §Implementation Notes §StartGameUseCase の IsLegalMove 経由での扱い
-                DrawCardAction => session.TurnPhase == DrowZzzTurnPhase.WaitingForDraw,
+                DrawCardAction => session.PhaseState == DrowZzzPhaseState.WaitingForDraw,
                 PlayCardAction p => IsLegalPlayCard(session, p),
-                EndTurnAction => session.TurnPhase == DrowZzzTurnPhase.WaitingForEndTurn,
+                EndTurnAction => session.PhaseState == DrowZzzPhaseState.WaitingForEndTurn,
                 _ => throw new NotImplementedException(
                     $"DrowZzzRule.IsLegalMove ({action.GetType().Name}) は M1 範囲では到達不可。将来 DrowZzzAction 派生型を追加する PR で対応する"),
             };
@@ -76,7 +76,7 @@ namespace Drowsy.Application.Games.DrowZzz
         // PlayCardAction の合法性: WaitingForPlay フェーズ かつ 現プレイヤーの Hand に Card が含まれる
         private static bool IsLegalPlayCard(DrowZzzGameSession session, PlayCardAction action)
         {
-            if (session.TurnPhase != DrowZzzTurnPhase.WaitingForPlay)
+            if (session.PhaseState != DrowZzzPhaseState.WaitingForPlay)
             {
                 return false;
             }
@@ -118,15 +118,15 @@ namespace Drowsy.Application.Games.DrowZzz
             };
         }
 
-        // DrawCardAction の状態遷移: 山札 Top → 現プレイヤー Hand に 1 枚移動 + TurnPhase = WaitingForPlay。
+        // DrawCardAction の状態遷移: 山札 Top → 現プレイヤー Hand に 1 枚移動 + PhaseState = WaitingForPlay。
         // GameState.Turn は不変(ターン進行は EndTurnAction.Apply の責務、M1-PR6)。
         private static DrowZzzGameSession ApplyDrawCard(DrowZzzGameSession session)
         {
             // 防御的 IsLegalMove 検証
-            if (session.TurnPhase != DrowZzzTurnPhase.WaitingForDraw)
+            if (session.PhaseState != DrowZzzPhaseState.WaitingForDraw)
             {
                 throw new InvalidOperationException(
-                    $"DrawCardAction は WaitingForDraw フェーズでのみ合法です (現フェーズ: {session.TurnPhase})");
+                    $"DrawCardAction は WaitingForDraw フェーズでのみ合法です (現フェーズ: {session.PhaseState})");
             }
 
             var gameState = session.GameState;
@@ -155,22 +155,22 @@ namespace Drowsy.Application.Games.DrowZzz
             return session with
             {
                 GameState = newGameState,
-                TurnPhase = DrowZzzTurnPhase.WaitingForPlay,
+                PhaseState = DrowZzzPhaseState.WaitingForPlay,
             };
         }
 
         // PlayCardAction の状態遷移:
-        // 現プレイヤーの Hand から指定 Card を Remove → Field に AddTop で追加 + TurnPhase = WaitingForEndTurn。
+        // 現プレイヤーの Hand から指定 Card を Remove → Field に AddTop で追加 + PhaseState = WaitingForEndTurn。
         // GameState.Turn / Deck は不変。
         // M2-PR1 で末尾に効果評価を追加: catalog から取得した IEffect 列を左から順に Aggregate で適用する。
         // 効果 0 個なら afterPlay がそのまま返るため M1 完全互換(ADR-0007 §3)。
         private DrowZzzGameSession ApplyPlayCard(DrowZzzGameSession session, PlayCardAction action)
         {
-            // 防御的 IsLegalMove 検証 (TurnPhase + Card 不在の両方を分けて投げる、原因明示のため)
-            if (session.TurnPhase != DrowZzzTurnPhase.WaitingForPlay)
+            // 防御的 IsLegalMove 検証 (PhaseState + Card 不在の両方を分けて投げる、原因明示のため)
+            if (session.PhaseState != DrowZzzPhaseState.WaitingForPlay)
             {
                 throw new InvalidOperationException(
-                    $"PlayCardAction は WaitingForPlay フェーズでのみ合法です (現フェーズ: {session.TurnPhase})");
+                    $"PlayCardAction は WaitingForPlay フェーズでのみ合法です (現フェーズ: {session.PhaseState})");
             }
 
             var gameState = session.GameState;
@@ -206,7 +206,7 @@ namespace Drowsy.Application.Games.DrowZzz
             var afterPlay = session with
             {
                 GameState = newGameState,
-                TurnPhase = DrowZzzTurnPhase.WaitingForEndTurn,
+                PhaseState = DrowZzzPhaseState.WaitingForEndTurn,
             };
 
             // M2-PR1: プレイされたカードの効果列を catalog から取得し、左から順に Interpreter で逐次評価。
@@ -217,16 +217,16 @@ namespace Drowsy.Application.Games.DrowZzz
         }
 
         // EndTurnAction の状態遷移:
-        // GameState.Turn を Next(playerCount) で次サブターンへ進行 + TurnPhase = WaitingForDraw。
+        // GameState.Turn を Next(playerCount) で次フェーズへ進行 + PhaseState = WaitingForDraw。
         // Players / Deck / Discard / Field / FirstDrowsyPoints は不変。
         // ターン上限 (MaxRoundNumber) 判定は本 PR では行わない (M3 で実装、ADR-0006 §7)。
         private static DrowZzzGameSession ApplyEndTurn(DrowZzzGameSession session)
         {
             // 防御的 IsLegalMove 検証
-            if (session.TurnPhase != DrowZzzTurnPhase.WaitingForEndTurn)
+            if (session.PhaseState != DrowZzzPhaseState.WaitingForEndTurn)
             {
                 throw new InvalidOperationException(
-                    $"EndTurnAction は WaitingForEndTurn フェーズでのみ合法です (現フェーズ: {session.TurnPhase})");
+                    $"EndTurnAction は WaitingForEndTurn フェーズでのみ合法です (現フェーズ: {session.PhaseState})");
             }
 
             var gameState = session.GameState;
@@ -236,7 +236,7 @@ namespace Drowsy.Application.Games.DrowZzz
             return session with
             {
                 GameState = newGameState,
-                TurnPhase = DrowZzzTurnPhase.WaitingForDraw,
+                PhaseState = DrowZzzPhaseState.WaitingForDraw,
             };
         }
     }

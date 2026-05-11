@@ -1,6 +1,6 @@
 # DrowZzz skeleton (M1-PR2)
 
-DrowZzz 固有型(`DrowZzzAction` / `DrowZzzGameSession` / `DrowZzzTurnPhase` / `DrowZzzRule`)の skeleton 構造を確定する機能。
+DrowZzz 固有型(`DrowZzzAction` / `DrowZzzGameSession` / `DrowZzzPhaseState` / `DrowZzzRule`)の skeleton 構造を確定する機能。
 
 ## 概要
 
@@ -17,10 +17,10 @@ ADR-0006 §2 の決定に基づき、DrowZzz の Application 層型骨格を `Dr
 - [DZ-001] [Ubiquitous] The `DrowZzzAction` shall be an abstract record implementing `IGameAction` declared in the `Drowsy.Application.Games.DrowZzz` namespace.
 - [DZ-002] [Ubiquitous] The `StartGameAction`, `DrawCardAction`, and `EndTurnAction` shall be sealed records inheriting `DrowZzzAction` without payload.
 - [DZ-003] [Ubiquitous] The `PlayCardAction` shall be a sealed record inheriting `DrowZzzAction` with a `CardId Card` payload.
-- [DZ-004] [Ubiquitous] The `DrowZzzTurnPhase` shall be an enum with members `WaitingForDraw`, `WaitingForPlay`, and `WaitingForEndTurn`.
-- [DZ-005] [Ubiquitous] The `DrowZzzGameSession` shall be a record class with `GameState` (`Drowsy.Domain.Game.GameState`), `FirstDrowsyPoints` (`IReadOnlyDictionary<PlayerId, int>`), and `TurnPhase` (`DrowZzzTurnPhase`) init-only properties.
+- [DZ-004] [Ubiquitous] The `DrowZzzPhaseState` shall be an enum with members `WaitingForDraw`, `WaitingForPlay`, and `WaitingForEndTurn`.
+- [DZ-005] [Ubiquitous] The `DrowZzzGameSession` shall be a record class with `GameState` (`Drowsy.Domain.Game.GameState`), `FirstDrowsyPoints` (`IReadOnlyDictionary<PlayerId, int>`), and `PhaseState` (`DrowZzzPhaseState`) init-only properties.
 - [DZ-011] [Ubiquitous] The `DrowZzzRule` shall implement `IGameRule<DrowZzzAction, DrowZzzGameSession>`.
-- [DZ-035] [Ubiquitous] The `DrowZzzGameSession` shall override `Equals(DrowZzzGameSession)` and `GetHashCode()` to compare by value(`FirstDrowsyPoints` は順序非依存マルチセット同値、`GameState` / `TurnPhase` は値同値、Phase 1 `GameState` と同パターン;ADR-0002 の判断軸)。
+- [DZ-035] [Ubiquitous] The `DrowZzzGameSession` shall override `Equals(DrowZzzGameSession)` and `GetHashCode()` to compare by value(`FirstDrowsyPoints` は順序非依存マルチセット同値、`GameState` / `PhaseState` は値同値、Phase 1 `GameState` と同パターン;ADR-0002 の判断軸)。
 
 ## 事象駆動要件 (Event-driven)
 
@@ -53,7 +53,7 @@ ADR-0006 §2 の決定に基づき、DrowZzz の Application 層型骨格を `Dr
 - 実装 (本 PR):
   - `Assets/_Project/Scripts/Application/Games/DrowZzz/DrowZzzAction.cs`
   - `Assets/_Project/Scripts/Application/Games/DrowZzz/DrowZzzGameSession.cs`
-  - `Assets/_Project/Scripts/Application/Games/DrowZzz/DrowZzzTurnPhase.cs`
+  - `Assets/_Project/Scripts/Application/Games/DrowZzz/DrowZzzPhaseState.cs`
   - `Assets/_Project/Scripts/Application/Games/DrowZzz/DrowZzzRule.cs`
 - テスト (本 PR、Ubiquitous 要件 DZ-001〜005 / DZ-011 はテスト免除のため対応 fixture を作成しない):
   - `Assets/_Project/Scripts/Tests/Application.Tests/Games/DrowZzz/DrowZzzGameSessionTests.cs` (DZ-006〜010)
@@ -68,9 +68,9 @@ ADR-0006 §2 の決定に基づき、DrowZzz の Application 層型骨格を `Dr
 | DZ-001 | (テスト免除: Ubiquitous) | `abstract record DrowZzzAction : IGameAction` で構造的に保証 |
 | DZ-002 | (テスト免除: Ubiquitous) | `sealed record StartGameAction : DrowZzzAction` 等で構造的に保証 |
 | DZ-003 | (テスト免除: Ubiquitous) | `sealed record PlayCardAction(CardId Card) : DrowZzzAction` で構造的に保証 |
-| DZ-004 | (テスト免除: Ubiquitous) | `enum DrowZzzTurnPhase { ... }` で構造的に保証 |
+| DZ-004 | (テスト免除: Ubiquitous) | `enum DrowZzzPhaseState { ... }` で構造的に保証 |
 | DZ-005 | (テスト免除: Ubiquitous) | `record class DrowZzzGameSession` の init-only プロパティ宣言で構造的に保証 |
-| DZ-006 | コンストラクタ正常系を 1 テスト 1 アサーションで 3 プロパティ分離: `Then_GameStateが入力と一致する` / `Then_FirstDrowsyPointsが入力と一致する` / `Then_TurnPhaseが入力と一致する` | record class の値保持 |
+| DZ-006 | コンストラクタ正常系を 1 テスト 1 アサーションで 3 プロパティ分離: `Then_GameStateが入力と一致する` / `Then_FirstDrowsyPointsが入力と一致する` / `Then_PhaseStateが入力と一致する` | record class の値保持 |
 | DZ-007 | `Given_GameStateにnull_When_DrowZzzGameSessionを生成_Then_ArgumentNullExceptionを投げる` | コンストラクタ null 防御 |
 | DZ-008 | `Given_FirstDrowsyPointsにnull_When_DrowZzzGameSessionを生成_Then_ArgumentNullExceptionを投げる` | コンストラクタ null 防御 |
 | DZ-009 | キー集合不一致を 2 ケース分離: `Given_FirstDrowsyPointsのキー数がPlayersより少ない_...` / `Given_FirstDrowsyPointsのキーがPlayersと部分的に異なる_...` (Then 共通: `ArgumentException`) | コンストラクタ cross-field 検証 |

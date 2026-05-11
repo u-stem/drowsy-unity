@@ -67,13 +67,13 @@
   - **Notes**: M2-PR1 では `ICardCatalog<IEffect>` 型引数変更のみで通すため、本 TODO は急がない。M4 (SO 化) 検討と同時期に再評価
 
 - [ ] **M2 効果追加時の「ドロー総数 ≤ 山札サイズ」確認(M2 各 PR の Self-Review 項目)** `priority: medium`
-  - **Why**: ADR-0007 §「山札枯渇」で「現状の数値前提下(N=2 × MaxRound 20 × 1 Draw + 初期配布 10 = 50 ≤ 山札 56)では枯渇は発生しない」と確定したが、M2 で「ドロー枚数を増やす効果」(例: `DrawCardsEffect(2)` のように 1 ターンに複数枚ドローさせる効果)が追加された場合、ドロー総数が山札サイズを超える可能性がある。各 M2-PR で計算前提が崩れていないかチェックする運用を残す
+  - **Why**: ADR-0007 §「山札枯渇」で「現状の数値前提下(N=2 × MaxRound 21 × 1 Draw + 初期配布 10 = 52 ≤ 山札 56)では枯渇は発生しない」と確定したが(ADR-0009 起票時に MaxRound 20→21 へ訂正反映)、M2 で「ドロー枚数を増やす効果」(例: `DrawCardsEffect(2)` のように 1 ターンに複数枚ドローさせる効果)が追加された場合、ドロー総数が山札サイズを超える可能性がある。各 M2-PR で計算前提が崩れていないかチェックする運用を残す
   - **Done when**:
     - 各 M2-PR(効果 record 追加 PR)の Self-Review チェックリストに「ドロー総数 ≤ 山札サイズ - 初期配布」確認項目を追加(`.github/pull_request_template.md` 拡張、または各 PR の description に明示)
     - M2 完成 PR 時点で本エントリを「完了済み」に移動し、最終的に成立していた数値(ドロー総数 / 山札サイズ)を記録
     - 計算前提が崩れる場合は枯渇シナリオの仕様 ADR(再シャッフル / ゲーム終了 / その他)を別途起票する旨を本 TODO の Notes に追記
   - **Related**: [ADR-0007 §「山札枯渇」](adr/0007-m2-detail-card-effects.md)、[ADR-0006 §6](adr/0006-m1-detail-application-interfaces.md)、M2-PR2 以降(進行中)
-  - **Notes**: M1 完成時点の数値: 初期配布 10、Draw 数 40(N=2 × 20 ラウンド × 1)、合計 50 ≤ 山札 56(余裕 6 枚)。M2 で 1 ターン複数 Draw 効果が入った時点で再計算が必要
+  - **Notes**: 現時点の数値(ADR-0009 起票後): 初期配布 10、Draw 数 42(N=2 × 21 ラウンド × 1)、合計 52 ≤ 山札 56(余裕 4 枚)。M2 で 1 ターン複数 Draw 効果が入った時点で再計算が必要
 
 - [ ] **Roslynator.Analyzers の導入 or CLAUDE.md §7 訂正** `priority: low`
   - **Why**: CLAUDE.md §7「Roslyn Analyzer 構成」に `Roslynator.Analyzers` が公開 Analyzer として導入予定と記載されているが、現状 NuGetForUnity (`Assets/Packages/`) に未配置。ドキュメントと実態が乖離しており、新規参加者(将来の自分含む)が混乱する
@@ -120,6 +120,64 @@
     - 不採用の場合: ADR で「NRT を採らない理由」を記録(同じ問題を繰り返さないため)
   - **Related**: PR #12 (CardData) のレビュー過程で発生した CS8632 警告対応, [`CLAUDE.md`](../CLAUDE.md) §7
   - **Notes**: 必要性が高まった時点で再検討。Phase 2 以降で外部 API クライアント等の null 多発コードが入る前に判断したい
+
+- [ ] **DDP プール枯渇可能性チェック(M2 各 PR の Self-Review 項目)** `priority: medium`
+  - **Why**: ADR-0009 §「DDP プール構造」で「13 種 × 3 枚 = 36 枚」「Round 5/9/13/17/21 で計 5 回抽選 × N=2 = 10 枚抽選」と確定したが、将来「DDP を追加抽選する効果」が登場した場合に総抽選回数がプール容量を超える可能性がある。各 M2-PR で効果が DDP 抽選を増やす変動を含む場合に再計算が必要
+  - **Done when**:
+    - 各 M2-PR(DDP 抽選に影響する effect 追加 PR)の Self-Review チェックリストに「DDP 総抽選 ≤ プール 36」確認項目を追加
+    - M2 完成 PR 時点で本エントリを「完了済み」に移動し、最終的に成立していた数値(総抽選数 / プール容量)を記録
+    - プール枯渇シナリオが発生する場合は別 ADR(プール拡張 / 再シャッフル / 抽選失敗時の挙動)を起票する旨を本 TODO Notes に追記
+  - **Related**: [ADR-0009 §3](adr/0009-m2-m3-dp-and-victory-conditions.md)、[ADR-0007 §「山札枯渇」](adr/0007-m2-detail-card-effects.md)(類似構造の山札枯渇チェック TODO)
+  - **Notes**: 現状想定下の総抽選 = N=2 × 5 = 10 枚 ≤ プール 36 枚(余裕 26 枚)
+
+- [ ] **早期勝利カードの仕様 JIT 確定待ち(M2-PR3+ で実装)** `priority: medium`
+  - **Why**: ADR-0009 §5 で「早期勝利は『特定の効果タイプを持つカード』のプレイで起こる」と確定したが、カード ID / カード名 / 効果 record 名 / 効果フィールド / 効果意味は M2-PR3+ で JIT 共有。ADR-0007 §6「1 PR = 1 effect record」運用に従い、最初の効果 record 着手時にプロジェクトオーナーから受け取る
+  - **Done when**:
+    - M2-PR3+ で「早期勝利トリガーカード」が effect record として実装される(例: `DeclareEarlyWinEffect` 等の仮称、JIT で確定)
+    - 当該カードの CardData (CardId, Name, Attributes) が `InMemoryCardCatalog` に登録される
+    - EARS / .feature で要件 ID 採番される
+  - **Related**: [ADR-0009 §5](adr/0009-m2-m3-dp-and-victory-conditions.md)、[ADR-0007 §6](adr/0007-m2-detail-card-effects.md)
+  - **Notes**: 「持ち点 ≥ 100」「Round ≤ 15」「カードプレイ」の 3 条件が揃ったプレイヤーが勝利、判定タイミング = `PlayCardAction.Apply` 内
+
+- [ ] **DDP / SDP / FDP の正式名変更可能性** `priority: low`
+  - **Why**: プロジェクトオーナーから「FDP / DDP / SDP の名前はいずれも変更可能性あり」と共有済。M2 中の任意のタイミングで正式名が JIT 確定する可能性がある。識別子(record / フィールド名 / EARS / .feature)の変更を伴う場合は機械的リファクタを別 PR で実施
+  - **Done when**:
+    - 正式名が JIT 確定する
+    - 影響範囲(`DrowZzzGameSession` フィールド名 / `IGameConfig.DdpPool` プロパティ名 / EARS 記述 / Tests fixture)を機械的に書き換え
+    - ADR-0009 / ADR-0006 の関連箇所に新正式名を反映(注釈で旧称を残す)
+  - **Related**: [ADR-0009 §1 / §Negative](adr/0009-m2-m3-dp-and-victory-conditions.md)、[ADR-0006 §2.2](adr/0006-m1-detail-application-interfaces.md)
+  - **Notes**: 命名変更時期は不明、M2 完成 PR までに確定すれば一括変更、それ以降は M3 着手時に再評価
+
+- [ ] **`IRandomSource` の `DrowZzzRule` / `EndTurnAction` 経路への注入判断(M2-PR4 着手時に JIT)** `priority: medium`
+  - **Why**: ADR-0009 §4 で確定した「DDP 抽選を `EndTurnAction.Apply` 内で行う」案は `IRandomSource` を `DrowZzzRule` または `EndTurnAction` の経路に注入する必要がある。ADR-0007 §3 で確定した「`DrowZzzRule` constructor 引数は `ICardCatalog<IEffect>` / `EffectInterpreter` のみ」を破壊する可能性がある
+  - **Done when**:
+    - M2-PR4(DDP 抽選機構)着手時に注入方式を JIT 判断:
+      - 案 A: `DrowZzzRule` constructor に `IRandomSource` を追加(ADR-0007 §3 を覆す、別 ADR で記録)
+      - 案 B: `EndTurnAction` 側で別経路(static helper / sealed class 等)を作る
+      - 案 C: `ApplyActionUseCase` 経路に `IRandomSource` を持たせる
+    - 採用案で実装 + テスト更新 + ADR-0007 改訂が必要なら別 PR で起票
+  - **Related**: [ADR-0009 §4](adr/0009-m2-m3-dp-and-victory-conditions.md)、[ADR-0007 §3](adr/0007-m2-detail-card-effects.md)
+  - **Notes**: M2-PR4 着手時に JIT、本 PR 範囲外
+
+- [ ] **`Clock.RoundNumber` / `CurrentRound` を `TurnNumber` / `CurrentTurn` に改名(用語規約整合リファクタ)** `priority: low`
+  - **Why**: ADR-0009 §「用語規約」で「ターン(大単位、30 分)/ フェーズ(中単位、1 プレイヤー 1 行動)/ PhaseState(待ち状態)」をボードゲーム一般用語(Eurogame 寄り)で確定したが、実装名は依然 `Clock.RoundNumber` / `DrowZzzGameSession.CurrentRound` のまま(本 PR スコープを限定するため実装名リネームは別 PR に分離)。用語規約と実装名の不整合は中長期で読みづらさを生む。`M1IntegrationTests.PlayOnePhase` / `PlayPhases` は ADR-0009 同 PR で改名済(旧 `PlayOneSubturn` / `PlaySubturns`)、本 TODO 対象外
+  - **Done when**:
+    - `DrowZzzClock.RoundNumber` → `TurnNumber` に改名(Application 層、`record class DrowZzzClock(int TurnNumber)`)
+    - `DrowZzzGameSession.CurrentRound` → `CurrentTurn` に改名
+    - 既存テスト DZ-010(3 件)が `CurrentRound` / `Clock.RoundNumber` を呼び続けても緑のまま(リネーム反映後)
+    - EARS / .feature `docs/specs/games/drowzzz/skeleton.md`(DZ-010)の式表現を新名へ整合
+    - Domain `TurnState.TurnNumber`(フェーズ番号を保持、汎用名)との命名衝突を XML doc / 注釈で明示
+  - **Related**: [ADR-0009 §6.5](adr/0009-m2-m3-dp-and-victory-conditions.md)、[ADR-0008 §6](adr/0008-m2-drowzzz-clock-and-night-morning.md)、[ADR-0006 §M1-PR2 / DZ-010](adr/0006-m1-detail-application-interfaces.md)
+  - **Notes**: N>2 対応(Hour / Minute 計算式の N=2 専用脱却)と同タイミングで実施するのが筋(`Hour`/`Minute` の N=2 前提も同じタイミングで再評価)。Domain `TurnState` の改名は ADR-0002 「Domain ゲーム非依存」と要相談で別 ADR
+
+- [ ] **EARS / Gherkin 全体の「ラウンド」→「ターン」用語統一(機械的リネーム)** `priority: low`
+  - **Why**: ADR-0009 で「ターン = 大単位、フェーズ = 中単位」を確定したが、EARS / .feature 内の「ラウンド」「N=2 サブターン」等の旧用語が一部残っている(本 PR では実装名 `RoundNumber` を維持する関係で部分置換に留めた、ADR-0009 §6.5)。仕様文書全体を新用語に統一する機械的リファクタ
+  - **Done when**:
+    - `docs/specs/` 配下の全 .md / .feature で「ラウンド」 → 「ターン」(概念表記)、「サブターン」 → 「フェーズ」を機械的置換
+    - 実装識別子参照(`Clock.RoundNumber` 等)は維持(改名は前述の別 TODO で扱う)
+    - traceability チェック通過(EARS ID 維持)
+  - **Related**: [ADR-0009 §6.5 / §「用語規約」](adr/0009-m2-m3-dp-and-victory-conditions.md)
+  - **Notes**: 上記の `Clock.RoundNumber` → `TurnNumber` リネームと同 PR にまとめる方が効率的
 
 - [ ] **`DrowZzzGameSession.CurrentRound` を `Clock.RoundNumber` 経由に整理(後方互換維持リファクタ)** `priority: low`
   - **Why**: ADR-0008 で `DrowZzzClock` 値オブジェクトを導入し、`session.Clock.RoundNumber == session.CurrentRound` の同義関係を確定した。ADR-0008 §3 では「`CurrentRound` は変更しない(後方互換維持)」と判断したため、現状は両者が独立に同じ計算式 `(TurnNumber + 1) / 2` を保持している。将来 `DrowZzzGameSession.CurrentRound => Clock.RoundNumber` の薄いショートカットに置き換えると概念が一本化される
