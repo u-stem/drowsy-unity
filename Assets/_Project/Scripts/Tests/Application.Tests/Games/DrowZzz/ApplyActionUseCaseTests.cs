@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using NUnit.Framework;
+using Drowsy.Application.Catalog;
 using Drowsy.Application.Games.DrowZzz;
+using Drowsy.Application.Games.DrowZzz.Effects;
 using Drowsy.Domain.Cards;
 using Drowsy.Domain.Game;
 using Drowsy.Domain.Players;
@@ -12,6 +14,14 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
     public class ApplyActionUseCaseTests
     {
         // ===== ヘルパー(DrowZzzRuleTests と独立、本 fixture 完結)=====
+
+        // M2-PR1: DrowZzzRule constructor が ICardCatalog<IEffect> / EffectInterpreter を要求するため、
+        // M1 互換挙動を維持する最小依存 (空 catalog + 標準 Interpreter) を内部で組み立てる。
+        // 共通テストヘルパー抽出は docs/todo.md TODO で追跡。
+        private static DrowZzzRule NewRule() =>
+            new DrowZzzRule(
+                new InMemoryCardCatalog(new KeyValuePair<CardId, CardData>[0]),
+                new EffectInterpreter());
 
         private static DrowZzzGameSession NewSession(
             DrowZzzTurnPhase phase = DrowZzzTurnPhase.WaitingForDraw,
@@ -52,7 +62,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_WaitingForDraw_When_DrawCardActionをExecute_Then_RuleApplyの結果と一致する()
         {
             // Given
-            var rule = new DrowZzzRule();
+            var rule = NewRule();
             var useCase = new ApplyActionUseCase(rule);
             var session = NewSession(deck: NewDeck("c1"));
             // When(直接 Apply と useCase.Execute を比較)
@@ -66,7 +76,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_WaitingForPlay_When_PlayCardActionをExecute_Then_RuleApplyの結果と一致する()
         {
             // Given
-            var rule = new DrowZzzRule();
+            var rule = NewRule();
             var useCase = new ApplyActionUseCase(rule);
             var p0Hand = new Hand(new[] { CardId.Of("c1") });
             var session = NewSession(phase: DrowZzzTurnPhase.WaitingForPlay, p0Hand: p0Hand);
@@ -82,7 +92,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_WaitingForEndTurn_When_EndTurnActionをExecute_Then_RuleApplyの結果と一致する()
         {
             // Given
-            var rule = new DrowZzzRule();
+            var rule = NewRule();
             var useCase = new ApplyActionUseCase(rule);
             var session = NewSession(phase: DrowZzzTurnPhase.WaitingForEndTurn);
             // When
@@ -98,7 +108,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_WaitingForPlayでDrawCardAction_When_Execute_Then_InvalidOperationExceptionを投げる()
         {
             // Given(WaitingForPlay は DrawCardAction 非合法)
-            var rule = new DrowZzzRule();
+            var rule = NewRule();
             var useCase = new ApplyActionUseCase(rule);
             var session = NewSession(phase: DrowZzzTurnPhase.WaitingForPlay, deck: NewDeck("c1"));
             // When / Then
@@ -111,7 +121,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_StartGameAction_When_Execute_Then_InvalidOperationExceptionを投げる()
         {
             // Given(StartGameAction は IsLegalMove で常に false、StartGameUseCase 経由で扱う)
-            var rule = new DrowZzzRule();
+            var rule = NewRule();
             var useCase = new ApplyActionUseCase(rule);
             var session = NewSession();
             // When / Then
@@ -123,14 +133,14 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "APP-028")]
         public void Given_sessionにnull_When_Execute_Then_ArgumentNullExceptionを投げる()
         {
-            var useCase = new ApplyActionUseCase(new DrowZzzRule());
+            var useCase = new ApplyActionUseCase(NewRule());
             Assert.Throws<ArgumentNullException>(() => useCase.Execute(null, new DrawCardAction()));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "APP-029")]
         public void Given_actionにnull_When_Execute_Then_ArgumentNullExceptionを投げる()
         {
-            var useCase = new ApplyActionUseCase(new DrowZzzRule());
+            var useCase = new ApplyActionUseCase(NewRule());
             Assert.Throws<ArgumentNullException>(() => useCase.Execute(NewSession(), null));
         }
 

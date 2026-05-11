@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Drowsy.Application.Games.DrowZzz.Effects;
 using Drowsy.Domain.Cards;
 using Drowsy.Domain.Configuration;
 using Drowsy.Domain.Game;
@@ -24,9 +25,11 @@ namespace Drowsy.Application.Games.DrowZzz
     /// <item><see cref="DrowZzzGameSession"/> 構築 (<see cref="DrowZzzTurnPhase.WaitingForDraw"/>)</item>
     /// </list>
     /// <para>
-    /// <see cref="ICardCatalog"/> は本 PR (M1-PR3) では参照しない(<see cref="CardId"/> の移動のみ、
-    /// <see cref="CardData"/> 解決は M1-PR5 以降の <c>PlayCardAction.Apply</c> 実装で必要になる)。
-    /// constructor injection は ADR-0006 §3 通り維持。
+    /// <see cref="ICardCatalog{TEffect}"/> は本 UseCase では参照しない(<see cref="CardId"/> の移動のみ、
+    /// <see cref="CardData"/> 解決は <c>PlayCardAction.Apply</c> 実装で利用され、本 UseCase の内部実装は
+    /// 型引数 <c>IEffect</c> に依存しない)。constructor injection は ADR-0006 §3 通り維持し、
+    /// M2-PR1 で <see cref="ICardCatalog"/> → <see cref="ICardCatalog{TEffect}"/> ジェネリック化に追随する
+    /// 型引数結合(ADR-0007 §3「設計上の割り切り」)を本 UseCase で受容する。
     /// </para>
     /// </remarks>
     public sealed class StartGameUseCase
@@ -37,11 +40,11 @@ namespace Drowsy.Application.Games.DrowZzz
         private const int InitialHandSize = 5;
 
         private readonly IRandomSource _rng;
-        private readonly ICardCatalog _catalog;
+        private readonly ICardCatalog<IEffect> _catalog;
         private readonly IGameConfig _config;
 
         /// <exception cref="ArgumentNullException">いずれかの引数が null</exception>
-        public StartGameUseCase(IRandomSource rng, ICardCatalog catalog, IGameConfig config)
+        public StartGameUseCase(IRandomSource rng, ICardCatalog<IEffect> catalog, IGameConfig config)
         {
             _rng = rng ?? throw new ArgumentNullException(nameof(rng));
             _catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));

@@ -2,8 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
+using Drowsy.Application;
 using Drowsy.Application.Catalog;
 using Drowsy.Application.Games.DrowZzz;
+using Drowsy.Application.Games.DrowZzz.Effects;
 using Drowsy.Application.Tests.Stubs;
 using Drowsy.Domain.Cards;
 using Drowsy.Domain.Configuration;
@@ -35,7 +37,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
 
         private static StartGameUseCase NewUseCase(
             IRandomSource rng = null,
-            ICardCatalog catalog = null,
+            ICardCatalog<IEffect> catalog = null,
             IGameConfig config = null)
         {
             return new StartGameUseCase(

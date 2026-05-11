@@ -121,5 +121,29 @@ namespace Drowsy.Application.Tests.Catalog
             // When / Then
             Assert.Throws<ArgumentException>(() => new InMemoryCardCatalog(entries));
         }
+
+        // ===== APP-037 / APP-038: GetEffects は M2-PR1 段階では常に空配列を返す =====
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "APP-037")]
+        public void Given_登録済CardId_When_GetEffectsを呼ぶ_Then_空配列を返す()
+        {
+            // Given(M2-PR1 段階では効果定義がないため、登録済でも空配列が返る)
+            var catalog = new InMemoryCardCatalog(new[] { Entry("X", NewData("X-card")) });
+            // When
+            var effects = catalog.GetEffects(CardId.Of("X"));
+            // Then(IsEmpty で空であることを確認、IReadOnlyList<IEffect> の Count == 0)
+            Assert.That(effects, Is.Empty);
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "APP-038")]
+        public void Given_未登録CardId_When_GetEffectsを呼ぶ_Then_例外を投げず空配列を返す()
+        {
+            // Given(未登録 CardId に対して KeyNotFoundException を投げない契約、Aggregate 0 個ループが自然)
+            var catalog = new InMemoryCardCatalog(new KeyValuePair<CardId, CardData>[0]);
+            // When
+            var effects = catalog.GetEffects(CardId.Of("Y"));
+            // Then
+            Assert.That(effects, Is.Empty);
+        }
     }
 }

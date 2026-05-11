@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using Drowsy.Application;
+using Drowsy.Application.Games.DrowZzz.Effects;
 using Drowsy.Domain.Cards;
 
 namespace Drowsy.Application.Tests
@@ -8,16 +9,25 @@ namespace Drowsy.Application.Tests
     [TestFixture]
     public class ICardCatalogTests
     {
-        // ICardCatalog のダミー実装。M1-PR2 で本物 (InMemoryCardCatalog) が来るまでの契約検証用。
-        private sealed class DummyCatalog : ICardCatalog
+        // ICardCatalog<TEffect> の契約検証用ダミー実装 (M2-PR1 で ジェネリック化、ADR-0007 §2)。
+        // TEffect = IEffect を採用 (DrowZzz 専用)。
+        private sealed class DummyCatalog : ICardCatalog<IEffect>
         {
             private readonly Dictionary<CardId, CardData> _store = new Dictionary<CardId, CardData>();
+            private readonly Dictionary<CardId, IReadOnlyList<IEffect>> _effects =
+                new Dictionary<CardId, IReadOnlyList<IEffect>>();
 
             public void Register(CardId id, CardData data) => _store[id] = data;
+
+            public void RegisterEffects(CardId id, IReadOnlyList<IEffect> effects) =>
+                _effects[id] = effects;
 
             public CardData Get(CardId id) => _store[id];
 
             public bool TryGet(CardId id, out CardData data) => _store.TryGetValue(id, out data);
+
+            public IReadOnlyList<IEffect> GetEffects(CardId id) =>
+                _effects.TryGetValue(id, out var list) ? list : System.Array.Empty<IEffect>();
         }
 
         private static CardData NewData(string name) =>
