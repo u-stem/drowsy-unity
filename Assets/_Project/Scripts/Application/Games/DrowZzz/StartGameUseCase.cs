@@ -102,14 +102,21 @@ namespace Drowsy.Application.Games.DrowZzz
                 playerStates[i] = new PlayerState(shuffledPlayers[i], hands[i]);
             }
 
-            // 5. SDP 初期化(全プレイヤー 0、ADR-0009 §「DP 種別」§SDP の「初期値 0」、本 PR M2-PR3 で追加)
+            // 5. SDP / DDP 初期化(全プレイヤー 0、ADR-0009 §「DP 種別」)
+            // SDP: M2-PR3 で追加、初期値 0(公開情報)
+            // DDP: M2-PR4 で追加、初期値 0(隠し情報、Turn 5/9/13/17/21 開始時に DdpPool から累積)
             var sdpDict = new Dictionary<PlayerId, int>(shuffledPlayers.Count);
+            var ddpDict = new Dictionary<PlayerId, int>(shuffledPlayers.Count);
             for (int i = 0; i < shuffledPlayers.Count; i++)
             {
                 sdpDict[shuffledPlayers[i]] = 0;
+                ddpDict[shuffledPlayers[i]] = 0;
             }
 
-            // 6. GameState + DrowZzzGameSession 構築
+            // 6. DdpPool 初期化(IGameConfig.DdpPool を Fisher-Yates Shuffle、ADR-0009 §3 / DZ-140)
+            var ddpPool = new DdpPool(_config.DdpPool).Shuffle(_rng);
+
+            // 7. GameState + DrowZzzGameSession 構築
             var gameState = new GameState(
                 playerStates,
                 deck,
@@ -120,7 +127,9 @@ namespace Drowsy.Application.Games.DrowZzz
             return new DrowZzzGameSession(
                 gameState,
                 fdpDict,
+                ddpDict,
                 sdpDict,
+                ddpPool,
                 DrowZzzPhaseState.WaitingForDraw);
         }
 

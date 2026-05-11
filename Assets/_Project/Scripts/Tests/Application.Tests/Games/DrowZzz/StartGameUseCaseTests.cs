@@ -294,5 +294,57 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             // Then
             Assert.That(session.SecondDrowsyPoints.Values.All(v => v == 0), Is.True);
         }
+
+        // ===== DZ-139: DDP 初期化(M2-PR4 で追加、ADR-0009 §「DP 種別」§DDP)=====
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-139")]
+        public void Given_有効な引数_When_Execute_Then_DrawDrowsyPointsキー集合がplayersと一致する()
+        {
+            // Given
+            var useCase = NewUseCase();
+            var players = NewPlayers("p1", "p2");
+            // When
+            var session = useCase.Execute(players, NewDeck(20));
+            // Then
+            Assert.That(session.DrawDrowsyPoints.Keys, Is.EquivalentTo(players));
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-139")]
+        public void Given_有効な引数_When_Execute_Then_DrawDrowsyPointsの全値が0で初期化される()
+        {
+            // Given(ADR-0009 §「DDP 抽選タイミング」: 初期値 0、Turn 5/9/13/17/21 で累積開始)
+            var useCase = NewUseCase();
+            // When
+            var session = useCase.Execute(NewPlayers("p1", "p2"), NewDeck(20));
+            // Then
+            Assert.That(session.DrawDrowsyPoints.Values.All(v => v == 0), Is.True);
+        }
+
+        // ===== DZ-140: DdpPool が IGameConfig.DdpPool を Shuffle 済みで保持(M2-PR4 で追加)=====
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-140")]
+        public void Given_デフォルトStubGameConfig_When_Execute_Then_DdpPoolが39要素を持つ()
+        {
+            // Given(StubGameConfig.DdpPool = DdpPoolConstants.BuildDefaultPool() = 13 種 × 3 枚 = 39 要素)
+            var useCase = NewUseCase();
+            // When
+            var session = useCase.Execute(NewPlayers("p1", "p2"), NewDeck(20));
+            // Then
+            Assert.That(session.DdpPool.Count, Is.EqualTo(39));
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-140")]
+        public void Given_デフォルトStubGameConfig_When_Execute_Then_DdpPoolマルチセットがIGameConfigDdpPoolと一致()
+        {
+            // Given(Shuffle はマルチセットを保つ、Fisher-Yates 性)
+            var config = new StubGameConfig();
+            var useCase = NewUseCase(config: config);
+            // When
+            var session = useCase.Execute(NewPlayers("p1", "p2"), NewDeck(20));
+            // Then(マルチセット比較: 順序は問わず、各値の出現回数が一致)
+            var expectedSorted = config.DdpPool.OrderBy(v => v).ToArray();
+            var actualSorted = session.DdpPool.Values.OrderBy(v => v).ToArray();
+            Assert.That(actualSorted, Is.EqualTo(expectedSorted));
+        }
     }
 }

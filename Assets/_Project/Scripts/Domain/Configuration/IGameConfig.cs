@@ -24,6 +24,16 @@ namespace Drowsy.Domain.Configuration
         /// </summary>
         IReadOnlyList<int> FdpPool { get; }
 
+        /// <summary>
+        /// DrowZzz の Draw Drowsy Point (DDP) 共有プール。
+        /// ゲーム開始時に <c>StartGameUseCase</c> が <see cref="Drowsy.Domain.Random.IRandomSource"/> で Shuffle し、
+        /// セッションに保持する。Turn 5 / 9 / 13 / 17 / 21 の開始時にプール先頭から N (= player count) 枚を抽選し、
+        /// プールから除外して各プレイヤーの DDP に累積する(ADR-0009 §「DDP プールの構造」/
+        /// §「DDP 抽選タイミング」、M2-PR4 で追加)。
+        /// DrowZzz の現行値は 13 種(-30, -25, ..., +30)× 3 枚 = 39 要素。
+        /// </summary>
+        IReadOnlyList<int> DdpPool { get; }
+
         // 後続追加予定:
         //   int MaxRoundNumber { get; }   // M3 着手 PR (ゲーム終了判定)
         //   その他 M2 以降のカード効果実装で必要になり次第追加

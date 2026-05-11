@@ -12,7 +12,7 @@ ADR-0009 §「DP 種別」で確定した DP 構造のうち、本機能では S
 | **SDP** | **Second Drowsy Point: 各プレイヤーの行動で変動、公開情報、初期値 0** | **本機能(M2-PR3)** |
 | DDP | Draw Drowsy Point: 2 時間ごと(計 5 回)に共有プールから抽選、隠し情報、累積式 | M2-PR4 候補 |
 
-ADR-0009 §「持ち点」: **持ち点 = FDP + DDP + SDP**(計算式)。本 PR では DDP がまだ存在しないため、`TotalPoints(PlayerId)` の実装は **FDP + SDP** で完結(DDP は M2-PR4 で 0 から加算開始する形で後付け可能、ADR-0009 §「DDP 抽選タイミング」)。
+ADR-0009 §「持ち点」: **持ち点 = FDP + DDP + SDP**(計算式)。本 PR (M2-PR3) 起票時点では DDP がまだ存在しなかったため `TotalPoints(PlayerId)` の実装は **FDP + SDP** で完結していたが、**M2-PR4 で DDP が追加され、`TotalPoints` は 3 項合計に拡張済**(`dp-mechanism-ddp.md` DZ-138 参照)。本仕様 §「事象駆動要件」DZ-103 も M2-PR4 で 3 項版に整合更新済。
 
 ## actor 概念 (ADR-0007 §1.4 JIT 確定事項)
 
@@ -33,7 +33,7 @@ ADR-0009 §「持ち点」: **持ち点 = FDP + DDP + SDP**(計算式)。本 PR 
 ## 事象駆動要件 (Event-driven)
 
 - [DZ-100] When `DrowZzzGameSession` is constructed with valid `SecondDrowsyPoints`, the property value shall be retained (defensive copy of the source dictionary).
-- [DZ-103] When `DrowZzzGameSession.TotalPoints(playerId)` is computed (M2-PR3 段階の DDP 未実装下), it shall return `FirstDrowsyPoints[playerId] + SecondDrowsyPoints[playerId]`.
+- [DZ-103] When `DrowZzzGameSession.TotalPoints(playerId)` is computed (M2-PR4 以降 DDP 実装下), it shall return `FirstDrowsyPoints[playerId] + DrawDrowsyPoints[playerId] + SecondDrowsyPoints[playerId]`(M2-PR3 段階では DDP が未存在で 2 項合計だったが、本式は M2-PR4 で 3 項に拡張、`dp-mechanism-ddp.md` DZ-138 を参照)。
 - [DZ-104] When `DrowZzzGameSession.TotalPoints(playerId)` is called with a `PlayerId` not present in the session, it shall throw `ArgumentException`.
 
 ## 異常要件 (Unwanted)

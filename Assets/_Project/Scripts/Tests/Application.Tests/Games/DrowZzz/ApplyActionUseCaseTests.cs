@@ -50,7 +50,14 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 [PlayerId.Of("p1")] = 0,
                 [PlayerId.Of("p2")] = 0,
             };
-            return new DrowZzzGameSession(gs, fdp, sdp, phase);
+            // DDP / DdpPool は M2-PR4 で追加(ADR-0009 §「DP 種別」/ §「DDP プールの構造」)。
+            // 本ヘルパー利用テストは DDP 抽選機構を検証しないため、DDP=0 / 空 DdpPool で固定。
+            var ddp = new Dictionary<PlayerId, int>
+            {
+                [PlayerId.Of("p1")] = 0,
+                [PlayerId.Of("p2")] = 0,
+            };
+            return new DrowZzzGameSession(gs, fdp, ddp, sdp, DdpPool.Empty, phase);
         }
 
         private static Pile NewDeck(params string[] cardIds)

@@ -23,14 +23,16 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 new InMemoryCardCatalog(new KeyValuePair<CardId, CardData>[0]),
                 new EffectInterpreter());
 
-        // 全引数オプション、デフォルトは N=2 / WaitingForDraw / 空 Deck / 空 Hand
+        // 全引数オプション、デフォルトは N=2 / WaitingForDraw / 空 Deck / 空 Hand / 空 DdpPool / 全 DP=0
         private static DrowZzzGameSession NewSession(
             DrowZzzPhaseState phase = DrowZzzPhaseState.WaitingForDraw,
             int currentPlayerIndex = 0,
             Pile deck = null,
             Hand p0Hand = null,
             Hand p1Hand = null,
-            int turnNumber = 1)
+            int turnNumber = 1,
+            DdpPool ddpPool = null,
+            IReadOnlyDictionary<PlayerId, int> ddp = null)
         {
             var p0 = new PlayerState(PlayerId.Of("p1"), p0Hand ?? Hand.Empty);
             var p1 = new PlayerState(PlayerId.Of("p2"), p1Hand ?? Hand.Empty);
@@ -52,7 +54,14 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 [PlayerId.Of("p1")] = 0,
                 [PlayerId.Of("p2")] = 0,
             };
-            return new DrowZzzGameSession(gs, fdp, sdp, phase);
+            // DDP / DdpPool は M2-PR4 で追加(ADR-0009 §「DP 種別」/ §「DDP プールの構造」)。
+            // DDP 自動抽選機構を検証しないテストはデフォルト DDP=0 / 空 DdpPool で十分。
+            var ddpResolved = ddp ?? new Dictionary<PlayerId, int>
+            {
+                [PlayerId.Of("p1")] = 0,
+                [PlayerId.Of("p2")] = 0,
+            };
+            return new DrowZzzGameSession(gs, fdp, ddpResolved, sdp, ddpPool ?? DdpPool.Empty, phase);
         }
 
         private static Pile NewDeck(params string[] cardIds)
@@ -728,6 +737,154 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var ex = Assert.Throws<ArgumentNullException>(() =>
                 _ = new DrowZzzRule(catalog, null));
             Assert.That(ex!.ParamName, Is.EqualTo("interpreter"));
+        }
+
+        // ===== DZ-141: Turn 5/9/13/17/21 開始時に N=2 枚抽選 + DrawDrowsyPoints 累積 =====
+        // turnNumberBefore は「後手フェーズ完了直前」(後手 CurrentPlayerIndex=1) の TurnNumber。
+        // N=2 で Round R の最後フェーズ = 2*R、Round R+1 の最初フェーズ = 2*R + 1。
+        // EndTurn 後の CurrentPlayerIndex=0 + 新ターン番号 ∈ {5,9,13,17,21} が抽選トリガー(MC/DC ケース 1)。
+        //
+        // 複数 Assert.That 並列の採用根拠: DDP 自動抽選という「1 ドメインイベント」の複合不変条件
+        // (Round 遷移・プール消費枚数・先手取得値・後手取得値)を 1 メソッド内で検証する。
+        // 個別テストに分離すると「DdpPool.Count だけ変化して DrawDrowsyPoints が変化しないバグ」を
+        // 見逃す恐れがあるため、ドメインイベント単位での一括検証を採用(CLAUDE.md §6 1 テスト 1 アサーション
+        // 原則の「観察可能な 1 アクションの複合結果検証」例外)。
+        // ※ Unity NUnit は Assert.Multiple 未対応のため、各 Assert.That を並列に書く(最初の失敗で停止する)。
+
+        [Category("Medium"), Category("Normal"), Property("Requirement", "DZ-141")]
+        [TestCase(8, 5, TestName = "Round 4→5 (23:00)")]
+        [TestCase(16, 9, TestName = "Round 8→9 (01:00)")]
+        [TestCase(24, 13, TestName = "Round 12→13 (03:00)")]
+        [TestCase(32, 17, TestName = "Round 16→17 (05:00)")]
+        [TestCase(40, 21, TestName = "Round 20→21 (07:00)")]
+        public void Given_ターン境界後手EndTurn_When_次がDDP抽選ターン_Then_DdpPool2枚消費_先手後手DDP累積(
+            int turnNumberBefore, int expectedRoundAfter)
+        {
+            // Given(turnNumberBefore = TurnNumber 単位、expectedRoundAfter = Round 単位、N=2 で TurnNumber = 2*Round)
+            // DdpPool 先頭 = [10, -20, 残 2 枚はダミー]、後手 EndTurn 待ち
+            var rule = NewRule();
+            var pool = new DdpPool(new[] { 10, -20, 99, 99 });
+            var session = NewSession(
+                phase: DrowZzzPhaseState.WaitingForEndTurn,
+                turnNumber: turnNumberBefore,
+                currentPlayerIndex: 1,
+                ddpPool: pool);
+
+            // When(後手 EndTurn → 新ターン番号 ∈ {5,9,13,17,21})
+            var result = rule.Apply(session, new EndTurnAction());
+
+            // Then(MC/DC ケース 1: ターン境界 + 抽選対象ターン → DdpPool 2 枚消費 + DDP 累積)
+            Assert.That(result.Clock.RoundNumber, Is.EqualTo(expectedRoundAfter),
+                "Round が R+1 へ進んでいる");
+            Assert.That(result.DdpPool.Count, Is.EqualTo(2),
+                "DdpPool から N=2 枚消費(残 2 枚)");
+            Assert.That(result.DrawDrowsyPoints[PlayerId.Of("p1")], Is.EqualTo(10),
+                "先手 p1 が DdpPool[0]=10 を取得");
+            Assert.That(result.DrawDrowsyPoints[PlayerId.Of("p2")], Is.EqualTo(-20),
+                "後手 p2 が DdpPool[1]=-20 を取得");
+        }
+
+        // ===== DZ-142: 抽選対象外ターン {2, 3, 4, 6, 10, ...} 開始時は DDP / DdpPool 不変 =====
+        // 複数 Assert.That 並列採用根拠は DZ-141 と同様(1 ドメインイベントの複合不変条件)。
+
+        [Category("Medium"), Category("Normal"), Property("Requirement", "DZ-142")]
+        [TestCase(2, 2, TestName = "Round 1→2 (対象外)")]
+        [TestCase(4, 3, TestName = "Round 2→3 (対象外)")]
+        [TestCase(6, 4, TestName = "Round 3→4 (対象外)")]
+        [TestCase(10, 6, TestName = "Round 5→6 (対象外)")]
+        [TestCase(18, 10, TestName = "Round 9→10 (対象外)")]
+        public void Given_ターン境界後手EndTurn_When_次が抽選対象外ターン_Then_DdpPoolもDDPも不変(
+            int turnNumberBefore, int expectedRoundAfter)
+        {
+            // Given(turnNumberBefore = TurnNumber 単位、N=2 で TurnNumber = 2*Round)
+            // DdpPool 先頭 = [10, -20, ...]、後手 EndTurn 待ち
+            var rule = NewRule();
+            var pool = new DdpPool(new[] { 10, -20, 99, 99 });
+            var session = NewSession(
+                phase: DrowZzzPhaseState.WaitingForEndTurn,
+                turnNumber: turnNumberBefore,
+                currentPlayerIndex: 1,
+                ddpPool: pool);
+
+            // When(後手 EndTurn → 新ターン番号 ∉ {5,9,13,17,21})
+            var result = rule.Apply(session, new EndTurnAction());
+
+            // Then(MC/DC ケース 4: ターン境界だが抽選対象外 → DdpPool / DDP 共に不変)
+            Assert.That(result.Clock.RoundNumber, Is.EqualTo(expectedRoundAfter),
+                "Round が R+1 へ進んでいる");
+            Assert.That(result.DdpPool, Is.EqualTo(pool),
+                "DdpPool は不変(4 枚保持)");
+            Assert.That(result.DrawDrowsyPoints[PlayerId.Of("p1")], Is.EqualTo(0),
+                "先手 p1 の DDP は 0 のまま");
+            Assert.That(result.DrawDrowsyPoints[PlayerId.Of("p2")], Is.EqualTo(0),
+                "後手 p2 の DDP は 0 のまま");
+        }
+
+        // ===== DZ-143: ターン境界以外(先手 EndTurn だけ)では DDP 抽選を行わない =====
+        // Round 5 の先手フェーズ(TurnNumber=9, CurrentPlayerIndex=0)で EndTurn → 後手フェーズへ進む
+        // (CurrentPlayerIndex 0 → 1)が、ターン境界ではないため抽選トリガーは発火しない。
+        // ※ 既存テスト DZ-070 / DZ-071 と異なり、新ターン番号が DrawRounds に含まれる場合でも抽選が行われないことを表明。
+        // 複数 Assert.That 並列採用根拠は DZ-141 と同様。
+
+        [Test, Category("Medium"), Category("Normal"), Property("Requirement", "DZ-143")]
+        public void Given_Round5先手フェーズEndTurn_When_CurrentPlayerIndex0から1へ_Then_DdpPoolもDDPも不変()
+        {
+            // Given(Round 5 の先手フェーズ TurnNumber=9 / CurrentPlayerIndex=0、Round 5 は DrawRounds 対象)
+            var rule = NewRule();
+            var pool = new DdpPool(new[] { 10, -20, 99, 99 });
+            var session = NewSession(
+                phase: DrowZzzPhaseState.WaitingForEndTurn,
+                turnNumber: 9,
+                currentPlayerIndex: 0,
+                ddpPool: pool);
+
+            // When(先手 EndTurn → CurrentPlayerIndex 0 → 1、まだ Round 5 内、ターン境界ではない)
+            var result = rule.Apply(session, new EndTurnAction());
+
+            // Then(MC/DC ケース 3: ターン境界ではない → 抽選トリガー不発)
+            Assert.That(result.GameState.Turn.CurrentPlayerIndex, Is.EqualTo(1),
+                "CurrentPlayerIndex が 0 → 1 に進む");
+            Assert.That(result.DdpPool, Is.EqualTo(pool),
+                "DdpPool は不変(Round 5 開始の抽選は後手 EndTurn まで保留)");
+            Assert.That(result.DrawDrowsyPoints[PlayerId.Of("p1")], Is.EqualTo(0),
+                "先手 p1 の DDP は 0 のまま");
+            Assert.That(result.DrawDrowsyPoints[PlayerId.Of("p2")], Is.EqualTo(0),
+                "後手 p2 の DDP は 0 のまま");
+        }
+
+        // ===== DZ-144: 複数回 DDP 抽選で DrawDrowsyPoints が累積される =====
+        // Round 4→5 で 1 回目(先手 +5 / 後手 -10)、Round 8→9 で 2 回目(先手 +20 / 後手 +25)を、
+        // 2 回目の事前状態を直接構築する形でシミュレートし、累積結果を検証する。
+        // 複数 Assert.That 並列採用根拠は DZ-141 と同様。
+
+        [Test, Category("Medium"), Category("Normal"), Property("Requirement", "DZ-144")]
+        public void Given_1回目抽選済の状態_When_2回目DDP抽選_Then_DrawDrowsyPointsが累積される()
+        {
+            // Given(1 回目 Round 5 で +5 / -10 を取得済の状態、Round 8→9 直前を再現)
+            var rule = NewRule();
+            var poolBefore2nd = new DdpPool(new[] { 20, 25 });  // 2 回目抽選用に残 2 枚
+            var ddpAfter1st = new Dictionary<PlayerId, int>
+            {
+                [PlayerId.Of("p1")] = 5,    // Round 5 1 回目で +5 取得済
+                [PlayerId.Of("p2")] = -10,  // Round 5 1 回目で -10 取得済
+            };
+            var session = NewSession(
+                phase: DrowZzzPhaseState.WaitingForEndTurn,
+                turnNumber: 16,             // Round 8 後手フェーズ (CurrentPlayerIndex=1)
+                currentPlayerIndex: 1,
+                ddpPool: poolBefore2nd,
+                ddp: ddpAfter1st);
+
+            // When(後手 EndTurn → Round 9 = 2 回目の DDP 抽選トリガー)
+            var result = rule.Apply(session, new EndTurnAction());
+
+            // Then(累積: p1 = 5 + 20 = 25、p2 = -10 + 25 = 15)
+            Assert.That(result.DrawDrowsyPoints[PlayerId.Of("p1")], Is.EqualTo(25),
+                "先手 p1 の DDP = 5 + 20 = 25");
+            Assert.That(result.DrawDrowsyPoints[PlayerId.Of("p2")], Is.EqualTo(15),
+                "後手 p2 の DDP = -10 + 25 = 15");
+            Assert.That(result.DdpPool.IsEmpty, Is.True,
+                "2 回目で残 2 枚全て消費、空 Pool");
         }
     }
 }
