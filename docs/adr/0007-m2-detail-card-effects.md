@@ -411,9 +411,57 @@ ADR-0005 / ADR-0006 と同じ運用:後追い chore は `docs/todo.md` で追跡
 - NRT 検討(継続保留、必要性が高まった時点で再評価)
 - Roslynator 整合(継続保留)
 
+### M2-PR1 完成記録(2026-05-11)
+
+**完成 PR**: PR #30 `feat(app): ICardCatalog<TEffect> ジェネリック化と DrowZzzRule 効果評価拡張 (M2-PR1 完成)`(merged `f43d7c1`、既存 ADR-0006 §M1 着手 PR 群と同じ表記スタイル)
+
+#### Definition of Done 達成項目
+
+| スコープ項目 | 達成状況 |
+| ---- | ---- |
+| `IEffect.cs` 新規(空 marker interface) | ✓ |
+| `EffectInterpreter.cs` 新規(空の switch、`_` ケースで `NotImplementedException`、§1.3) | ✓ |
+| `ICardCatalog<TEffect>` ジェネリック化(`ICardCatalog.cs` 更新) | ✓ |
+| `InMemoryCardCatalog` の `ICardCatalog<IEffect>` 実装更新(全カード Effect 空配列) | ✓ |
+| `DrowZzzRule.PlayCardAction.Apply` の効果逐次評価形(0 個でも動く)拡張 | ✓ |
+| `DrowZzzRule` constructor に `ICardCatalog<IEffect>` / `EffectInterpreter` 追加 | ✓ |
+| `StartGameUseCase` constructor の `ICardCatalog<IEffect>` ジェネリック化 | ✓(本 ADR §3「設計上の割り切り」継続) |
+| EARS / Gherkin 新規(APP-031〜038、DZ-082〜088) | ✓ |
+| 既存テスト全緑維持 | ✓ |
+
+### M2-PR3 完成記録(2026-05-11)
+
+**完成 PR**: PR #35 `feat(app): SDP 機構 + 効果 record とカード「コップ一杯の脅威」を実装 (M2-PR3)`(merged `d03c135`、ADR-0008 §M2-PR2 完成記録と同表記スタイル、本 ADR §1.4 訂正 + ADR-0008 §8 訂正は本 PR #35 内で同梱済)
+
+EARS / NUnit 増加:
+- 仕様 ID: DZ-099〜DZ-127(29 ID、`dp-mechanism` / `effects/{adjust-sdp,draw-card-effect,time-of-day-branch}` / `cards/cup-of-threat`)+ APP-039 / APP-040(`in-memory-card-catalog` 拡張)
+- NUnit Property: **+37 件**(新規 4 ファイル 25 件:`AdjustSdpEffectTests` 5 / `DrawCardEffectTests` 7 / `TimeOfDayBranchEffectTests` 7 / `CupOfThreatCardTests` 6 + 既存 3 ファイル 12 件:`DrowZzzGameSessionTests` +9 / `StartGameUseCaseTests` +2 / `InMemoryCardCatalogTests` +1)
+
+#### Definition of Done 達成項目(本 ADR §1.4「actor 拡張」JIT 確定の完成)
+
+| スコープ項目 | 達成状況 |
+| ---- | ---- |
+| 他者影響系 actor 拡張案の JIT 確定(§1.4 案 A 派生の `enum SdpTarget`)| ✓ §1.4 末尾に M2-PR3 JIT 確定文を追記 |
+| `SdpTarget enum { Self, Opponent }` 実装 | ✓ `Effects/SdpTarget.cs` |
+| `AdjustSdpEffect(SdpTarget Target, int Delta)` record + EffectInterpreter case | ✓(DZ-110〜DZ-113) |
+| `DrawCardEffect(SdpTarget Target, int Count)` record + EffectInterpreter case + Opponent 防御 | ✓(DZ-114〜DZ-118) |
+| `InMemoryCardCatalog` の 2 段 constructor(`entries, effects`) | ✓(APP-039 / APP-040) |
+| `EffectInterpreter.Apply` シグネチャは `(session, effect)` 維持(§1.4 案 B 不採用) | ✓ |
+
+#### 本 PR が確定した ADR-0007 内の JIT 判断ポイント
+
+- **§1.4「他者影響系 actor 拡張」**: 案 A サブセット(`enum SdpTarget` 引数)を採用、案 B(`EffectInterpreter` シグネチャ拡張)は不採用と確定
+- 実装名 `SdpTarget` は将来 DDP / FDP 操作系効果が増えた時点で `EffectTarget` への改名 or 別 enum 新設を再評価(`docs/todo.md` 追跡候補)
+
+#### M2-PR3 進行中の学び
+
+- **breaking change の波及**: `DrowZzzGameSession` の 3 引数 → 4 引数 constructor 変更は全 4 テストファイル(`DrowZzzGameSessionTests` / `ApplyActionUseCaseTests` / `DrowZzzRuleTests` / `StartGameUseCaseTests`)+ `StartGameUseCase` 実装 1 件の機械的修正で完結した。ヘルパー関数 `Sdp()`(引数なしで `[p1=0, p2=0]` を返す)を導入することで既存テストの修正は最小化
+- **`ICardCatalog` 2 段 constructor**: 後方互換維持の overload 方式(`(entries)` → `(entries, null)` 内部委譲)で M1〜M2-PR2 のテストは無変更で通る。Breaking change を避けつつ機能拡張する手法として、`InMemoryCardCatalog` 拡張は他の similar API 拡張時の参考になる
+- **code-reviewer 7 件指摘の反映**: 警告 3 件すべて反映(`SdpTarget` 流用意図 XML doc 明記 / `TimeOfDayBranchEffect` list 要素 null 構築時防御 / トレーサビリティ表とテスト名整合)、提案 4 件中 2 件反映、2 件 Skip(SDP 二重コピー / `GetHashCode` 空 list 初期値 0、現状性能問題なし)
+
 ### M2 完成記録の追記タイミング(後続 PR で実施)
 
-本 ADR 起票 PR では Implementation Notes §M2 完成記録は **空欄のまま**。M2-PR-N(最終 PR)で完成日 / Definition of Done 達成方法 / 最終的な PR 群一覧を本 ADR に追記する(ADR-0005 §M1 完成記録 / ADR-0006 §M1 着手 PR 群 の運用と同じ)。
+本 ADR の M2-PR1 / M2-PR3 完成記録は §直上に追記済。**M2 全体の完成(M2-PR-N 最終 PR)** 時点で、本 ADR §M2 完成記録(全体)を別途追加し、Definition of Done 達成方法 / 最終的な PR 群一覧 / 完成日を集約する(ADR-0005 §M1 完成記録 / ADR-0006 §M1 着手 PR 群 の運用と同じ)。M2-PR2(DrowZzzClock)完成記録は ADR-0008 §M2-PR2 完成記録、M2-PR4 以降(DDP 機構 / 後続効果カード)は当該 PR 単位で本 ADR or 関連 ADR に追記する。
 
 ## Related
 

@@ -354,9 +354,25 @@ Status は `Accepted` のまま維持(ADR-0001 「合意後に書き換える」
 
 ADR-0007 §6 / 本 ADR §8 の JIT 共有方式継続。Clock を参照する最初の効果 record(夜カード or 朝カード)登場時に、効果 record と Clock 参照 API を JIT 確定する。
 
+### M2-PR3 における §8 JIT 確定の完成記録(2026-05-11)
+
+**完成 PR**: PR #35 `feat(app): SDP 機構 + 効果 record とカード「コップ一杯の脅威」を実装 (M2-PR3)`(merged `d03c135`)
+
+M2-PR3 で本 ADR §8「Clock を参照する効果 record」の JIT 確定が完了:
+
+- **採用案**: `TimeOfDayBranchEffect(IReadOnlyList<IEffect> NightEffects, IReadOnlyList<IEffect> MorningEffects)` ラッパー record 1 種で「同一カードが夜・朝で別効果」を表現
+- **不採用案**: 「効果自身が判定」(record 数爆発)/「`ICardCatalog` 条件付き返却」(`ICardCatalog<TEffect>` シグネチャ再設計が ADR-0007 §3 / §6 と非互換)
+- 本 ADR §8 末尾に M2-PR3 JIT 確定文を追記(本 PR #35 で同梱訂正済、Status は `Accepted` のまま維持)
+
+実装位置:
+- `Effects/TimeOfDayBranchEffect.cs`(順序保持シーケンス同値で Equals override、list 要素 null 構築時防御)
+- `Effects/EffectInterpreter.cs` の `ApplyTimeOfDayBranch` ケース(`Clock.IsNight` / `IsMorning` の二択で Aggregate、両 false の Round 22+ で no-op)
+- EARS: `docs/specs/games/drowzzz/effects/time-of-day-branch.md`(DZ-119〜DZ-124)
+- 実例: カード「コップ一杯の脅威」(No.01)が本ラッパーで夜・朝完全反転効果を 1 ストラクチャに収めている(`docs/specs/games/drowzzz/cards/cup-of-threat.md`)
+
 ### M2 全体の完成記録の追記タイミング(M2 最終 PR で実施)
 
-M2-PR2 完成記録は §M2-PR2 完成記録(2026-05-11)に追記済(本 §直上)。M2 全体の完成記録(M2-PR3〜M2-PR-N の効果 record 群を含む)は **ADR-0007** の Implementation Notes に追記する(本 ADR ではない、ADR-0007 §M2 完成記録の追記タイミング 参照)。本 ADR は M2-PR2 単独 PR のスコープに閉じる。
+M2-PR2 完成記録は §M2-PR2 完成記録(2026-05-11)に追記済、M2-PR3 における §8 JIT 確定の完成記録は §直上に追記済。M2 全体の完成記録(M2-PR3〜M2-PR-N の効果 record 群を含む)は **ADR-0007** の Implementation Notes に追記する(本 ADR ではない、ADR-0007 §M2 完成記録の追記タイミング 参照)。本 ADR は Clock + 夜・朝判定 API のスコープに閉じる。
 
 ## Related
 
