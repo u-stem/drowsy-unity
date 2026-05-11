@@ -1,3 +1,4 @@
+using System;
 using Drowsy.Domain.Cards;
 
 namespace Drowsy.Application.Games.DrowZzz
@@ -23,9 +24,19 @@ namespace Drowsy.Application.Games.DrowZzz
 
     /// <summary>
     /// 現プレイヤーの手札から指定 <paramref name="Card"/> を場 (<c>Field</c>) に移動するアクション。
+    /// <see cref="Card"/> は null 不可(生成時 / <c>with</c> 式 経由の両方で <see cref="ArgumentNullException"/> で防御)。
     /// </summary>
     /// <param name="Card">場に出すカードの識別子(現プレイヤーの手札に存在することが合法条件)</param>
-    public sealed record PlayCardAction(CardId Card) : DrowZzzAction;
+    public sealed record PlayCardAction(CardId Card) : DrowZzzAction
+    {
+        /// <summary>
+        /// 場に出すカードの識別子。
+        /// record positional の自動生成 init setter に <c>value ?? throw</c> ガードを被せ、
+        /// <c>new PlayCardAction(null)</c> も <c>existing with { Card = null }</c> も両方弾く
+        /// (Phase 1 <c>PlayerState</c> / <c>GameState</c> の null 防御パターン整合)。
+        /// </summary>
+        public CardId Card { get; init; } = Card ?? throw new ArgumentNullException(nameof(Card));
+    }
 
     /// <summary>
     /// ターン終了アクション。<c>GameState.Turn</c> を <c>Next(playerCount)</c> で次サブターンへ進める。
