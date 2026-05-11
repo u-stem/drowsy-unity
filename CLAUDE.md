@@ -250,9 +250,99 @@ Phase 0 段階では CI 未整備のため Required status checks は空。
 
 ADR を起票しない判断: 単純なバグ修正・typo・1 ファイル内リファクタ・パッケージのマイナー更新・軽微な文言調整。
 
-確立済み ADR: ADR-0001(本運用)/ ADR-0002(Phase 1 Domain 拡張: 集約境界・Card 抽象・Immutability・Player 想定)/ ADR-0003(TODO 運用)/ ADR-0004(`record + init + with` 利用のための `IsExternalInit` polyfill)/ ADR-0005(Phase 2 Roadmap: 本命ゲーム DrowZzz の段階的縦串実装)/ ADR-0006(M1 詳細: 汎用 Application interface と DrowZzz 最小実装)/ ADR-0007(M2 詳細: カード効果メカニズム `IEffect` + `EffectInterpreter` とサブセット先行スコープ — **M2-PR1 で効果インフラ整備完成 2026-05-11 PR #30** / **M2-PR3 で §1.4「他者影響系 actor 拡張」を `enum SdpTarget` 引数方式で JIT 確定 PR #35**)/ ADR-0008(M2: `DrowZzzClock` 概念と「夜・朝」フェーズの導入 — Session の computed プロパティ経由、真の単一情報源は `TurnNumber`、21:00 開始 / 21 ラウンド / 夜 21:00〜04:30(Round 1〜16)/ 朝 05:00〜07:00(Round 17〜21)、ADR-0009 起票時に Clock 21 ラウンド化を境界訂正、**M2-PR2 で実装完成 2026-05-11 PR #33** — `DrowZzzClock` + `DrowZzzClockConstants`(8 const、L1/L2 集約) + `Session.Clock` computed + DZ-089〜DZ-098 / NUnit 23 件追加(`DrowZzzClockTests` 20 件 + DZ-097 同義性 3 件)、起票時 §1 サンプル `sealed record class` → `sealed record` 訂正 + §1 に `const` ブロック追記 + §7 「テスト免除」→「regression guard 実装」訂正同梱、**M2-PR3 で §8「Clock を参照する効果」を `TimeOfDayBranchEffect` ラッパー record で JIT 確定 PR #35**)/ ADR-0009(M2-M3: DP 機構 FDP/DDP/SDP と持ち点・勝利条件 + 用語規約刷新 — 持ち点 = FDP + DDP + SDP の合計 (computed)、DDP プール 36 枚共有から Turn 5/9/13/17/21 で抽選、早期勝利(夜の間 Turn 1〜16 = `Clock.IsNight` + 持ち点 ≥ 100 + 就寝カード)+ 終了時勝利(持ち点低い方)、勝敗判定本格実装は M3、ボードゲーム一般用語(ターン/フェーズ/PhaseState)に整理し `DrowZzzTurnPhase` → `DrowZzzPhaseState` リネーム同梱、ADR-0007 / 0008 の境界訂正(Clock 21 ターン化)同梱、**M2-PR3 で SDP 機構 + `TotalPoints` (FDP+SDP、DDP は M2-PR4 で加算予定) + カード No.01「コップ一杯の脅威」を実装 2026-05-11 PR #35**(DDP / IsTerminated / GetWinner は M2-PR4 / M3 以降))。
+### 確立済み ADR 一覧
 
-**Phase 1(Domain 拡張)は完結済み**(ADR-0002 実装順序表 6 項目すべて完了、Domain 全 9 クラス C0 100%、NUnit 205 件全緑)。**Phase 2 は進行中**(ADR-0005、M1〜M5 マイルストーン分割)、**M1(ターン進行 + カードプレイの最小骨格)完成済み**(ADR-0006、M1-PR1〜PR7 完了、N=2 のセットアップ + Draw → Play → EndTurn ループが動作、Application C0 100%、効果なし / 勝敗なし / UI なしの ADR-0005 §M1 Definition of Done 達成)。**次は M2(カード効果実装)進行中**(ADR-0007 起票済、**M2-PR1 で `IEffect` 効果インフラ整備済 PR #30** / **M2-PR2 で `DrowZzzClock` + `DrowZzzClockConstants` 実装済 PR #33(ADR-0008)** / **M2-PR3 で SDP 機構 + `SdpTarget` enum + 効果 record 3 種(`AdjustSdpEffect` / `DrawCardEffect` / `TimeOfDayBranchEffect`)+ カード No.01「コップ一杯の脅威」2 枚 + `InMemoryCardCatalog` 2 段 constructor 実装済 PR #35(ADR-0009 SDP 機構実装、ADR-0007 §1.4 / ADR-0008 §8 JIT 確定同梱、NUnit +37 件)** → M2-PR4 以降で DDP 機構 + 後続効果カードをサブセット先行、ScriptableObjectCardCatalog 化は M4 に送る、山札枯渇は現状想定下では発生しない計算根拠を ADR-0007 §「山札枯渇」に明記)。
+| ADR | スコープ | 主要決定 / 完成記録 |
+| ---- | ---- | ---- |
+| ADR-0001 | 本運用 | ADR の配置 / 必須セクション / Status 語彙 / コミット規約 |
+| ADR-0002 | Phase 1 Domain 拡張 | 集約境界・Card 抽象・Immutability・Player 想定 |
+| ADR-0003 | TODO 運用 | `docs/todo.md` の運用規約 |
+| ADR-0004 | `IsExternalInit` polyfill | `record + init + with` を Domain で使えるようにする |
+| ADR-0005 | Phase 2 Roadmap | 本命ゲーム DrowZzz の段階的縦串実装、M1〜M5 マイルストーン |
+| ADR-0006 | M1 詳細 | 汎用 Application interface(`IGameAction` / `IGameRule` / `ICardCatalog`)+ DrowZzz 最小実装 |
+| ADR-0007 | M2 詳細(カード効果) | `IEffect` + `EffectInterpreter` + サブセット先行スコープ(下表参照) |
+| ADR-0008 | M2 `DrowZzzClock` | 21:00 開始 / 21 ラウンド / 夜・朝フェーズ、Session の computed プロパティ経由(下表参照) |
+| ADR-0009 | M2-M3 DP 機構 + 勝利条件 | FDP / DDP / SDP の 3 種別、持ち点 = 合計 (computed)、用語規約刷新(下表参照) |
+
+### ADR-0007 / 0008 / 0009 の進行中マイルストーン
+
+#### ADR-0007(M2 効果メカニズム)
+
+- **M2-PR1**(PR #30、2026-05-11、完成): `IEffect` / `EffectInterpreter` / `ICardCatalog<TEffect>` の効果インフラ整備完成
+- **M2-PR3**(PR #35、2026-05-11、完成): §1.4「他者影響系 actor 拡張」を `enum SdpTarget` 引数方式で JIT 確定
+- **M2-PR4**(PR #37、2026-05-11、完成): §3「`DrowZzzRule` constructor 引数」を「`IRandomSource` を注入しない、2 引数維持」で JIT 確定(`StartGameUseCase` 事前 Shuffle で代替)
+
+#### ADR-0008(M2 Clock 概念)
+
+設計要点:
+
+- Session の computed プロパティ経由、真の単一情報源は `TurnNumber`
+- 21:00 開始 / 21 ラウンド / 夜 21:00〜04:30(Round 1〜16)/ 朝 05:00〜07:00(Round 17〜21)
+- ADR-0009 起票時に Clock 21 ラウンド化を境界訂正
+
+完成記録:
+
+- **M2-PR2**(PR #33、2026-05-11、完成):
+  - `DrowZzzClock` + `DrowZzzClockConstants`(8 const、L1/L2 集約)+ `Session.Clock` computed
+  - 仕様 ID DZ-089〜DZ-098、NUnit 23 件追加(`DrowZzzClockTests` 20 件 + DZ-097 同義性 3 件)
+  - 起票時 §1 サンプル `sealed record class` → `sealed record` 訂正 + §1 に `const` ブロック追記 + §7 「テスト免除」→「regression guard 実装」訂正同梱
+- **M2-PR3**(PR #35、2026-05-11、完成): §8「Clock を参照する効果」を `TimeOfDayBranchEffect` ラッパー record で JIT 確定
+
+#### ADR-0009(M2-M3 DP 機構 + 勝利条件)
+
+設計要点:
+
+- 持ち点 = FDP + DDP + SDP の合計(computed)
+- DDP プール 39 枚共有(13 種 × 3 枚、起票時「36 枚」表記は計算誤記、M2-PR4 PR で訂正)、Turn 5/9/13/17/21 で抽選
+- 早期勝利: 夜の間 Turn 1〜16(= `Clock.IsNight`)+ 持ち点 ≥ 100 + 就寝カード
+- 終了時勝利: 持ち点低い方
+- 勝敗判定本格実装は M3
+- ボードゲーム一般用語(ターン / フェーズ / PhaseState)に整理し `DrowZzzTurnPhase` → `DrowZzzPhaseState` リネーム同梱
+- ADR-0007 / 0008 の境界訂正(Clock 21 ターン化)同梱
+
+完成記録:
+
+- **M2-PR3**(PR #35、2026-05-11、完成): SDP 機構 + `TotalPoints` (FDP+SDP) + カード No.01「コップ一杯の脅威」を実装
+- **M2-PR4**(PR #37、2026-05-11、完成):
+  - DDP 機構 + `DdpPool` 値オブジェクト(Application 層、`Pile` と同 API パターン)
+  - `DdpPoolConstants`(7 const + `DrawRounds` static readonly)
+  - `EndTurnAction.Apply` 内自動抽選機構(Turn 5/9/13/17/21、N=2 で 2 枚抽選累積)
+  - `TotalPoints` を 3 項合計(FDP+DDP+SDP)に拡張
+  - ADR-0009 計算誤記訂正(36→39)同梱
+  - NUnit +33 件 / TestCase 展開で +41 ケース
+- **M3 以降の範囲外項目**: `IGameRule.IsTerminated` / `GetWinner` / `EarlyWinTriggerEffect`
+
+### Phase 進捗バナー
+
+#### Phase 1(Domain 拡張)— 完結済み
+
+- ADR-0002 実装順序表 6 項目すべて完了
+- Domain 全 9 クラス C0 100%、NUnit 205 件全緑
+
+#### Phase 2 — 進行中(ADR-0005、M1〜M5 マイルストーン分割)
+
+**M1(ターン進行 + カードプレイの最小骨格)— 完成済み**(ADR-0006、M1-PR1〜PR7 完了):
+
+- N=2 のセットアップ + Draw → Play → EndTurn ループが動作
+- Application C0 100%
+- 効果なし / 勝敗なし / UI なしの ADR-0005 §M1 Definition of Done 達成
+
+**M2(カード効果実装)— 進行中**(ADR-0007 起票済):
+
+- **M2-PR1**(PR #30): `IEffect` 効果インフラ整備済
+- **M2-PR2**(PR #33、ADR-0008): `DrowZzzClock` + `DrowZzzClockConstants` 実装済
+- **M2-PR3**(PR #35):
+  - SDP 機構 + `SdpTarget` enum + 効果 record 3 種(`AdjustSdpEffect` / `DrawCardEffect` / `TimeOfDayBranchEffect`)
+  - カード No.01「コップ一杯の脅威」2 枚 + `InMemoryCardCatalog` 2 段 constructor
+  - ADR-0009 SDP 機構実装、ADR-0007 §1.4 / ADR-0008 §8 JIT 確定同梱、NUnit +37 件
+- **M2-PR4**(PR #37):
+  - DDP 機構 + `DdpPool` 値オブジェクト + `DdpPoolConstants` L2 const 集約
+  - `EndTurnAction.Apply` 内自動抽選機構(Turn 5/9/13/17/21)
+  - `TotalPoints` 3 項合計(FDP+DDP+SDP)拡張
+  - ADR-0009 計算誤記訂正(プール枚数 36→39)同梱
+  - ADR-0009 DDP 機構実装、ADR-0007 §3 `DrowZzzRule` constructor 2 引数維持 JIT 確定同梱
+  - NUnit +33 件 / TestCase 展開で +41 ケース
+- **M2-PR5 以降**: 後続効果カードをサブセット先行、`ScriptableObjectCardCatalog` 化は M4 に送る、山札枯渇は現状想定下では発生しない計算根拠を ADR-0007 §「山札枯渇」に明記
 
 ## 12. TODO 追跡
 

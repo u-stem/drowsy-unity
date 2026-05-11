@@ -459,9 +459,68 @@ EARS / NUnit 増加:
 - **`ICardCatalog` 2 段 constructor**: 後方互換維持の overload 方式(`(entries)` → `(entries, null)` 内部委譲)で M1〜M2-PR2 のテストは無変更で通る。Breaking change を避けつつ機能拡張する手法として、`InMemoryCardCatalog` 拡張は他の similar API 拡張時の参考になる
 - **code-reviewer 7 件指摘の反映**: 警告 3 件すべて反映(`SdpTarget` 流用意図 XML doc 明記 / `TimeOfDayBranchEffect` list 要素 null 構築時防御 / トレーサビリティ表とテスト名整合)、提案 4 件中 2 件反映、2 件 Skip(SDP 二重コピー / `GetHashCode` 空 list 初期値 0、現状性能問題なし)
 
+### M2-PR4 完成記録(2026-05-11)
+
+**完成 PR**: PR #37 `feat(app): DDP 機構 + DdpPool 値オブジェクト + 自動抽選機構を実装 (M2-PR4)`(merged `84966ef`、本 ADR §3 の `DrowZzzRule` constructor 2 引数維持の JIT 判断同梱、ADR-0009 §M2-PR4 完成記録と相互参照)
+
+EARS / NUnit 増加:
+- 仕様 ID: DZ-128〜DZ-154(`dp-mechanism-ddp` / 既存 `dp-mechanism` DZ-103 を 3 項合計に整合更新)+ CFG-103(`IGameConfig.DdpPool`)
+- NUnit Property: **+33 件**(新規 2 ファイル 13 件:`DdpPoolTests` 9 / `StubGameConfigTests` 4 + 既存 3 ファイル 20 件:`DrowZzzGameSessionTests` +12 / `DrowZzzRuleTests` +4(DZ-141/142 は `[TestCase]` 5 ケース展開で実行 +10、Property カウントは +1 ずつ)/ `StartGameUseCaseTests` +4)
+
+#### Definition of Done 達成項目(本 ADR §3「`DrowZzzRule` constructor」JIT 判断の完成)
+
+| スコープ項目 | 達成状況 |
+| ---- | ---- |
+| 本 ADR §3 で挙げた「`DrowZzzRule` constructor に `IRandomSource` を追加するか」の JIT 判断 | ✓ M2-PR4 で「採用しない」を確定。`StartGameUseCase` で `DdpPool.Shuffle(rng)` を事前実行する設計で Rule 内 rng が不要となり、ADR-0007 §3 の 2 引数 constructor を維持 |
+| `EndTurnAction.Apply` 内に DDP 自動抽選機構を追加(`PlayCardAction.Apply` 内同期発動の §3 設計と同パターンで EndTurn 内自動進行) | ✓ ターン境界(`CurrentPlayerIndex == 0`)+ 新ターン番号 ∈ DrawRounds {5,9,13,17,21} で N 枚抽選、`DrawDdpForAllPlayers` private static |
+| 既存 `PlayCardAction.Apply` 内 effect 評価ロジックは無変更 | ✓ M1〜M2-PR3 と完全互換、本 PR は EndTurn 側のみ拡張 |
+| ADR-0009 §3 / §4(DDP プール構造 / 抽選タイミング)の最初の実装 | ✓ DDP 機構の最小実装、ADR-0009 §M2-PR4 完成記録と相互参照 |
+| §6「ScriptableObject 化 / Editor アセット」(M4 候補)| △ M4 へ送る方針継続、本 PR では `StubGameConfig` 2 段 constructor + 既存 `IGameConfig.DdpPool` 経由で IL2CPP / WebGL 安全性は維持 |
+
+#### 本 PR が確定した ADR-0007 内の JIT 判断ポイント
+
+- **§3「`DrowZzzRule` constructor 引数」**: ADR-0009 §4 で挙げた「rng を `DrowZzzRule` に注入する案」を**採用しない**と本 PR で再評価。`StartGameUseCase` で `DdpPool.Shuffle(rng)` を 1 回事前実行する設計のため Rule 内 rng は不要。`dp-mechanism-ddp.md` §「設計判断」§「`DrowZzzRule` constructor」に経緯記録、ADR-0007 §3 の 2 引数 constructor シグネチャは維持
+
+#### M2-PR4 進行中の学び
+
+##### 学び 1: ADR 内の数値計算誤記の発覚と訂正運用
+
+- **事象**: ADR-0009 §「DDP プールの構造」起票時「13 種 × 3 枚 = 36 枚」と書かれていたが、数学的に 13 × 3 = 39 で計算誤記
+- **発覚**: 実装着手後の NUnit テスト失敗(`Expected 36, but was 39`)
+- **対応**: プロジェクトオーナー JIT 確認で「39 枚が正、ADR 表記を訂正」と確定。本 PR で ADR-0009 / 関連仕様 / 実装 xmldoc / テスト / TODO を一括訂正同梱(ADR-0001「Accepted 直接編集」運用)
+- **再発防止**: **今後 ADR 起票時の Self-Review に「列挙値の積算と総数の整合性チェック」項目を追加すべき**(`docs/todo.md` 追跡候補)
+
+##### 学び 2: breaking change の波及最小化
+
+- **事象**: `DrowZzzGameSession` の 4 引数 → 6 引数 constructor 変更は全 11 テストファイルに波及
+- **対応**: 各ファイルのヘルパー(`NewSession` / `Sdp()`)に `ddp` パラメータと `EmptyDdpPool` を追加することで既存テストの修正は最小限に
+- **教訓**: M2-PR3 の 3→4 引数拡張で確立した「ヘルパー再利用」パターンが M2-PR4 でも有効
+
+##### 学び 3: 専用値オブジェクト vs Domain 流用の判断軸
+
+- **事象**: ADR-0009 §3 が「`Pile` 型を再利用」と書いていたが、`Pile` は `CardId[]` 専用で整数プールには semantic 違反
+- **対応**: 専用 `DdpPool` を Application 層に新設
+- **不採用案**: `Pile` ジェネリック化(`Pile<T>`)は影響範囲が広く本 PR スコープ外
+- **教訓**: **型の semantic と利用先の意味的整合を ADR の「再利用」記述より優先する判断軸を確立**
+
+##### 学び 4: Unity NUnit が `Assert.Multiple` 未対応
+
+- **事象**: Unity Test Framework の NUnit バージョンが `Assert.Multiple` を含まない
+- **対応**: 複合不変条件の検証は個別 `Assert.That` 並列に変更(最初の失敗で停止)
+- **追跡**: `docs/todo.md` 追跡候補(`Assert.Multiple` サポート版への upgrade 可能性 / 代替パターンの確立)
+
+##### 学び 5: code-reviewer 9 件指摘の反映
+
+- **警告 4 件すべて反映**:
+  - 設計判断文の反転誤記訂正
+  - `IdentityRandom` コメント正確化
+  - `[TestCase]` 慣例
+  - Domain xmldoc から Application 名削除
+- **提案 5 件中 3 件反映、2 件 Skip**: 命名議論 / `M1IntegrationTests` 命名は別 PR / ADR 候補
+
 ### M2 完成記録の追記タイミング(後続 PR で実施)
 
-本 ADR の M2-PR1 / M2-PR3 完成記録は §直上に追記済。**M2 全体の完成(M2-PR-N 最終 PR)** 時点で、本 ADR §M2 完成記録(全体)を別途追加し、Definition of Done 達成方法 / 最終的な PR 群一覧 / 完成日を集約する(ADR-0005 §M1 完成記録 / ADR-0006 §M1 着手 PR 群 の運用と同じ)。M2-PR2(DrowZzzClock)完成記録は ADR-0008 §M2-PR2 完成記録、M2-PR4 以降(DDP 機構 / 後続効果カード)は当該 PR 単位で本 ADR or 関連 ADR に追記する。
+本 ADR の M2-PR1 / M2-PR3 / M2-PR4 完成記録は §直上に追記済。**M2 全体の完成(M2-PR-N 最終 PR)** 時点で、本 ADR §M2 完成記録(全体)を別途追加し、Definition of Done 達成方法 / 最終的な PR 群一覧 / 完成日を集約する(ADR-0005 §M1 完成記録 / ADR-0006 §M1 着手 PR 群 の運用と同じ)。M2-PR2(DrowZzzClock)完成記録は ADR-0008 §M2-PR2 完成記録、M2-PR5 以降(後続効果カード)は当該 PR 単位で本 ADR or 関連 ADR に追記する。
 
 ## Related
 
