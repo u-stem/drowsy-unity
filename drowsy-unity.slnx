@@ -1,6 +1,6 @@
 ﻿<Solution>
   <Project Path="Drowsy.Domain.csproj" />
-  <Project Path="Drowsy.Application.Tests.csproj" />
   <Project Path="Drowsy.Application.csproj" />
+  <Project Path="Drowsy.Application.Tests.csproj" />
   <Project Path="Drowsy.Domain.Tests.csproj" />
 </Solution>
