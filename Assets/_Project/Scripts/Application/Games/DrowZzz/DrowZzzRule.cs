@@ -9,16 +9,16 @@ namespace Drowsy.Application.Games.DrowZzz
     /// DrowZzz の状態遷移ルール。<see cref="IGameRule{TAction, TSession}"/> の DrowZzz 具象実装。
     /// </summary>
     /// <remarks>
-    /// M1-PR5 段階で実装済の挙動:
+    /// M1-PR6 段階で M1 範囲の全 Action 種別が実装済:
     /// <list type="bullet">
-    /// <item><see cref="IsLegalMove"/>: <see cref="StartGameAction"/> → <c>false</c>(M1-PR3)、
-    /// <see cref="DrawCardAction"/> → <c>session.TurnPhase == WaitingForDraw</c> なら <c>true</c>(M1-PR4)、
-    /// <see cref="PlayCardAction"/> → <c>WaitingForPlay</c> かつ現プレイヤーの <c>Hand</c> に <c>Card</c> がある場合 <c>true</c>(M1-PR5)。
-    /// <see cref="EndTurnAction"/> は依然 <see cref="NotImplementedException"/>(M1-PR6)。</item>
-    /// <item><see cref="Apply"/>: <see cref="DrawCardAction"/>(M1-PR4)、<see cref="PlayCardAction"/>(M1-PR5)を実装済。
-    /// <see cref="EndTurnAction"/> は依然 <see cref="NotImplementedException"/>(M1-PR6)。
+    /// <item><see cref="IsLegalMove"/>: <see cref="StartGameAction"/> → <c>false</c>(M1-PR3、<c>StartGameUseCase</c> 経由で扱うため)、
+    /// <see cref="DrawCardAction"/> → <c>WaitingForDraw</c> のみ <c>true</c>(M1-PR4)、
+    /// <see cref="PlayCardAction"/> → <c>WaitingForPlay</c> かつ現プレイヤーの <c>Hand</c> に <c>Card</c> がある場合 <c>true</c>(M1-PR5)、
+    /// <see cref="EndTurnAction"/> → <c>WaitingForEndTurn</c> のみ <c>true</c>(M1-PR6)。</item>
+    /// <item><see cref="Apply"/>: <see cref="DrawCardAction"/> / <see cref="PlayCardAction"/> / <see cref="EndTurnAction"/> を実装済。
     /// <see cref="StartGameAction"/> は <c>StartGameUseCase</c> 経由で扱うため本 Rule の <see cref="Apply"/> ルートには来ない設計、
-    /// ADR-0006 §Implementation Notes)。</item>
+    /// ADR-0006 §Implementation Notes。
+    /// 将来 DrowZzz の Action 種別を新規追加する場合、<c>_</c> ケースの <see cref="NotImplementedException"/> が守る。</item>
     /// </list>
     /// 引数 (<paramref name="session"/> / <paramref name="action"/>) の null は <see cref="ArgumentNullException"/>。
     /// (M1-PR4 で全 Action 種別共通の null 検証として導入、M1-PR3 reviewer 申し送り N-7 反映)
@@ -29,7 +29,7 @@ namespace Drowsy.Application.Games.DrowZzz
         /// 与えられた <paramref name="session"/> 状態で <paramref name="action"/> が合法かを返す。
         /// </summary>
         /// <exception cref="ArgumentNullException">session または action が null</exception>
-        /// <exception cref="NotImplementedException">非 <see cref="StartGameAction"/> / 非 <see cref="DrawCardAction"/> / 非 <see cref="PlayCardAction"/> は M1-PR6 で実装される</exception>
+        /// <exception cref="NotImplementedException">M1 範囲外の <see cref="DrowZzzAction"/> 派生型(将来拡張用、M1 では到達不可)</exception>
         public bool IsLegalMove(DrowZzzGameSession session, DrowZzzAction action)
         {
             if (session is null)
@@ -45,8 +45,9 @@ namespace Drowsy.Application.Games.DrowZzz
                 StartGameAction => false, // ADR-0006 §Implementation Notes §StartGameUseCase の IsLegalMove 経由での扱い
                 DrawCardAction => session.TurnPhase == DrowZzzTurnPhase.WaitingForDraw,
                 PlayCardAction p => IsLegalPlayCard(session, p),
+                EndTurnAction => session.TurnPhase == DrowZzzTurnPhase.WaitingForEndTurn,
                 _ => throw new NotImplementedException(
-                    $"DrowZzzRule.IsLegalMove ({action.GetType().Name}) は M1-PR6 で実装される (ADR-0006 §M1 着手 PR 群)"),
+                    $"DrowZzzRule.IsLegalMove ({action.GetType().Name}) は M1 範囲では到達不可。将来 DrowZzzAction 派生型を追加する PR で対応する"),
             };
         }
 
@@ -67,9 +68,14 @@ namespace Drowsy.Application.Games.DrowZzz
         /// Rule 内部でも防御的に検証し違反時は <see cref="InvalidOperationException"/> を投げる
         /// (ADR-0006 §3 §IsLegalMove 違反時の方針)。
         /// </summary>
+        /// <remarks>
+        /// <see cref="StartGameAction"/> は <c>ApplyActionUseCase</c> の <see cref="IsLegalMove"/> チェックで事前排除されるため
+        /// 通常は本 <see cref="Apply"/> ルートに到達しない設計(ADR-0006 §Implementation Notes)。
+        /// もし直接呼ばれた場合は <see cref="NotImplementedException"/> が投げられる(`_` ケースのフォールバック)。
+        /// </remarks>
         /// <exception cref="ArgumentNullException">session または action が null</exception>
         /// <exception cref="InvalidOperationException">IsLegalMove が false を返す状態で Apply された場合、または山札枯渇で <see cref="Pile.Draw"/> が失敗した場合</exception>
-        /// <exception cref="NotImplementedException">非 <see cref="DrawCardAction"/> / 非 <see cref="PlayCardAction"/> は M1-PR6 で実装される</exception>
+        /// <exception cref="NotImplementedException">M1 範囲外の <see cref="DrowZzzAction"/> 派生型(将来拡張用、`_` ケース)</exception>
         public DrowZzzGameSession Apply(DrowZzzGameSession session, DrowZzzAction action)
         {
             if (session is null)
@@ -84,8 +90,9 @@ namespace Drowsy.Application.Games.DrowZzz
             {
                 DrawCardAction => ApplyDrawCard(session),
                 PlayCardAction p => ApplyPlayCard(session, p),
+                EndTurnAction => ApplyEndTurn(session),
                 _ => throw new NotImplementedException(
-                    $"DrowZzzRule.Apply ({action.GetType().Name}) は M1-PR6 で実装される (ADR-0006 §M1 着手 PR 群)"),
+                    $"DrowZzzRule.Apply ({action.GetType().Name}) は M1 範囲では到達不可 (StartGameAction は StartGameUseCase 経由)。将来 DrowZzzAction 派生型を追加する PR で対応する"),
             };
         }
 
@@ -175,6 +182,30 @@ namespace Drowsy.Application.Games.DrowZzz
             {
                 GameState = newGameState,
                 TurnPhase = DrowZzzTurnPhase.WaitingForEndTurn,
+            };
+        }
+
+        // EndTurnAction の状態遷移:
+        // GameState.Turn を Next(playerCount) で次サブターンへ進行 + TurnPhase = WaitingForDraw。
+        // Players / Deck / Discard / Field / FirstDrowsyPoints は不変。
+        // ターン上限 (MaxRoundNumber) 判定は本 PR では行わない (M3 で実装、ADR-0006 §7)。
+        private static DrowZzzGameSession ApplyEndTurn(DrowZzzGameSession session)
+        {
+            // 防御的 IsLegalMove 検証
+            if (session.TurnPhase != DrowZzzTurnPhase.WaitingForEndTurn)
+            {
+                throw new InvalidOperationException(
+                    $"EndTurnAction は WaitingForEndTurn フェーズでのみ合法です (現フェーズ: {session.TurnPhase})");
+            }
+
+            var gameState = session.GameState;
+            var newTurn = gameState.Turn.Next(gameState.Players.Count);
+            var newGameState = gameState with { Turn = newTurn };
+
+            return session with
+            {
+                GameState = newGameState,
+                TurnPhase = DrowZzzTurnPhase.WaitingForDraw,
             };
         }
     }

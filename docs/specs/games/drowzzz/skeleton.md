@@ -76,8 +76,8 @@ ADR-0006 §2 の決定に基づき、DrowZzz の Application 層型骨格を `Dr
 | DZ-009 | キー集合不一致を 2 ケース分離: `Given_FirstDrowsyPointsのキー数がPlayersより少ない_...` / `Given_FirstDrowsyPointsのキーがPlayersと部分的に異なる_...` (Then 共通: `ArgumentException`) | コンストラクタ cross-field 検証 |
 | DZ-010 | N=2 想定を 3 ケース分離: TurnNumber=1→1 / TurnNumber=2→1 / TurnNumber=3→2 | `(TurnNumber + 1) / 2` 計算検証 |
 | DZ-011 | (テスト免除: Ubiquitous) | `class DrowZzzRule : IGameRule<DrowZzzAction, DrowZzzGameSession>` で構造的に保証 |
-| DZ-012 | `Given_DrowZzzRule_When_EndTurnActionでIsLegalMoveを呼ぶ_Then_NotImplementedExceptionを投げる` | M1-PR5 で `PlayCardAction` も実装済になったため `EndTurnAction` で代用、本格 EndTurn 実装は M1-PR6 |
-| DZ-013 | `Given_DrowZzzRule_When_EndTurnActionでApplyを呼ぶ_Then_NotImplementedExceptionを投げる` | 同上、本格 EndTurn Apply は M1-PR6 |
+| DZ-012 | `Given_DrowZzzRule_When_未知のDrowZzzAction派生型でIsLegalMoveを呼ぶ_Then_NotImplementedExceptionを投げる` | M1-PR6 で M1 範囲全 Action 実装済のため、テスト用ダミー派生型 `UnknownDrowZzzAction` で `_` ケースをカバー(将来拡張防御) |
+| DZ-013 | `Given_DrowZzzRule_When_未知のDrowZzzAction派生型でApplyを呼ぶ_Then_NotImplementedExceptionを投げる` | 同上、`UnknownDrowZzzAction` で `_` ケースを到達させてカバレッジ確保 |
 | DZ-014 | `Given_既存Session_When_with_GameStateにnull_Then_ArgumentNullExceptionを投げる` | with 式経由 null 防御 |
 | DZ-015 | `Given_既存Session_When_with_FirstDrowsyPointsにnull_Then_ArgumentNullExceptionを投げる` | with 式経由 null 防御 |
 | DZ-016 | `Given_既存Session_When_with_FirstDrowsyPointsをキー不一致に変更_Then_ArgumentExceptionを投げる` | with 式経由 cross-field 検証 |

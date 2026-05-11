@@ -47,27 +47,31 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             return new Pile(cards);
         }
 
-        // ===== DZ-012 / DZ-013: NotImplementedException 残存ケース
-        //       M1-PR5 で PlayCardAction も実装済になったため、EndTurnAction で代用 =====
+        // ===== DZ-012 / DZ-013: 将来拡張防御 (M1 範囲外 DrowZzzAction 派生型のフォールバック)
+        //       M1-PR6 で M1 範囲の全 Action 実装済となり、`_` ケースは到達不可だが
+        //       カバレッジ確保 + 将来派生型追加時の安全網として、ダミー派生型でテストする =====
+
+        // テスト用ダミー: M1 範囲外の架空 DrowZzzAction 派生型
+        private sealed record UnknownDrowZzzAction : DrowZzzAction;
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-012")]
-        public void Given_DrowZzzRule_When_EndTurnActionでIsLegalMoveを呼ぶ_Then_NotImplementedExceptionを投げる()
+        public void Given_DrowZzzRule_When_未知のDrowZzzAction派生型でIsLegalMoveを呼ぶ_Then_NotImplementedExceptionを投げる()
         {
-            // Given(EndTurnAction は M1-PR6 で本格実装、M1-PR5 では NotImpl)
+            // Given(M1 範囲外派生型、`_` ケースのフォールバック)
             var rule = new DrowZzzRule();
             var session = NewSession();
-            var action = new EndTurnAction();
+            var action = new UnknownDrowZzzAction();
             // When / Then
             Assert.Throws<NotImplementedException>(() => rule.IsLegalMove(session, action));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-013")]
-        public void Given_DrowZzzRule_When_EndTurnActionでApplyを呼ぶ_Then_NotImplementedExceptionを投げる()
+        public void Given_DrowZzzRule_When_未知のDrowZzzAction派生型でApplyを呼ぶ_Then_NotImplementedExceptionを投げる()
         {
-            // Given(EndTurnAction Apply は M1-PR6 で本格実装、M1-PR5 では NotImpl)
+            // Given(M1 範囲外派生型、`_` ケースのフォールバック。StartGameAction も同経路に来る)
             var rule = new DrowZzzRule();
             var session = NewSession();
-            var action = new EndTurnAction();
+            var action = new UnknownDrowZzzAction();
             // When / Then
             Assert.Throws<NotImplementedException>(() => rule.Apply(session, action));
         }
@@ -462,6 +466,162 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             // When / Then
             Assert.Throws<InvalidOperationException>(() =>
                 rule.Apply(session, new PlayCardAction(CardId.Of("cX"))));
+        }
+
+        // ===== DZ-067 / DZ-068: IsLegalMove(EndTurnAction) =====
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-067")]
+        public void Given_WaitingForEndTurn_When_EndTurnActionでIsLegalMoveを呼ぶ_Then_trueを返す()
+        {
+            var rule = new DrowZzzRule();
+            var session = NewSession(phase: DrowZzzTurnPhase.WaitingForEndTurn);
+            var legal = rule.IsLegalMove(session, new EndTurnAction());
+            Assert.That(legal, Is.True);
+        }
+
+        [Test, Category("Small"), Category("SemiNormal"), Property("Requirement", "DZ-068")]
+        public void Given_WaitingForDraw_When_EndTurnActionでIsLegalMoveを呼ぶ_Then_falseを返す()
+        {
+            var rule = new DrowZzzRule();
+            var session = NewSession(phase: DrowZzzTurnPhase.WaitingForDraw);
+            var legal = rule.IsLegalMove(session, new EndTurnAction());
+            Assert.That(legal, Is.False);
+        }
+
+        [Test, Category("Small"), Category("SemiNormal"), Property("Requirement", "DZ-068")]
+        public void Given_WaitingForPlay_When_EndTurnActionでIsLegalMoveを呼ぶ_Then_falseを返す()
+        {
+            // 3 値 enum の MC/DC 相当カバー
+            var rule = new DrowZzzRule();
+            var session = NewSession(phase: DrowZzzTurnPhase.WaitingForPlay);
+            var legal = rule.IsLegalMove(session, new EndTurnAction());
+            Assert.That(legal, Is.False);
+        }
+
+        // ===== DZ-069〜075: Apply(EndTurnAction) 正常系 (1 テスト 1 アサーション) =====
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-069")]
+        public void Given_合法状態_When_EndTurnActionをApply_Then_TurnNumberが1増える()
+        {
+            // Given(Turn = (3, 0))
+            var rule = new DrowZzzRule();
+            var session = NewSession(
+                phase: DrowZzzTurnPhase.WaitingForEndTurn,
+                currentPlayerIndex: 0,
+                turnNumber: 3);
+            // When
+            var result = rule.Apply(session, new EndTurnAction());
+            // Then
+            Assert.That(result.GameState.Turn.TurnNumber, Is.EqualTo(4));
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-070")]
+        public void Given_合法状態_CurrentPlayer0_When_EndTurnActionをApply_Then_CurrentPlayerIndexが1に進む()
+        {
+            // Given(N=2、CurrentPlayerIndex=0)
+            var rule = new DrowZzzRule();
+            var session = NewSession(
+                phase: DrowZzzTurnPhase.WaitingForEndTurn,
+                currentPlayerIndex: 0);
+            // When
+            var result = rule.Apply(session, new EndTurnAction());
+            // Then
+            Assert.That(result.GameState.Turn.CurrentPlayerIndex, Is.EqualTo(1));
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-070")]
+        public void Given_合法状態_CurrentPlayer1_When_EndTurnActionをApply_Then_CurrentPlayerIndexが0にラップする()
+        {
+            // Given(N=2、CurrentPlayerIndex=1、(1+1)%2=0 にラップ)
+            var rule = new DrowZzzRule();
+            var session = NewSession(
+                phase: DrowZzzTurnPhase.WaitingForEndTurn,
+                currentPlayerIndex: 1);
+            // When
+            var result = rule.Apply(session, new EndTurnAction());
+            // Then
+            Assert.That(result.GameState.Turn.CurrentPlayerIndex, Is.EqualTo(0));
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-071")]
+        public void Given_合法状態_When_EndTurnActionをApply_Then_TurnPhaseがWaitingForDrawに戻る()
+        {
+            var rule = new DrowZzzRule();
+            var session = NewSession(phase: DrowZzzTurnPhase.WaitingForEndTurn);
+            var result = rule.Apply(session, new EndTurnAction());
+            Assert.That(result.TurnPhase, Is.EqualTo(DrowZzzTurnPhase.WaitingForDraw));
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-072")]
+        public void Given_合法状態_When_EndTurnActionをApply_Then_Players全員のHandは不変()
+        {
+            // Given(p1.Hand=[a]、p2.Hand=[b])
+            var rule = new DrowZzzRule();
+            var p0Hand = new Hand(new[] { CardId.Of("a") });
+            var p1Hand = new Hand(new[] { CardId.Of("b") });
+            var session = NewSession(
+                phase: DrowZzzTurnPhase.WaitingForEndTurn,
+                p0Hand: p0Hand,
+                p1Hand: p1Hand);
+            // When
+            var result = rule.Apply(session, new EndTurnAction());
+            // Then(順序付きシーケンスとしての等価)
+            Assert.That(
+                new[] { result.GameState.Players[0].Hand, result.GameState.Players[1].Hand },
+                Is.EqualTo(new[] { p0Hand, p1Hand }));
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-073")]
+        public void Given_合法状態_When_EndTurnActionをApply_Then_Deckは不変()
+        {
+            // Given
+            var rule = new DrowZzzRule();
+            var deck = NewDeck("d1", "d2");
+            var session = NewSession(
+                phase: DrowZzzTurnPhase.WaitingForEndTurn,
+                deck: deck);
+            // When
+            var result = rule.Apply(session, new EndTurnAction());
+            // Then
+            Assert.That(result.GameState.Deck, Is.EqualTo(deck));
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-074")]
+        public void Given_合法状態_When_EndTurnActionをApply_Then_Fieldは不変()
+        {
+            // Given(Field に既に c1 を出してある状態を with で構築する代わりに、PlayCardAction で 1 枚出してから検証)
+            var rule = new DrowZzzRule();
+            var p0Hand = new Hand(new[] { CardId.Of("c1") });
+            var playSession = NewSession(phase: DrowZzzTurnPhase.WaitingForPlay, p0Hand: p0Hand);
+            var afterPlay = rule.Apply(playSession, new PlayCardAction(CardId.Of("c1")));
+            var fieldBefore = afterPlay.GameState.Field;
+            // When(EndTurn を Apply)
+            var afterEndTurn = rule.Apply(afterPlay, new EndTurnAction());
+            // Then
+            Assert.That(afterEndTurn.GameState.Field, Is.EqualTo(fieldBefore));
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-075")]
+        public void Given_合法状態_When_EndTurnActionをApply_Then_FirstDrowsyPointsは不変()
+        {
+            // Given(FDP は NewSession のデフォルト {p1: 0, p2: 10})
+            var rule = new DrowZzzRule();
+            var session = NewSession(phase: DrowZzzTurnPhase.WaitingForEndTurn);
+            var fdpBefore = session.FirstDrowsyPoints;
+            // When
+            var result = rule.Apply(session, new EndTurnAction());
+            // Then
+            Assert.That(result.FirstDrowsyPoints, Is.EquivalentTo(fdpBefore));
+        }
+
+        // ===== DZ-076: Apply 異常系 =====
+
+        [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-076")]
+        public void Given_WaitingForDraw_When_EndTurnActionをApply_Then_InvalidOperationExceptionを投げる()
+        {
+            var rule = new DrowZzzRule();
+            var session = NewSession(phase: DrowZzzTurnPhase.WaitingForDraw);
+            Assert.Throws<InvalidOperationException>(() => rule.Apply(session, new EndTurnAction()));
         }
     }
 }
