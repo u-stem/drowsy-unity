@@ -41,7 +41,13 @@ namespace Drowsy.Application.Tests.Games.DrowZzz.Effects
                 [PlayerId.Of("p1")] = 0,
                 [PlayerId.Of("p2")] = 0,
             };
-            return new DrowZzzGameSession(gs, fdp, sdp, DrowZzzPhaseState.WaitingForPlay);
+            // DDP / DdpPool は M2-PR4 で追加。本 fixture は Draw 効果テスト目的のため DDP=0 / 空 DdpPool で固定。
+            var ddp = new Dictionary<PlayerId, int>
+            {
+                [PlayerId.Of("p1")] = 0,
+                [PlayerId.Of("p2")] = 0,
+            };
+            return new DrowZzzGameSession(gs, fdp, ddp, sdp, DdpPool.Empty, DrowZzzPhaseState.WaitingForPlay);
         }
 
         private static Pile Deck(params string[] cardIds)

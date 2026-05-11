@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Drowsy.Application.Games.DrowZzz.Effects;
 using Drowsy.Domain.Cards;
@@ -28,6 +29,15 @@ namespace Drowsy.Application.Games.DrowZzz
     /// M2-PR1 で constructor injection に <see cref="ICardCatalog{TEffect}"/>(<c>TEffect = IEffect</c>)/
     /// <see cref="EffectInterpreter"/> を追加(ADR-0007 §3)。<see cref="PlayCardAction"/> の Apply 後、
     /// catalog から効果列を取得し、<c>Aggregate</c> で左から順に逐次評価する。効果 0 個なら M1 と完全互換。
+    /// </para>
+    /// <para>
+    /// M2-PR4 で <see cref="EndTurnAction"/> Apply 内に DDP 自動抽選機構を追加(ADR-0009 §4)。
+    /// ターン境界(<c>newTurn.CurrentPlayerIndex == 0</c>)を検出し、新ターン番号が
+    /// <see cref="DdpPoolConstants.DrawRounds"/> に含まれる場合は <c>DdpPool</c> 先頭から N (= player count) 枚を
+    /// 抽選してプレイヤー順に <c>DrawDrowsyPoints</c> に累積する(自動進行、ADR-0009 §4 採用案 A)。
+    /// rng は <see cref="StartGameUseCase"/> で <c>DdpPool</c> を事前 Shuffle 済みのため Rule 内では不要、
+    /// constructor は ADR-0007 §3 の 2 引数を維持する(本 PR で ADR-0009 §4 の「rng を Rule に注入する案」を
+    /// 「StartGame での事前 Shuffle で十分」と再評価、PR description に記録)。
     /// </para>
     /// </remarks>
     public sealed class DrowZzzRule : IGameRule<DrowZzzAction, DrowZzzGameSession>
@@ -218,8 +228,11 @@ namespace Drowsy.Application.Games.DrowZzz
 
         // EndTurnAction の状態遷移:
         // GameState.Turn を Next(playerCount) で次フェーズへ進行 + PhaseState = WaitingForDraw。
-        // Players / Deck / Discard / Field / FirstDrowsyPoints は不変。
+        // Players / Deck / Discard / Field / FirstDrowsyPoints / SecondDrowsyPoints は不変。
         // ターン上限 (MaxRoundNumber) 判定は本 PR では行わない (M3 で実装、ADR-0006 §7)。
+        // M2-PR4: ターン境界 (CurrentPlayerIndex == 0) で新ターン番号が DDP 抽選対象に該当する場合、
+        // DdpPool 先頭から N (= player count) 枚を抽選してプレイヤー順に DrawDrowsyPoints へ累積する
+        // (ADR-0009 §4 採用案 A、DZ-141 / DZ-142 / DZ-143 / DZ-144)。
         private static DrowZzzGameSession ApplyEndTurn(DrowZzzGameSession session)
         {
             // 防御的 IsLegalMove 検証
@@ -233,10 +246,53 @@ namespace Drowsy.Application.Games.DrowZzz
             var newTurn = gameState.Turn.Next(gameState.Players.Count);
             var newGameState = gameState with { Turn = newTurn };
 
-            return session with
+            var nextSession = session with
             {
                 GameState = newGameState,
                 PhaseState = DrowZzzPhaseState.WaitingForDraw,
+            };
+
+            // ターン境界での DDP 自動抽選トリガー(MC/DC ケース 1):
+            //   ケース 1: CurrentPlayerIndex == 0 (=全プレイヤー 1 巡完了) かつ 新ターン番号 ∈ {5,9,13,17,21}
+            //     → DrawDdpForAllPlayers で N 枚抽選 + 累積
+            //   ケース 3 (CurrentPlayerIndex != 0): フェーズ進行のみ、抽選なし
+            //   ケース 4 (新ターン番号が DrawRounds 外): フェーズ + ターン進行のみ、抽選なし
+            if (newTurn.CurrentPlayerIndex == 0
+                && DdpPoolConstants.DrawRounds.Contains(nextSession.Clock.RoundNumber))
+            {
+                nextSession = DrawDdpForAllPlayers(nextSession);
+            }
+
+            return nextSession;
+        }
+
+        // ターン境界 DDP 抽選: GameState.Players 順に 1 枚ずつ DdpPool 先頭から取り出し、
+        // 各プレイヤーの DrawDrowsyPoints に累積する。プールは事前 Shuffle 済(StartGameUseCase)
+        // のため Draw 順は決定論的で rng 不要(ADR-0009 §4 採用案 A 補足、PR description 参照)。
+        private static DrowZzzGameSession DrawDdpForAllPlayers(DrowZzzGameSession session)
+        {
+            var pool = session.DdpPool;
+            // 既存 DrawDrowsyPoints の防御コピーを作成して累積後に置き換える
+            var ddpAccumulator = new Dictionary<PlayerId, int>(session.DrawDrowsyPoints.Count);
+            foreach (var kv in session.DrawDrowsyPoints)
+            {
+                ddpAccumulator[kv.Key] = kv.Value;
+            }
+
+            foreach (var player in session.GameState.Players)
+            {
+                // 防御的: プール枯渇は ADR-0009 §「DDP プール枯渇可能性チェック」で
+                // 現状想定下では発生しない(総抽選 5 × N=2 = 10 ≤ プール 39)が、
+                // DdpPool.Draw が InvalidOperationException を投げる(Pile.Draw と同パターン)。
+                var (drawn, remaining) = pool.Draw();
+                ddpAccumulator[player.Id] = ddpAccumulator[player.Id] + drawn;
+                pool = remaining;
+            }
+
+            return session with
+            {
+                DdpPool = pool,
+                DrawDrowsyPoints = ddpAccumulator,
             };
         }
     }

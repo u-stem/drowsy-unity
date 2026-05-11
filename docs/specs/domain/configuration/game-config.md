@@ -16,6 +16,7 @@
 - [CFG-002] [Ubiquitous] The `IGameConfig` shall not depend on `UnityEngine` (Domain asmdef の `noEngineReferences: true` で物理保証)。
 - [CFG-003] [Ubiquitous] The `IGameConfig` shall expose only read-only properties (no setters)。
 - [CFG-101] [Ubiquitous] The `IGameConfig` shall expose `FdpPool` as `IReadOnlyList<int>` (read-only)(ADR-0006 §1.4 / §M1、M1-PR3 で追加)。
+- [CFG-103] [Ubiquitous] The `IGameConfig` shall expose `DdpPool` as `IReadOnlyList<int>` (read-only)(ADR-0009 §「DDP プールの構造」、M2-PR4 で追加。`StartGameUseCase` で `Shuffle` 後 `DrowZzzGameSession.DdpPool` に格納する)。
 
 ## 事象駆動要件 (Event-driven)
 
@@ -23,8 +24,9 @@ Phase 2 以降で具体プロパティを追加する際に、各プロパティ
 
 | プロパティ | 追加 PR | 関連要件 ID | 備考 |
 | ---- | ---- | ---- | ---- |
-| `FdpPool` | M1-PR3(本 PR) | CFG-101 | DrowZzz の現行値は `[0, 10, 20, 30, 35, 40, 45, 50, 55, 60]`、ADR-0006 §1.4 / §M1 |
-| `MaxRoundNumber` | M3 着手 PR(予定) | CFG-102(予定) | ゲーム終了判定、DrowZzz の現行値は `20` |
+| `FdpPool` | M1-PR3 | CFG-101 | DrowZzz の現行値は `[0, 10, 20, 30, 35, 40, 45, 50, 55, 60]`、ADR-0006 §1.4 / §M1 |
+| `DdpPool` | M2-PR4(本 PR) | CFG-103 | DrowZzz の現行値は `{-30, -25, ..., +30}`(13 種)× 3 枚 = 39 要素、ADR-0009 §「DDP プールの構造」(起票時「36 枚」表記は計算誤記、M2-PR4 PR で 39 に訂正)|
+| `MaxRoundNumber` | M3 着手 PR(予定) | CFG-102(予定) | ゲーム終了判定、DrowZzz の現行値は `21`(ADR-0009 §「Clock 仕様の境界訂正」) |
 
 ## 関連
 
@@ -41,5 +43,6 @@ Phase 2 以降で具体プロパティを追加する際に、各プロパティ
 | CFG-002 | (テスト免除: Ubiquitous) | asmdef `noEngineReferences: true` で物理保証 |
 | CFG-003 | (テスト免除: Ubiquitous) | interface に setter を定義しない構造で保証 |
 | CFG-101 | (テスト免除: Ubiquitous) | `IGameConfig.FdpPool` の signature で構造的に保証(値の妥当性は `StartGameUseCase` の利用テストで間接的に検証) |
+| CFG-103 | (テスト免除: Ubiquitous) | `IGameConfig.DdpPool` の signature で構造的に保証(値の妥当性は `StubGameConfigTests` の DZ-154 と `StartGameUseCase` 利用テストの DZ-140 で間接的に検証) |
 
 Phase 2 以降で具体プロパティを追加した際は、対応するテストケースを追加し本表を更新する。

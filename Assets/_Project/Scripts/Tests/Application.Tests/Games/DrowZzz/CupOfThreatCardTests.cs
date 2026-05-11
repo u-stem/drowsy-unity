@@ -82,8 +82,14 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 [PlayerId.Of("p1")] = 0,
                 [PlayerId.Of("p2")] = 0,
             };
+            // DDP / DdpPool は M2-PR4 で追加。本テストは PlayCardAction の効果に集中するため、DDP=0 / 空 DdpPool で固定。
+            var ddp = new Dictionary<PlayerId, int>
+            {
+                [PlayerId.Of("p1")] = 0,
+                [PlayerId.Of("p2")] = 0,
+            };
             // PhaseState は PlayCardAction を直接適用するため WaitingForPlay
-            return new DrowZzzGameSession(gs, fdp, sdp, DrowZzzPhaseState.WaitingForPlay);
+            return new DrowZzzGameSession(gs, fdp, ddp, sdp, DdpPool.Empty, DrowZzzPhaseState.WaitingForPlay);
         }
 
         // ===== DZ-126: 夜のプレイで使用者 SDP -4 / 1 枚ドロー / 被使用者 SDP -10 =====
