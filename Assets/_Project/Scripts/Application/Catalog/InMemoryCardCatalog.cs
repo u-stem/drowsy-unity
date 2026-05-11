@@ -16,8 +16,9 @@ namespace Drowsy.Application.Catalog
     /// (ADR-0007 §5 / §M2-PR1。ADR-0006 §1.3 の「M2 で SO 化」記載は ADR-0007 §5 で M4 に変更済)。
     /// </para>
     /// <para>
-    /// M2-PR1 段階では <see cref="GetEffects(CardId)"/> は常に空列を返す(全カードが効果なし、M1 互換)。
-    /// M2-PR2 以降で 1 PR = 1 effect record を追加する都度、本クラスを拡張するか、effect 別 store の導入を判断する。
+    /// M2-PR1 段階では <see cref="GetEffects(CardId)"/> は常に空列を返す stub。M2-PR3 で 2 段 constructor
+    /// に拡張し、`(entries)` 単独呼び出しは効果なし(M1〜M2-PR2 後方互換)、`(entries, effects)` で
+    /// 効果列を明示登録できる(本 PR で「コップ一杯の脅威」を登録するため、APP-039 / APP-040)。
     /// </para>
     /// </remarks>
     public sealed class InMemoryCardCatalog : ICardCatalog<IEffect>
@@ -26,14 +27,31 @@ namespace Drowsy.Application.Catalog
         private static readonly IReadOnlyList<IEffect> EmptyEffects = Array.Empty<IEffect>();
 
         private readonly Dictionary<CardId, CardData> _store;
+        private readonly Dictionary<CardId, IReadOnlyList<IEffect>> _effects;
 
         /// <summary>
-        /// <paramref name="entries"/> の防御コピーを内部に保持する。
+        /// 効果なしカタログを生成する後方互換コンストラクタ(M1〜M2-PR2 互換)。
         /// </summary>
         /// <param name="entries">登録する (CardId, CardData) の列(同一キー後勝ち)</param>
         /// <exception cref="ArgumentNullException">entries が null の場合</exception>
         /// <exception cref="ArgumentException">entries に null CardData 値が含まれる場合</exception>
         public InMemoryCardCatalog(IEnumerable<KeyValuePair<CardId, CardData>> entries)
+            : this(entries, null)
+        {
+        }
+
+        /// <summary>
+        /// 効果列込みカタログを生成する(M2-PR3 で追加、APP-039)。
+        /// </summary>
+        /// <param name="entries">登録する (CardId, CardData) の列</param>
+        /// <param name="effects">登録する (CardId, 効果列) の列。null 可(全カード効果なし扱い)。同一キー後勝ち</param>
+        /// <exception cref="ArgumentNullException">entries が null の場合</exception>
+        /// <exception cref="ArgumentException">
+        /// entries に null CardData 値が含まれる場合、または effects に null 効果列が含まれる場合
+        /// </exception>
+        public InMemoryCardCatalog(
+            IEnumerable<KeyValuePair<CardId, CardData>> entries,
+            IEnumerable<KeyValuePair<CardId, IReadOnlyList<IEffect>>> effects)
         {
             if (entries is null)
             {
@@ -49,6 +67,20 @@ namespace Drowsy.Application.Catalog
                         nameof(entries));
                 }
                 _store[kv.Key] = kv.Value;
+            }
+            _effects = new Dictionary<CardId, IReadOnlyList<IEffect>>();
+            if (effects is not null)
+            {
+                foreach (var kv in effects)
+                {
+                    if (kv.Value is null)
+                    {
+                        throw new ArgumentException(
+                            $"InMemoryCardCatalog の effects に null 効果列を含めることはできません (key: {kv.Key?.Value ?? "<null>"})",
+                            nameof(effects));
+                    }
+                    _effects[kv.Key] = kv.Value;
+                }
             }
         }
 
@@ -68,10 +100,17 @@ namespace Drowsy.Application.Catalog
 
         /// <inheritdoc />
         /// <remarks>
-        /// M2-PR1 段階では未登録 / 登録済を問わず常に空列(<see cref="Array.Empty{T}"/>)を返す。
-        /// 未登録 CardId に対する例外は投げない(効果列の問い合わせは <c>0 個</c> として扱える方が
-        /// <c>PlayCardAction.Apply</c> 内の <c>Aggregate</c> に自然に乗る、ADR-0007 §3)。
+        /// M2-PR3 で登録効果列を返すように拡張(APP-040)。
+        /// 未登録 CardId / 効果列を登録していない CardId に対しては空列(<see cref="Array.Empty{T}"/>)を返す
+        /// (例外を投げない、<c>PlayCardAction.Apply</c> 内の <c>Aggregate</c> に自然に乗る、ADR-0007 §3)。
         /// </remarks>
-        public IReadOnlyList<IEffect> GetEffects(CardId id) => EmptyEffects;
+        public IReadOnlyList<IEffect> GetEffects(CardId id)
+        {
+            if (id is null)
+            {
+                return EmptyEffects;
+            }
+            return _effects.TryGetValue(id, out var list) ? list : EmptyEffects;
+        }
     }
 }
