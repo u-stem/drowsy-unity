@@ -121,6 +121,16 @@
   - **Related**: PR #12 (CardData) のレビュー過程で発生した CS8632 警告対応, [`CLAUDE.md`](../CLAUDE.md) §7
   - **Notes**: 必要性が高まった時点で再検討。Phase 2 以降で外部 API クライアント等の null 多発コードが入る前に判断したい
 
+- [ ] **`DrowZzzGameSession.CurrentRound` を `Clock.RoundNumber` 経由に整理(後方互換維持リファクタ)** `priority: low`
+  - **Why**: ADR-0008 で `DrowZzzClock` 値オブジェクトを導入し、`session.Clock.RoundNumber == session.CurrentRound` の同義関係を確定した。ADR-0008 §3 では「`CurrentRound` は変更しない(後方互換維持)」と判断したため、現状は両者が独立に同じ計算式 `(TurnNumber + 1) / 2` を保持している。将来 `DrowZzzGameSession.CurrentRound => Clock.RoundNumber` の薄いショートカットに置き換えると概念が一本化される
+  - **Done when**:
+    - `DrowZzzGameSession.cs` の `CurrentRound` 計算プロパティ実装を `=> Clock.RoundNumber` に書き換え
+    - 既存テスト DZ-010(3 件)が `CurrentRound` を呼び続けても緑のまま
+    - EARS `docs/specs/games/drowzzz/skeleton.md` (DZ-010) の式表現を「`Clock.RoundNumber` 経由」に整合
+    - N>2 拡張時の対応(`Clock` 側の `Hour`/`Minute` 計算式更新)と同タイミングで実施するか別途検討
+  - **Related**: [ADR-0008 §3](adr/0008-m2-drowzzz-clock-and-night-morning.md)、[ADR-0006 §M1-PR2 / DZ-010](adr/0006-m1-detail-application-interfaces.md)、`Assets/_Project/Scripts/Application/Games/DrowZzz/DrowZzzGameSession.cs:82`
+  - **Notes**: M2 / M3 内のいずれかの PR で機械的に実施可能(1 行のリファクタ + テスト緑維持)。N>2 対応と同時に行うのが筋(`Hour`/`Minute` の N=2 前提も同じタイミングで再評価)
+
 ## 進行中
 
 (着手中のエントリをここに移動する)

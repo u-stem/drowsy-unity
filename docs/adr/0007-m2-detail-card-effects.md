@@ -426,4 +426,5 @@ ADR-0005 / ADR-0006 と同じ運用:後追い chore は `docs/todo.md` で追跡
 - 関連: [`docs/specs/domain/configuration/game-config.md`](../specs/domain/configuration/game-config.md) — M3 着手 PR で `MaxRoundNumber` 追加予定(ADR-0006 §1.4 / 本 ADR §「山札枯渇」計算根拠)
 - 関連規約: [`CLAUDE.md`](../../CLAUDE.md) §5 アーキテクチャ依存ルール / §6 テスト方針 / §11 ADR 運用 / §12 TODO 追跡
 - 後続: M2-PR1 〜 M2-PR-N(進行中)
-- 後続: ADR-0008(M3 詳細、起票予定 — 勝敗判定 / `IsTerminated` / `GetWinner` / `MaxRoundNumber` 等)
+- 後続: [ADR-0008 M2 — DrowZzzClock 概念と「夜・朝」フェーズの導入](0008-m2-drowzzz-clock-and-night-morning.md)
+- 後続: ADR-0009(M3 詳細、起票予定 — 勝敗判定 / `IsTerminated` / `GetWinner` / `MaxRoundNumber` / ラウンド上限到達時の Clock 処理)
