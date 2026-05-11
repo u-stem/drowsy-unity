@@ -60,6 +60,7 @@ ADR-0006 §2 の決定に基づき、DrowZzz の Application 層型骨格を `Dr
   - `Assets/_Project/Scripts/Tests/Application.Tests/Games/DrowZzz/DrowZzzRuleTests.cs` (DZ-012, DZ-013)
 - シナリオ: `skeleton.feature`
 - 後続: M1-PR3 (`StartGameAction.Apply` 実装 + `IGameConfig.FdpPool` 追加)
+- 後続: [`clock.md`](clock.md) (M2-PR2) — `DrowZzzClock` 値オブジェクトと `DrowZzzGameSession.Clock` computed プロパティ。本機能の DZ-010 `CurrentRound` 式と同義(`Clock.RoundNumber == CurrentRound`)であることを DZ-097 で表明
 
 ## トレーサビリティ
 
