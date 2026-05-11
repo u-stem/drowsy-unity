@@ -47,27 +47,27 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             return new Pile(cards);
         }
 
-        // ===== DZ-012 / DZ-013: M1-PR3 段階の NotImplementedException(non-StartGameAction)
-        //       本 PR (M1-PR4) で DrawCardAction は実装済になったため、PlayCardAction で代用 =====
+        // ===== DZ-012 / DZ-013: NotImplementedException 残存ケース
+        //       M1-PR5 で PlayCardAction も実装済になったため、EndTurnAction で代用 =====
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-012")]
-        public void Given_DrowZzzRule_When_PlayCardActionでIsLegalMoveを呼ぶ_Then_NotImplementedExceptionを投げる()
+        public void Given_DrowZzzRule_When_EndTurnActionでIsLegalMoveを呼ぶ_Then_NotImplementedExceptionを投げる()
         {
-            // Given(PlayCardAction は M1-PR5 で本格実装、M1-PR4 では NotImpl)
+            // Given(EndTurnAction は M1-PR6 で本格実装、M1-PR5 では NotImpl)
             var rule = new DrowZzzRule();
             var session = NewSession();
-            var action = new PlayCardAction(CardId.Of("x"));
+            var action = new EndTurnAction();
             // When / Then
             Assert.Throws<NotImplementedException>(() => rule.IsLegalMove(session, action));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-013")]
-        public void Given_DrowZzzRule_When_PlayCardActionでApplyを呼ぶ_Then_NotImplementedExceptionを投げる()
+        public void Given_DrowZzzRule_When_EndTurnActionでApplyを呼ぶ_Then_NotImplementedExceptionを投げる()
         {
-            // Given(PlayCardAction Apply は M1-PR5 で本格実装、M1-PR4 では NotImpl)
+            // Given(EndTurnAction Apply は M1-PR6 で本格実装、M1-PR5 では NotImpl)
             var rule = new DrowZzzRule();
             var session = NewSession();
-            var action = new PlayCardAction(CardId.Of("x"));
+            var action = new EndTurnAction();
             // When / Then
             Assert.Throws<NotImplementedException>(() => rule.Apply(session, action));
         }
@@ -262,6 +262,206 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var rule = new DrowZzzRule();
             var session = NewSession();
             Assert.Throws<ArgumentNullException>(() => rule.Apply(session, null));
+        }
+
+        // ===== DZ-054〜056: IsLegalMove(PlayCardAction) =====
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-054")]
+        public void Given_WaitingForPlayかつCardが手札にある_When_PlayCardActionでIsLegalMoveを呼ぶ_Then_trueを返す()
+        {
+            // Given(WaitingForPlay / 現プレイヤー Hand = [c1, c2])
+            var rule = new DrowZzzRule();
+            var p0Hand = new Hand(new[] { CardId.Of("c1"), CardId.Of("c2") });
+            var session = NewSession(phase: DrowZzzTurnPhase.WaitingForPlay, p0Hand: p0Hand);
+            // When
+            var legal = rule.IsLegalMove(session, new PlayCardAction(CardId.Of("c1")));
+            // Then
+            Assert.That(legal, Is.True);
+        }
+
+        [Test, Category("Small"), Category("SemiNormal"), Property("Requirement", "DZ-055")]
+        public void Given_WaitingForDraw_When_PlayCardActionでIsLegalMoveを呼ぶ_Then_falseを返す()
+        {
+            // Given
+            var rule = new DrowZzzRule();
+            var p0Hand = new Hand(new[] { CardId.Of("c1") });
+            var session = NewSession(phase: DrowZzzTurnPhase.WaitingForDraw, p0Hand: p0Hand);
+            // When
+            var legal = rule.IsLegalMove(session, new PlayCardAction(CardId.Of("c1")));
+            // Then
+            Assert.That(legal, Is.False);
+        }
+
+        [Test, Category("Small"), Category("SemiNormal"), Property("Requirement", "DZ-055")]
+        public void Given_WaitingForEndTurn_When_PlayCardActionでIsLegalMoveを呼ぶ_Then_falseを返す()
+        {
+            // Given(3 値 enum の MC/DC 相当カバー)
+            var rule = new DrowZzzRule();
+            var p0Hand = new Hand(new[] { CardId.Of("c1") });
+            var session = NewSession(phase: DrowZzzTurnPhase.WaitingForEndTurn, p0Hand: p0Hand);
+            // When
+            var legal = rule.IsLegalMove(session, new PlayCardAction(CardId.Of("c1")));
+            // Then
+            Assert.That(legal, Is.False);
+        }
+
+        [Test, Category("Small"), Category("SemiNormal"), Property("Requirement", "DZ-056")]
+        public void Given_WaitingForPlayだがCardが手札にない_When_IsLegalMoveを呼ぶ_Then_falseを返す()
+        {
+            // Given(WaitingForPlay だが手札に "cX" がない)
+            var rule = new DrowZzzRule();
+            var p0Hand = new Hand(new[] { CardId.Of("c1") });
+            var session = NewSession(phase: DrowZzzTurnPhase.WaitingForPlay, p0Hand: p0Hand);
+            // When
+            var legal = rule.IsLegalMove(session, new PlayCardAction(CardId.Of("cX")));
+            // Then
+            Assert.That(legal, Is.False);
+        }
+
+        // ===== DZ-057〜064: Apply(PlayCardAction) 正常系 =====
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-057")]
+        public void Given_合法状態_When_PlayCardActionをApply_Then_現プレイヤーHandから指定Cardが除かれる()
+        {
+            // Given
+            var rule = new DrowZzzRule();
+            var p0Hand = new Hand(new[] { CardId.Of("c1"), CardId.Of("c2") });
+            var session = NewSession(phase: DrowZzzTurnPhase.WaitingForPlay, p0Hand: p0Hand);
+            // When
+            var result = rule.Apply(session, new PlayCardAction(CardId.Of("c1")));
+            // Then
+            Assert.That(result.GameState.Players[0].Hand.Cards, Has.No.Member(CardId.Of("c1")));
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-058")]
+        public void Given_合法状態_When_PlayCardActionをApply_Then_現プレイヤーHandCountが1減る()
+        {
+            // Given
+            var rule = new DrowZzzRule();
+            var p0Hand = new Hand(new[] { CardId.Of("c1"), CardId.Of("c2") });
+            var session = NewSession(phase: DrowZzzTurnPhase.WaitingForPlay, p0Hand: p0Hand);
+            int before = session.GameState.Players[0].Hand.Count;
+            // When
+            var result = rule.Apply(session, new PlayCardAction(CardId.Of("c1")));
+            // Then(DZ-040 と対称: before - 1 で意図を明示)
+            Assert.That(result.GameState.Players[0].Hand.Count, Is.EqualTo(before - 1));
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-059")]
+        public void Given_合法状態_When_PlayCardActionをApply_Then_FieldのTopが指定Card()
+        {
+            // Given(Field = 空、AddTop で c1 が Field.Cards[0] になる想定)
+            var rule = new DrowZzzRule();
+            var p0Hand = new Hand(new[] { CardId.Of("c1") });
+            var session = NewSession(phase: DrowZzzTurnPhase.WaitingForPlay, p0Hand: p0Hand);
+            // When
+            var result = rule.Apply(session, new PlayCardAction(CardId.Of("c1")));
+            // Then
+            Assert.That(result.GameState.Field.Cards[0], Is.EqualTo(CardId.Of("c1")));
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-060")]
+        public void Given_合法状態_When_PlayCardActionをApply_Then_FieldCountが1増える()
+        {
+            // Given(Field = 空)
+            var rule = new DrowZzzRule();
+            var p0Hand = new Hand(new[] { CardId.Of("c1") });
+            var session = NewSession(phase: DrowZzzTurnPhase.WaitingForPlay, p0Hand: p0Hand);
+            // When
+            var result = rule.Apply(session, new PlayCardAction(CardId.Of("c1")));
+            // Then
+            Assert.That(result.GameState.Field.Count, Is.EqualTo(1));
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-061")]
+        public void Given_合法状態_When_PlayCardActionをApply_Then_TurnPhaseがWaitingForEndTurnに遷移する()
+        {
+            // Given
+            var rule = new DrowZzzRule();
+            var p0Hand = new Hand(new[] { CardId.Of("c1") });
+            var session = NewSession(phase: DrowZzzTurnPhase.WaitingForPlay, p0Hand: p0Hand);
+            // When
+            var result = rule.Apply(session, new PlayCardAction(CardId.Of("c1")));
+            // Then
+            Assert.That(result.TurnPhase, Is.EqualTo(DrowZzzTurnPhase.WaitingForEndTurn));
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-062")]
+        public void Given_合法状態_When_PlayCardActionをApply_Then_GameStateTurnは不変()
+        {
+            // Given
+            var rule = new DrowZzzRule();
+            var p0Hand = new Hand(new[] { CardId.Of("c1") });
+            var session = NewSession(
+                phase: DrowZzzTurnPhase.WaitingForPlay,
+                p0Hand: p0Hand,
+                currentPlayerIndex: 0,
+                turnNumber: 5);
+            var originalTurn = session.GameState.Turn;
+            // When
+            var result = rule.Apply(session, new PlayCardAction(CardId.Of("c1")));
+            // Then
+            Assert.That(result.GameState.Turn, Is.EqualTo(originalTurn));
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-063")]
+        public void Given_合法状態_When_PlayCardActionをApply_Then_GameStateDeckは不変()
+        {
+            // Given(Deck = [d1, d2, d3])
+            var rule = new DrowZzzRule();
+            var p0Hand = new Hand(new[] { CardId.Of("c1") });
+            var deck = NewDeck("d1", "d2", "d3");
+            var session = NewSession(
+                phase: DrowZzzTurnPhase.WaitingForPlay,
+                p0Hand: p0Hand,
+                deck: deck);
+            // When
+            var result = rule.Apply(session, new PlayCardAction(CardId.Of("c1")));
+            // Then
+            Assert.That(result.GameState.Deck, Is.EqualTo(deck));
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-064")]
+        public void Given_合法状態_When_PlayCardActionをApply_Then_他プレイヤーの手札は不変()
+        {
+            // Given(CurrentPlayerIndex=0、p1.Hand=[c1]、p2.Hand=[b])
+            var rule = new DrowZzzRule();
+            var p0Hand = new Hand(new[] { CardId.Of("c1") });
+            var p1Hand = new Hand(new[] { CardId.Of("b") });
+            var session = NewSession(
+                phase: DrowZzzTurnPhase.WaitingForPlay,
+                p0Hand: p0Hand,
+                p1Hand: p1Hand);
+            // When
+            var result = rule.Apply(session, new PlayCardAction(CardId.Of("c1")));
+            // Then
+            Assert.That(result.GameState.Players[1].Hand, Is.EqualTo(p1Hand));
+        }
+
+        // ===== DZ-065 / DZ-066: Apply 異常系 =====
+
+        [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-065")]
+        public void Given_WaitingForDraw_When_PlayCardActionをApply_Then_InvalidOperationExceptionを投げる()
+        {
+            // Given(TurnPhase 違反)
+            var rule = new DrowZzzRule();
+            var p0Hand = new Hand(new[] { CardId.Of("c1") });
+            var session = NewSession(phase: DrowZzzTurnPhase.WaitingForDraw, p0Hand: p0Hand);
+            // When / Then
+            Assert.Throws<InvalidOperationException>(() =>
+                rule.Apply(session, new PlayCardAction(CardId.Of("c1"))));
+        }
+
+        [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-066")]
+        public void Given_Cardが手札にない_When_PlayCardActionをApply_Then_InvalidOperationExceptionを投げる()
+        {
+            // Given(WaitingForPlay だが手札に "cX" がない)
+            var rule = new DrowZzzRule();
+            var p0Hand = new Hand(new[] { CardId.Of("c1") });
+            var session = NewSession(phase: DrowZzzTurnPhase.WaitingForPlay, p0Hand: p0Hand);
+            // When / Then
+            Assert.Throws<InvalidOperationException>(() =>
+                rule.Apply(session, new PlayCardAction(CardId.Of("cX"))));
         }
     }
 }

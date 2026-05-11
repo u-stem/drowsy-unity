@@ -9,14 +9,16 @@ namespace Drowsy.Application.Games.DrowZzz
     /// DrowZzz の状態遷移ルール。<see cref="IGameRule{TAction, TSession}"/> の DrowZzz 具象実装。
     /// </summary>
     /// <remarks>
-    /// M1-PR4 段階で実装済の挙動:
+    /// M1-PR5 段階で実装済の挙動:
     /// <list type="bullet">
     /// <item><see cref="IsLegalMove"/>: <see cref="StartGameAction"/> → <c>false</c>(M1-PR3)、
-    /// <see cref="DrawCardAction"/> → <c>session.TurnPhase == WaitingForDraw</c> なら <c>true</c>(M1-PR4)。
-    /// <see cref="PlayCardAction"/> / <see cref="EndTurnAction"/> は依然 <see cref="NotImplementedException"/>(M1-PR5/PR6)。</item>
-    /// <item><see cref="Apply"/>: <see cref="DrawCardAction"/> のみ実装(M1-PR4、TurnPhase 遷移 + 手札更新)。
-    /// それ以外は依然 <see cref="NotImplementedException"/>(<see cref="StartGameAction"/> は <c>StartGameUseCase</c> 経由で扱うため
-    /// 本 Rule の <see cref="Apply"/> ルートには来ない設計、ADR-0006 §Implementation Notes)。</item>
+    /// <see cref="DrawCardAction"/> → <c>session.TurnPhase == WaitingForDraw</c> なら <c>true</c>(M1-PR4)、
+    /// <see cref="PlayCardAction"/> → <c>WaitingForPlay</c> かつ現プレイヤーの <c>Hand</c> に <c>Card</c> がある場合 <c>true</c>(M1-PR5)。
+    /// <see cref="EndTurnAction"/> は依然 <see cref="NotImplementedException"/>(M1-PR6)。</item>
+    /// <item><see cref="Apply"/>: <see cref="DrawCardAction"/>(M1-PR4)、<see cref="PlayCardAction"/>(M1-PR5)を実装済。
+    /// <see cref="EndTurnAction"/> は依然 <see cref="NotImplementedException"/>(M1-PR6)。
+    /// <see cref="StartGameAction"/> は <c>StartGameUseCase</c> 経由で扱うため本 Rule の <see cref="Apply"/> ルートには来ない設計、
+    /// ADR-0006 §Implementation Notes)。</item>
     /// </list>
     /// 引数 (<paramref name="session"/> / <paramref name="action"/>) の null は <see cref="ArgumentNullException"/>。
     /// (M1-PR4 で全 Action 種別共通の null 検証として導入、M1-PR3 reviewer 申し送り N-7 反映)
@@ -27,7 +29,7 @@ namespace Drowsy.Application.Games.DrowZzz
         /// 与えられた <paramref name="session"/> 状態で <paramref name="action"/> が合法かを返す。
         /// </summary>
         /// <exception cref="ArgumentNullException">session または action が null</exception>
-        /// <exception cref="NotImplementedException">非 <see cref="StartGameAction"/> / 非 <see cref="DrawCardAction"/> は M1-PR5〜PR6 で実装される</exception>
+        /// <exception cref="NotImplementedException">非 <see cref="StartGameAction"/> / 非 <see cref="DrawCardAction"/> / 非 <see cref="PlayCardAction"/> は M1-PR6 で実装される</exception>
         public bool IsLegalMove(DrowZzzGameSession session, DrowZzzAction action)
         {
             if (session is null)
@@ -42,9 +44,21 @@ namespace Drowsy.Application.Games.DrowZzz
             {
                 StartGameAction => false, // ADR-0006 §Implementation Notes §StartGameUseCase の IsLegalMove 経由での扱い
                 DrawCardAction => session.TurnPhase == DrowZzzTurnPhase.WaitingForDraw,
+                PlayCardAction p => IsLegalPlayCard(session, p),
                 _ => throw new NotImplementedException(
-                    $"DrowZzzRule.IsLegalMove ({action.GetType().Name}) は M1-PR5〜PR6 で実装される (ADR-0006 §M1 着手 PR 群)"),
+                    $"DrowZzzRule.IsLegalMove ({action.GetType().Name}) は M1-PR6 で実装される (ADR-0006 §M1 着手 PR 群)"),
             };
+        }
+
+        // PlayCardAction の合法性: WaitingForPlay フェーズ かつ 現プレイヤーの Hand に Card が含まれる
+        private static bool IsLegalPlayCard(DrowZzzGameSession session, PlayCardAction action)
+        {
+            if (session.TurnPhase != DrowZzzTurnPhase.WaitingForPlay)
+            {
+                return false;
+            }
+            int currentIndex = session.GameState.Turn.CurrentPlayerIndex;
+            return session.GameState.Players[currentIndex].Hand.Contains(action.Card);
         }
 
         /// <summary>
@@ -55,7 +69,7 @@ namespace Drowsy.Application.Games.DrowZzz
         /// </summary>
         /// <exception cref="ArgumentNullException">session または action が null</exception>
         /// <exception cref="InvalidOperationException">IsLegalMove が false を返す状態で Apply された場合、または山札枯渇で <see cref="Pile.Draw"/> が失敗した場合</exception>
-        /// <exception cref="NotImplementedException">非 <see cref="DrawCardAction"/> は M1-PR5〜PR6 で実装される</exception>
+        /// <exception cref="NotImplementedException">非 <see cref="DrawCardAction"/> / 非 <see cref="PlayCardAction"/> は M1-PR6 で実装される</exception>
         public DrowZzzGameSession Apply(DrowZzzGameSession session, DrowZzzAction action)
         {
             if (session is null)
@@ -69,8 +83,9 @@ namespace Drowsy.Application.Games.DrowZzz
             return action switch
             {
                 DrawCardAction => ApplyDrawCard(session),
+                PlayCardAction p => ApplyPlayCard(session, p),
                 _ => throw new NotImplementedException(
-                    $"DrowZzzRule.Apply ({action.GetType().Name}) は M1-PR5〜PR6 で実装される (ADR-0006 §M1 着手 PR 群)"),
+                    $"DrowZzzRule.Apply ({action.GetType().Name}) は M1-PR6 で実装される (ADR-0006 §M1 着手 PR 群)"),
             };
         }
 
@@ -112,6 +127,54 @@ namespace Drowsy.Application.Games.DrowZzz
             {
                 GameState = newGameState,
                 TurnPhase = DrowZzzTurnPhase.WaitingForPlay,
+            };
+        }
+
+        // PlayCardAction の状態遷移:
+        // 現プレイヤーの Hand から指定 Card を Remove → Field に AddTop で追加 + TurnPhase = WaitingForEndTurn。
+        // GameState.Turn / Deck は不変。
+        private static DrowZzzGameSession ApplyPlayCard(DrowZzzGameSession session, PlayCardAction action)
+        {
+            // 防御的 IsLegalMove 検証 (TurnPhase + Card 不在の両方を分けて投げる、原因明示のため)
+            if (session.TurnPhase != DrowZzzTurnPhase.WaitingForPlay)
+            {
+                throw new InvalidOperationException(
+                    $"PlayCardAction は WaitingForPlay フェーズでのみ合法です (現フェーズ: {session.TurnPhase})");
+            }
+
+            var gameState = session.GameState;
+            int currentIndex = gameState.Turn.CurrentPlayerIndex;
+            var current = gameState.Players[currentIndex];
+
+            if (!current.Hand.Contains(action.Card))
+            {
+                throw new InvalidOperationException(
+                    $"PlayCardAction の Card ({action.Card.Value}) は現プレイヤーの手札に含まれません");
+            }
+
+            // 手札から指定 Card を Remove(防御検証で Card 存在確認済のため Remove は成功する)
+            var updatedPlayer = current with { Hand = current.Hand.Remove(action.Card) };
+
+            // Field に AddTop (直近プレイカードが Field.Cards[0]、ADR は ADR-0006 §M1-PR5 補足、JIT 確定 2026-05-11)
+            var newField = gameState.Field.AddTop(action.Card);
+
+            // Players 配列を新しい配列に置換
+            var newPlayers = new PlayerState[gameState.Players.Count];
+            for (int i = 0; i < newPlayers.Length; i++)
+            {
+                newPlayers[i] = i == currentIndex ? updatedPlayer : gameState.Players[i];
+            }
+
+            var newGameState = gameState with
+            {
+                Players = newPlayers,
+                Field = newField,
+            };
+
+            return session with
+            {
+                GameState = newGameState,
+                TurnPhase = DrowZzzTurnPhase.WaitingForEndTurn,
             };
         }
     }
