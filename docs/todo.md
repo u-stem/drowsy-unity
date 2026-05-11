@@ -74,6 +74,25 @@
   - **Related**: [ADR-0006 §7](adr/0006-m1-detail-application-interfaces.md)、PR #20 (本 TODO の発生源)
   - **Notes**: 本 PR (ADR-0006 起票) のスコープ外にした理由は code-reviewer S-2 指摘で「双方向参照は別 PR に切り出す方が筋」と判断したため。M1-PR1 着手前または同時に対応する
 
+- [ ] **`IGameConfig.MaxRoundNumber` を追加(M3 着手 PR 内で消化予定)** `priority: medium`
+  - **Why**: ADR-0006 §1.4 で「M3 着手 PR で `MaxRoundNumber` プロパティを `IGameConfig` に追加し、ゲーム終了判定 (`TurnState.TurnNumber > MaxRoundNumber × Players.Count`、ADR-0006 §7) に利用する」と確定済。M1 完成までは利用機会がないため M3 まで保留してきたが、忘却防止のため TODO エントリ化
+  - **Done when**:
+    - `IGameConfig.MaxRoundNumber` プロパティ追加(`Drowsy.Domain.Configuration`、`int` 型、DrowZzz 値 = 20)
+    - CFG-102 を `docs/specs/domain/configuration/game-config.md` に追加
+    - `StubGameConfig` (Tests/Stubs/) のデフォルト値追加
+    - M3 ゲーム終了判定 (`IsTerminated(session)` 等) で参照
+  - **Related**: [ADR-0006 §1.4](adr/0006-m1-detail-application-interfaces.md)、[ADR-0006 §7](adr/0006-m1-detail-application-interfaces.md)、M3 着手 PR (将来)
+  - **Notes**: ADR-0006 §M1 着手 PR 群 §M1-PR2 補足の「M3 で個別追加」方針通り
+
+- [ ] **`ApplyActionUseCase` / `DrowZzzRuleTests` の共通テストヘルパー抽出** `priority: low`
+  - **Why**: M1-PR6 reviewer 指摘 P-2 と M1-PR7 着手時に確認した課題。`ApplyActionUseCaseTests.NewSession` と `DrowZzzRuleTests.NewSession` がほぼ同一実装で重複している。M2 でテストが増えると保守コストが上がる
+  - **Done when**:
+    - `Tests/Application.Tests/Stubs/SessionFactory.cs`(または `TestSessionBuilder.cs`)等の共通ヘルパーを新設
+    - `DrowZzzRuleTests` / `ApplyActionUseCaseTests` / `M1IntegrationTests` を共通ヘルパーに切替
+    - 既存テスト全緑を維持
+  - **Related**: M1-PR6 reviewer 指摘 P-2 (PR #27 コメント)、M1-PR7 reviewer 指摘 (PR #28 コメント)
+  - **Notes**: M2 着手前または M2 中の早い段階で対応すると保守コストが上がる前に統一できる
+
 - [ ] **NRT (Nullable Reference Types) 有効化を検討する** `priority: low`
   - **Why**: PR-1 (CardData) で `CardData?` / `object?` のアノテーション 7 箇所に対し CS8632 警告が発生し、既存パターン(NRT 無効)に揃えて `?` を削除した経緯がある。Domain 全体で null 安全な API を表現したい場合、NRT 有効化が筋。判断は設計判断レベルになる可能性あり(ADR-0004 候補)
   - **Done when**:
