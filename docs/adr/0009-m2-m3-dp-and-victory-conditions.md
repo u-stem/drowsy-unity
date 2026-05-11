@@ -492,9 +492,60 @@ ADR-0007 / ADR-0008 と同じく、本 ADR 起票 PR では `README.md` / `CLAUD
 - **カード「コップ一杯の脅威」(No.01、2 枚)の効果数値**: プロジェクトオーナーが本 PR 着手時に JIT 共有(夜は「使用者の SDP -4 / 使用者がカードを 1 枚ドロー / 被使用者の SDP -10」/ 朝は「使用者の SDP -4 / 被使用者の SDP +10」、数字は「使用者 / 被使用者」の順、サブ名「コーヒー」「ホットミルク」は最終的に排除)。これは本 ADR §「DP 種別」の数字感(SDP 範囲)の最初の実例となり、後続カードの数値設計の暗黙基準となる
 - **使用者 / 被使用者の用語**: プロジェクトオーナー用語「甲」「乙」を踏襲しつつ、コード identifier は英語の `Self` / `Opponent`(`SdpTarget` enum)に統一(ADR-0006 §1.1 / CLAUDE.md §1 識別子英語規約と整合)
 
+### M2-PR4 完成記録(2026-05-11、DDP 機構 + 自動抽選機構 + ADR 計算誤記訂正同梱)
+
+**完成 PR**: PR #37 `feat(app): DDP 機構 + DdpPool 値オブジェクト + 自動抽選機構を実装 (M2-PR4)`(merged `84966ef`、ADR-0007 §M2-PR4 完成記録と相互参照)
+
+#### Definition of Done 達成項目(本 ADR で確定済の仕様のうち、M2-PR4 範囲)
+
+| スコープ項目 | 達成状況 | 備考 |
+| ---- | ---- | ---- |
+| `DrowZzzGameSession.DrawDrowsyPoints`(DDP)プロパティを追加 | ✓ | 初期値 0、隠し情報、cross-field 検証(`Players` キー集合一致)、Equals/GetHashCode で順序非依存マルチセット同値(seed=1 で SDP との XOR 衝突回避)、DZ-128 / DZ-130〜132 / DZ-134〜135 / DZ-137 |
+| `DrowZzzGameSession.DdpPool`(`DdpPool` 値オブジェクト)プロパティを追加 | ✓ | プレイヤー間共有、本 ADR §3 構造、DZ-129 / DZ-133 / DZ-136 |
+| 専用 `DdpPool` 値オブジェクト新設(Application 層) | ✓ | 本 ADR §3 では「Pile 型を再利用」と書いていたが、`Pile` は `CardId[]` 専用で整数プールには semantic 違反のため `Drowsy.Application.Games.DrowZzz.DdpPool` を新設、Pile と同 API パターン(Shuffle/Draw/Equals 順序付きシーケンス同値)、DZ-146〜152 |
+| `DdpPoolConstants`(L2 const 集約) | ✓ | CLAUDE.md §9 マジックナンバー禁止に従い MinValue/MaxValue/Step/CopiesPerValue/DistinctValueCount/TotalPoolSize/DrawRounds を集約、`DrowZzzClockConstants` と同パターン |
+| `IGameConfig.DdpPool` 追加(`StubGameConfig` デフォルト 39 要素) | ✓ | CFG-103、DZ-154、本 ADR §3 で追加確定済の Domain interface 拡張 |
+| `StartGameUseCase` で DDP を 0 初期化 + DdpPool を Shuffle | ✓ | DZ-139 / DZ-140、`new DdpPool(_config.DdpPool).Shuffle(_rng)` |
+| `EndTurnAction.Apply` で Turn 5/9/13/17/21 開始時の自動抽選 | ✓ | 本 ADR §4 採用案 A、ターン境界(`CurrentPlayerIndex == 0`)+ 新ターン番号 ∈ DrawRounds で N=2 枚抽選、DZ-141(5 ケース)/ DZ-142(5 ケース)/ DZ-143 / DZ-144 |
+| `TotalPoints(PlayerId)` を 3 項合計(FDP + DDP + SDP)に拡張 | ✓ | 本 ADR §「持ち点」整合、M2-PR3 段階の 2 項合計から拡張、DZ-138(4 ケース)、`dp-mechanism.md` DZ-103 も整合更新 |
+| DDP 0 floor なし(負値許容) | ✓ | DZ-137、SDP と同パターン、本 ADR「持ち点低い方が勝ち」と整合 |
+| `DrowZzzRule` constructor は 2 引数(ADR-0007 §3)を維持 | ✓ | 本 ADR §4 で挙げた「rng を Rule に注入する案」は本 PR で「`StartGameUseCase` の事前 Shuffle で十分」と再評価し採用しない、ADR-0007 §3 のシグネチャを破壊せず維持 |
+| `IGameRule.IsTerminated` / `GetWinner` 本格実装 | **✗ M3 範囲** | 本 ADR §5、ADR-0010 候補で扱う |
+| `EarlyWinTriggerEffect`(就寝カード効果型) | **✗ M3 範囲** | 本 ADR §5、ADR-0010 候補で扱う |
+| 引き分けの判定仕様 | **✗ M3 範囲** | 本 ADR §6、M3 着手 ADR で JIT |
+
+#### M2-PR4 進行中の JIT 確定・訂正同梱
+
+- **DDP プール枚数の計算誤記訂正(36 → 39)**: 本 ADR 起票時 §「DDP プールの構造」で「13 種 × 3 枚 = 36 枚」「総抽選 10 枚 ≤ プール 36 枚で余裕 26 枚」と書いていたが、数学的に 13 × 3 = 39 で**計算誤記**。実装着手後の NUnit テスト失敗(Expected 36, but was 39)で発覚、プロジェクトオーナー JIT 確認(2026-05-11)で「39 枚が正、ADR 表記を訂正」と確定。本 PR で ADR-0009 / `docs/adr/README.md` / 仕様 / 実装 xmldoc / テスト / `docs/todo.md` の「36 枚」を一括 39 に訂正同梱(訂正経緯は「起票時 36 枚と書いた」注記で各箇所に残す、ADR-0001「Accepted 直接編集」運用、ADR-0007 / ADR-0008 の境界訂正同梱と同パターン)
+- **`DrowZzzRule` constructor への `IRandomSource` 注入を採用しない判断**: 本 ADR §4 で「rng を Rule に注入する案」が JIT 判断候補とされていたが、`StartGameUseCase` で `DdpPool` を 1 回事前 Shuffle 済のため Rule 内 rng は不要と再評価。ADR-0007 §3「`DrowZzzRule` constructor 引数は `ICardCatalog<IEffect>` / `EffectInterpreter` のみ」を破壊せずに済む。`dp-mechanism-ddp.md` §「設計判断」§「`DrowZzzRule` constructor」に経緯記録
+- **`DdpPool` 専用値オブジェクトの新設(Pile 流用案を不採用)**: 本 ADR §3 では「`Pile` 型を再利用」と書いていたが、`Pile` は `CardId[]` 専用で整数プール (-30〜+30) には semantic 違反のため、専用 `DdpPool` 値オブジェクトを Application 層に新設(Pile と同 API パターン)。`dp-mechanism-ddp.md` §「設計判断」§「`DdpPool` 値オブジェクト」に根拠記録
+
+#### code-reviewer subagent 反映(警告 4 / 提案 5 → 7 件反映)
+
+- W-1: `dp-mechanism-ddp.md` §「設計判断」§「`DrowZzzRule` constructor」で「採用する」と書いていた誤記を「採用しない判断」に訂正(実装と整合)
+- W-2: `DdpPoolTests` の `IdentityRandom` 説明を「`maxExclusive - 1` を返す → Fisher-Yates で `j=i` = no-op」に正確化
+- W-3: `DrowZzzRuleTests` の `[Category]/[Property]` を `[TestCase]` の前に配置(NUnit 標準慣例)
+- W-4: `IGameConfig.cs` の DdpPool xmldoc から Application 層具体クラス名(`DdpPoolConstants.BuildDefaultPool`)を削除
+- P-1〜P-3: TestName 簡素化 / `Assert.Multiple` 採用根拠コメント / テストパラメータ単位コメント
+
+#### Unity Test Framework 制約に伴う実装上の調整
+
+- `Assert.Multiple` 未対応のため、DZ-141/142/143/144 の複合不変条件検証は個別 `Assert.That` を並列に並べる(最初の失敗で停止)。`DrowZzzRuleTests` 内コメントで「1 ドメインイベントの複合不変条件」採用根拠と Unity NUnit 制約を明記
+
+#### NUnit Property 増加(実測)
+
+| ファイル | 追加 Property 数 | 内訳 |
+| ---- | ---- | ---- |
+| `DdpPoolTests`(新規) | 9 | DZ-148〜152 |
+| `DrowZzzGameSessionTests` | 12 | DZ-130〜138 |
+| `DrowZzzRuleTests` | 4 | DZ-141 / DZ-142 / DZ-143 / DZ-144(各 1 メソッド、DZ-141/142 は `[TestCase]` 5 ケース展開) |
+| `StartGameUseCaseTests` | 4 | DZ-139 × 2 / DZ-140 × 2 |
+| `StubGameConfigTests`(新規) | 4 | DZ-154(4 ケース) |
+| **合計** | **+33 件** | TestCase 展開で実行ケースは +41 |
+
 ### M2-M3 完成記録の追記タイミング(後続 PR で実施)
 
-M2-PR3 完成記録は §直上に追記済。M2-PR4 (DDP 機構) / M2-PR5+ (後続効果カード) / M3-PR (IsTerminated / GetWinner) 完成時に、それぞれ本 ADR or 関連 ADR に追記する(ADR-0007 / ADR-0008 §M2 完成記録の追記タイミング と同パターン)。本 ADR は DP 機構 + 持ち点 + 勝利条件のスコープに閉じ、M2 全体の完成記録は ADR-0007 §M2 完成記録(全体)で集約する。
+M2-PR3 / M2-PR4 完成記録は §直上に追記済。M2-PR5+ (後続効果カード) / M3-PR (IsTerminated / GetWinner) 完成時に、それぞれ本 ADR or 関連 ADR に追記する(ADR-0007 / ADR-0008 §M2 完成記録の追記タイミング と同パターン)。本 ADR は DP 機構 + 持ち点 + 勝利条件のスコープに閉じ、M2 全体の完成記録は ADR-0007 §M2 完成記録(全体)で集約する。
 
 ## Related
 
