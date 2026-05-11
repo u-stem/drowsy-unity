@@ -82,6 +82,17 @@ namespace Drowsy.Application.Games.DrowZzz
         public int CurrentRound => (_gameState.Turn.TurnNumber + 1) / 2;
 
         /// <summary>
+        /// DrowZzz のゲーム内時計(<see cref="CurrentRound"/> 由来の値オブジェクト)。
+        /// </summary>
+        /// <remarks>
+        /// ADR-0008 §2 で確定した案 X(computed プロパティ採用)。真の単一情報源は
+        /// <c>TurnState.TurnNumber</c> で、<see cref="DrowZzzClock.RoundNumber"/> ≡ <see cref="CurrentRound"/>
+        /// が構造的に保証される(DZ-097)。<c>Equals</c> / <c>GetHashCode</c> での二重カウントは不要。
+        /// 詳細は <c>docs/specs/games/drowzzz/clock.md</c> を参照。
+        /// </remarks>
+        public DrowZzzClock Clock => new DrowZzzClock(CurrentRound);
+
+        /// <summary>
         /// DrowZzzGameSession を生成する。
         /// </summary>
         /// <exception cref="ArgumentNullException">gameState または firstDrowsyPoints が null</exception>

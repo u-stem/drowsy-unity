@@ -230,5 +230,45 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             // When / Then
             Assert.That(s1, Is.EqualTo(s2));
         }
+
+        // ===== DZ-097: Session.Clock.RoundNumber と CurrentRound の同義性(N=2)=====
+        // ADR-0008 §2 で確定した computed プロパティ `Clock => new DrowZzzClock(CurrentRound)` の挙動を、
+        // N=2 で Round 1 / 16 / 21 に相当する TurnNumber=1 / 31 / 41 で表明する。
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-097")]
+        public void Given_TurnNumber1のSession_When_Clock_RoundNumberを取得_Then_CurrentRoundと一致()
+        {
+            // Given(Round 1 フェーズ 1)
+            var session = new DrowZzzGameSession(
+                NewGameState(turnNumber: 1),
+                Fdp(("p1", 0), ("p2", 10)),
+                DrowZzzPhaseState.WaitingForDraw);
+            // When / Then
+            Assert.That(session.Clock.RoundNumber, Is.EqualTo(session.CurrentRound));
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-097")]
+        public void Given_TurnNumber31のSession_When_Clock_RoundNumberを取得_Then_CurrentRoundと一致()
+        {
+            // Given(Round 16 フェーズ 1、夜の終端 04:30。N=2 で TurnNumber = 2 * (16 - 1) + 1 = 31)
+            var session = new DrowZzzGameSession(
+                NewGameState(turnNumber: 31),
+                Fdp(("p1", 0), ("p2", 10)),
+                DrowZzzPhaseState.WaitingForDraw);
+            // When / Then
+            Assert.That(session.Clock.RoundNumber, Is.EqualTo(session.CurrentRound));
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-097")]
+        public void Given_TurnNumber41のSession_When_Clock_RoundNumberを取得_Then_CurrentRoundと一致()
+        {
+            // Given(Round 21 フェーズ 1、朝の最終 07:00。N=2 で TurnNumber = 2 * (21 - 1) + 1 = 41)
+            var session = new DrowZzzGameSession(
+                NewGameState(turnNumber: 41),
+                Fdp(("p1", 0), ("p2", 10)),
+                DrowZzzPhaseState.WaitingForDraw);
+            // When / Then
+            Assert.That(session.Clock.RoundNumber, Is.EqualTo(session.CurrentRound));
+        }
     }
 }
