@@ -10,7 +10,7 @@ ADR-0006 §2.4 / §M1-PR5 の決定に基づく。`PlayCardAction(card)` は `Wa
 
 ## 普遍要件 (Ubiquitous)
 
-- [DZ-052] [Ubiquitous] The `PlayCardAction.Card` shall be non-null(record positional のオーバーライド init setter で `Card ?? throw new ArgumentNullException(nameof(Card))`、record positional のため `nameof` の対象はプロパティ名 `Card`)。
+- [DZ-052] [Ubiquitous] The `PlayCardAction.Card` shall be non-null(バッキングフィールド + getter/setter 全置換 init setter 本体で `value ?? throw new ArgumentNullException(nameof(value))`、Phase 1 `GameState` と同パターン)。
 
 ## 事象駆動要件 (Event-driven)
 
@@ -40,7 +40,7 @@ ADR-0006 §2.4 / §M1-PR5 の決定に基づく。`PlayCardAction(card)` は `Wa
 
 - **Field 追加方向**: `AddTop` 採用(プロジェクトオーナー JIT 確定 2026-05-11)。`Field.Cards[0]` = 直近プレイカード、末尾 = 最初のプレイ。M2 のカード効果実装で「直前のカードを参照する」効果がある場合に `Field.Cards[0]` で取れる。
 - **Hand.Remove の利用**: Phase 1 `Hand.Remove(CardId)` は不在カードで `ArgumentException` を投げる。`Apply` の防御的検証で「`Hand.Cards.Contains(card)` を先に確認」しているため、`Remove` は必ず成功する経路を通る。
-- **PlayCardAction の null 防御パターン**: record positional `(CardId Card)` の自動生成 init setter に `= Card ?? throw new ArgumentNullException(nameof(Card))` を被せて `Card` プロパティを再定義する。これで生成時 / `with` 式の両方の経路で null が弾かれる(Phase 1 `PlayerState` パターン相当だが、record positional 構文を保つ)。
+- **PlayCardAction の null 防御パターン**: record positional `(CardId Card)` を保ちつつ、バッキングフィールド `_card` + getter/setter 全置換 init setter (`init => _card = value ?? throw ...`) で null 防御する。`= Card ?? throw` のような **初期化式** は constructor 1 回のみ評価で `with` 経路をカバーしないため不可(Phase 1 `GameState` と同パターン採用、ADR-0002 / ADR-0004)。
 - **`session.GameState.Turn` / `Deck` は不変**: ターン進行は `EndTurnAction.Apply` (M1-PR6)、ドローは `DrawCardAction.Apply` (M1-PR4) の責務。`PlayCardAction.Apply` では `Hand` と `Field` のみ変更する。
 - **`InvalidOperationException` の二重防御**: `DrowZzzRule.Apply` 内部で IsLegalMove 違反 (TurnPhase / Card 不在の両方) を検証して投げる(ADR-0006 §3 方針)。
 
