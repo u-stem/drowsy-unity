@@ -102,7 +102,14 @@ namespace Drowsy.Application.Games.DrowZzz
                 playerStates[i] = new PlayerState(shuffledPlayers[i], hands[i]);
             }
 
-            // 5. GameState + DrowZzzGameSession 構築
+            // 5. SDP 初期化(全プレイヤー 0、ADR-0009 §「DP 種別」§SDP の「初期値 0」、本 PR M2-PR3 で追加)
+            var sdpDict = new Dictionary<PlayerId, int>(shuffledPlayers.Count);
+            for (int i = 0; i < shuffledPlayers.Count; i++)
+            {
+                sdpDict[shuffledPlayers[i]] = 0;
+            }
+
+            // 6. GameState + DrowZzzGameSession 構築
             var gameState = new GameState(
                 playerStates,
                 deck,
@@ -113,6 +120,7 @@ namespace Drowsy.Application.Games.DrowZzz
             return new DrowZzzGameSession(
                 gameState,
                 fdpDict,
+                sdpDict,
                 DrowZzzPhaseState.WaitingForDraw);
         }
 

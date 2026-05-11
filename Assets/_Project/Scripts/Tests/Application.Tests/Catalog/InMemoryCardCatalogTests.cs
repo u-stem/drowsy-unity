@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using NUnit.Framework;
 using Drowsy.Application.Catalog;
+using Drowsy.Application.Games.DrowZzz.Effects;
 using Drowsy.Domain.Cards;
 
 namespace Drowsy.Application.Tests.Catalog
@@ -144,6 +145,25 @@ namespace Drowsy.Application.Tests.Catalog
             var effects = catalog.GetEffects(CardId.Of("Y"));
             // Then
             Assert.That(effects, Is.Empty);
+        }
+
+        // ===== APP-040: 2 段 constructor で効果列を登録した CardId に対して効果列を返す(M2-PR3)=====
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "APP-040")]
+        public void Given_2段constructorで効果列を登録_When_GetEffectsを呼ぶ_Then_登録効果列を返す()
+        {
+            // Given(2 段 constructor で CardId "X" に効果列を登録)
+            var entries = new[] { Entry("X", NewData("X-card")) };
+            var registeredEffects = new IEffect[] { new AdjustSdpEffect(SdpTarget.Self, 5) };
+            var effectsDict = new[]
+            {
+                new KeyValuePair<CardId, IReadOnlyList<IEffect>>(CardId.Of("X"), registeredEffects),
+            };
+            var catalog = new InMemoryCardCatalog(entries, effectsDict);
+            // When
+            var got = catalog.GetEffects(CardId.Of("X"));
+            // Then
+            Assert.That(got, Is.EqualTo(registeredEffects));
         }
     }
 }

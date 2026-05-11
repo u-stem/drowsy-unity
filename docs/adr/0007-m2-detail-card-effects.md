@@ -120,6 +120,8 @@ public sealed class EffectInterpreter
 
 どちらを採るかは **M2 進行中に他者影響系の最初の record が登場した時点で JIT 判断** する。M2-PR1 では暗黙取得の最小 API のみ確定する。
 
+**M2-PR3 JIT 確定(2026-05-11、ADR-0009「コップ一杯の脅威」JIT 共有時)**: 案 A のサブセット派生として **`enum SdpTarget { Self, Opponent }`** を効果 record の positional 引数に取る方式を採用(`AdjustSdpEffect(SdpTarget Target, int Delta)` / `DrawCardEffect(SdpTarget Target, int Count)`)。`TargetPlayerId` を直接持つより、N=2 想定下では「現プレイヤーに対する相対位置」の方が effect record の自己完結性が高く、N>2 拡張時にも `enum DpTarget { Self, AllOpponents, Specific }` 等で広げやすい。`EffectInterpreter` 内部で `ResolveTargetPlayerId(session, target)` が `SdpTarget` を実際の `PlayerId` に解決する(N=2 で Opponent は一意決定)。案 B は採用せず、`EffectInterpreter.Apply` のシグネチャは ADR-0007 §1.3 のまま `(session, effect)` を維持。詳細は `docs/specs/games/drowzzz/dp-mechanism.md` §「actor 概念」/ `Effects/SdpTarget.cs` の XML doc 参照。
+
 ### 2. `ICardCatalog.GetEffects(CardId)` の追加と責務拡張
 
 M1 で確定した `ICardCatalog`(ADR-0006 §1.3)に effect 取得メソッドを追加する。

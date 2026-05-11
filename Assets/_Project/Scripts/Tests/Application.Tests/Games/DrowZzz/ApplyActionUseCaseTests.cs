@@ -43,7 +43,14 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 [PlayerId.Of("p1")] = 0,
                 [PlayerId.Of("p2")] = 10,
             };
-            return new DrowZzzGameSession(gs, fdp, phase);
+            // SDP は M2-PR3 で追加(ADR-0009 §「DP 種別」)。本ヘルパー利用テストは SDP に関心がないため
+            // 全プレイヤー 0 で固定初期化する。
+            var sdp = new Dictionary<PlayerId, int>
+            {
+                [PlayerId.Of("p1")] = 0,
+                [PlayerId.Of("p2")] = 0,
+            };
+            return new DrowZzzGameSession(gs, fdp, sdp, phase);
         }
 
         private static Pile NewDeck(params string[] cardIds)

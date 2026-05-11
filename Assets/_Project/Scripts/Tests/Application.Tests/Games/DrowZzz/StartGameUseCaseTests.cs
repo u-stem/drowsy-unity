@@ -269,5 +269,30 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             // When / Then
             Assert.Throws<ArgumentException>(() => useCase.Execute(players, NewDeck(20)));
         }
+
+        // ===== DZ-105: SDP 初期化(M2-PR3 で追加)=====
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-105")]
+        public void Given_有効な引数_When_Execute_Then_SecondDrowsyPointsキー集合がplayersと一致する()
+        {
+            // Given
+            var useCase = NewUseCase();
+            var players = NewPlayers("p1", "p2");
+            // When
+            var session = useCase.Execute(players, NewDeck(20));
+            // Then
+            Assert.That(session.SecondDrowsyPoints.Keys, Is.EquivalentTo(players));
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-105")]
+        public void Given_有効な引数_When_Execute_Then_SecondDrowsyPointsの全値が0で初期化される()
+        {
+            // Given(ADR-0009 §「DP 種別」§SDP の「初期値 0」)
+            var useCase = NewUseCase();
+            // When
+            var session = useCase.Execute(NewPlayers("p1", "p2"), NewDeck(20));
+            // Then
+            Assert.That(session.SecondDrowsyPoints.Values.All(v => v == 0), Is.True);
+        }
     }
 }
