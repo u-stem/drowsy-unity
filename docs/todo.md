@@ -56,6 +56,25 @@
 
 ## 未着手
 
+- [ ] **`StartGameUseCase` から未使用の `ICardCatalog` 依存削除を検討する** `priority: low`
+  - **Why**: ADR-0006 §3 で「constructor injection は維持」と判断し、M1-PR3 で `StartGameUseCase` constructor に `ICardCatalog` を含めたが、M1 範囲で実は一切参照していない(`StartGameUseCase.cs` remarks に「本 PR (M1-PR3) では参照しない」と明記)。ADR-0007 §3 で M2-PR1 にて `ICardCatalog<IEffect>` へジェネリック化すると、`StartGameUseCase` が `IEffect` を内部利用しないにもかかわらず型引数を constructor シグネチャに持つ「設計上の割り切り」が発生する。ADR-0006 §3 を覆す変更になるため本 ADR-0007 スコープ外としたが、SO 化(M4)時に `StartGameUseCase` がカード情報を本当に必要としないことが確定したら依存削除を別 PR / 別 ADR で再評価したい
+  - **Done when**:
+    - 以下のいずれかが選択され、結果がリポジトリに反映済み:
+      - 選択 A: `StartGameUseCase` から `ICardCatalog` 依存を削除(constructor 引数 + フィールド削除)、必要なら ADR-0006 の決定を覆す ADR を追加で起票
+      - 選択 B: ADR-0007 §3「設計上の割り切り」を維持し、本 TODO を「採用しない理由」を Notes に追記して完了済み移動
+    - M4 着手時または SO 化判断時に再評価し、本 TODO を進行中 → 完了済みに移動
+  - **Related**: [ADR-0006 §3](adr/0006-m1-detail-application-interfaces.md)、[ADR-0007 §3 「`StartGameUseCase` の型引数結合」](adr/0007-m2-detail-card-effects.md)、`Assets/_Project/Scripts/Application/Games/DrowZzz/StartGameUseCase.cs:44`
+  - **Notes**: M2-PR1 では `ICardCatalog<IEffect>` 型引数変更のみで通すため、本 TODO は急がない。M4 (SO 化) 検討と同時期に再評価
+
+- [ ] **M2 効果追加時の「ドロー総数 ≤ 山札サイズ」確認(M2 各 PR の Self-Review 項目)** `priority: medium`
+  - **Why**: ADR-0007 §「山札枯渇」で「現状の数値前提下(N=2 × MaxRound 20 × 1 Draw + 初期配布 10 = 50 ≤ 山札 56)では枯渇は発生しない」と確定したが、M2 で「ドロー枚数を増やす効果」(例: `DrawCardsEffect(2)` のように 1 ターンに複数枚ドローさせる効果)が追加された場合、ドロー総数が山札サイズを超える可能性がある。各 M2-PR で計算前提が崩れていないかチェックする運用を残す
+  - **Done when**:
+    - 各 M2-PR(効果 record 追加 PR)の Self-Review チェックリストに「ドロー総数 ≤ 山札サイズ - 初期配布」確認項目を追加(`.github/pull_request_template.md` 拡張、または各 PR の description に明示)
+    - M2 完成 PR 時点で本エントリを「完了済み」に移動し、最終的に成立していた数値(ドロー総数 / 山札サイズ)を記録
+    - 計算前提が崩れる場合は枯渇シナリオの仕様 ADR(再シャッフル / ゲーム終了 / その他)を別途起票する旨を本 TODO の Notes に追記
+  - **Related**: [ADR-0007 §「山札枯渇」](adr/0007-m2-detail-card-effects.md)、[ADR-0006 §6](adr/0006-m1-detail-application-interfaces.md)、M2-PR2 以降(進行中)
+  - **Notes**: M1 完成時点の数値: 初期配布 10、Draw 数 40(N=2 × 20 ラウンド × 1)、合計 50 ≤ 山札 56(余裕 6 枚)。M2 で 1 ターン複数 Draw 効果が入った時点で再計算が必要
+
 - [ ] **Roslynator.Analyzers の導入 or CLAUDE.md §7 訂正** `priority: low`
   - **Why**: CLAUDE.md §7「Roslyn Analyzer 構成」に `Roslynator.Analyzers` が公開 Analyzer として導入予定と記載されているが、現状 NuGetForUnity (`Assets/Packages/`) に未配置。ドキュメントと実態が乖離しており、新規参加者(将来の自分含む)が混乱する
   - **Done when**:

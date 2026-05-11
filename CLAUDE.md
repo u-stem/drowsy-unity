@@ -250,9 +250,9 @@ Phase 0 段階では CI 未整備のため Required status checks は空。
 
 ADR を起票しない判断: 単純なバグ修正・typo・1 ファイル内リファクタ・パッケージのマイナー更新・軽微な文言調整。
 
-確立済み ADR: ADR-0001(本運用)/ ADR-0002(Phase 1 Domain 拡張: 集約境界・Card 抽象・Immutability・Player 想定)/ ADR-0003(TODO 運用)/ ADR-0004(`record + init + with` 利用のための `IsExternalInit` polyfill)/ ADR-0005(Phase 2 Roadmap: 本命ゲーム DrowZzz の段階的縦串実装)/ ADR-0006(M1 詳細: 汎用 Application interface と DrowZzz 最小実装)。
+確立済み ADR: ADR-0001(本運用)/ ADR-0002(Phase 1 Domain 拡張: 集約境界・Card 抽象・Immutability・Player 想定)/ ADR-0003(TODO 運用)/ ADR-0004(`record + init + with` 利用のための `IsExternalInit` polyfill)/ ADR-0005(Phase 2 Roadmap: 本命ゲーム DrowZzz の段階的縦串実装)/ ADR-0006(M1 詳細: 汎用 Application interface と DrowZzz 最小実装)/ ADR-0007(M2 詳細: カード効果メカニズム `IEffect` + `EffectInterpreter` とサブセット先行スコープ)。
 
-**Phase 1(Domain 拡張)は完結済み**(ADR-0002 実装順序表 6 項目すべて完了、Domain 全 9 クラス C0 100%、NUnit 205 件全緑)。**Phase 2 は進行中**(ADR-0005、M1〜M5 マイルストーン分割)、**M1(ターン進行 + カードプレイの最小骨格)完成済み**(ADR-0006、M1-PR1〜PR7 完了、N=2 のセットアップ + Draw → Play → EndTurn ループが動作、Application C0 100%、効果なし / 勝敗なし / UI なしの ADR-0005 §M1 Definition of Done 達成)。次は M2(カード効果実装)着手前に新規 ADR (ADR-0007 等) でスコープ確定予定。
+**Phase 1(Domain 拡張)は完結済み**(ADR-0002 実装順序表 6 項目すべて完了、Domain 全 9 クラス C0 100%、NUnit 205 件全緑)。**Phase 2 は進行中**(ADR-0005、M1〜M5 マイルストーン分割)、**M1(ターン進行 + カードプレイの最小骨格)完成済み**(ADR-0006、M1-PR1〜PR7 完了、N=2 のセットアップ + Draw → Play → EndTurn ループが動作、Application C0 100%、効果なし / 勝敗なし / UI なしの ADR-0005 §M1 Definition of Done 達成)。**次は M2(カード効果実装)着手中**(ADR-0007 起票済、M2-PR1 で `IEffect` 効果インフラ整備 → M2-PR2 以降で 1 PR = 1 効果 record + 対応カード実例 4〜8 枚をサブセット先行、ScriptableObjectCardCatalog 化は M4 に送る、山札枯渇は現状想定下では発生しない計算根拠を ADR-0007 §「山札枯渇」に明記)。
 
 ## 12. TODO 追跡
 
