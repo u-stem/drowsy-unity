@@ -29,11 +29,12 @@ namespace Drowsy.Application.Games.DrowZzz
     /// <param name="Card">場に出すカードの識別子(現プレイヤーの手札に存在することが合法条件)</param>
     public sealed record PlayCardAction(CardId Card) : DrowZzzAction
     {
-        // バッキングフィールド + init setter 本体に検証を入れることで、record positional ctor 経由
-        // (init setter を介して代入される) と `with { Card = ... }` 経由の両方で null を弾く。
-        // `public CardId Card { get; init; } = Card ?? throw ...` の「初期化式」は constructor 1 回のみ
-        // 評価され with 経路をカバーしないため、Phase 1 GameState と同じ getter/setter 全置換パターンを採用。
-        private readonly CardId _card;
+        // null 防御の二重ガード:
+        //  - バッキングフィールドの初期化式で positional ctor 経由の null を弾く (Card パラメータを使用、
+        //    CS8907 回避: 「Parameter 'Card' is unread」警告を出さないため Card を初期化式で参照)
+        //  - init setter 本体で `with { Card = null }` 経由の null を弾く (Phase 1 GameState パターン)
+        // 両者とも `_card` を ArgumentNullException で防御し、生成時 / with 式の両経路をカバーする。
+        private readonly CardId _card = Card ?? throw new ArgumentNullException(nameof(Card));
 
         /// <summary>場に出すカードの識別子。</summary>
         public CardId Card
