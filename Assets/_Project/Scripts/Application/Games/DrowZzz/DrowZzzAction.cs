@@ -27,7 +27,19 @@ namespace Drowsy.Application.Games.DrowZzz
     /// <see cref="Card"/> は null 不可(生成時 / <c>with</c> 式 経由の両方で <see cref="ArgumentNullException"/> で防御)。
     /// </summary>
     /// <param name="Card">場に出すカードの識別子(現プレイヤーの手札に存在することが合法条件)</param>
-    public sealed record PlayCardAction(CardId Card) : DrowZzzAction
+    /// <param name="Choice">
+    /// 選択式カード(<see cref="Drowsy.Application.Games.DrowZzz.Effects.ChoiceEffect"/> を含むカード)の選択肢 index
+    /// (0-based)。非選択式カードでは無視される。M2-PR5 で導入(ADR-0007 §1.5、カード No.02「緑の侵攻」)。
+    /// </param>
+    /// <param name="InfluenceRemovalIndex">
+    /// <see cref="Drowsy.Application.Games.DrowZzz.Effects.RemoveInfluenceEffect"/> を含む効果列の評価時に、
+    /// 削除対象の影響 index(0-based)として参照される。範囲外なら no-op(graceful)。M2-PR5 で導入。
+    /// </param>
+    /// <remarks>
+    /// M2-PR5 で <paramref name="Choice"/> / <paramref name="InfluenceRemovalIndex"/> を追加(両者 default 0 で後方互換維持、
+    /// M1-PR5〜M2-PR4 の単一引数 ctor 呼び出しは全て継続動作)。
+    /// </remarks>
+    public sealed record PlayCardAction(CardId Card, int Choice = 0, int InfluenceRemovalIndex = 0) : DrowZzzAction
     {
         // null 防御の二重ガード:
         //  - バッキングフィールドの初期化式で positional ctor 経由の null を弾く (Card パラメータを使用、

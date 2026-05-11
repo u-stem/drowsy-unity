@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Drowsy.Application.Games.DrowZzz.Effects;
+using Drowsy.Application.Games.DrowZzz.Influences;
 using Drowsy.Domain.Cards;
 using Drowsy.Domain.Game;
 using Drowsy.Domain.Players;
@@ -38,6 +39,18 @@ namespace Drowsy.Application.Games.DrowZzz
     /// rng は <see cref="StartGameUseCase"/> で <c>DdpPool</c> を事前 Shuffle 済みのため Rule 内では不要、
     /// constructor は ADR-0007 §3 の 2 引数を維持する(本 PR で ADR-0009 §4 の「rng を Rule に注入する案」を
     /// 「StartGame での事前 Shuffle で十分」と再評価、PR description に記録)。
+    /// </para>
+    /// <para>
+    /// M2-PR5 で 3 つの新機構を追加(ADR-0007 §1.5「継続影響」):
+    /// <list type="bullet">
+    /// <item><b>選択式カード対応</b>: <see cref="PlayCardAction.Choice"/> を読んで <see cref="ChoiceEffect"/> を unwrap
+    /// (interpreter には届かない、ApplyPlayCard 内で展開)。範囲外 Choice は illegal-move 扱い(IsLegalMove で false)。</item>
+    /// <item><b>影響削除 index thread</b>: <see cref="PlayCardAction.InfluenceRemovalIndex"/> を <see cref="EffectContext"/>
+    /// 経由で <see cref="RemoveInfluenceEffect"/> に届ける。</item>
+    /// <item><b>フェーズ開始時の Tick</b>: <see cref="EndTurnAction"/> Apply 内、DDP 抽選後に新 <c>CurrentPlayerIndex</c> が
+    /// 指すプレイヤーの保有影響を順次 Tick する(<see cref="InfluenceTrigger.OwnPhaseStart"/>)。
+    /// 各 Tick は <c>TickEffect</c> を Interpreter で適用 → <c>RemainingCount</c> -1 → 0 で除去。</item>
+    /// </list>
     /// </para>
     /// </remarks>
     public sealed class DrowZzzRule : IGameRule<DrowZzzAction, DrowZzzGameSession>
@@ -83,15 +96,35 @@ namespace Drowsy.Application.Games.DrowZzz
             };
         }
 
-        // PlayCardAction の合法性: WaitingForPlay フェーズ かつ 現プレイヤーの Hand に Card が含まれる
-        private static bool IsLegalPlayCard(DrowZzzGameSession session, PlayCardAction action)
+        // PlayCardAction の合法性: WaitingForPlay フェーズ + 現プレイヤーの Hand に Card が含まれる
+        // + (選択式カードなら) Choice が ChoiceEffect.Branches の範囲内
+        // M2-PR5: Choice 範囲外を illegal-move 化(InfluenceRemovalIndex は範囲外でも graceful no-op するため illegal 化しない)
+        private bool IsLegalPlayCard(DrowZzzGameSession session, PlayCardAction action)
         {
             if (session.PhaseState != DrowZzzPhaseState.WaitingForPlay)
             {
                 return false;
             }
             int currentIndex = session.GameState.Turn.CurrentPlayerIndex;
-            return session.GameState.Players[currentIndex].Hand.Contains(action.Card);
+            if (!session.GameState.Players[currentIndex].Hand.Contains(action.Card))
+            {
+                return false;
+            }
+            // Choice 範囲チェック: カードが ChoiceEffect を含む場合、action.Choice が範囲内である必要がある。
+            // 非選択式カードでは Choice は無視され、(action.Choice != 0) でも合法とする(default 0 想定)。
+            var effects = _catalog.GetEffects(action.Card);
+            foreach (var e in effects)
+            {
+                if (e is ChoiceEffect ce)
+                {
+                    if (action.Choice < 0 || action.Choice >= ce.Branches.Count)
+                    {
+                        return false;
+                    }
+                    // 1 カードに ChoiceEffect は高々 1 回想定だが、複数あっても各々を範囲チェック
+                }
+            }
+            return true;
         }
 
         /// <summary>
@@ -174,6 +207,9 @@ namespace Drowsy.Application.Games.DrowZzz
         // GameState.Turn / Deck は不変。
         // M2-PR1 で末尾に効果評価を追加: catalog から取得した IEffect 列を左から順に Aggregate で適用する。
         // 効果 0 個なら afterPlay がそのまま返るため M1 完全互換(ADR-0007 §3)。
+        // M2-PR5 で 2 つの拡張:
+        //  (1) ChoiceEffect を unwrap して action.Choice が指す branch のみ評価(範囲外は IsLegalMove で防御済)
+        //  (2) EffectContext(action.InfluenceRemovalIndex) を interpreter に thread
         private DrowZzzGameSession ApplyPlayCard(DrowZzzGameSession session, PlayCardAction action)
         {
             // 防御的 IsLegalMove 検証 (PhaseState + Card 不在の両方を分けて投げる、原因明示のため)
@@ -220,10 +256,32 @@ namespace Drowsy.Application.Games.DrowZzz
             };
 
             // M2-PR1: プレイされたカードの効果列を catalog から取得し、左から順に Interpreter で逐次評価。
-            // M2-PR1 段階では InMemoryCardCatalog.GetEffects が常に空列を返すため、Aggregate の初期値
-            // (afterPlay) がそのまま返り、結果として M1 と完全互換になる。
-            var effects = _catalog.GetEffects(action.Card);
-            return effects.Aggregate(afterPlay, (s, e) => _interpreter.Apply(s, e));
+            // M2-PR5: ChoiceEffect は unwrap して action.Choice の branch のみ評価(interpreter には届かない)。
+            //         EffectContext(InfluenceRemovalIndex) を interpreter に thread し、RemoveInfluenceEffect に届ける。
+            var rawEffects = _catalog.GetEffects(action.Card);
+            var context = new EffectContext(action.InfluenceRemovalIndex);
+            var currentSession = afterPlay;
+            foreach (var effect in rawEffects)
+            {
+                if (effect is ChoiceEffect ce)
+                {
+                    // IsLegalMove で範囲チェック済。防御的に再検証して範囲外は InvalidOperationException で明示
+                    if (action.Choice < 0 || action.Choice >= ce.Branches.Count)
+                    {
+                        throw new InvalidOperationException(
+                            $"PlayCardAction.Choice ({action.Choice}) は ChoiceEffect.Branches (count={ce.Branches.Count}) の範囲外です");
+                    }
+                    foreach (var inner in ce.Branches[action.Choice])
+                    {
+                        currentSession = _interpreter.Apply(currentSession, inner, context);
+                    }
+                }
+                else
+                {
+                    currentSession = _interpreter.Apply(currentSession, effect, context);
+                }
+            }
+            return currentSession;
         }
 
         // EndTurnAction の状態遷移:
@@ -233,7 +291,9 @@ namespace Drowsy.Application.Games.DrowZzz
         // M2-PR4: ターン境界 (CurrentPlayerIndex == 0) で新ターン番号が DDP 抽選対象に該当する場合、
         // DdpPool 先頭から N (= player count) 枚を抽選してプレイヤー順に DrawDrowsyPoints へ累積する
         // (ADR-0009 §4 採用案 A、DZ-141 / DZ-142 / DZ-143 / DZ-144)。
-        private static DrowZzzGameSession ApplyEndTurn(DrowZzzGameSession session)
+        // M2-PR5: 上記 DDP 抽選後、新 CurrentPlayerIndex が指すプレイヤーの保有影響を Tick する
+        // (InfluenceTrigger.OwnPhaseStart、ADR-0007 §1.5)。
+        private DrowZzzGameSession ApplyEndTurn(DrowZzzGameSession session)
         {
             // 防御的 IsLegalMove 検証
             if (session.PhaseState != DrowZzzPhaseState.WaitingForEndTurn)
@@ -262,6 +322,10 @@ namespace Drowsy.Application.Games.DrowZzz
             {
                 nextSession = DrawDdpForAllPlayers(nextSession);
             }
+
+            // M2-PR5: 新フェーズの current player が保有する影響を Tick(OwnPhaseStart)。
+            // 0 件なら no-op、影響を持つ場合は順次 TickEffect 適用 + RemainingCount-1、0 到達で list から除去。
+            nextSession = TickInfluencesForCurrentPlayer(nextSession);
 
             return nextSession;
         }
@@ -294,6 +358,59 @@ namespace Drowsy.Application.Games.DrowZzz
                 DdpPool = pool,
                 DrawDrowsyPoints = ddpAccumulator,
             };
+        }
+
+        // M2-PR5: 新フェーズの current player が保有する影響を Tick する(InfluenceTrigger.OwnPhaseStart)。
+        // - list 先頭から順に評価(FIFO)
+        // - 各影響の TickEffect を Interpreter で適用 + 適用後の session を持ち越し
+        // - RemainingCount-1 し、0 到達なら除去、1 以上なら新 PlayerInfluence で置換
+        // - 他プレイヤーの影響は不変
+        // 影響 0 件なら session 不変返却(graceful no-op)。
+        private DrowZzzGameSession TickInfluencesForCurrentPlayer(DrowZzzGameSession session)
+        {
+            int currentIndex = session.GameState.Turn.CurrentPlayerIndex;
+            var currentPlayerId = session.GameState.Players[currentIndex].Id;
+            if (!session.Influences.TryGetValue(currentPlayerId, out var currentInfluences)
+                || currentInfluences.Count == 0)
+            {
+                return session;
+            }
+
+            // OwnPhaseStart の影響のみを評価対象とする(将来トリガー拡張時に他種類は素通し)。
+            // 評価後の新 list を構築:
+            //  - TickEffect を Interpreter 適用 → session が新 session に置換
+            //  - RemainingCount-1 → 0 ならスキップ、1 以上なら新 PlayerInfluence で置換
+            var current = session;
+            var rebuilt = new List<PlayerInfluence>(currentInfluences.Count);
+            for (int i = 0; i < currentInfluences.Count; i++)
+            {
+                var inf = currentInfluences[i];
+                if (inf.Trigger != InfluenceTrigger.OwnPhaseStart)
+                {
+                    // 将来トリガー拡張: 他種類は Tick せず保持
+                    rebuilt.Add(inf);
+                    continue;
+                }
+                // Tick 評価: TickEffect を current session に適用、context は Default
+                // (Tick 内部で RemoveInfluenceEffect 等の per-play 文脈を必要とする効果は M2-PR5 範囲では登場しない)
+                current = _interpreter.Apply(current, inf.TickEffect, EffectContext.Default);
+                int newCount = inf.RemainingCount - 1;
+                if (newCount >= 1)
+                {
+                    rebuilt.Add(inf with { RemainingCount = newCount });
+                }
+                // newCount == 0 はスキップ = 除去
+            }
+
+            // 影響 dict を新規 build(他プレイヤーの list は不変、current player の list を rebuilt で置換)
+            var newInfluences = new Dictionary<PlayerId, IReadOnlyList<PlayerInfluence>>(current.Influences.Count);
+            foreach (var kv in current.Influences)
+            {
+                newInfluences[kv.Key] = kv.Key.Equals(currentPlayerId)
+                    ? rebuilt
+                    : kv.Value;
+            }
+            return current with { Influences = newInfluences };
         }
     }
 }

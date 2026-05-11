@@ -1,8 +1,10 @@
+using System;
 using System.Collections.Generic;
 using NUnit.Framework;
 using Drowsy.Application.Catalog;
 using Drowsy.Application.Games.DrowZzz;
 using Drowsy.Application.Games.DrowZzz.Effects;
+using Drowsy.Application.Games.DrowZzz.Influences;
 using Drowsy.Domain.Cards;
 using Drowsy.Domain.Game;
 using Drowsy.Domain.Players;
@@ -88,14 +90,20 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 [PlayerId.Of("p1")] = 0,
                 [PlayerId.Of("p2")] = 0,
             };
+            // M2-PR5: Influences は本 fixture では空 list 固定(影響操作テストは別 fixture)
+            var influences = new Dictionary<PlayerId, IReadOnlyList<PlayerInfluence>>
+            {
+                [PlayerId.Of("p1")] = Array.Empty<PlayerInfluence>(),
+                [PlayerId.Of("p2")] = Array.Empty<PlayerInfluence>(),
+            };
             // PhaseState は PlayCardAction を直接適用するため WaitingForPlay
-            return new DrowZzzGameSession(gs, fdp, ddp, sdp, DdpPool.Empty, DrowZzzPhaseState.WaitingForPlay);
+            return new DrowZzzGameSession(gs, fdp, ddp, sdp, DdpPool.Empty, influences, DrowZzzPhaseState.WaitingForPlay);
         }
 
-        // ===== DZ-126: 夜のプレイで使用者 SDP -4 / 1 枚ドロー / 被使用者 SDP -10 =====
+        // ===== DZ-126: 夜のプレイで自分 SDP -4 / 1 枚ドロー / 相手 SDP -10 =====
 
         [Test, Category("Medium"), Category("Normal"), Property("Requirement", "DZ-126")]
-        public void Given_夜のRound_When_Card01をプレイ_Then_使用者SDPがマイナス4()
+        public void Given_夜のRound_When_Card01をプレイ_Then_自分のSDPがマイナス4()
         {
             // Given(turnNumber=1 → Round=1、夜、現プレイヤー p1 が Card "01" を手札に持つ、山札 top: c1)
             var catalog = NewCatalogWithCardOne();
@@ -108,7 +116,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         }
 
         [Test, Category("Medium"), Category("Normal"), Property("Requirement", "DZ-126")]
-        public void Given_夜のRound_When_Card01をプレイ_Then_被使用者SDPがマイナス10()
+        public void Given_夜のRound_When_Card01をプレイ_Then_相手のSDPがマイナス10()
         {
             // Given
             var catalog = NewCatalogWithCardOne();
@@ -121,7 +129,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         }
 
         [Test, Category("Medium"), Category("Normal"), Property("Requirement", "DZ-126")]
-        public void Given_夜のRound_When_Card01をプレイ_Then_使用者手札に山札topがドローされる()
+        public void Given_夜のRound_When_Card01をプレイ_Then_自分の手札に山札topがドローされる()
         {
             // Given(山札 top に c1)
             var catalog = NewCatalogWithCardOne();
@@ -133,10 +141,10 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             Assert.That(next.GameState.Players[0].Hand.Contains(CardId.Of("c1")), Is.True);
         }
 
-        // ===== DZ-127: 朝のプレイで使用者 SDP -4 / 被使用者 SDP +10、ドローなし =====
+        // ===== DZ-127: 朝のプレイで自分 SDP -4 / 相手 SDP +10、ドローなし =====
 
         [Test, Category("Medium"), Category("Normal"), Property("Requirement", "DZ-127")]
-        public void Given_朝のRound_When_Card01をプレイ_Then_使用者SDPがマイナス4()
+        public void Given_朝のRound_When_Card01をプレイ_Then_自分のSDPがマイナス4()
         {
             // Given(turnNumber=33 → Round=17、朝、山札なし)
             var catalog = NewCatalogWithCardOne();
@@ -149,7 +157,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         }
 
         [Test, Category("Medium"), Category("Normal"), Property("Requirement", "DZ-127")]
-        public void Given_朝のRound_When_Card01をプレイ_Then_被使用者SDPがプラス10()
+        public void Given_朝のRound_When_Card01をプレイ_Then_相手のSDPがプラス10()
         {
             // Given
             var catalog = NewCatalogWithCardOne();

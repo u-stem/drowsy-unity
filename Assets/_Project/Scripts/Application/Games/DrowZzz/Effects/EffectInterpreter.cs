@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Drowsy.Application.Games.DrowZzz.Influences;
 using Drowsy.Domain.Players;
 
 namespace Drowsy.Application.Games.DrowZzz.Effects
@@ -23,24 +24,35 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
     /// 本クラスの <c>_</c> ケースは前者(library 内の case 追加漏れ)に該当するため <see cref="NotImplementedException"/>。
     /// <see cref="DrowZzzRule"/> の <c>_</c> ケースと整合させている。
     /// </para>
+    /// <para>
+    /// M2-PR5 で <see cref="EffectContext"/> を引数に取る 3 引数 overload を導入(ADR-0007 §1.5「継続影響」)。
+    /// 既存 2 引数 overload は <see cref="EffectContext.Default"/> を渡す後方互換ラッパー。
+    /// </para>
     /// </remarks>
     public sealed class EffectInterpreter
     {
         /// <summary>
-        /// 与えられた <paramref name="session"/> 状態に <paramref name="effect"/> を適用した次セッションを返す。
+        /// <see cref="Apply(DrowZzzGameSession, IEffect, EffectContext)"/> を <see cref="EffectContext.Default"/> で呼ぶ後方互換 overload。
+        /// </summary>
+        public DrowZzzGameSession Apply(DrowZzzGameSession session, IEffect effect)
+            => Apply(session, effect, EffectContext.Default);
+
+        /// <summary>
+        /// 与えられた <paramref name="session"/> 状態に <paramref name="effect"/> を <paramref name="context"/> 下で適用した次セッションを返す。
         /// 副作用なしの純関数。
         /// </summary>
         /// <param name="session">適用前のセッション(完全状態 / オラクルビュー)</param>
         /// <param name="effect">適用する効果</param>
+        /// <param name="context">プレイ時の文脈(action 由来の選択 index 等)</param>
         /// <returns>適用後のセッション</returns>
         /// <exception cref="ArgumentNullException">
-        /// <paramref name="session"/> または <paramref name="effect"/> が null(APP-033 / APP-034)
+        /// いずれかの引数が null
         /// </exception>
         /// <exception cref="NotImplementedException">
-        /// <paramref name="effect"/> の派生型に対応する <c>switch</c> case が未実装(APP-035、将来効果追加用の防御)。
-        /// 例外メッセージには runtime 型名が含まれる。
+        /// <paramref name="effect"/> の派生型に対応する <c>switch</c> case が未実装(将来効果追加用の防御)、
+        /// または <see cref="ChoiceEffect"/> 等の rule 経由でのみ unwrap される effect が直接渡された場合。
         /// </exception>
-        public DrowZzzGameSession Apply(DrowZzzGameSession session, IEffect effect)
+        public DrowZzzGameSession Apply(DrowZzzGameSession session, IEffect effect, EffectContext context)
         {
             if (session is null)
             {
@@ -50,6 +62,10 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
             {
                 throw new ArgumentNullException(nameof(effect));
             }
+            if (context is null)
+            {
+                throw new ArgumentNullException(nameof(context));
+            }
             return effect switch
             {
                 // M2-PR3: SDP 操作系効果(ADR-0007 §1.4 actor 拡張、ADR-0009 §「DP 種別」)
@@ -57,16 +73,22 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
                 // M2-PR3: 山札→手札ドロー効果(「コップ一杯の脅威」夜効果用)
                 DrawCardEffect draw => ApplyDrawCard(session, draw),
                 // M2-PR3: 夜・朝で効果列を切り替えるラッパー(ADR-0008 §8 JIT 確定)
-                TimeOfDayBranchEffect branch => ApplyTimeOfDayBranch(session, branch),
+                TimeOfDayBranchEffect branch => ApplyTimeOfDayBranch(session, branch, context),
+                // M2-PR5: 継続影響(ADR-0007 §1.5)の付与 / 除去
+                ApplyInfluenceEffect apply => ApplyApplyInfluence(session, apply),
+                RemoveInfluenceEffect remove => ApplyRemoveInfluence(session, remove, context),
 
                 _ => throw new NotImplementedException(
-                    $"EffectInterpreter.Apply ({effect.GetType().Name}) は本実装範囲では到達不可。将来 IEffect 派生型を追加する PR で対応する"),
+                    $"EffectInterpreter.Apply ({effect.GetType().Name}) は本実装範囲では到達不可。" +
+                    $"ChoiceEffect は DrowZzzRule.ApplyPlayCard で unwrap されるため interpreter には届かない設計。" +
+                    $"将来 IEffect 派生型を追加する PR で対応する"),
             };
         }
 
         // TimeOfDayBranchEffect の評価: Clock.IsNight / IsMorning でどちらの効果列を Aggregate するかを決定。
         // 両者 false (Round 22+ 過渡的範囲、DZ-122 / ADR-0008 §5) の場合は no-op (session 不変返却)。
-        private DrowZzzGameSession ApplyTimeOfDayBranch(DrowZzzGameSession session, TimeOfDayBranchEffect effect)
+        // M2-PR5: context を inner effect 評価に thread する(RemoveInfluenceEffect が context 必須のため)。
+        private DrowZzzGameSession ApplyTimeOfDayBranch(DrowZzzGameSession session, TimeOfDayBranchEffect effect, EffectContext context)
         {
             var clock = session.Clock;
             IReadOnlyList<IEffect> chosen;
@@ -86,7 +108,7 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
             var current = session;
             foreach (var inner in chosen)
             {
-                current = Apply(current, inner);
+                current = Apply(current, inner, context);
             }
             return current;
         }
@@ -161,6 +183,70 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
                     : kv.Value;
             }
             return session with { SecondDrowsyPoints = newSdp };
+        }
+
+        // ApplyInfluenceEffect の評価: Target が指す playerId の影響 list 末尾に effect.Influence を追加する。
+        // M2-PR5、ADR-0007 §1.5「継続影響」JIT 確定。重複付与許容(同じ影響を 2 回付与すると 2 件の独立インスタンスになる)。
+        private static DrowZzzGameSession ApplyApplyInfluence(DrowZzzGameSession session, ApplyInfluenceEffect effect)
+        {
+            var targetId = ResolveTargetPlayerId(session, effect.Target);
+            var newInfluences = new Dictionary<PlayerId, IReadOnlyList<PlayerInfluence>>(session.Influences.Count);
+            foreach (var kv in session.Influences)
+            {
+                if (kv.Key.Equals(targetId))
+                {
+                    // 末尾に追加(FIFO Tick 規約上、新規付与は最後尾)
+                    var newList = new PlayerInfluence[kv.Value.Count + 1];
+                    for (int i = 0; i < kv.Value.Count; i++)
+                    {
+                        newList[i] = kv.Value[i];
+                    }
+                    newList[kv.Value.Count] = effect.Influence;
+                    newInfluences[kv.Key] = newList;
+                }
+                else
+                {
+                    newInfluences[kv.Key] = kv.Value;
+                }
+            }
+            return session with { Influences = newInfluences };
+        }
+
+        // RemoveInfluenceEffect の評価: Target が指す playerId の影響 list から context.InfluenceRemovalIndex の影響を 1 件除去。
+        // 範囲外(負値 or 件数以上)/ 空 list は no-op(graceful、RemoveInfluenceEffect.cs の xmldoc 参照)。
+        private static DrowZzzGameSession ApplyRemoveInfluence(DrowZzzGameSession session, RemoveInfluenceEffect effect, EffectContext context)
+        {
+            var targetId = ResolveTargetPlayerId(session, effect.Target);
+            int removalIndex = context.InfluenceRemovalIndex;
+            var newInfluences = new Dictionary<PlayerId, IReadOnlyList<PlayerInfluence>>(session.Influences.Count);
+            bool mutated = false;
+            foreach (var kv in session.Influences)
+            {
+                if (kv.Key.Equals(targetId)
+                    && removalIndex >= 0
+                    && removalIndex < kv.Value.Count)
+                {
+                    // 該当 index を除去、後続要素は前にシフト
+                    var newList = new PlayerInfluence[kv.Value.Count - 1];
+                    int dst = 0;
+                    for (int i = 0; i < kv.Value.Count; i++)
+                    {
+                        if (i == removalIndex)
+                        {
+                            continue;
+                        }
+                        newList[dst++] = kv.Value[i];
+                    }
+                    newInfluences[kv.Key] = newList;
+                    mutated = true;
+                }
+                else
+                {
+                    newInfluences[kv.Key] = kv.Value;
+                }
+            }
+            // 変化が無い場合は session 不変返却(allocation 抑制、graceful no-op)
+            return mutated ? session with { Influences = newInfluences } : session;
         }
 
         // SdpTarget を実際の PlayerId に解決する(N=2 想定、現プレイヤー以外を「Opponent」として一意決定)

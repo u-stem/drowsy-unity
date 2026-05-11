@@ -4,6 +4,7 @@ using NUnit.Framework;
 using Drowsy.Application.Catalog;
 using Drowsy.Application.Games.DrowZzz;
 using Drowsy.Application.Games.DrowZzz.Effects;
+using Drowsy.Application.Games.DrowZzz.Influences;
 using Drowsy.Domain.Cards;
 using Drowsy.Domain.Game;
 using Drowsy.Domain.Players;
@@ -23,7 +24,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 new InMemoryCardCatalog(new KeyValuePair<CardId, CardData>[0]),
                 new EffectInterpreter());
 
-        // 全引数オプション、デフォルトは N=2 / WaitingForDraw / 空 Deck / 空 Hand / 空 DdpPool / 全 DP=0
+        // 全引数オプション、デフォルトは N=2 / WaitingForDraw / 空 Deck / 空 Hand / 空 DdpPool / 全 DP=0 / 空 Influences
         private static DrowZzzGameSession NewSession(
             DrowZzzPhaseState phase = DrowZzzPhaseState.WaitingForDraw,
             int currentPlayerIndex = 0,
@@ -32,7 +33,8 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             Hand p1Hand = null,
             int turnNumber = 1,
             DdpPool ddpPool = null,
-            IReadOnlyDictionary<PlayerId, int> ddp = null)
+            IReadOnlyDictionary<PlayerId, int> ddp = null,
+            IReadOnlyDictionary<PlayerId, IReadOnlyList<PlayerInfluence>> influences = null)
         {
             var p0 = new PlayerState(PlayerId.Of("p1"), p0Hand ?? Hand.Empty);
             var p1 = new PlayerState(PlayerId.Of("p2"), p1Hand ?? Hand.Empty);
@@ -61,7 +63,13 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 [PlayerId.Of("p1")] = 0,
                 [PlayerId.Of("p2")] = 0,
             };
-            return new DrowZzzGameSession(gs, fdp, ddpResolved, sdp, ddpPool ?? DdpPool.Empty, phase);
+            // M2-PR5: Influences は引数指定なら採用、未指定なら空 list 固定
+            var influencesResolved = influences ?? new Dictionary<PlayerId, IReadOnlyList<PlayerInfluence>>
+            {
+                [PlayerId.Of("p1")] = Array.Empty<PlayerInfluence>(),
+                [PlayerId.Of("p2")] = Array.Empty<PlayerInfluence>(),
+            };
+            return new DrowZzzGameSession(gs, fdp, ddpResolved, sdp, ddpPool ?? DdpPool.Empty, influencesResolved, phase);
         }
 
         private static Pile NewDeck(params string[] cardIds)

@@ -122,7 +122,55 @@ public sealed class EffectInterpreter
 
 **M2-PR3 JIT 確定(2026-05-11、ADR-0009「コップ一杯の脅威」JIT 共有時)**: 案 A のサブセット派生として **`enum SdpTarget { Self, Opponent }`** を効果 record の positional 引数に取る方式を採用(`AdjustSdpEffect(SdpTarget Target, int Delta)` / `DrawCardEffect(SdpTarget Target, int Count)`)。`TargetPlayerId` を直接持つより、N=2 想定下では「現プレイヤーに対する相対位置」の方が effect record の自己完結性が高く、N>2 拡張時にも `enum DpTarget { Self, AllOpponents, Specific }` 等で広げやすい。`EffectInterpreter` 内部で `ResolveTargetPlayerId(session, target)` が `SdpTarget` を実際の `PlayerId` に解決する(N=2 で Opponent は一意決定)。案 B は採用せず、`EffectInterpreter.Apply` のシグネチャは ADR-0007 §1.3 のまま `(session, effect)` を維持。詳細は `docs/specs/games/drowzzz/dp-mechanism.md` §「actor 概念」/ `Effects/SdpTarget.cs` の XML doc 参照。
 
-### 2. `ICardCatalog.GetEffects(CardId)` の追加と責務拡張
+#### 1.5 継続影響(Influence)— M2-PR5 で JIT 確定
+
+ADR-0007 §1.2 では「内部に Dictionary / List を持つ effect」の設計指針のみ示し、「効果が複数フェーズ / 複数ターンにまたがる持続性」自体は §8「M2 範囲外」(持続効果 / EndTurn 発動 / 遅延発動 / 条件発動)に送っていた。
+
+**M2-PR5 着手時(2026-05-11、カード No.02「緑の侵攻」JIT 共有時)** に「自分のフェーズ開始時に SDP -5(カウント 3)」という継続発動効果の表現が必要になり、本セクションを §「M2 範囲外」から本 ADR の M2 範囲に **昇格** させて JIT 確定する。
+
+##### 採用設計
+
+| 構成要素 | 役割 |
+| ---- | ---- |
+| `PlayerInfluence`(値オブジェクト) | `(InfluenceTrigger, IEffect TickEffect, int RemainingCount)` の不変 record |
+| `InfluenceTrigger` enum | M2-PR5 では `OwnPhaseStart` のみ。将来 `OpponentPhaseStart` / `OwnPhaseEnd` 等で拡張 |
+| `DrowZzzGameSession.Influences` | `IReadOnlyDictionary<PlayerId, IReadOnlyList<PlayerInfluence>>`、FDP / DDP / SDP と同じ cross-field 検証 |
+| `ApplyInfluenceEffect(SdpTarget, PlayerInfluence)` | 対象プレイヤーの list 末尾に影響を追加(FIFO 規約) |
+| `RemoveInfluenceEffect(SdpTarget)` | 対象プレイヤーの list から `EffectContext.InfluenceRemovalIndex` の影響を 1 件除去(範囲外 / 空 list は graceful no-op) |
+| `ChoiceEffect(IReadOnlyList<IReadOnlyList<IEffect>>)` | 選択式カードのラッパー。`DrowZzzRule.ApplyPlayCard` 内で `PlayCardAction.Choice` を読んで unwrap(interpreter には届かない) |
+| Tick 評価点 | `DrowZzzRule.ApplyEndTurn` の DDP 抽選後、新 `CurrentPlayerIndex` が指すプレイヤーの list を先頭から評価 → `TickEffect` を `EffectInterpreter.Apply` → `RemainingCount-1` → 0 で除去 |
+
+##### EffectContext 引数の追加
+
+`RemoveInfluenceEffect` の削除対象 index は **「プレイヤー(カードをプレイする側)が選択」**(JIT 確定 2026-05-11)のため、`PlayCardAction.InfluenceRemovalIndex` から effect 評価層に transfer する必要がある。本 ADR §1.3 の `EffectInterpreter.Apply(session, effect)` 2 引数シグネチャを **過去 PR 互換のラッパー overload** として維持しつつ、新 3 引数 overload `Apply(session, effect, EffectContext context)` を追加する。
+
+`EffectContext` は `sealed record EffectContext(int InfluenceRemovalIndex)` + `static EffectContext Default = new(0)`。既存 effect record(`AdjustSdpEffect` / `DrawCardEffect` / `TimeOfDayBranchEffect`)は context を読まないため、本拡張による挙動変更はない。Tick 評価では `EffectContext.Default` を渡す(per-play 文脈を持たないため)。
+
+##### ChoiceEffect の unwrap タイミング
+
+`ChoiceEffect` は **`EffectInterpreter` ではなく `DrowZzzRule.ApplyPlayCard` 内で unwrap** する。`PlayCardAction.Choice` は action 由来の per-play 文脈で、`session` 状態には含まれない。`TimeOfDayBranchEffect`(session.Clock 由来 → interpreter 内 unwrap)と非対称だが、unwrap タイミングは「分岐条件の出所が session か action か」で決める方針:
+
+- session 状態由来の分岐(Clock 等) → `EffectInterpreter` 内 unwrap(`TimeOfDayBranchEffect` パターン)
+- action 由来の分岐(Choice 等) → `DrowZzzRule.ApplyPlayCard` 内 unwrap(`ChoiceEffect` パターン)
+
+`EffectInterpreter` に直接 `ChoiceEffect` を渡した場合は `NotImplementedException`(rule 経由でのみ unwrap される設計の保証)。
+
+##### PlayCardAction の拡張
+
+`PlayCardAction(CardId Card)` を `PlayCardAction(CardId Card, int Choice = 0, int InfluenceRemovalIndex = 0)` に拡張(default 値で M1-PR5〜M2-PR4 と後方互換)。`IsLegalMove` では:
+
+- `Choice` 範囲外(カードが `ChoiceEffect` を含む場合のみ)→ false(illegal-move)
+- `InfluenceRemovalIndex` 範囲外 → `RemoveInfluenceEffect.Apply` で graceful no-op、illegal-move 化しない(影響リスト件数を action 構築側が把握しない場合があるため。Presentation 層 M5 で UI 制約として再評価)
+
+##### 不採用案
+
+| 案 | 不採用理由 |
+| ---- | ---- |
+| `IInfluenceTrigger` interface + 派生型(Visitor パターン) | M2-PR5 範囲では `OwnPhaseStart` 1 種のみで Premature Abstraction、enum で十分 |
+| 影響を Domain `PlayerState` に持たせる | DrowZzz 固有概念のため Application 層に閉じ込める、ADR-0002「Domain ゲーム非依存」と整合 |
+| `RemoveInfluenceEffect(SdpTarget Target, int Index)` で index を効果自身が持つ | catalog 登録時には index 未確定(プレイ時にプレイヤーが選択)、`Index = -1` 等のセンチネル運用が混乱の元 |
+| 選択肢を `PlayCardAction` 派生型(`PlayCardWithChoiceAction`)で分離 | Action 階層が肥大化、Catalog 利用側が「このカードは選択式か」を事前に問い合わせる責務発生 |
+| InfluenceRemovalIndex を illegal-move 化(範囲外で false) | Action 構築時点で影響リスト件数を知らない呼び出し側が存在(default 0 送付 UI 等)、graceful no-op の方が筋 |
 
 M1 で確定した `ICardCatalog`(ADR-0006 §1.3)に effect 取得メソッドを追加する。
 
