@@ -84,4 +84,52 @@ namespace Drowsy.Application.Games.DrowZzz
     /// </para>
     /// </remarks>
     public sealed record AbandonAction(AbandonChoice Choice, int CardIndex = 0) : DrowZzzAction;
+
+    /// <summary>
+    /// 連想(特殊ドロー)アクション。現プレイヤーが宣言し、指定 <paramref name="Card"/> を catalog 経由で
+    /// 直接手札に追加する。通常の山札 Draw とは別の機構(ADR-0011 §1、M3-PR4 で導入)。
+    /// </summary>
+    /// <param name="Card">連想で手札に加える <see cref="CardId"/>(連想可能カード:効果列に
+    /// <see cref="Drowsy.Application.Games.DrowZzz.Effects.AssociatableMarkerEffect"/> を含むカードのみ)</param>
+    /// <remarks>
+    /// ADR-0011 §1 で確定した「連想」機構の Action 派生型として M3-PR4 で導入。本 PR で JIT 確定した 3 項目を反映する
+    /// (2026-05-13、ADR-0011 §1 「JIT 確認待ち」項目):
+    /// <list type="bullet">
+    /// <item><b>連想対象の領域</b>: (c)/(d) <c>ICardCatalog</c> から直接生成 / 別 Pile。連想可能カードは初期山札に含まれず、
+    /// catalog 経由のみで手札に追加される(山札 / 捨て札 / 場 / 影響 / DP / Outcome / ベッド破損は全て不変)。</item>
+    /// <item><b>FDS 境界</b>: 80 以上(80+ で発動可、<see cref="DrowZzzAssociationConstants.AssociationThreshold"/> = 80)。
+    /// 「FDS」は <see cref="DrowZzzGameSession.TotalPoints"/>(= FDP + DDP + SDP)の用語規約(ADR-0011 §1 / §6)。</item>
+    /// <item><b>タイミング</b>: 自ターン中のみ(<see cref="DrowZzzPhaseState.WaitingForDraw"/> /
+    /// <see cref="DrowZzzPhaseState.WaitingForPlay"/> / <see cref="DrowZzzPhaseState.WaitingForEndTurn"/> のいずれかで合法)。
+    /// 相手ターン中は不可(ADR-0006「自分のターン中のみカードプレイ可能」原則を破壊しない、
+    /// 反撃キーワード経路は ADR-0011 §4.3 で M3-PR5 / PR6 の独立スコープ)。</item>
+    /// </list>
+    /// <para>
+    /// 判別方式は ADR-0011 §1 起票時の「初期推奨案 (i) マーカー effect 方式」を採用:
+    /// <see cref="Drowsy.Application.Games.DrowZzz.Effects.AssociatableMarkerEffect"/> を効果列に持つカードのみが
+    /// <see cref="AssociateAction"/> の対象になる(<see cref="DrowZzzRule.IsLegalMove"/> でチェック)。
+    /// 「就寝カード = <see cref="Drowsy.Application.Games.DrowZzz.Effects.EarlyWinTriggerEffect"/> を持つ」
+    /// (ADR-0010 §5)と同パターン。
+    /// </para>
+    /// <para>
+    /// <see cref="DrowZzzRule.Apply"/> 後は <see cref="DrowZzzPhaseState"/> は変更しない(連想は割り込み式、
+    /// 現フェーズ維持)。手札にカードを 1 枚追加する以外の状態変化はない。
+    /// </para>
+    /// <para>
+    /// 「連想で引いたカードは次の自分のターン以降使用可能」(ADR-0011 §6)という使用制限は M3-PR4 範囲では実装しない:
+    /// 本 PR は「カード追加」に範囲を限定し、使用制限機構は M3-PR6(夢カード統合)で別途設計する。
+    /// </para>
+    /// </remarks>
+    public sealed record AssociateAction(CardId Card) : DrowZzzAction
+    {
+        // null 防御の二重ガード:PlayCardAction.Card と同パターン(positional ctor / `with` 式 両経路カバー)
+        private readonly CardId _card = Card ?? throw new ArgumentNullException(nameof(Card));
+
+        /// <summary>連想で手札に加える <see cref="CardId"/>。</summary>
+        public CardId Card
+        {
+            get => _card;
+            init => _card = value ?? throw new ArgumentNullException(nameof(value));
+        }
+    }
 }
