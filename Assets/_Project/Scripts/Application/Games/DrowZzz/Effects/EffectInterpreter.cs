@@ -85,6 +85,14 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
                 // M3-PR4: 連想可能カードを示すマーカー effect(ADR-0011 §1)。判別用に効果列に置かれるだけで、
                 // 評価時は session 不変返却(no-op)。連想で手札に追加する動作は AssociateAction の Apply 経路で行う。
                 AssociatableMarkerEffect _ => session,
+                // M3-PR6: 使用条件マーカー(ADR-0011 §6、「夢」FDS ≥ 100)。判別用に効果列に置かれるだけで、
+                // 評価時は session 不変返却(no-op)。閾値チェックは DrowZzzRule.IsLegalPlayCard の最上位 scan で行う。
+                RequiresMinimumTotalPointsMarkerEffect _ => session,
+                // M3-PR6: 連想後使用制限マーカー(ADR-0011 §6、「夢」の使用制限機構)。2 役兼用:
+                //  (1) カードの効果列内 → AssociateAction.Apply で検出 → 自プレイヤーに Influence 付与の trigger
+                //  (2) PlayerInfluence.TickEffect として保有 → IsLegalPlayCard で illegal フラグ + Tick 時 no-op
+                // いずれも本 case 自体は session 不変返却(no-op)。RemainingCount 減算と除去は DrowZzzRule.TickInfluences の責務。
+                UsageRestrictionMarkerEffect _ => session,
                 // M3-PR5a: キーワード能力を inner effect に付与するラッパー(ADR-0011 §4)。Keywords 自体は判別用属性で
                 // 副作用を持たず、Inner effect を context 込みで再帰的に Apply するだけ。
                 // Instinct は AbandonAction.IsLegalMove で利用、Frenzy / Counter は M3-PR5b 以降で機構化。
