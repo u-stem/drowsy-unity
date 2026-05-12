@@ -566,9 +566,94 @@ EARS / NUnit 増加:
   - Domain xmldoc から Application 名削除
 - **提案 5 件中 3 件反映、2 件 Skip**: 命名議論 / `M1IntegrationTests` 命名は別 PR / ADR 候補
 
+### M2-PR5 完成記録(2026-05-12、継続影響機構 + カード No.02「緑の侵攻」+ 用語整合)
+
+**完成 PR**: PR #39 `feat(app): 継続影響(Influence)機構 + カード No.02「緑の侵攻」を実装 (M2-PR5)`(merged `ffc72f2`)。本 ADR §1.5「継続影響(Influence)」を **§8「M2 範囲外」(持続効果 / EndTurn 発動 / 遅延発動 / 条件発動)から M2 範囲に昇格 JIT 確定** したマイルストーン。
+
+#### Definition of Done 達成項目(本 ADR §1.5 で確定した仕様の最初の実装)
+
+| スコープ項目 | 達成状況 | 備考 |
+| ---- | ---- | ---- |
+| 継続影響値オブジェクト `PlayerInfluence` の新設 | ✓ | `(InfluenceTrigger, IEffect TickEffect, int RemainingCount)` positional record、二重ガード(null / RemainingCount >= 1)、Equals は record auto-generated(内部 collection なし)、DZ-155〜DZ-157 |
+| `InfluenceTrigger` enum(M2-PR5 では `OwnPhaseStart` のみ) | ✓ | 将来トリガー拡張は JIT 方針、`InfluenceTrigger.cs` xmldoc に用語規約(ターン / フェーズ)を明示 |
+| `DrowZzzGameSession.Influences` プロパティ追加(7 引数 ctor 化、breaking change) | ✓ | `IReadOnlyDictionary<PlayerId, IReadOnlyList<PlayerInfluence>>`、cross-field 検証(`Players` キー集合一致)、Equals 順序保持シーケンス同値(seed=3 で他 DP との XOR 衝突回避)、DZ-179 / 既存 11 テストファイルに `Inf()` ヘルパー伝播 |
+| `ApplyInfluenceEffect(SdpTarget Target, PlayerInfluence Influence)` 効果 record | ✓ | 対象 list 末尾追加(FIFO)、重複付与許容、DZ-158〜DZ-161 |
+| `RemoveInfluenceEffect(SdpTarget Target)` 効果 record | ✓ | `EffectContext.InfluenceRemovalIndex` 経由で 1 件除去、範囲外 / 空 list は graceful no-op(illegal-move 化しない)、DZ-162〜DZ-165 |
+| `ChoiceEffect(IReadOnlyList<IReadOnlyList<IEffect>> Branches)` 選択式カードラッパー | ✓ | 順序保持シーケンス同値、構築時 2 件以上 / null 要素検証、interpreter には届かない設計(`NotImplementedException`)、DZ-166〜DZ-169 |
+| `EffectInterpreter.Apply` 3 引数 overload 追加 | ✓ | `(session, effect, EffectContext context)`、既存 2 引数 overload は `EffectContext.Default` を渡す後方互換ラッパーとして維持(本 ADR §1.3 の API シグネチャは破壊せず) |
+| `PlayCardAction` の 3 引数化(`CardId Card, int Choice = 0, int InfluenceRemovalIndex = 0`)| ✓ | default 0 で M1-PR5〜M2-PR4 互換、`IsLegalPlayCard` で Choice 範囲外を illegal-move 化 |
+| `DrowZzzRule.ApplyPlayCard` 内 `ChoiceEffect` unwrap | ✓ | action 由来文脈(Choice)は rule 評価層で unwrap、session 由来文脈(`TimeOfDayBranchEffect`)は interpreter 内で unwrap という非対称設計を本 ADR §1.5 で明文化 |
+| `DrowZzzRule.ApplyEndTurn` 内自フェーズ開始時 Tick | ✓ | DDP 抽選後に新 current player の影響を FIFO で評価、TickEffect 適用 + `RemainingCount-1` + 0 で除去、DZ-176〜DZ-178 / DZ-181 / DZ-182 |
+| カード No.02「緑の侵攻」実装(`InMemoryCardCatalog` 登録)| ✓ | 選択 1(自分 SDP -6 + 相手の影響削除 + 相手に影響付与)/ 選択 2(相手 SDP +6 + 自分の影響削除 + 自分に影響付与)、影響 Tick = SDP -5 / カウント 3、DZ-170〜DZ-175 |
+
+#### 本 PR が確定した ADR-0007 内の JIT 判断ポイント
+
+- **§1.5「継続影響(Influence)」を新規昇格**: 本 ADR §8「M2 範囲外」に置いていた「持続効果」を、カード No.02 が初めて必要としたタイミングで M2 範囲に昇格(JIT 共有方式の継続)
+- **`EffectContext` の導入**: per-play 文脈(action 由来の選択 index 等)を effect 評価に透過させる仕組み。`EffectContext.Default` シングルトンで既存 2 引数 overload を後方互換維持
+- **`ChoiceEffect` の unwrap タイミング非対称設計**: action 由来分岐は rule 評価層、session 由来分岐は interpreter 内、という基準を本 ADR §1.5 に明文化
+- **`PlayCardAction` 拡張方針**: 派生型分離(`PlayCardWithChoiceAction`)を採らず、optional パラメータ(default 0)で後方互換維持
+
+#### 本 PR で確立した用語整合(本 ADR §1.5 + SdpTarget xmldoc に記録)
+
+- **「自分 / 相手」をカード本文 / 仕様 / コメントの主表記** に統一(ボードゲーム自然語、Hearthstone 等と同トーン)
+- 過去 PR(M2-PR3)では「使用者 / 被使用者」、プロジェクトオーナー JIT 共有原文では「甲 / 乙」を用いていたが、本 PR で 1 系統(「自分 / 相手」)に集約
+- カードフレーバー「自分のターン開始時」を実装上「**フェーズ開始時**」(ADR-0009 用語規約、`InfluenceTrigger.OwnPhaseStart`)に揃え
+- No.01「コップ一杯の脅威」関連(`cup-of-threat.{md,feature}` / `CupOfThreatCardTests` / `effects/draw-card-effect.md` / `Effects/AdjustSdpEffect.cs` / `DrawCardEffect.cs` / `SdpTarget.cs` の xmldoc)も同 PR 内で「自分 / 相手」に整合(scope 拡張)
+- コード identifier は引き続き `SdpTarget.Self` / `SdpTarget.Opponent`(英語、ADR-0006 §1.1)、`SdpTarget.cs` xmldoc に英↔日↔過去用語の歴史マップを保持
+
+#### NUnit Property 増加(実測)
+
+| ファイル | 追加 Property 数 | 内訳 |
+| ---- | ---- | ---- |
+| `PlayerInfluenceTests`(新規) | 9 | DZ-155 / DZ-156 / DZ-157 |
+| `ApplyInfluenceEffectTests`(新規) | 7 | DZ-158〜DZ-161 |
+| `RemoveInfluenceEffectTests`(新規) | 7 | DZ-162〜DZ-165 |
+| `ChoiceEffectTests`(新規) | 9 | DZ-166〜DZ-169 |
+| `GreenInvasionCardTests`(新規) | 12 | DZ-170〜DZ-178 |
+| `DrowZzzGameSessionTests` | 5 | DZ-179(値保持 / null / cross-field / list null 要素 / Equals 寄与)|
+| **合計** | **+49 件** | NUnit `[Test]` 総数 507 件 / Property ID 289 件(トレーサビリティ check 整合性 OK) |
+
+#### M2-PR5 進行中の学び
+
+##### 学び 1: 用語整合のスコープ拡張判断
+
+- **事象**: 当初は「継続影響 + No.02」のみのスコープだったが、PR レビュー中にプロジェクトオーナーから「甲 / 乙」「使用者 / 被使用者」を「自分 / 相手」に統一する要望
+- **判断**: 用語整合は 1 論理変更として本 PR に同梱(No.01 関連ファイル + コード XML doc も含む)。別 PR で「terminology only」を作るより、用語整合の意図が明確
+- **教訓**: 用語選定は **コード identifier(英語、CLAUDE.md §1)** と **doc / コメント / カード本文(日本語、ボードゲーム自然語)** で分離した運用が筋。歴史的経緯は `SdpTarget.cs` xmldoc に集約
+
+##### 学び 2: per-play 文脈を effect 評価層に届ける設計
+
+- **事象**: `RemoveInfluenceEffect` の削除対象 index はカードプレイ時にプレイヤーが選択するため、catalog 登録時には未確定。effect record 自身に index を持たせる案では `Index = -1` センチネル等が混乱の元になる
+- **採用案**: `EffectContext(int InfluenceRemovalIndex)` を `EffectInterpreter.Apply` に追加 thread。既存 2 引数 overload は `EffectContext.Default` で後方互換ラッパー
+- **教訓**: per-play state を session に紛れ込ませるよりも、評価層 API のシグネチャ拡張で対応する方が clean(session の immutability + per-play 文脈の独立性が両立)
+
+##### 学び 3: unwrap タイミングの非対称性原則
+
+- **事象**: `TimeOfDayBranchEffect` は interpreter 内で session.Clock を見て unwrap、一方 `ChoiceEffect` は rule 評価層で action.Choice を見て unwrap
+- **原則**: 分岐条件の出所が「session か action か」で unwrap タイミングを決める
+  - session 状態由来 → interpreter 内 unwrap(`TimeOfDayBranchEffect`)
+  - action 由来 → `DrowZzzRule.ApplyPlayCard` 内 unwrap(`ChoiceEffect`)
+- **設計強制**: interpreter に `ChoiceEffect` を直接渡すと `NotImplementedException`(rule 経由でのみ届く設計の保証)
+
+##### 学び 4: code-reviewer 12 件指摘の反映(警告 5 / 提案 7)
+
+警告(本 PR 内で要対応)5 件のうち 4 件反映:
+
+- **W-1**: `DrowZzzGameSessionTests` に DZ-179 専用 5 テスト追加(値保持 / null / cross-field / null 要素 / Equals 寄与)。「DDP と同等の扱いには Influences 専用テストが必要」という指摘
+- **W-2**: `ChoiceEffectTests.BuildMinimalSession` の FQN を using ディレクティブで整理(他テストファイルとスタイル統一)
+- **W-3**: `ApplyInfluenceEffectTests` クラスサマリに DZ-161 を追記(列挙漏れ訂正)
+- **W-4(進行中バナー)**: 「実装 PR と完成記録 PR の分離パターン」(PR #33→#34 / #35→#36 / #37→#38)に従い、本 PR では「進行中」維持、完成記録 PR(本 PR #40 想定)で「完成」更新
+- **W-5(防御コピー確認テスト)**: 既存構造で安全性は保たれているため Skip、TODO 候補へ
+
+提案(改善余地)7 件のうち P-6(feature の `@DZ-181` 重複タグ)を反映、他は後続 PR 候補に保留。
+
+##### 学び 5: Unity NUnit 制約の継続(M2-PR4 で学んだもの)
+
+- M2-PR4 で確認した「Unity Test Framework の NUnit は `Assert.Multiple` 未対応」を本 PR でも継承、複合不変条件検証は個別 `Assert.That` 並列で記述(DZ-176 / DZ-177 / DZ-178 等)
+
 ### M2 完成記録の追記タイミング(後続 PR で実施)
 
-本 ADR の M2-PR1 / M2-PR3 / M2-PR4 完成記録は §直上に追記済。**M2 全体の完成(M2-PR-N 最終 PR)** 時点で、本 ADR §M2 完成記録(全体)を別途追加し、Definition of Done 達成方法 / 最終的な PR 群一覧 / 完成日を集約する(ADR-0005 §M1 完成記録 / ADR-0006 §M1 着手 PR 群 の運用と同じ)。M2-PR2(DrowZzzClock)完成記録は ADR-0008 §M2-PR2 完成記録、M2-PR5 以降(後続効果カード)は当該 PR 単位で本 ADR or 関連 ADR に追記する。
+本 ADR の M2-PR1 / M2-PR3 / M2-PR4 / M2-PR5 完成記録は §直上に追記済。**M2 全体の完成(M2-PR-N 最終 PR)** 時点で、本 ADR §M2 完成記録(全体)を別途追加し、Definition of Done 達成方法 / 最終的な PR 群一覧 / 完成日を集約する(ADR-0005 §M1 完成記録 / ADR-0006 §M1 着手 PR 群 の運用と同じ)。M2-PR2(DrowZzzClock)完成記録は ADR-0008 §M2-PR2 完成記録、M2-PR6 以降(後続効果カード)は当該 PR 単位で本 ADR or 関連 ADR に追記する。
 
 ## Related
 
