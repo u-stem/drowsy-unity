@@ -940,6 +940,85 @@ M3-PR5a code-reviewer の P-3「`HasInstinctKeyword` 命名汎用化」を **本
 
 オーナーの Unity Editor 操作タイミングで `.meta` ファイルが実装 PR(M3-PR5b、PR #53)に間に合わなかった場合、**M3-PR5b 完成記録 PR(本 PR)に chore commit として同梱** する運用を本 PR で確立。過去 PR(PR #49 / #51)では実装 PR 内の追加 commit として `.meta` を追加していたが、本 PR では実装 PR マージ後の発覚という timing で、完成記録 PR 内の独立 commit(`chore: ...`)として追加する。完成記録 PR の純度は docs-only から少し下がるが、漏れの修復を事務的に処理する **柔軟運用** として認める。
 
+### M3-PR5c 完成記録(2026-05-12、反撃の反撃 + 元カード遡及発動 + 自ターン終了 Pending クリア)
+
+**完成 PR**: PR #55 `feat(app): 「反撃の反撃」+ 元カード遡及発動機構(PendingCounteredEffect + CounterAction 経路 2)を実装 (M3-PR5c)`(merged `9035c8b`、2 commit 同梱:実装 commit `02a7b8b` + コンパイル fix `55f67f6`)。本 ADR §4.4 で確定したキーワード能力機構の **反撃の反撃 + 元カード遡及発動** 部分(3 分割 5a / 5b / 5c の最終段)。
+
+#### Definition of Done 達成項目(本 ADR §4.4 で確定した仕様の最初の実装)
+
+| スコープ項目 | 達成状況 | 備考 |
+| ---- | ---- | ---- |
+| `PendingCounteredEffect` sealed record 新規(3 フィールド構成) | ✓ | `(CardId CounterCard, CardId OriginalCard, IReadOnlyList<IEffect> OriginalEffects)`、null 二重ガード + 防御コピー + 順序保持シーケンス同値 Equals/GetHashCode、ADR §312 候補例 2 フィールドから「B 識別」用途で 1 フィールド拡張(DZ-222)|
+| `DrowZzzGameSession.PendingCounteredEffects` プロパティ追加 | ✓ | `IReadOnlyList<PendingCounteredEffect>` 型、空 list 初期化、Players キー集合との独立性、ctor 9 → 10 引数化(breaking change、既存 78 箇所機械挿入で対応)、DZ-223 |
+| 経路 1 拡張:`ApplyCounter` で Pending 末尾登録 | ✓ | B 成立時に `PendingCounteredEffect(CounterCard=B, OriginalCard=A, OriginalEffects=catalog.GetEffects(A))` を末尾追加、Snapshot として `originalEffects` を Frenzy 検証で兼用(DZ-224)|
+| 経路 2 新規:`IsLegalCounterAsCounterCounter` | ✓ | 自ターン `WaitingForEndTurn` + Pending 非空 + 最後エントリ `CounterCard == action.Target` + Counter 現プレイヤー手札 + Counter キーワード + Target Frenzy なしの 5 段判定(DZ-225)|
+| 経路 2 新規:`ApplyCounterAsCounterCounter` | ✓ | Counter を現プレイヤー手札から Remove → Discard へ + Pending 最後エントリ削除 + OriginalEffects を `EffectInterpreter.Apply` で順次評価(遡及発動、`EffectContext.Default`)+ PhaseState `WaitingForEndTurn` 維持(DZ-226)|
+| `ApplyEndTurn` 冒頭で Pending 一括クリア | ✓ | `Turn.Next` 前にクリア(「このターンに残った Pending を破棄してから次ターンへ」の意味論)、Pending 空時は no-op(DZ-227)|
+| `CounterAction` の switch 分岐(経路 1 / 経路 2) | ✓ | `IsLegalCounter` / `ApplyCounter` ともに PhaseState で switch、新 Action class や新 PhaseState 値を増やさない、ADR §284-287「CounterAction という別 action」の精神を保つ |
+| 既存 78 箇所の `new DrowZzzGameSession` 機械挿入 | ✓ | Python script(`/tmp/insert_pending_arg.py`)で balanced paren カウントを用い、closing paren 直前に `, System.Array.Empty<PendingCounteredEffect>()` を挿入、M3-PR1 / M3-PR2 の確立パターン継承 |
+
+#### 仕様 ID / NUnit 増加
+
+- 仕様 ID 新規採番(DZ-222〜DZ-227、6 件):
+  - **DZ-222**: `PendingCounteredEffect` sealed record の null 防御(CounterCard / OriginalCard / OriginalEffects null + null 要素検出 + 空 list 許容)+ [Ubiquitous]
+  - **DZ-223**: `DrowZzzGameSession.PendingCounteredEffects` の null 防御(list null / null 要素 / 空 list 許容)+ [Ubiquitous]
+  - **DZ-224**: 経路 1 Apply 後の `PendingCounteredEffects` 末尾追加
+  - **DZ-225**: `CounterAction.IsLegalMove` 経路 2 合法条件 5 件(true / Pending 空 false / 最後エントリ不一致 false / Counter 手札になし false / Frenzy target false)
+  - **DZ-226**: `CounterAction.Apply` 経路 2 状態遷移(手札除去 / Discard 追加 / Pending 最後削除 / 遡及発動 / PhaseState 維持)
+  - **DZ-227**: `EndTurnAction.Apply` で `PendingCounteredEffects` クリア(Pending 非空 → 空 / Pending 空 → no-op)
+- NUnit Property: **+6 件(unique)→ 累計 338 件**(テスト件数は +22、`[Ubiquitous]` DZ-222.0 / DZ-223.0 は構造的暗黙カバー)
+  - 新規ファイル `CounterCounterTests`(22 件、`.meta` は本実装 PR の fix commit 内で同梱、M3-PR5b で発生した「.meta 漏れ」の完成記録 PR 持ち越しを本 PR で予防)
+
+#### 本 PR で確定した ADR-0011 §4.4 内の JIT 確定ポイント(2026-05-12)
+
+| 項目 | 確定内容 |
+| ---- | ---- |
+| `PendingCounteredEffect` のデータ構造 | **新規 sealed record 3 フィールド構成**(`CounterCard` / `OriginalCard` / `OriginalEffects`)。ADR §312 候補例 2 フィールドから「B 識別」用途で `CounterCard` 追加 |
+| クリアタイミング | **(a) C 成立で対応ペア即削除(LIFO 最後エントリ)+ (b) `EndTurnAction.Apply` で未消化分一括破棄**(JIT 確定 2026-05-12)|
+| 「反撃の反撃」C の Action 表現 | **既存 `CounterAction` を拡張**(PhaseState で経路 1 / 経路 2 を switch 分岐)、新 Action class や新 PhaseState 値を増やさない |
+| 遡及発動時の `EffectContext` | **`EffectContext.Default`**(元 A プレイ時の `Choice` / `InfluenceRemovalIndex` は保存しない設計、N=2 想定で context 依存の動的効果が遡及発動に巻き込まれるケースは想定外)|
+
+不採用案(再確認):
+- `PendingCounteredEffect` を value tuple `(CardId Card, IReadOnlyList<IEffect> Effects)` で表現:プロジェクト規約「`sealed record` 必須」+ Equals / GetHashCode 制御性で record 採用
+- 2 フィールド `(Card, Effects)` 構成:C の `Target` 照合に「B カード」が必要なため `CounterCard` を追加し 3 フィールドに拡張
+- クリアタイミング:Round 終了時のみ:Round 中に Pending が滞留し挙動予測しにくい、自ターン終了で破棄が直感的
+- 反撃の反撃を新規 `CounterCounterAction` で表現:`CounterAction` の自然な拡張で表現可能、Action 階層を増やさない
+- 自ターン中の専用 PhaseState 追加(例:`WaitingForCounterCounterResponse`):enum 値が増え状態爆発、`WaitingForEndTurn` 内で `CounterAction` を経路 2 として合法化する設計でカバー可能
+- 遡及発動時の `EffectContext` に元 A プレイ時の値を保存:構造大幅変更、N=2 想定で十分
+
+#### code-reviewer subagent 反映(警告 3 / 提案 5 → 5 件反映、3 件 Skip)
+
+| ID | 種別 | 内容 | 反映 |
+| ---- | ---- | ---- | ---- |
+| W-1 | 重大 | DZ-223 null テストが `NewSessionAfterCounter` ヘルパーの `pending ?? defaultPending` 合体で常に実行時失敗 | ✓ ヘルパー経由しない直接 ctor 呼び出しに修正(`pendingCounteredEffects: null` を直接渡す)|
+| W-2 | 警告 | `DrowZzzGameSession` コメント 3 箇所の「FIFO」表記が実装(LIFO)と矛盾、`Influences` の FIFO Tick と混同を招く | ✓ 3 箇所を「LIFO」表記に統一、`Influences` の FIFO Tick との違いを注記 |
+| W-3 | 警告 | `counter-counter.md` トレーサビリティ表「5 件」と内訳 6 項目の不一致 | ✓ 内訳を 5 項目に整理、`WaitingForPlay false` は DZ-218(`CounterActionTests.Given_WaitingForPlay_When_CounterActionのIsLegalMove_Then_false`)で暗黙カバーと注記 |
+| P-1 | 提案 | 経路 1 `originalEffects` のコメントが「Frenzy 検証より前に取得」と表現曖昧、Frenzy 検証に兼用される意図が伝わらない | ✓ 「Frenzy 検証で兼用しつつ Pending 登録用 Snapshot として保持」と書き直し |
+| P-4 | 提案 | `GetHashCode` `seed 5` の根拠コメント未記載 | ✓ `seed 4`(BedDamages)の連番である根拠 + LIFO で要素 `index i` を合成する意図を注記 |
+| P-2 | 提案 | `ApplyCounterAsCounterCounter` で `_catalog.GetEffects` 重複(action.Counter と action.Target は別カードなので別呼び出し) | Skip — 重複指摘は誤読、Counter と Target は別カードで別 GetEffects、合法判定 → 適用の重複は別関数間で必然 |
+| P-3 | 提案 | `PendingCounteredEffect.Equals` の null チェックパターン | Skip — 現状実装で正しく、過去 PR で同パターン確立済 |
+| P-5 | 提案 | テスト命名「経路2」を意味ベースに(例「反撃の反撃」)| Skip — ADR-0011 / `counter-counter.md` で「経路 1 / 経路 2」表記を用語として確立、テスト名も同表記で整合 |
+
+#### M3-PR5c 進行中の学び
+
+##### 学び 1: positional record の named argument は PascalCase(CS1739 経験で確立)
+
+`sealed record PendingCounteredEffect(CardId CounterCard, CardId OriginalCard, IReadOnlyList<IEffect> OriginalEffects)` のような positional record では、record パラメータ名がそのまま ctor パラメータ名 + プロパティ名(PascalCase)になる。本 PR では呼び出し側で camelCase の named argument(`counterCard:` 等)を渡しており、`CS1739: The best overload for 'PendingCounteredEffect' does not have a parameter named 'counterCard'` でコンパイル失敗(`DrowZzzRule.cs:879` + `CounterCounterTests.cs` 3 箇所、合計 4 箇所)。
+
+修正は `CounterCard:` / `OriginalCard:` / `OriginalEffects:` への置換 + コメント「positional record のため named argument は PascalCase」追記で対応(`02a7b8b` → `55f67f6` fix commit)。本プロジェクトの他 `sealed record`(`PlayCardAction(CardId Card, ...)` / `AssociateAction(CardId Card)` 等)は positional 呼び出しで通していたため、本 PR で初めて record の named argument を camelCase 規約(通常 ctor パラメータの慣例)と取り違える形でエラー化した。**通常 class / record の手書き ctor は camelCase、positional record は PascalCase** という非対称ルールが今後の record-heavy 実装でも再発しうるため、メモリに学習として記録済。
+
+##### 学び 2: 「経路 1 / 経路 2」の switch 分岐パターン(同一 Action の文脈別解釈)
+
+`CounterAction` を相手ターン中の反撃(経路 1)と自ターン中の反撃の反撃(経路 2)の **両方** で再利用する設計を採用。`IsLegalCounter` / `ApplyCounter` の両者で `session.PhaseState switch` による分岐を対称に書き、合法判定と Apply の経路が 1 対 1 対応する形に整理。新 Action class(`CounterCounterAction` 等)を追加せず、PhaseState を文脈ディスクリミネータとして使う設計は、ADR §284-287「`CounterAction` という別 action」の精神(Action 階層を最小化)と整合する。同様のパターン(同一 Action の文脈別解釈)は M3-PR6「夢」カードの「夜の `EarlyWinTriggerEffect` vs 朝の `AdjustSdpEffect`」分岐(`TimeOfDayBranchEffect` で既出)にも適用可能。
+
+##### 学び 3: LIFO vs FIFO 用語の文脈依存(`Influences` は FIFO Tick、`PendingCounteredEffects` は LIFO 照合)
+
+本 PR で導入した `PendingCounteredEffects` は **末尾追加・末尾取り出しの LIFO** セマンティクスで、最後に登録された B が経路 2 の照合対象になる。一方 M2-PR5 で導入した `Influences` は **先頭から評価の FIFO Tick** セマンティクスで、list の先頭から順に評価される。両者とも順序保持シーケンス同値で `Equals` するが、**順序の意味が逆**。code-reviewer W-2 で「FIFO」表記の混在を指摘され、`DrowZzzGameSession` のコメント 3 箇所を「LIFO」に統一 + 「`Influences` の FIFO Tick とは異なる」注記を追加。**同種 collection の異なる意味論を扱う場合、コメントで明示的に対比** する運用が確立。
+
+##### 学び 4: 実装 PR 内の fix 同梱パターン(完成記録 PR への持ち越し回避)
+
+M3-PR5b では `.meta` 漏れが実装 PR マージ後に発覚し、完成記録 PR(PR #54)で `chore commit` として同梱する柔軟運用を確立した。本 M3-PR5c では `.meta` 不在を Unity Editor 側で生成された直後に検出し、**コンパイル fix(named arg PascalCase 化)+ `.meta` 2 件を同一 fix commit に同梱** して実装 PR(#55)内で完結させる運用を採用。完成記録 PR は純粋に docs-only(本 ADR 追記 + CLAUDE.md §11 既更新の確認のみ)に保てる。**実装 PR マージ前のオーナー作業タイミングで `.meta` を回収できれば、完成記録 PR の docs-only 純度を保つ** ことを優先するパターン。
+
 ### M3 完成記録の追記タイミング
 
 本 ADR の M3-PR3 完成記録は §直上に追記済。M3-PR4 以降(連想機構 / キーワード能力 / 夢カード)は各 PR 単位で本 ADR §M3-PR-N 完成記録(2026-MM-DD)として追記する(ADR-0007 / ADR-0009 / ADR-0010 §「完成記録の追記タイミング」と同パターン)。M3 全体の完成時に §M3 完成記録(全体)を別途追加、Definition of Done 達成方法を集約する。
