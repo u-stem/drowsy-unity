@@ -60,4 +60,28 @@ namespace Drowsy.Application.Games.DrowZzz
     /// ターン終了アクション。<c>GameState.Turn</c> を <c>Next(playerCount)</c> で次フェーズへ進める。
     /// </summary>
     public sealed record EndTurnAction : DrowZzzAction;
+
+    /// <summary>
+    /// 放棄(代替ターン行動)アクション。<see cref="PlayCardAction"/> の代わりに `WaitingForPlay` フェーズで選択する。
+    /// 手札から指定 index のカードを 1 枚捨て、<see cref="AbandonChoice"/> に応じて SDP +5 or ベッド -20% 修繕を行う。
+    /// </summary>
+    /// <param name="Choice">放棄選択肢(<see cref="AbandonChoice.GainSdp"/> / <see cref="AbandonChoice.RepairBed"/>)</param>
+    /// <param name="CardIndex">手札から捨てる対象カードの index(0-based、default 0)。範囲外は illegal-move</param>
+    /// <remarks>
+    /// ADR-0011 §2 で確定した「放棄」機構の Action 派生型として M3-PR3 で導入。`PlayCardAction` の代替として
+    /// `WaitingForPlay` フェーズで選択可能で、Apply 後は `WaitingForEndTurn` に遷移する(`PlayCardAction` と同じフェーズ遷移)。
+    /// <para>
+    /// `IsLegalMove` の合法条件(M3-PR3 で確定、ADR-0011 §2):
+    /// <list type="bullet">
+    /// <item><c>PhaseState == WaitingForPlay</c></item>
+    /// <item>手札に 1 枚以上のカード(`Hand.Count > 0`)+ `CardIndex` が `[0, Hand.Count)` 範囲内</item>
+    /// <item><see cref="AbandonChoice.RepairBed"/> 選択時:現プレイヤーの <c>BedDamages > 0%</c>(0% では修繕不可、JIT 確定 2026-05-13)</item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// 「本能(Instinct)」キーワード対応は M3-PR5 で追加予定(ADR-0011 §4):本能を持つ効果列のカードは
+    /// `CardIndex` で選択できない(`IsLegalMove` で除外)。本 PR(M3-PR3)範囲では制限なし。
+    /// </para>
+    /// </remarks>
+    public sealed record AbandonAction(AbandonChoice Choice, int CardIndex = 0) : DrowZzzAction;
 }

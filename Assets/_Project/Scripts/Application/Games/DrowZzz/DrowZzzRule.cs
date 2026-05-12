@@ -96,9 +96,39 @@ namespace Drowsy.Application.Games.DrowZzz
                 DrawCardAction => session.PhaseState == DrowZzzPhaseState.WaitingForDraw,
                 PlayCardAction p => IsLegalPlayCard(session, p),
                 EndTurnAction => session.PhaseState == DrowZzzPhaseState.WaitingForEndTurn,
+                AbandonAction a => IsLegalAbandon(session, a),  // M3-PR3: 放棄(代替ターン行動)、ADR-0011 §2
                 _ => throw new NotImplementedException(
                     $"DrowZzzRule.IsLegalMove ({action.GetType().Name}) は M1 範囲では到達不可。将来 DrowZzzAction 派生型を追加する PR で対応する"),
             };
+        }
+
+        // AbandonAction の合法性(M3-PR3、ADR-0011 §2):
+        // (1) PhaseState == WaitingForPlay(PlayCardAction の代替フェーズ)
+        // (2) 手札に 1 枚以上のカード + CardIndex が範囲内
+        // (3) AbandonChoice.RepairBed 選択時のみ、現プレイヤーの BedDamages > 0%(JIT 確定 2026-05-13:0% では修繕不可)
+        // 「本能(Instinct)」キーワードによる手札除外は M3-PR5 で追加(本 PR 範囲では未対応)
+        private static bool IsLegalAbandon(DrowZzzGameSession session, AbandonAction action)
+        {
+            if (session.PhaseState != DrowZzzPhaseState.WaitingForPlay)
+            {
+                return false;
+            }
+            int currentIndex = session.GameState.Turn.CurrentPlayerIndex;
+            var currentHand = session.GameState.Players[currentIndex].Hand;
+            if (currentHand.Count == 0 || action.CardIndex < 0 || action.CardIndex >= currentHand.Count)
+            {
+                return false;
+            }
+            if (action.Choice == AbandonChoice.RepairBed)
+            {
+                // 0% では修繕不可(JIT 確定 2026-05-13、(b) 不可選択を採用)
+                var currentPlayerId = session.GameState.Players[currentIndex].Id;
+                if (session.BedDamages[currentPlayerId] <= DrowZzzBedConstants.MinBedDamagePercent)
+                {
+                    return false;
+                }
+            }
+            return true;
         }
 
         /// <summary>
@@ -213,9 +243,97 @@ namespace Drowsy.Application.Games.DrowZzz
                 DrawCardAction => ApplyDrawCard(session),
                 PlayCardAction p => ApplyPlayCard(session, p),
                 EndTurnAction => ApplyEndTurn(session),
+                AbandonAction a => ApplyAbandon(session, a),  // M3-PR3: 放棄(代替ターン行動)、ADR-0011 §2
                 _ => throw new NotImplementedException(
                     $"DrowZzzRule.Apply ({action.GetType().Name}) は M1 範囲では到達不可 (StartGameAction は StartGameUseCase 経由)。将来 DrowZzzAction 派生型を追加する PR で対応する"),
             };
+        }
+
+        // AbandonAction の状態遷移(M3-PR3、ADR-0011 §2):
+        // (1) 現プレイヤーの手札から CardIndex のカードを除去 → Discard に AddTop
+        // (2) Choice に応じて SDP +5 (GainSdp) or BedDamages -20% (RepairBed、下限 0%)
+        // (3) PhaseState = WaitingForEndTurn(PlayCardAction と同じフェーズ遷移)
+        private static DrowZzzGameSession ApplyAbandon(DrowZzzGameSession session, AbandonAction action)
+        {
+            // 防御的 IsLegalMove 検証
+            if (session.PhaseState != DrowZzzPhaseState.WaitingForPlay)
+            {
+                throw new InvalidOperationException(
+                    $"AbandonAction は WaitingForPlay フェーズでのみ合法です (現フェーズ: {session.PhaseState})");
+            }
+            int currentIndex = session.GameState.Turn.CurrentPlayerIndex;
+            var currentPlayer = session.GameState.Players[currentIndex];
+            if (currentPlayer.Hand.Count == 0
+                || action.CardIndex < 0
+                || action.CardIndex >= currentPlayer.Hand.Count)
+            {
+                throw new InvalidOperationException(
+                    $"AbandonAction の CardIndex ({action.CardIndex}) が現プレイヤーの手札 (count={currentPlayer.Hand.Count}) の範囲外です");
+            }
+            if (action.Choice == AbandonChoice.RepairBed
+                && session.BedDamages[currentPlayer.Id] <= DrowZzzBedConstants.MinBedDamagePercent)
+            {
+                throw new InvalidOperationException(
+                    $"AbandonChoice.RepairBed は BedDamages > 0% でのみ合法です (現在: {session.BedDamages[currentPlayer.Id]}%、ADR-0011 §2 JIT 確定)");
+            }
+
+            // (1) 手札から CardIndex のカードを Discard に移動
+            var discardCard = currentPlayer.Hand.Cards[action.CardIndex];
+            var updatedHand = currentPlayer.Hand.Remove(discardCard);
+            var newDiscard = session.GameState.Discard.AddTop(discardCard);
+
+            // Players 配列を新しい配列に置換(現プレイヤーのみ差し替え)
+            var newPlayers = new PlayerState[session.GameState.Players.Count];
+            for (int i = 0; i < newPlayers.Length; i++)
+            {
+                newPlayers[i] = i == currentIndex ? currentPlayer with { Hand = updatedHand } : session.GameState.Players[i];
+            }
+            var newGameState = session.GameState with
+            {
+                Players = newPlayers,
+                Discard = newDiscard,
+            };
+            var afterDiscard = session with
+            {
+                GameState = newGameState,
+                PhaseState = DrowZzzPhaseState.WaitingForEndTurn,
+            };
+
+            // (2) Choice に応じた追加効果
+            return action.Choice switch
+            {
+                AbandonChoice.GainSdp => ApplyAbandonGainSdp(afterDiscard, currentPlayer.Id),
+                AbandonChoice.RepairBed => ApplyAbandonRepairBed(afterDiscard, currentPlayer.Id),
+                _ => throw new NotImplementedException(
+                    $"DrowZzzRule.ApplyAbandon: 未知の AbandonChoice ({action.Choice})、将来 enum 拡張時に case 追加"),
+            };
+        }
+
+        // AbandonChoice.GainSdp の処理: 現プレイヤーの SDP を AbandonSdpGain(+5) だけ増やす
+        private static DrowZzzGameSession ApplyAbandonGainSdp(DrowZzzGameSession session, PlayerId currentPlayerId)
+        {
+            var newSdp = new Dictionary<PlayerId, int>(session.SecondDrowsyPoints.Count);
+            foreach (var kv in session.SecondDrowsyPoints)
+            {
+                newSdp[kv.Key] = kv.Key.Equals(currentPlayerId)
+                    ? kv.Value + DrowZzzBedConstants.AbandonSdpGain
+                    : kv.Value;
+            }
+            return session with { SecondDrowsyPoints = newSdp };
+        }
+
+        // AbandonChoice.RepairBed の処理: 現プレイヤーの BedDamages を BedRepairPercent(20%) だけ減らす
+        // 下限 0% でクランプ(IsLegalMove で BedDamages > 0% を確認済のため通常は減算後も 0 以上だが、防御的に Math.Max)
+        private static DrowZzzGameSession ApplyAbandonRepairBed(DrowZzzGameSession session, PlayerId currentPlayerId)
+        {
+            var newBedDamages = new Dictionary<PlayerId, int>(session.BedDamages.Count);
+            foreach (var kv in session.BedDamages)
+            {
+                newBedDamages[kv.Key] = kv.Key.Equals(currentPlayerId)
+                    ? System.Math.Max(DrowZzzBedConstants.MinBedDamagePercent, kv.Value - DrowZzzBedConstants.BedRepairPercent)
+                    : kv.Value;
+            }
+            return session with { BedDamages = newBedDamages };
         }
 
         // DrawCardAction の状態遷移: 山札 Top → 現プレイヤー Hand に 1 枚移動 + PhaseState = WaitingForPlay。
