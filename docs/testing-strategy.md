@@ -185,9 +185,10 @@ public void Given_同じseed_When_NextInt_Then_同じ系列を生成() { ... }
 | (将来) Action | ACT | — |
 | (将来) Rule | RULE | — |
 | (将来) Token | TKN | — |
-| (将来) UserSettings | USR | — |
+| Infrastructure (`ScriptableObjectCardCatalog` / `DrowZzzGameConfigAsset` / Persistence 等)| INF | M4 で採番開始(ADR-0012)|
+| UserSettings(`IUserSettings` / `PlayerPrefsUserSettings`)| USR | M4-PR6 で採番開始(ADR-0012)|
 
-新規モジュール追加時は本表を更新する。
+新規モジュール追加時は本表を更新する。`INF-` / `USR-` の有効化は ADR-0012 起票 PR で実施(M3-PR6 起票 PR code-reviewer W-5 反映 2026-05-14)。
 
 ## 5. TDD ループ
 
