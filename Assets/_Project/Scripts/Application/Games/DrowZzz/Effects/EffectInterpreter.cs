@@ -80,6 +80,8 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
                 RemoveInfluenceEffect remove => ApplyRemoveInfluence(session, remove, context),
                 // M3-PR1: 早期勝利トリガー(ADR-0010 §5、夜 + 持ち点 ≥ 100 で WinnerOutcome 設定)
                 EarlyWinTriggerEffect _ => ApplyEarlyWinTrigger(session),
+                // M3-PR2: ベッド破損率増加(ADR-0011 §3、Target プレイヤーの BedDamages を Percent 増加、上限 100% クランプ)
+                DamageBedEffect damage => ApplyDamageBed(session, damage),
 
                 _ => throw new NotImplementedException(
                     $"EffectInterpreter.Apply ({effect.GetType().Name}) は本実装範囲では到達不可。" +
@@ -273,8 +275,24 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
             return session with { Outcome = new WinnerOutcome(currentId) };
         }
 
-        // SdpTarget を実際の PlayerId に解決する(N=2 想定、現プレイヤー以外を「Opponent」として一意決定)
-        // N>2 拡張時は本メソッドの返り値型を <see cref="IReadOnlyList{T}"/> に変える等の再設計が必要(Phase 3 候補)
+        // DamageBedEffect の評価: Target が指す playerId の BedDamages を Percent だけ増加。
+        // 上限は DrowZzzBedConstants.MaxBedDamagePercent(100%)で Math.Min クランプ。
+        // ADR-0011 §3、M3-PR2 で追加。Percent は 5 の倍数 + 正値が record 側で検証済。
+        private static DrowZzzGameSession ApplyDamageBed(DrowZzzGameSession session, DamageBedEffect effect)
+        {
+            var targetId = ResolveTargetPlayerId(session, effect.Target);
+            var newBedDamages = new Dictionary<PlayerId, int>(session.BedDamages.Count);
+            foreach (var kv in session.BedDamages)
+            {
+                newBedDamages[kv.Key] = kv.Key.Equals(targetId)
+                    ? System.Math.Min(DrowZzzBedConstants.MaxBedDamagePercent, kv.Value + effect.Percent)
+                    : kv.Value;
+            }
+            return session with { BedDamages = newBedDamages };
+        }
+
+        // SdpTarget を実際の PlayerId に解決する(N=2 想定、現プレイヤー以外を「Opponent」として一意決定)。
+        // N>2 拡張時は本メソッドの返り値型を <see cref="IReadOnlyList{T}"/> に変える等の再設計が必要(Phase 3 候補)。
         private static PlayerId ResolveTargetPlayerId(DrowZzzGameSession session, SdpTarget target)
         {
             var players = session.GameState.Players;

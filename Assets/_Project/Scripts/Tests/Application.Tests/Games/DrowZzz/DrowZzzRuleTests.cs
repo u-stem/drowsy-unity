@@ -34,7 +34,8 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             int turnNumber = 1,
             DdpPool ddpPool = null,
             IReadOnlyDictionary<PlayerId, int> ddp = null,
-            IReadOnlyDictionary<PlayerId, IReadOnlyList<PlayerInfluence>> influences = null)
+            IReadOnlyDictionary<PlayerId, IReadOnlyList<PlayerInfluence>> influences = null,
+            IReadOnlyDictionary<PlayerId, int> bedDamages = null)
         {
             var p0 = new PlayerState(PlayerId.Of("p1"), p0Hand ?? Hand.Empty);
             var p1 = new PlayerState(PlayerId.Of("p2"), p1Hand ?? Hand.Empty);
@@ -69,7 +70,13 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 [PlayerId.Of("p1")] = Array.Empty<PlayerInfluence>(),
                 [PlayerId.Of("p2")] = Array.Empty<PlayerInfluence>(),
             };
-            return new DrowZzzGameSession(gs, fdp, ddpResolved, sdp, ddpPool ?? DdpPool.Empty, influencesResolved, phase, outcome: null);
+            // M3-PR2: BedDamages は引数指定なら採用、未指定なら 0/0 固定(ADR-0011 §3、ddp / influences と同パターン)
+            var bedDamagesResolved = bedDamages ?? new Dictionary<PlayerId, int>
+            {
+                [PlayerId.Of("p1")] = 0,
+                [PlayerId.Of("p2")] = 0,
+            };
+            return new DrowZzzGameSession(gs, fdp, ddpResolved, sdp, ddpPool ?? DdpPool.Empty, influencesResolved, phase, outcome: null, bedDamages: bedDamagesResolved);
         }
 
         private static Pile NewDeck(params string[] cardIds)
@@ -1050,6 +1057,89 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var next = rule.Apply(session, new EndTurnAction());
             // Then
             Assert.That(next.Outcome, Is.Null);
+        }
+
+        // ===== DZ-197: 自フェーズ開始時のベッド破損ダメージ計算(M3-PR2、ADR-0011 §3 / §5)=====
+
+        [Test, Category("Medium"), Category("Normal"), Property("Requirement", "DZ-197")]
+        public void Given_p2ベッド破損20_When_p1のEndTurnでp2にローテート_Then_p2のSDPがマイナス4()
+        {
+            // Given(TurnNumber=1 → 先手 p1 の WaitingForEndTurn、EndTurn 後に p2 がフェーズ開始)
+            //   p2 のベッド破損は 20% → SDP マイナス換算は 20 / 5 = 4
+            var rule = NewRule();
+            var bed = new Dictionary<PlayerId, int>
+            {
+                [PlayerId.Of("p1")] = 0,
+                [PlayerId.Of("p2")] = 20,
+            };
+            var session = NewSession(
+                phase: DrowZzzPhaseState.WaitingForEndTurn,
+                turnNumber: 1,
+                currentPlayerIndex: 0,
+                bedDamages: bed);
+            // When(p1 EndTurn → 新 current は p2、p2 の SDP に -4)
+            var next = rule.Apply(session, new EndTurnAction());
+            // Then(p2 SDP が 0 - 4 = -4 になる)
+            Assert.That(next.SecondDrowsyPoints[PlayerId.Of("p2")], Is.EqualTo(-4));
+        }
+
+        [Test, Category("Medium"), Category("Normal"), Property("Requirement", "DZ-197")]
+        public void Given_p1ベッド破損40_p1のEndTurnでp2がcurrentになる_When_EndTurn_Then_p1のSDPは不変()
+        {
+            // Given(p1 のベッド破損が 40% でも、p1 ターン終了 → 新 current は p2 のため p1 の SDP は影響なし)
+            //   p1 の BedDamages は p2 ターン終了後に p1 が再び current になったタイミングで初めて発動。
+            var rule = NewRule();
+            var bed = new Dictionary<PlayerId, int>
+            {
+                [PlayerId.Of("p1")] = 40,
+                [PlayerId.Of("p2")] = 0,
+            };
+            var session = NewSession(
+                phase: DrowZzzPhaseState.WaitingForEndTurn,
+                turnNumber: 1,
+                currentPlayerIndex: 0,
+                bedDamages: bed);
+            // When(p1 EndTurn → 新 current = p2、p1 のベッドダメージは発火しない)
+            var next = rule.Apply(session, new EndTurnAction());
+            // Then(p1 SDP は不変、自フェーズ開始時のダメージは「新 current player」にのみ適用)
+            Assert.That(next.SecondDrowsyPoints[PlayerId.Of("p1")], Is.EqualTo(0));
+        }
+
+        [Test, Category("Medium"), Category("Normal"), Property("Requirement", "DZ-197")]
+        public void Given_p2ベッド破損0_When_p1のEndTurnでp2にローテート_Then_p2のSDPは不変()
+        {
+            // Given(p2 のベッド破損 0% → SDP マイナスは 0 / 5 = 0、session 不変返却)
+            var rule = NewRule();
+            var session = NewSession(
+                phase: DrowZzzPhaseState.WaitingForEndTurn,
+                turnNumber: 1,
+                currentPlayerIndex: 0);
+            // BedDamages は default (0/0) のまま
+            // When
+            var next = rule.Apply(session, new EndTurnAction());
+            // Then
+            Assert.That(next.SecondDrowsyPoints[PlayerId.Of("p2")], Is.EqualTo(0));
+        }
+
+        [Test, Category("Medium"), Category("Normal"), Property("Requirement", "DZ-197")]
+        public void Given_p2ベッド破損100_When_p1のEndTurnでp2にローテート_Then_p2のSDPがマイナス20()
+        {
+            // Given(上限値 100% → SDP マイナス 20)
+            var rule = NewRule();
+            var bed = new Dictionary<PlayerId, int>
+            {
+                [PlayerId.Of("p1")] = 0,
+                [PlayerId.Of("p2")] = 100,
+            };
+            var session = NewSession(
+                phase: DrowZzzPhaseState.WaitingForEndTurn,
+                turnNumber: 1,
+                currentPlayerIndex: 0,
+                bedDamages: bed);
+            // When
+            var next = rule.Apply(session, new EndTurnAction());
+            // Then(100 / 5 = 20、SDP は 0 - 20 = -20)
+            Assert.That(next.SecondDrowsyPoints[PlayerId.Of("p2")], Is.EqualTo(-20));
         }
     }
 }

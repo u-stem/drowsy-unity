@@ -369,6 +369,12 @@ namespace Drowsy.Application.Games.DrowZzz
                 PhaseState = DrowZzzPhaseState.WaitingForDraw,
             };
 
+            // M3-PR2: 自フェーズ開始時のベッド破損による SDP マイナス(ADR-0011 §3 / §5「順序保証」の最先頭)。
+            // 新 current player の BedDamages を `/ BedDamageRatePerSdp` で SDP マイナスに換算、SDP から減算する
+            // (整数除算で切り捨て、0% なら 0 マイナス = no-op)。
+            // ADR-0011 §5 順序保証では「ベッドダメージ → DDP 抽選 → 影響 Tick → 終了判定」の順序が確定。
+            nextSession = ApplyBedDamageToCurrentPlayer(nextSession);
+
             // ターン境界での DDP 自動抽選トリガー(MC/DC ケース 1):
             //   ケース 1: CurrentPlayerIndex == 0 (=全プレイヤー 1 巡完了) かつ 新ターン番号 ∈ {5,9,13,17,21}
             //     → DrawDdpForAllPlayers で N 枚抽選 + 累積
@@ -398,6 +404,36 @@ namespace Drowsy.Application.Games.DrowZzz
             }
 
             return nextSession;
+        }
+
+        // M3-PR2: 自フェーズ開始時のベッド破損による SDP マイナス計算(ADR-0011 §3 / §5)。
+        // 新 current player の BedDamages を `/ DrowZzzBedConstants.BedDamageRatePerSdp` で SDP マイナスに換算。
+        // 例: BedDamages[p1]=40% なら `40 / 5 = 8`、SDP[p1] -= 8 を適用。
+        // 0% なら計算結果 0 で session 不変返却(no-op、graceful)。
+        private static DrowZzzGameSession ApplyBedDamageToCurrentPlayer(DrowZzzGameSession session)
+        {
+            int currentIndex = session.GameState.Turn.CurrentPlayerIndex;
+            var currentPlayerId = session.GameState.Players[currentIndex].Id;
+            // BedDamages のキー集合は cross-field 検証で Players と一致が保証されているため、TryGetValue 失敗は構造的に不可能
+            // (将来 cross-field 検証が緩んだ場合の保険として明示防御)
+            if (!session.BedDamages.TryGetValue(currentPlayerId, out var bedDamagePercent))
+            {
+                throw new InvalidOperationException(
+                    $"内部不変条件違反: BedDamages に PlayerId {currentPlayerId.Value} のキーがありません(cross-field 検証の漏れ)");
+            }
+            int sdpDamage = bedDamagePercent / DrowZzzBedConstants.BedDamageRatePerSdp;
+            if (sdpDamage == 0)
+            {
+                // 破損 0% / 1〜4%(整数除算で切り捨て 0)では SDP に影響なし、session 不変返却
+                return session;
+            }
+            // SDP を damage 分減算(0 floor なし、ADR-0009 「持ち点低い方が勝ち」と整合、SDP は負値許容)
+            var newSdp = new Dictionary<PlayerId, int>(session.SecondDrowsyPoints.Count);
+            foreach (var kv in session.SecondDrowsyPoints)
+            {
+                newSdp[kv.Key] = kv.Key.Equals(currentPlayerId) ? kv.Value - sdpDamage : kv.Value;
+            }
+            return session with { SecondDrowsyPoints = newSdp };
         }
 
         // 終了時勝利の Outcome を決定する: 各プレイヤーの TotalPoints を比較し、

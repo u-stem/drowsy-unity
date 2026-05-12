@@ -60,7 +60,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz.Effects
                 [PlayerId.Of("p1")] = p1Influences ?? Array.Empty<PlayerInfluence>(),
                 [PlayerId.Of("p2")] = p2Influences ?? Array.Empty<PlayerInfluence>(),
             };
-            return new DrowZzzGameSession(gs, fdp, ddp, sdp, DdpPool.Empty, influences, DrowZzzPhaseState.WaitingForPlay, outcome: null);
+            return new DrowZzzGameSession(gs, fdp, ddp, sdp, DdpPool.Empty, influences, DrowZzzPhaseState.WaitingForPlay, outcome: null, bedDamages: new Dictionary<PlayerId, int> { [PlayerId.Of("p1")] = 0, [PlayerId.Of("p2")] = 0 });
         }
 
         // ===== DZ-158: 構築 / null 防御 =====
