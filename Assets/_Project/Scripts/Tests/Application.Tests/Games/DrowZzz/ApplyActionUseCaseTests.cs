@@ -4,6 +4,7 @@ using NUnit.Framework;
 using Drowsy.Application.Catalog;
 using Drowsy.Application.Games.DrowZzz;
 using Drowsy.Application.Games.DrowZzz.Effects;
+using Drowsy.Application.Games.DrowZzz.Influences;
 using Drowsy.Domain.Cards;
 using Drowsy.Domain.Game;
 using Drowsy.Domain.Players;
@@ -57,7 +58,13 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 [PlayerId.Of("p1")] = 0,
                 [PlayerId.Of("p2")] = 0,
             };
-            return new DrowZzzGameSession(gs, fdp, ddp, sdp, DdpPool.Empty, phase);
+            // M2-PR5: Influences は本ヘルパー利用テストでは空 list 固定(影響操作機構は別 fixture で検証)
+            var influences = new Dictionary<PlayerId, IReadOnlyList<PlayerInfluence>>
+            {
+                [PlayerId.Of("p1")] = Array.Empty<PlayerInfluence>(),
+                [PlayerId.Of("p2")] = Array.Empty<PlayerInfluence>(),
+            };
+            return new DrowZzzGameSession(gs, fdp, ddp, sdp, DdpPool.Empty, influences, phase);
         }
 
         private static Pile NewDeck(params string[] cardIds)

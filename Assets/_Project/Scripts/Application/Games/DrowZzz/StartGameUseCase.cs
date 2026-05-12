@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Drowsy.Application.Games.DrowZzz.Effects;
+using Drowsy.Application.Games.DrowZzz.Influences;
 using Drowsy.Domain.Cards;
 using Drowsy.Domain.Configuration;
 using Drowsy.Domain.Game;
@@ -107,10 +108,13 @@ namespace Drowsy.Application.Games.DrowZzz
             // DDP: M2-PR4 で追加、初期値 0(隠し情報、Turn 5/9/13/17/21 開始時に DdpPool から累積)
             var sdpDict = new Dictionary<PlayerId, int>(shuffledPlayers.Count);
             var ddpDict = new Dictionary<PlayerId, int>(shuffledPlayers.Count);
+            // M2-PR5: Influences 初期化(全プレイヤー空 list、ADR-0007 §1.5)
+            var influencesDict = new Dictionary<PlayerId, IReadOnlyList<PlayerInfluence>>(shuffledPlayers.Count);
             for (int i = 0; i < shuffledPlayers.Count; i++)
             {
                 sdpDict[shuffledPlayers[i]] = 0;
                 ddpDict[shuffledPlayers[i]] = 0;
+                influencesDict[shuffledPlayers[i]] = Array.Empty<PlayerInfluence>();
             }
 
             // 6. DdpPool 初期化(IGameConfig.DdpPool を Fisher-Yates Shuffle、ADR-0009 §3 / DZ-140)
@@ -130,6 +134,7 @@ namespace Drowsy.Application.Games.DrowZzz
                 ddpDict,
                 sdpDict,
                 ddpPool,
+                influencesDict,
                 DrowZzzPhaseState.WaitingForDraw);
         }
 

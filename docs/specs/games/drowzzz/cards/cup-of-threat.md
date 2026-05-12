@@ -12,12 +12,20 @@ DrowZzz の最初の効果付きカード(プロジェクトオーナー JIT 共
 | CardId | `"01"`(JIT 共有: シンプルな数字 ID 採用、M4 SO 化時に再評価) |
 | 効果構造 | `TimeOfDayBranchEffect` 1 件で夜・朝の効果列をまとめて持つ |
 
-### 効果(数値は `使用者(甲)` / `被使用者(乙)` の順)
+### 効果
 
-| 時刻 | 使用者 SDP | 被使用者 SDP | 追加効果 |
-| ---- | ---- | ---- | ---- |
-| **夜** (`Clock.IsNight`、Turn 1〜16) | -4 | -10 | 使用者が山札から手段(カード)を 1 枚引く |
-| **朝** (`Clock.IsMorning`、Turn 17〜21) | -4 | +10 | なし |
+プレイ時、現在時刻に応じて以下の効果が発動する。
+
+#### 夜(`Clock.IsNight`、Turn 1〜16)
+
+- 自分の SDP が 4 減る
+- 自分は山札から手段(カード)を 1 枚引く
+- 相手の SDP が 10 減る
+
+#### 朝(`Clock.IsMorning`、Turn 17〜21)
+
+- 自分の SDP が 4 減る
+- 相手の SDP が 10 増える
 
 戦略的解釈:
 - **夜**: 「自分も少し寝るが相手をもっと寝かせまいとし、手数を確保する」 → 夜の戦略「相手を寝かせまい(相手 DP↓)」と整合
@@ -35,14 +43,14 @@ new KeyValuePair<CardId, IReadOnlyList<IEffect>>(CardId.Of("01"), new IEffect[]
     new TimeOfDayBranchEffect(
         nightEffects: new IEffect[]
         {
-            new AdjustSdpEffect(SdpTarget.Self, -4),      // 甲(使用者) SDP -4
-            new DrawCardEffect(SdpTarget.Self, 1),        // 甲 が山札から 1 枚引く
-            new AdjustSdpEffect(SdpTarget.Opponent, -10), // 乙(被使用者) SDP -10
+            new AdjustSdpEffect(SdpTarget.Self, -4),      // 自分 SDP -4
+            new DrawCardEffect(SdpTarget.Self, 1),        // 自分が山札から 1 枚引く
+            new AdjustSdpEffect(SdpTarget.Opponent, -10), // 相手 SDP -10
         },
         morningEffects: new IEffect[]
         {
-            new AdjustSdpEffect(SdpTarget.Self, -4),      // 甲(使用者) SDP -4
-            new AdjustSdpEffect(SdpTarget.Opponent, 10),  // 乙(被使用者) SDP +10
+            new AdjustSdpEffect(SdpTarget.Self, -4),      // 自分 SDP -4
+            new AdjustSdpEffect(SdpTarget.Opponent, 10),  // 相手 SDP +10
         }
     ),
 })
@@ -74,5 +82,5 @@ new KeyValuePair<CardId, IReadOnlyList<IEffect>>(CardId.Of("01"), new IEffect[]
 | 要件 ID | カバーするテスト | 備考 |
 | ---- | ---- | ---- |
 | DZ-125 | (テスト免除: Ubiquitous) | 登録例は `CupOfThreatCardTests` のヘルパーに記述、構造的に保証 |
-| DZ-126 | DZ-126 は 1 テスト 1 アサーション原則で 3 件に分割: `Given_夜のRound_When_Card01をプレイ_Then_使用者SDPがマイナス4` / `Given_夜のRound_When_Card01をプレイ_Then_被使用者SDPがマイナス10` / `Given_夜のRound_When_Card01をプレイ_Then_使用者手札に山札topがドローされる` | 統合テスト(Category("Medium")) |
-| DZ-127 | DZ-127 も 3 件に分割: `Given_朝のRound_When_Card01をプレイ_Then_使用者SDPがマイナス4` / `Given_朝のRound_When_Card01をプレイ_Then_被使用者SDPがプラス10` / `Given_朝のRound_When_Card01をプレイ_Then_ドロー効果は発動しない` | 統合テスト(Category("Medium")) |
+| DZ-126 | DZ-126 は 1 テスト 1 アサーション原則で 3 件に分割: `Given_夜のRound_When_Card01をプレイ_Then_自分のSDPがマイナス4` / `Given_夜のRound_When_Card01をプレイ_Then_相手のSDPがマイナス10` / `Given_夜のRound_When_Card01をプレイ_Then_自分の手札に山札topがドローされる` | 統合テスト(Category("Medium")) |
+| DZ-127 | DZ-127 も 3 件に分割: `Given_朝のRound_When_Card01をプレイ_Then_自分のSDPがマイナス4` / `Given_朝のRound_When_Card01をプレイ_Then_相手のSDPがプラス10` / `Given_朝のRound_When_Card01をプレイ_Then_ドロー効果は発動しない` | 統合テスト(Category("Medium")) |
