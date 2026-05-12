@@ -69,7 +69,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 [PlayerId.Of("p1")] = Array.Empty<PlayerInfluence>(),
                 [PlayerId.Of("p2")] = Array.Empty<PlayerInfluence>(),
             };
-            return new DrowZzzGameSession(gs, fdp, ddpResolved, sdp, ddpPool ?? DdpPool.Empty, influencesResolved, phase);
+            return new DrowZzzGameSession(gs, fdp, ddpResolved, sdp, ddpPool ?? DdpPool.Empty, influencesResolved, phase, outcome: null);
         }
 
         private static Pile NewDeck(params string[] cardIds)
@@ -893,6 +893,149 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 "後手 p2 の DDP = -10 + 25 = 15");
             Assert.That(result.DdpPool.IsEmpty, Is.True,
                 "2 回目で残 2 枚全て消費、空 Pool");
+        }
+
+        // ===== DZ-187: DrowZzzRule.IsTerminated は session.IsTerminated を返す(M3-PR1)=====
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-187")]
+        public void Given_未終了Session_When_IsTerminated_Then_false()
+        {
+            var rule = NewRule();
+            var session = NewSession();
+            Assert.That(rule.IsTerminated(session), Is.False);
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-187")]
+        public void Given_WinnerOutcome設定済Session_When_IsTerminated_Then_true()
+        {
+            var rule = NewRule();
+            var baseSession = NewSession();
+            var session = baseSession with { Outcome = new WinnerOutcome(PlayerId.Of("p1")) };
+            Assert.That(rule.IsTerminated(session), Is.True);
+        }
+
+        // ===== DZ-188: DrowZzzRule.GetWinner の契約(M3-PR1)=====
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-188")]
+        public void Given_WinnerOutcome設定済Session_When_GetWinner_Then_勝者PlayerIdを返す()
+        {
+            var rule = NewRule();
+            var baseSession = NewSession();
+            var session = baseSession with { Outcome = new WinnerOutcome(PlayerId.Of("p1")) };
+            Assert.That(rule.GetWinner(session), Is.EqualTo(PlayerId.Of("p1")));
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-188")]
+        public void Given_DrawOutcome設定済Session_When_GetWinner_Then_nullを返す()
+        {
+            var rule = NewRule();
+            var baseSession = NewSession();
+            var session = baseSession with { Outcome = new DrawOutcome() };
+            Assert.That(rule.GetWinner(session), Is.Null);
+        }
+
+        [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-188")]
+        public void Given_未終了Session_When_GetWinner_Then_InvalidOperationExceptionを投げる()
+        {
+            var rule = NewRule();
+            var session = NewSession();
+            Assert.Throws<InvalidOperationException>(() => rule.GetWinner(session));
+        }
+
+        // ===== DZ-189: 終了済 session への Action は全て illegal(Round 22 ガード兼用、M3-PR1)=====
+
+        [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-189")]
+        public void Given_終了済Session_When_DrawCardActionでIsLegalMove_Then_false()
+        {
+            var rule = NewRule();
+            var baseSession = NewSession(phase: DrowZzzPhaseState.WaitingForDraw);
+            var session = baseSession with { Outcome = new WinnerOutcome(PlayerId.Of("p1")) };
+            Assert.That(rule.IsLegalMove(session, new DrawCardAction()), Is.False);
+        }
+
+        [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-189")]
+        public void Given_終了済Session_When_EndTurnActionでIsLegalMove_Then_false()
+        {
+            var rule = NewRule();
+            var baseSession = NewSession(phase: DrowZzzPhaseState.WaitingForEndTurn);
+            var session = baseSession with { Outcome = new DrawOutcome() };
+            Assert.That(rule.IsLegalMove(session, new EndTurnAction()), Is.False);
+        }
+
+        [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-189")]
+        public void Given_終了済Session_When_Applyを直接呼ぶ_Then_InvalidOperationExceptionを投げる()
+        {
+            // Given(IsLegalMove を通さずに Apply を直接呼ぶ防御的検証、ADR-0006 §3 / ADR-0010 §6)
+            var rule = NewRule();
+            var baseSession = NewSession(phase: DrowZzzPhaseState.WaitingForEndTurn);
+            var session = baseSession with { Outcome = new WinnerOutcome(PlayerId.Of("p1")) };
+            // When / Then
+            Assert.Throws<InvalidOperationException>(() => rule.Apply(session, new EndTurnAction()));
+        }
+
+        // ===== DZ-190: Round 21 完了で TotalPoints 比較による Outcome 設定(M3-PR1)=====
+
+        [Test, Category("Medium"), Category("Normal"), Property("Requirement", "DZ-190")]
+        public void Given_Round21最終フェーズでp1低スコア_When_EndTurnでRound22到達_Then_Outcomeはp1勝利()
+        {
+            // Given(TurnNumber=42 → Round 21 後手フェーズ完了直前、CurrentPlayerIndex=1)
+            //   後手 EndTurn 後に TurnNumber=43、Round=22、CurrentPlayerIndex=0 → Round 22 到達検出
+            //   p1: SDP=10、p2: SDP=50 → p1 が低スコアで勝者
+            var rule = NewRule();
+            var sdp = new Dictionary<PlayerId, int>
+            {
+                [PlayerId.Of("p1")] = 10,
+                [PlayerId.Of("p2")] = 50,
+            };
+            var session = NewSession(
+                phase: DrowZzzPhaseState.WaitingForEndTurn,
+                turnNumber: 42,
+                currentPlayerIndex: 1);
+            session = session with { SecondDrowsyPoints = sdp };
+            // When
+            var next = rule.Apply(session, new EndTurnAction());
+            // Then
+            Assert.That(next.Outcome, Is.EqualTo(new WinnerOutcome(PlayerId.Of("p1"))));
+        }
+
+        [Test, Category("Medium"), Category("Normal"), Property("Requirement", "DZ-190")]
+        public void Given_Round21最終フェーズで両者同点_When_EndTurnでRound22到達_Then_OutcomeはDraw()
+        {
+            // Given(両者同点 SDP=10、ADR-0010 §7 tiebreaker なし)
+            var rule = NewRule();
+            var sdp = new Dictionary<PlayerId, int>
+            {
+                [PlayerId.Of("p1")] = 10,
+                [PlayerId.Of("p2")] = 10,
+            };
+            var session = NewSession(
+                phase: DrowZzzPhaseState.WaitingForEndTurn,
+                turnNumber: 42,
+                currentPlayerIndex: 1);
+            session = session with { SecondDrowsyPoints = sdp };
+            // When
+            var next = rule.Apply(session, new EndTurnAction());
+            // Then
+            Assert.That(next.Outcome, Is.EqualTo(new DrawOutcome()));
+        }
+
+        // ===== DZ-191: Round 21 内のフェーズ進行(Round 22 到達前)では Outcome 設定されない =====
+
+        [Test, Category("Medium"), Category("Normal"), Property("Requirement", "DZ-191")]
+        public void Given_Round21先手フェーズ完了_When_EndTurnでp2にローテート_Then_Outcomeは未設定()
+        {
+            // Given(TurnNumber=41 → Round 21 先手フェーズ、CurrentPlayerIndex=0)
+            //   先手 EndTurn → TurnNumber=42、Round=21、CurrentPlayerIndex=1 → Round 21 のまま
+            //   Round 22 到達前なので Outcome は未設定
+            var rule = NewRule();
+            var session = NewSession(
+                phase: DrowZzzPhaseState.WaitingForEndTurn,
+                turnNumber: 41,
+                currentPlayerIndex: 0);
+            // When
+            var next = rule.Apply(session, new EndTurnAction());
+            // Then
+            Assert.That(next.Outcome, Is.Null);
         }
     }
 }

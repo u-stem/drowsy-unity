@@ -43,5 +43,13 @@ namespace Drowsy.Application.Games.DrowZzz
 
         /// <summary>朝の終了ターン番号(07:00 = Round 21、最終プレイ可能ターン、ADR-0009 §「Clock 仕様の境界訂正」、L2)。</summary>
         public const int MorningEndRound = 21;
+
+        /// <summary>
+        /// ゲーム終了判定で参照する最大ターン番号(= <see cref="MorningEndRound"/> の別名、L2)。
+        /// ターン上限到達時に <c>DrowZzzRule.ApplyEndTurn</c> 内で <see cref="Drowsy.Domain.Game.GameOutcome"/> が確定する
+        /// (ADR-0010 §4(b) / §8)。意味的には「最終プレイ可能ターン」と同値だが、ゲーム終了判定の文脈で
+        /// 「Clock 仕様の境界」(<see cref="MorningEndRound"/>)とは別の概念として参照できるよう独立した定数として公開する。
+        /// </summary>
+        public const int MaxRoundNumber = MorningEndRound;
     }
 }

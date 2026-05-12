@@ -43,7 +43,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz.Effects
                 [PlayerId.Of("p1")] = p1Influences ?? Array.Empty<PlayerInfluence>(),
                 [PlayerId.Of("p2")] = p2Influences ?? Array.Empty<PlayerInfluence>(),
             };
-            return new DrowZzzGameSession(gs, fdp, ddp, sdp, DdpPool.Empty, influences, DrowZzzPhaseState.WaitingForPlay);
+            return new DrowZzzGameSession(gs, fdp, ddp, sdp, DdpPool.Empty, influences, DrowZzzPhaseState.WaitingForPlay, outcome: null);
         }
 
         // ===== DZ-162: index 範囲内で影響を除去 =====

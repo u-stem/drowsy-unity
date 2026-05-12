@@ -135,7 +135,9 @@ namespace Drowsy.Application.Games.DrowZzz
                 sdpDict,
                 ddpPool,
                 influencesDict,
-                DrowZzzPhaseState.WaitingForDraw);
+                DrowZzzPhaseState.WaitingForDraw,
+                // M3-PR1: 新規セッションは未終了(ADR-0010 §3)
+                outcome: null);
         }
 
         // 引数検証を 1 メソッドに集約(out で fdpPool を返し本体ロジックの再アクセスを省略)

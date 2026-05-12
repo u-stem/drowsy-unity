@@ -56,7 +56,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz.Effects
                 [PlayerId.Of("p1")] = Array.Empty<PlayerInfluence>(),
                 [PlayerId.Of("p2")] = Array.Empty<PlayerInfluence>(),
             };
-            return new DrowZzzGameSession(gs, fdp, ddp, sdp, DdpPool.Empty, influences, DrowZzzPhaseState.WaitingForPlay);
+            return new DrowZzzGameSession(gs, fdp, ddp, sdp, DdpPool.Empty, influences, DrowZzzPhaseState.WaitingForPlay, outcome: null);
         }
 
         // ===== DZ-120: 夜で NightEffects 評価 =====

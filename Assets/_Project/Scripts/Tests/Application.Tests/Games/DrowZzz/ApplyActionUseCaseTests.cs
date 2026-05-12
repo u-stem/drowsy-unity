@@ -64,7 +64,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 [PlayerId.Of("p1")] = Array.Empty<PlayerInfluence>(),
                 [PlayerId.Of("p2")] = Array.Empty<PlayerInfluence>(),
             };
-            return new DrowZzzGameSession(gs, fdp, ddp, sdp, DdpPool.Empty, influences, phase);
+            return new DrowZzzGameSession(gs, fdp, ddp, sdp, DdpPool.Empty, influences, phase, outcome: null);
         }
 
         private static Pile NewDeck(params string[] cardIds)

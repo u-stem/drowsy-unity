@@ -164,7 +164,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz.Effects
                 gs, fdp, ddp, sdp,
                 DdpPool.Empty,
                 influences,
-                DrowZzzPhaseState.WaitingForPlay);
+                DrowZzzPhaseState.WaitingForPlay, outcome: null);
         }
     }
 }

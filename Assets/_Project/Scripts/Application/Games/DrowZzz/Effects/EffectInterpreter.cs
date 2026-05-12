@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Drowsy.Application.Games.DrowZzz.Influences;
+using Drowsy.Domain.Game;
 using Drowsy.Domain.Players;
 
 namespace Drowsy.Application.Games.DrowZzz.Effects
@@ -77,6 +78,8 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
                 // M2-PR5: 継続影響(ADR-0007 §1.5)の付与 / 除去
                 ApplyInfluenceEffect apply => ApplyApplyInfluence(session, apply),
                 RemoveInfluenceEffect remove => ApplyRemoveInfluence(session, remove, context),
+                // M3-PR1: 早期勝利トリガー(ADR-0010 §5、夜 + 持ち点 ≥ 100 で WinnerOutcome 設定)
+                EarlyWinTriggerEffect _ => ApplyEarlyWinTrigger(session),
 
                 _ => throw new NotImplementedException(
                     $"EffectInterpreter.Apply ({effect.GetType().Name}) は本実装範囲では到達不可。" +
@@ -247,6 +250,27 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
             }
             // 変化が無い場合は session 不変返却(allocation 抑制、graceful no-op)
             return mutated ? session with { Influences = newInfluences } : session;
+        }
+
+        // EarlyWinTriggerEffect の評価: 夜の間(Clock.IsNight)+ 現プレイヤーの TotalPoints が
+        // EarlyWinScoreThreshold(= 100)以上の場合、session.Outcome に WinnerOutcome(現プレイヤー)を設定。
+        // いずれかの条件が満たされない場合は no-op(session 不変返却、カードプレイ自体は完了する)。
+        // ADR-0010 §5、M3-PR1 で追加。
+        private static DrowZzzGameSession ApplyEarlyWinTrigger(DrowZzzGameSession session)
+        {
+            if (!session.Clock.IsNight)
+            {
+                // 朝以降(Round 17〜21)/ 時計仕様外(Round 22+)では早期勝利不可、no-op
+                return session;
+            }
+            var currentId = session.GameState.Players[session.GameState.Turn.CurrentPlayerIndex].Id;
+            if (session.TotalPoints(currentId) < DrowZzzVictoryConstants.EarlyWinScoreThreshold)
+            {
+                // 持ち点が閾値未満、no-op
+                return session;
+            }
+            // 条件成立: 現プレイヤーを勝者として確定
+            return session with { Outcome = new WinnerOutcome(currentId) };
         }
 
         // SdpTarget を実際の PlayerId に解決する(N=2 想定、現プレイヤー以外を「Opponent」として一意決定)
