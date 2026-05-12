@@ -103,18 +103,21 @@ namespace Drowsy.Application.Games.DrowZzz
                 playerStates[i] = new PlayerState(shuffledPlayers[i], hands[i]);
             }
 
-            // 5. SDP / DDP 初期化(全プレイヤー 0、ADR-0009 §「DP 種別」)
+            // 5. SDP / DDP / BedDamages 初期化(全プレイヤー 0、ADR-0009 §「DP 種別」/ ADR-0011 §3)
             // SDP: M2-PR3 で追加、初期値 0(公開情報)
             // DDP: M2-PR4 で追加、初期値 0(隠し情報、Turn 5/9/13/17/21 開始時に DdpPool から累積)
+            // BedDamages: M3-PR2 で追加、初期値 0%(全プレイヤーが破損 0% のベッドからスタート、ADR-0011 §3)
             var sdpDict = new Dictionary<PlayerId, int>(shuffledPlayers.Count);
             var ddpDict = new Dictionary<PlayerId, int>(shuffledPlayers.Count);
             // M2-PR5: Influences 初期化(全プレイヤー空 list、ADR-0007 §1.5)
             var influencesDict = new Dictionary<PlayerId, IReadOnlyList<PlayerInfluence>>(shuffledPlayers.Count);
+            var bedDamagesDict = new Dictionary<PlayerId, int>(shuffledPlayers.Count);
             for (int i = 0; i < shuffledPlayers.Count; i++)
             {
                 sdpDict[shuffledPlayers[i]] = 0;
                 ddpDict[shuffledPlayers[i]] = 0;
                 influencesDict[shuffledPlayers[i]] = Array.Empty<PlayerInfluence>();
+                bedDamagesDict[shuffledPlayers[i]] = 0;
             }
 
             // 6. DdpPool 初期化(IGameConfig.DdpPool を Fisher-Yates Shuffle、ADR-0009 §3 / DZ-140)
@@ -137,7 +140,9 @@ namespace Drowsy.Application.Games.DrowZzz
                 influencesDict,
                 DrowZzzPhaseState.WaitingForDraw,
                 // M3-PR1: 新規セッションは未終了(ADR-0010 §3)
-                outcome: null);
+                outcome: null,
+                // M3-PR2: 全プレイヤーの BedDamages を 0% で初期化(ADR-0011 §3)
+                bedDamages: bedDamagesDict);
         }
 
         // 引数検証を 1 メソッドに集約(out で fdpPool を返し本体ロジックの再アクセスを省略)

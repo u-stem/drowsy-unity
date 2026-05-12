@@ -36,9 +36,11 @@ namespace Drowsy.Application.Games.DrowZzz
     /// M2-PR5 で <see cref="Influences"/>(継続影響、プレイヤーごとに 0+ 件保有、Tick 評価は <c>DrowZzzRule.ApplyEndTurn</c>)
     /// を追加(ADR-0007 §1.5)。
     /// M3-PR1 で <see cref="Outcome"/>(ゲーム終了状態、<c>GameOutcome?</c>、null = 未終了)を追加
-    /// (ADR-0010 §3)。コンストラクタは 8 引数 (gameState, fdp, ddp, sdp, ddpPool, influences, phaseState, outcome) に拡張
-    /// (breaking change、既存テスト全件修正)。<see cref="TotalPoints"/> は FDP + DDP + SDP の 3 項合計を維持
-    /// (影響は持ち点に直接含まれず、Tick 効果経由で SDP 等を変動させる間接寄与)。
+    /// (ADR-0010 §3)。
+    /// M3-PR2 で <see cref="BedDamages"/>(プレイヤーごとのベッド破損率、0〜100%)を追加
+    /// (ADR-0011 §3)。コンストラクタは 9 引数 (gameState, fdp, ddp, sdp, ddpPool, influences, phaseState, outcome, bedDamages)
+    /// に拡張(breaking change、既存テスト全件修正)。<see cref="TotalPoints"/> は FDP + DDP + SDP の 3 項合計を維持
+    /// (ベッド破損は SDP に間接寄与:自ターン開始時に `bedDamage / 5` の SDP マイナスが入る、ADR-0011 §3 / §5)。
     /// <see cref="IsTerminated"/> は <see cref="Outcome"/> != null の薄い computed プロパティ。
     /// </para>
     /// </remarks>
@@ -56,6 +58,9 @@ namespace Drowsy.Application.Games.DrowZzz
         private readonly DrowZzzPhaseState _phaseState;
         // _outcome は null = 未終了、非 null = ゲーム終了状態(WinnerOutcome / DrawOutcome)。M3-PR1 で追加(ADR-0010 §3)。
         private readonly GameOutcome _outcome;
+        // _bedDamages は各プレイヤーのベッド破損率(0〜100%)。M3-PR2 で追加(ADR-0011 §3)。
+        // FDP / DDP / SDP と同パターン: Dictionary<PlayerId, int> を防御コピーで保持、cross-field 検証で Players キーと一致。
+        private readonly Dictionary<PlayerId, int> _bedDamages;
 
         /// <summary>Domain ルート集約。</summary>
         public GameState GameState
@@ -83,6 +88,10 @@ namespace Drowsy.Application.Games.DrowZzz
                 if (_influences is not null)
                 {
                     EnsureKeysMatchPlayers(_influences.Keys, value, nameof(value), keysetName: "Influences");
+                }
+                if (_bedDamages is not null)
+                {
+                    EnsureKeysMatchPlayers(_bedDamages.Keys, value, nameof(value), keysetName: "BedDamages");
                 }
                 _gameState = value;
             }
@@ -215,6 +224,34 @@ namespace Drowsy.Application.Games.DrowZzz
         public bool IsTerminated => _outcome is not null;
 
         /// <summary>
+        /// 各プレイヤーのベッド破損率(0〜100%)。M3-PR2 で追加(ADR-0011 §3)。
+        /// </summary>
+        /// <remarks>
+        /// プレイヤーごとに「自分のベッド」を持ち、自ターン開始時に <c>bedDamage / 5</c>(整数除算)の SDP マイナスが入る
+        /// (ADR-0011 §3、<see cref="DrowZzzBedConstants.BedDamageRatePerSdp"/>)。
+        /// 破損率の増加は <see cref="Effects.DamageBedEffect"/>(M3-PR2 で導入、5 の倍数のみ)で行う。
+        /// 修繕は M3-PR3 の <c>AbandonAction(AbandonChoice.RepairBed)</c> で -20%(下限 0%)。
+        /// <para>
+        /// FDP / DDP / SDP と同パターン: 値は <c>[<see cref="DrowZzzBedConstants.MinBedDamagePercent"/>(0),
+        /// <see cref="DrowZzzBedConstants.MaxBedDamagePercent"/>(100)]</c> の範囲、cross-field 検証で
+        /// キー集合が <see cref="GameState"/>.Players と一致。
+        /// </para>
+        /// </remarks>
+        public IReadOnlyDictionary<PlayerId, int> BedDamages
+        {
+            get => _bedDamages;
+            init
+            {
+                var copied = ValidateAndCopyBedDamages(value);
+                if (_gameState is not null)
+                {
+                    EnsureKeysMatchPlayers(copied.Keys, _gameState, nameof(value), keysetName: "BedDamages");
+                }
+                _bedDamages = copied;
+            }
+        }
+
+        /// <summary>
         /// DrowZzz の「ターン (=ラウンド)」を Phase 1 <c>TurnNumber</c> から計算する(N=2 想定)。
         /// N&gt;2 拡張は Phase 3 候補(ADR-0006 §Negative)。
         /// </summary>
@@ -247,10 +284,11 @@ namespace Drowsy.Application.Games.DrowZzz
             DdpPool ddpPool,
             IReadOnlyDictionary<PlayerId, IReadOnlyList<PlayerInfluence>> influences,
             DrowZzzPhaseState phaseState,
-            GameOutcome outcome)
+            GameOutcome outcome,
+            IReadOnlyDictionary<PlayerId, int> bedDamages)
         {
-            // 順序が重要: GameState を先に確定 → 各 DP / Influences の init setter で _gameState を参照して cross-field 検証。
-            // (GameState init setter 時点では DP 群 / Influences が null なので cross-field はスキップされる)
+            // 順序が重要: GameState を先に確定 → 各 DP / Influences / BedDamages の init setter で _gameState を参照して cross-field 検証。
+            // (GameState init setter 時点では DP 群 / Influences / BedDamages が null なので cross-field はスキップされる)
             GameState = gameState;
             FirstDrowsyPoints = firstDrowsyPoints;
             DrawDrowsyPoints = drawDrowsyPoints;
@@ -259,6 +297,7 @@ namespace Drowsy.Application.Games.DrowZzz
             Influences = influences;
             PhaseState = phaseState;
             Outcome = outcome;
+            BedDamages = bedDamages;
         }
 
         /// <summary>
@@ -307,6 +346,31 @@ namespace Drowsy.Application.Games.DrowZzz
             var buffer = new Dictionary<PlayerId, int>(source.Count);
             foreach (var kv in source)
             {
+                buffer[kv.Key] = kv.Value;
+            }
+            return buffer;
+        }
+
+        // BedDamages の防御コピー + null 検証 + 範囲検証(0〜100%、ADR-0011 §3)
+        private static Dictionary<PlayerId, int> ValidateAndCopyBedDamages(
+            IReadOnlyDictionary<PlayerId, int> source)
+        {
+            if (source is null)
+            {
+                throw new ArgumentNullException(nameof(source), "BedDamages に null は渡せません");
+            }
+            var buffer = new Dictionary<PlayerId, int>(source.Count);
+            foreach (var kv in source)
+            {
+                if (kv.Value < DrowZzzBedConstants.MinBedDamagePercent
+                    || kv.Value > DrowZzzBedConstants.MaxBedDamagePercent)
+                {
+                    throw new ArgumentException(
+                        $"BedDamages[{kv.Key?.Value ?? "<null>"}] は " +
+                        $"{DrowZzzBedConstants.MinBedDamagePercent}〜{DrowZzzBedConstants.MaxBedDamagePercent}% の範囲である必要があります " +
+                        $"(現在: {kv.Value}、ADR-0011 §3)",
+                        nameof(source));
+                }
                 buffer[kv.Key] = kv.Value;
             }
             return buffer;
@@ -417,6 +481,11 @@ namespace Drowsy.Application.Games.DrowZzz
             {
                 return false;
             }
+            // M3-PR2: BedDamages の値同値性。FDP / DDP / SDP と同じ順序非依存マルチセット同値で比較。
+            if (!DpEquals(_bedDamages, other._bedDamages))
+            {
+                return false;
+            }
             return true;
         }
 
@@ -499,6 +568,11 @@ namespace Drowsy.Application.Games.DrowZzz
                     listHash = HashCode.Combine(listHash, kv.Value[i], i);
                 }
                 hash ^= HashCode.Combine(kv.Key, listHash, 3);
+            }
+            foreach (var kv in _bedDamages)
+            {
+                // BedDamages は seed 4 で他 DP / Influences との XOR 衝突を回避
+                hash ^= HashCode.Combine(kv.Key, kv.Value, 4);
             }
             return hash;
         }
