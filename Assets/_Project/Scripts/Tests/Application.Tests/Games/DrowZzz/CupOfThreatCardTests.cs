@@ -97,7 +97,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 [PlayerId.Of("p2")] = Array.Empty<PlayerInfluence>(),
             };
             // PhaseState は PlayCardAction を直接適用するため WaitingForPlay
-            return new DrowZzzGameSession(gs, fdp, ddp, sdp, DdpPool.Empty, influences, DrowZzzPhaseState.WaitingForPlay, outcome: null, bedDamages: new Dictionary<PlayerId, int> { [PlayerId.Of("p1")] = 0, [PlayerId.Of("p2")] = 0 });
+            return new DrowZzzGameSession(gs, fdp, ddp, sdp, DdpPool.Empty, influences, DrowZzzPhaseState.WaitingForPlay, outcome: null, bedDamages: new Dictionary<PlayerId, int> { [PlayerId.Of("p1")] = 0, [PlayerId.Of("p2")] = 0 }, System.Array.Empty<PendingCounteredEffect>());
         }
 
         // ===== DZ-126: 夜のプレイで自分 SDP -4 / 1 枚ドロー / 相手 SDP -10 =====

@@ -48,7 +48,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz.Effects
             };
             return new DrowZzzGameSession(
                 gs, fdp, ddp, sdp, DdpPool.Empty, influences, DrowZzzPhaseState.WaitingForPlay,
-                outcome: null, bedDamages: bed);
+                outcome: null, bedDamages: bed, System.Array.Empty<PendingCounteredEffect>());
         }
 
         // ===== DZ-210: null / empty 防御 =====

@@ -42,6 +42,10 @@ namespace Drowsy.Application.Games.DrowZzz
     /// に拡張(breaking change、既存テスト全件修正)。<see cref="TotalPoints"/> は FDP + DDP + SDP の 3 項合計を維持
     /// (ベッド破損は SDP に間接寄与:自ターン開始時に `bedDamage / 5` の SDP マイナスが入る、ADR-0011 §3 / §5)。
     /// <see cref="IsTerminated"/> は <see cref="Outcome"/> != null の薄い computed プロパティ。
+    /// M3-PR5c で <see cref="PendingCounteredEffects"/>(「無効化された効果」の遡及発動保留 list、ADR-0011 §4.4)を追加。
+    /// コンストラクタは 10 引数 (gameState, fdp, ddp, sdp, ddpPool, influences, phaseState, outcome, bedDamages, pendingCounteredEffects)
+    /// に拡張(breaking change、既存テスト全件修正)。Players キー集合との独立性を持つ(プレイヤー単位ではなく
+    /// セッション単位の保留情報、N=2 想定で同時 Pending は最大数件、自ターン終了時に未消化分を一括破棄)。
     /// </para>
     /// </remarks>
     public sealed record DrowZzzGameSession
@@ -61,6 +65,11 @@ namespace Drowsy.Application.Games.DrowZzz
         // _bedDamages は各プレイヤーのベッド破損率(0〜100%)。M3-PR2 で追加(ADR-0011 §3)。
         // FDP / DDP / SDP と同パターン: Dictionary<PlayerId, int> を防御コピーで保持、cross-field 検証で Players キーと一致。
         private readonly Dictionary<PlayerId, int> _bedDamages;
+        // _pendingCounteredEffects は「無効化された効果」の遡及発動保留 list。M3-PR5c で追加(ADR-0011 §4.4)。
+        // Influences と同パターン: 配列(PendingCounteredEffect[])を防御コピーで保持、IReadOnlyList で公開。
+        // Players キー集合とは独立(セッション単位の保留情報)、末尾追加・末尾取り出しの LIFO セマンティクスで意味を持つ
+        // (経路 2 で最後エントリの CounterCard を照合 / 削除、Influences の FIFO Tick とは異なる扱い)。
+        private readonly IReadOnlyList<PendingCounteredEffect> _pendingCounteredEffects;
 
         /// <summary>Domain ルート集約。</summary>
         public GameState GameState
@@ -252,6 +261,30 @@ namespace Drowsy.Application.Games.DrowZzz
         }
 
         /// <summary>
+        /// 「無効化された効果」の遡及発動保留 list(M3-PR5c で追加、ADR-0011 §4.4)。
+        /// 反撃カード B が元カード A をカウンタした時点で <see cref="PendingCounteredEffect"/>(B, A, A の効果列)が追加され、
+        /// 「反撃の反撃」C が B を打ち消した時点で対応するエントリを取り出して A の効果列を遡及発動する。
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// list は末尾追加・末尾取り出しの LIFO セマンティクス(経路 2 で最後エントリの CounterCard を照合 / 削除)。
+        /// 同時保留は N=2 想定で 1〜数件、自ターン終了時に未消化分が一括破棄される
+        /// (<c>DrowZzzRule.ApplyEndTurn</c> で空 list 上書き、ADR-0011 §4.4 / M3-PR5c JIT 確定)。
+        /// <see cref="Influences"/> の FIFO Tick(先頭から評価)とはセマンティクスが異なるので注意。
+        /// </para>
+        /// <para>
+        /// Players キー集合とは独立(セッション単位の保留情報、プレイヤー単位の状態ではない)。
+        /// 内部表現は <c>PendingCounteredEffect[]</c>(防御コピー、Influences / Pile / DdpPool と同じ array ベース)。
+        /// 値の Equals / GetHashCode は順序保持シーケンス同値で扱う。
+        /// </para>
+        /// </remarks>
+        public IReadOnlyList<PendingCounteredEffect> PendingCounteredEffects
+        {
+            get => _pendingCounteredEffects;
+            init => _pendingCounteredEffects = ValidateAndCopyPendingCounteredEffects(value);
+        }
+
+        /// <summary>
         /// DrowZzz の「ターン (=ラウンド)」を Phase 1 <c>TurnNumber</c> から計算する(N=2 想定)。
         /// N&gt;2 拡張は Phase 3 候補(ADR-0006 §Negative)。
         /// </summary>
@@ -285,10 +318,12 @@ namespace Drowsy.Application.Games.DrowZzz
             IReadOnlyDictionary<PlayerId, IReadOnlyList<PlayerInfluence>> influences,
             DrowZzzPhaseState phaseState,
             GameOutcome outcome,
-            IReadOnlyDictionary<PlayerId, int> bedDamages)
+            IReadOnlyDictionary<PlayerId, int> bedDamages,
+            IReadOnlyList<PendingCounteredEffect> pendingCounteredEffects)
         {
             // 順序が重要: GameState を先に確定 → 各 DP / Influences / BedDamages の init setter で _gameState を参照して cross-field 検証。
             // (GameState init setter 時点では DP 群 / Influences / BedDamages が null なので cross-field はスキップされる)
+            // PendingCounteredEffects は Players キー集合と独立のため cross-field 検証なし(セッション単位の保留情報、M3-PR5c)。
             GameState = gameState;
             FirstDrowsyPoints = firstDrowsyPoints;
             DrawDrowsyPoints = drawDrowsyPoints;
@@ -298,6 +333,7 @@ namespace Drowsy.Application.Games.DrowZzz
             PhaseState = phaseState;
             Outcome = outcome;
             BedDamages = bedDamages;
+            PendingCounteredEffects = pendingCounteredEffects;
         }
 
         /// <summary>
@@ -374,6 +410,29 @@ namespace Drowsy.Application.Games.DrowZzz
                 buffer[kv.Key] = kv.Value;
             }
             return buffer;
+        }
+
+        // PendingCounteredEffects の防御コピー + null 検証(list / 各要素ともに null 不可、空 list は許容)。
+        // 内部表現は PendingCounteredEffect[] として保持し、IReadOnlyList で公開(Influences と同パターン)。
+        private static IReadOnlyList<PendingCounteredEffect> ValidateAndCopyPendingCounteredEffects(
+            IReadOnlyList<PendingCounteredEffect> source)
+        {
+            if (source is null)
+            {
+                throw new ArgumentNullException(nameof(source), "PendingCounteredEffects に null は渡せません(空 list は許容)");
+            }
+            var arr = new PendingCounteredEffect[source.Count];
+            for (int i = 0; i < source.Count; i++)
+            {
+                if (source[i] is null)
+                {
+                    throw new ArgumentException(
+                        $"PendingCounteredEffects[{i}] に null 要素を含めることはできません",
+                        nameof(source));
+                }
+                arr[i] = source[i];
+            }
+            return arr;
         }
 
         // Influences の防御コピー + null 検証(各 list 内の null 要素も検出)。
@@ -486,6 +545,32 @@ namespace Drowsy.Application.Games.DrowZzz
             {
                 return false;
             }
+            // M3-PR5c: PendingCounteredEffects の値同値性。順序保持シーケンス同値(末尾追加・末尾取り出しの LIFO で
+            // 経路 2 の照合が成立するため、要素順は意味を持つ)。各要素は PendingCounteredEffect.Equals
+            // (3 フィールド + OriginalEffects 順序保持)で比較。
+            if (!PendingCounteredEffectsEquals(_pendingCounteredEffects, other._pendingCounteredEffects))
+            {
+                return false;
+            }
+            return true;
+        }
+
+        // PendingCounteredEffects の順序保持シーケンス同値判定。
+        private static bool PendingCounteredEffectsEquals(
+            IReadOnlyList<PendingCounteredEffect> a,
+            IReadOnlyList<PendingCounteredEffect> b)
+        {
+            if (a.Count != b.Count)
+            {
+                return false;
+            }
+            for (int i = 0; i < a.Count; i++)
+            {
+                if (!Equals(a[i], b[i]))
+                {
+                    return false;
+                }
+            }
             return true;
         }
 
@@ -573,6 +658,14 @@ namespace Drowsy.Application.Games.DrowZzz
             {
                 // BedDamages は seed 4 で他 DP / Influences との XOR 衝突を回避
                 hash ^= HashCode.Combine(kv.Key, kv.Value, 4);
+            }
+            // M3-PR5c: PendingCounteredEffects を順序保持で合成。
+            // seed 5(BedDamages の seed 4 に続く連番):FDP=暗黙 / DDP=1 / SDP=2 / Influences=3 / BedDamages=4 / PendingCounteredEffects=5。
+            // 末尾追加・末尾取り出しの LIFO セマンティクスのため要素 index `i` を合成に含めて順序を保持する
+            // (P-4 反映 2026-05-12)。
+            for (int i = 0; i < _pendingCounteredEffects.Count; i++)
+            {
+                hash = HashCode.Combine(hash, _pendingCounteredEffects[i], i, 5);
             }
             return hash;
         }

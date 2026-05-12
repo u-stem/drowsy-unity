@@ -49,7 +49,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz.Effects
             };
             return new DrowZzzGameSession(
                 gs, fdp, ddp, sdp, DdpPool.Empty, influences, DrowZzzPhaseState.WaitingForPlay,
-                outcome: outcome, bedDamages: bed);
+                outcome: outcome, bedDamages: bed, System.Array.Empty<PendingCounteredEffect>());
         }
 
         // ===== DZ-208: AssociatableMarkerEffect は no-op(session 不変返却)=====

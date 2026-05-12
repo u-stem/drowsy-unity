@@ -164,7 +164,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz.Effects
                 gs, fdp, ddp, sdp,
                 DdpPool.Empty,
                 influences,
-                DrowZzzPhaseState.WaitingForPlay, outcome: null, bedDamages: new Dictionary<PlayerId, int> { [PlayerId.Of("p1")] = 0, [PlayerId.Of("p2")] = 0 });
+                DrowZzzPhaseState.WaitingForPlay, outcome: null, bedDamages: new Dictionary<PlayerId, int> { [PlayerId.Of("p1")] = 0, [PlayerId.Of("p2")] = 0 }, System.Array.Empty<PendingCounteredEffect>());
         }
     }
 }
