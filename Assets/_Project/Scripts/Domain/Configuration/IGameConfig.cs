@@ -34,8 +34,12 @@ namespace Drowsy.Domain.Configuration
         /// </summary>
         IReadOnlyList<int> DdpPool { get; }
 
-        // 後続追加予定:
-        //   int MaxRoundNumber { get; }   // M3 着手 PR (ゲーム終了判定)
-        //   その他 M2 以降のカード効果実装で必要になり次第追加
+        // 後続追加予定(M2 以降のカード効果実装で必要になり次第追加):
+        //   その他バランス調整値(現状 FdpPool / DdpPool のみ)
+        // 注: MaxRoundNumber は IGameConfig に追加しない判断(ADR-0010 §8)。
+        //   21 は Clock 構造に紐づく L2 数学的不変量で「調整」する対象ではないため、
+        //   DrowZzzClockConstants.MaxRoundNumber を単一情報源とする。
+        // 注: EarlyWinScoreThreshold (= 100) も IGameConfig には追加しない(ADR-0010 §9)。
+        //   ゲーム設計の核心値で L2 不変量、DrowZzzVictoryConstants が単一情報源。
     }
 }

@@ -34,9 +34,12 @@ namespace Drowsy.Application.Games.DrowZzz
     /// M2-PR4 で <see cref="DrawDrowsyPoints"/>(DDP、隠し情報・累積式・Turn 5/9/13/17/21 開始時に共有プールから抽選)
     /// + <see cref="DdpPool"/>(残 DDP プール、プレイヤー間共有)を追加(ADR-0009 §「DP 種別」§「DDP プールの構造」)。
     /// M2-PR5 で <see cref="Influences"/>(継続影響、プレイヤーごとに 0+ 件保有、Tick 評価は <c>DrowZzzRule.ApplyEndTurn</c>)
-    /// を追加(ADR-0007 §1.5)。コンストラクタは 7 引数 (gameState, fdp, ddp, sdp, ddpPool, influences, phaseState) に拡張
+    /// を追加(ADR-0007 §1.5)。
+    /// M3-PR1 で <see cref="Outcome"/>(ゲーム終了状態、<c>GameOutcome?</c>、null = 未終了)を追加
+    /// (ADR-0010 §3)。コンストラクタは 8 引数 (gameState, fdp, ddp, sdp, ddpPool, influences, phaseState, outcome) に拡張
     /// (breaking change、既存テスト全件修正)。<see cref="TotalPoints"/> は FDP + DDP + SDP の 3 項合計を維持
     /// (影響は持ち点に直接含まれず、Tick 効果経由で SDP 等を変動させる間接寄与)。
+    /// <see cref="IsTerminated"/> は <see cref="Outcome"/> != null の薄い computed プロパティ。
     /// </para>
     /// </remarks>
     public sealed record DrowZzzGameSession
@@ -51,6 +54,8 @@ namespace Drowsy.Application.Games.DrowZzz
         // IReadOnlyList で揃えることで getter の dict 再構築が不要になる(構築時にコピー、以降は immutable な扱い)。
         private readonly Dictionary<PlayerId, IReadOnlyList<PlayerInfluence>> _influences;
         private readonly DrowZzzPhaseState _phaseState;
+        // _outcome は null = 未終了、非 null = ゲーム終了状態(WinnerOutcome / DrawOutcome)。M3-PR1 で追加(ADR-0010 §3)。
+        private readonly GameOutcome _outcome;
 
         /// <summary>Domain ルート集約。</summary>
         public GameState GameState
@@ -183,6 +188,33 @@ namespace Drowsy.Application.Games.DrowZzz
         }
 
         /// <summary>
+        /// ゲーム終了状態(<c>null</c> = 未終了、<see cref="WinnerOutcome"/> = 勝者あり、<see cref="DrawOutcome"/> = 引き分け)。
+        /// M3-PR1 で追加(ADR-0010 §3)。
+        /// </summary>
+        /// <remarks>
+        /// 設定経路は 2 つ(ADR-0010 §4):
+        /// <list type="bullet">
+        /// <item>早期勝利: <see cref="Drowsy.Application.Games.DrowZzz.Effects.EarlyWinTriggerEffect"/> 評価時、
+        /// 夜 + 持ち点 ≥ <see cref="DrowZzzVictoryConstants.EarlyWinScoreThreshold"/> で
+        /// <see cref="WinnerOutcome"/>(現プレイヤー)を設定</item>
+        /// <item>終了時勝利: <c>DrowZzzRule.ApplyEndTurn</c> 内、Round 21 完了検出時に <see cref="TotalPoints"/> 比較で
+        /// 低い方を <see cref="WinnerOutcome"/>、等値なら <see cref="DrawOutcome"/></item>
+        /// </list>
+        /// <c>Outcome != null</c> の session に対する <c>Action</c> はすべて illegal(<c>DrowZzzRule.IsLegalMove</c> で防御、ADR-0010 §6)。
+        /// </remarks>
+        public GameOutcome Outcome
+        {
+            get => _outcome;
+            init => _outcome = value;
+        }
+
+        /// <summary>
+        /// ゲームが終了済かどうか(<see cref="Outcome"/> != null の computed プロパティ)。
+        /// M3-PR1 で追加(ADR-0010 §3)。
+        /// </summary>
+        public bool IsTerminated => _outcome is not null;
+
+        /// <summary>
         /// DrowZzz の「ターン (=ラウンド)」を Phase 1 <c>TurnNumber</c> から計算する(N=2 想定)。
         /// N&gt;2 拡張は Phase 3 候補(ADR-0006 §Negative)。
         /// </summary>
@@ -214,7 +246,8 @@ namespace Drowsy.Application.Games.DrowZzz
             IReadOnlyDictionary<PlayerId, int> secondDrowsyPoints,
             DdpPool ddpPool,
             IReadOnlyDictionary<PlayerId, IReadOnlyList<PlayerInfluence>> influences,
-            DrowZzzPhaseState phaseState)
+            DrowZzzPhaseState phaseState,
+            GameOutcome outcome)
         {
             // 順序が重要: GameState を先に確定 → 各 DP / Influences の init setter で _gameState を参照して cross-field 検証。
             // (GameState init setter 時点では DP 群 / Influences が null なので cross-field はスキップされる)
@@ -225,6 +258,7 @@ namespace Drowsy.Application.Games.DrowZzz
             DdpPool = ddpPool;
             Influences = influences;
             PhaseState = phaseState;
+            Outcome = outcome;
         }
 
         /// <summary>
@@ -378,6 +412,11 @@ namespace Drowsy.Application.Games.DrowZzz
             {
                 return false;
             }
+            // M3-PR1: Outcome の値同値性。null / WinnerOutcome / DrawOutcome の三値比較(record auto-equals 利用)。
+            if (!Equals(_outcome, other._outcome))
+            {
+                return false;
+            }
             return true;
         }
 
@@ -435,7 +474,8 @@ namespace Drowsy.Application.Games.DrowZzz
         /// </summary>
         public override int GetHashCode()
         {
-            int hash = HashCode.Combine(_gameState, _phaseState, _ddpPool);
+            // M3-PR1: Outcome を合成(null / WinnerOutcome(p) / DrawOutcome の三値、record の GetHashCode を利用)。
+            int hash = HashCode.Combine(_gameState, _phaseState, _ddpPool, _outcome);
             foreach (var kv in _firstDrowsyPoints)
             {
                 hash ^= HashCode.Combine(kv.Key, kv.Value);

@@ -112,7 +112,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             // Given
             var gs = NewGameState();
             // When
-            var session = new DrowZzzGameSession(gs, Fdp(("p1", 0), ("p2", 10)), Ddp(), Sdp(), EmptyDdpPool, Inf(), DrowZzzPhaseState.WaitingForDraw);
+            var session = new DrowZzzGameSession(gs, Fdp(("p1", 0), ("p2", 10)), Ddp(), Sdp(), EmptyDdpPool, Inf(), DrowZzzPhaseState.WaitingForDraw, outcome: null);
             // Then
             Assert.That(session.GameState, Is.SameAs(gs));
         }
@@ -123,7 +123,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             // Given
             var fdp = Fdp(("p1", 0), ("p2", 10));
             // When
-            var session = new DrowZzzGameSession(NewGameState(), fdp, Ddp(), Sdp(), EmptyDdpPool, Inf(), DrowZzzPhaseState.WaitingForDraw);
+            var session = new DrowZzzGameSession(NewGameState(), fdp, Ddp(), Sdp(), EmptyDdpPool, Inf(), DrowZzzPhaseState.WaitingForDraw, outcome: null);
             // Then
             Assert.That(session.FirstDrowsyPoints, Is.EquivalentTo(fdp));
         }
@@ -139,7 +139,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 Sdp(),
                 EmptyDdpPool,
                 Inf(),
-                DrowZzzPhaseState.WaitingForPlay);
+                DrowZzzPhaseState.WaitingForPlay, outcome: null);
             // Then
             Assert.That(session.PhaseState, Is.EqualTo(DrowZzzPhaseState.WaitingForPlay));
         }
@@ -150,14 +150,14 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_GameStateにnull_When_DrowZzzGameSessionを生成_Then_ArgumentNullExceptionを投げる()
         {
             Assert.Throws<ArgumentNullException>(() =>
-                new DrowZzzGameSession(null, Fdp(("p1", 0), ("p2", 10)), Ddp(), Sdp(), EmptyDdpPool, Inf(), DrowZzzPhaseState.WaitingForDraw));
+                new DrowZzzGameSession(null, Fdp(("p1", 0), ("p2", 10)), Ddp(), Sdp(), EmptyDdpPool, Inf(), DrowZzzPhaseState.WaitingForDraw, outcome: null));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-008")]
         public void Given_FirstDrowsyPointsにnull_When_DrowZzzGameSessionを生成_Then_ArgumentNullExceptionを投げる()
         {
             Assert.Throws<ArgumentNullException>(() =>
-                new DrowZzzGameSession(NewGameState(), null, Ddp(), Sdp(), EmptyDdpPool, Inf(), DrowZzzPhaseState.WaitingForDraw));
+                new DrowZzzGameSession(NewGameState(), null, Ddp(), Sdp(), EmptyDdpPool, Inf(), DrowZzzPhaseState.WaitingForDraw, outcome: null));
         }
 
         // ===== DZ-009: cross-field 検証(キー集合不一致) =====
@@ -170,7 +170,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var fdp = Fdp(("p1", 0));
             // When / Then
             Assert.Throws<ArgumentException>(() =>
-                new DrowZzzGameSession(gs, fdp, Ddp(), Sdp(), EmptyDdpPool, Inf(), DrowZzzPhaseState.WaitingForDraw));
+                new DrowZzzGameSession(gs, fdp, Ddp(), Sdp(), EmptyDdpPool, Inf(), DrowZzzPhaseState.WaitingForDraw, outcome: null));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-009")]
@@ -181,7 +181,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var fdp = Fdp(("p1", 0), ("p3", 10));
             // When / Then
             Assert.Throws<ArgumentException>(() =>
-                new DrowZzzGameSession(gs, fdp, Ddp(), Sdp(), EmptyDdpPool, Inf(), DrowZzzPhaseState.WaitingForDraw));
+                new DrowZzzGameSession(gs, fdp, Ddp(), Sdp(), EmptyDdpPool, Inf(), DrowZzzPhaseState.WaitingForDraw, outcome: null));
         }
 
         // ===== DZ-010: CurrentRound 計算(N=2)=====
@@ -196,7 +196,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 Sdp(),
                 EmptyDdpPool,
                 Inf(),
-                DrowZzzPhaseState.WaitingForDraw);
+                DrowZzzPhaseState.WaitingForDraw, outcome: null);
             Assert.That(session.CurrentRound, Is.EqualTo(1));
         }
 
@@ -211,7 +211,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 Sdp(),
                 EmptyDdpPool,
                 Inf(),
-                DrowZzzPhaseState.WaitingForDraw);
+                DrowZzzPhaseState.WaitingForDraw, outcome: null);
             Assert.That(session.CurrentRound, Is.EqualTo(1));
         }
 
@@ -226,7 +226,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 Sdp(),
                 EmptyDdpPool,
                 Inf(),
-                DrowZzzPhaseState.WaitingForDraw);
+                DrowZzzPhaseState.WaitingForDraw, outcome: null);
             Assert.That(session.CurrentRound, Is.EqualTo(2));
         }
 
@@ -240,7 +240,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 Sdp(),
                 EmptyDdpPool,
                 Inf(),
-                DrowZzzPhaseState.WaitingForDraw);
+                DrowZzzPhaseState.WaitingForDraw, outcome: null);
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-014")]
         public void Given_既存Session_When_with_GameStateにnull_Then_ArgumentNullExceptionを投げる()
@@ -291,8 +291,8 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var fdp = Fdp(("p1", 0), ("p2", 10));
             var ddp = Ddp(("p1", 5), ("p2", -5));
             var sdp = Sdp(("p1", 5), ("p2", -3));
-            var s1 = new DrowZzzGameSession(gs, fdp, ddp, sdp, EmptyDdpPool, Inf(), DrowZzzPhaseState.WaitingForDraw);
-            var s2 = new DrowZzzGameSession(gs, fdp, ddp, sdp, EmptyDdpPool, Inf(), DrowZzzPhaseState.WaitingForDraw);
+            var s1 = new DrowZzzGameSession(gs, fdp, ddp, sdp, EmptyDdpPool, Inf(), DrowZzzPhaseState.WaitingForDraw, outcome: null);
+            var s2 = new DrowZzzGameSession(gs, fdp, ddp, sdp, EmptyDdpPool, Inf(), DrowZzzPhaseState.WaitingForDraw, outcome: null);
             // When / Then
             Assert.That(s1, Is.EqualTo(s2));
         }
@@ -312,8 +312,8 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 [PlayerId.Of("p2")] = 10,
                 [PlayerId.Of("p1")] = 0,
             };
-            var s1 = new DrowZzzGameSession(gs, fdpA, Ddp(), Sdp(), EmptyDdpPool, Inf(), DrowZzzPhaseState.WaitingForDraw);
-            var s2 = new DrowZzzGameSession(gs, fdpB, Ddp(), Sdp(), EmptyDdpPool, Inf(), DrowZzzPhaseState.WaitingForDraw);
+            var s1 = new DrowZzzGameSession(gs, fdpA, Ddp(), Sdp(), EmptyDdpPool, Inf(), DrowZzzPhaseState.WaitingForDraw, outcome: null);
+            var s2 = new DrowZzzGameSession(gs, fdpB, Ddp(), Sdp(), EmptyDdpPool, Inf(), DrowZzzPhaseState.WaitingForDraw, outcome: null);
             // When / Then
             Assert.That(s1, Is.EqualTo(s2));
         }
@@ -333,7 +333,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 Sdp(),
                 EmptyDdpPool,
                 Inf(),
-                DrowZzzPhaseState.WaitingForDraw);
+                DrowZzzPhaseState.WaitingForDraw, outcome: null);
             // When / Then
             Assert.That(session.Clock.RoundNumber, Is.EqualTo(session.CurrentRound));
         }
@@ -349,7 +349,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 Sdp(),
                 EmptyDdpPool,
                 Inf(),
-                DrowZzzPhaseState.WaitingForDraw);
+                DrowZzzPhaseState.WaitingForDraw, outcome: null);
             // When / Then
             Assert.That(session.Clock.RoundNumber, Is.EqualTo(session.CurrentRound));
         }
@@ -365,7 +365,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 Sdp(),
                 EmptyDdpPool,
                 Inf(),
-                DrowZzzPhaseState.WaitingForDraw);
+                DrowZzzPhaseState.WaitingForDraw, outcome: null);
             // When / Then
             Assert.That(session.Clock.RoundNumber, Is.EqualTo(session.CurrentRound));
         }
@@ -378,7 +378,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             // Given
             var sdp = Sdp(("p1", 5), ("p2", -3));
             // When
-            var session = new DrowZzzGameSession(NewGameState(), Fdp(("p1", 0), ("p2", 10)), Ddp(), sdp, EmptyDdpPool, Inf(), DrowZzzPhaseState.WaitingForDraw);
+            var session = new DrowZzzGameSession(NewGameState(), Fdp(("p1", 0), ("p2", 10)), Ddp(), sdp, EmptyDdpPool, Inf(), DrowZzzPhaseState.WaitingForDraw, outcome: null);
             // Then
             Assert.That(session.SecondDrowsyPoints, Is.EquivalentTo(sdp));
         }
@@ -389,7 +389,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_SDPにnull_When_DrowZzzGameSessionを生成_Then_ArgumentNullExceptionを投げる()
         {
             Assert.Throws<ArgumentNullException>(() =>
-                new DrowZzzGameSession(NewGameState(), Fdp(("p1", 0), ("p2", 10)), Ddp(), null, EmptyDdpPool, Inf(), DrowZzzPhaseState.WaitingForDraw));
+                new DrowZzzGameSession(NewGameState(), Fdp(("p1", 0), ("p2", 10)), Ddp(), null, EmptyDdpPool, Inf(), DrowZzzPhaseState.WaitingForDraw, outcome: null));
         }
 
         // ===== DZ-102: SDP cross-field 検証(キー集合不一致)=====
@@ -402,7 +402,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var sdp = Sdp(("p1", 0), ("p3", 5));
             // When / Then
             Assert.Throws<ArgumentException>(() =>
-                new DrowZzzGameSession(gs, Fdp(("p1", 0), ("p2", 10)), Ddp(), sdp, EmptyDdpPool, Inf(), DrowZzzPhaseState.WaitingForDraw));
+                new DrowZzzGameSession(gs, Fdp(("p1", 0), ("p2", 10)), Ddp(), sdp, EmptyDdpPool, Inf(), DrowZzzPhaseState.WaitingForDraw, outcome: null));
         }
 
         // ===== DZ-103: TotalPoints = FDP + SDP(M2-PR3 段階)→ M2-PR4 で DDP=0 を含めた 3 項合計の検証として継続 =====
@@ -418,7 +418,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 Sdp(("p1", 10), ("p2", 0)),
                 EmptyDdpPool,
                 Inf(),
-                DrowZzzPhaseState.WaitingForDraw);
+                DrowZzzPhaseState.WaitingForDraw, outcome: null);
             // When / Then
             Assert.That(session.TotalPoints(PlayerId.Of("p1")), Is.EqualTo(110));
         }
@@ -434,7 +434,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 Sdp(("p1", -10), ("p2", 0)),
                 EmptyDdpPool,
                 Inf(),
-                DrowZzzPhaseState.WaitingForDraw);
+                DrowZzzPhaseState.WaitingForDraw, outcome: null);
             // When / Then
             Assert.That(session.TotalPoints(PlayerId.Of("p1")), Is.EqualTo(90));
         }
@@ -452,7 +452,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 Sdp(),
                 EmptyDdpPool,
                 Inf(),
-                DrowZzzPhaseState.WaitingForDraw);
+                DrowZzzPhaseState.WaitingForDraw, outcome: null);
             // When / Then
             Assert.Throws<ArgumentException>(() => session.TotalPoints(PlayerId.Of("p3")));
         }
@@ -493,7 +493,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 sdp,
                 EmptyDdpPool,
                 Inf(),
-                DrowZzzPhaseState.WaitingForDraw);
+                DrowZzzPhaseState.WaitingForDraw, outcome: null);
             // Then
             Assert.That(session.SecondDrowsyPoints[PlayerId.Of("p1")], Is.EqualTo(-20));
         }
@@ -506,7 +506,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             // Given
             var ddp = Ddp(("p1", 5), ("p2", -10));
             // When
-            var session = new DrowZzzGameSession(NewGameState(), Fdp(("p1", 0), ("p2", 10)), ddp, Sdp(), EmptyDdpPool, Inf(), DrowZzzPhaseState.WaitingForDraw);
+            var session = new DrowZzzGameSession(NewGameState(), Fdp(("p1", 0), ("p2", 10)), ddp, Sdp(), EmptyDdpPool, Inf(), DrowZzzPhaseState.WaitingForDraw, outcome: null);
             // Then
             Assert.That(session.DrawDrowsyPoints, Is.EquivalentTo(ddp));
         }
@@ -517,7 +517,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_DDPにnull_When_DrowZzzGameSessionを生成_Then_ArgumentNullExceptionを投げる()
         {
             Assert.Throws<ArgumentNullException>(() =>
-                new DrowZzzGameSession(NewGameState(), Fdp(("p1", 0), ("p2", 10)), null, Sdp(), EmptyDdpPool, Inf(), DrowZzzPhaseState.WaitingForDraw));
+                new DrowZzzGameSession(NewGameState(), Fdp(("p1", 0), ("p2", 10)), null, Sdp(), EmptyDdpPool, Inf(), DrowZzzPhaseState.WaitingForDraw, outcome: null));
         }
 
         // ===== DZ-132: DDP cross-field 検証(キー集合不一致)=====
@@ -530,7 +530,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var ddp = Ddp(("p1", 0), ("p3", 5));
             // When / Then
             Assert.Throws<ArgumentException>(() =>
-                new DrowZzzGameSession(gs, Fdp(("p1", 0), ("p2", 10)), ddp, Sdp(), EmptyDdpPool, Inf(), DrowZzzPhaseState.WaitingForDraw));
+                new DrowZzzGameSession(gs, Fdp(("p1", 0), ("p2", 10)), ddp, Sdp(), EmptyDdpPool, Inf(), DrowZzzPhaseState.WaitingForDraw, outcome: null));
         }
 
         // ===== DZ-133: DdpPool null 防御 =====
@@ -539,7 +539,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_DdpPoolにnull_When_DrowZzzGameSessionを生成_Then_ArgumentNullExceptionを投げる()
         {
             Assert.Throws<ArgumentNullException>(() =>
-                new DrowZzzGameSession(NewGameState(), Fdp(("p1", 0), ("p2", 10)), Ddp(), Sdp(), null, Inf(), DrowZzzPhaseState.WaitingForDraw));
+                new DrowZzzGameSession(NewGameState(), Fdp(("p1", 0), ("p2", 10)), Ddp(), Sdp(), null, Inf(), DrowZzzPhaseState.WaitingForDraw, outcome: null));
         }
 
         // ===== DZ-134 / DZ-135: with 式経由 DDP の null / cross-field 検証 =====
@@ -589,7 +589,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 Sdp(),
                 EmptyDdpPool,
                 Inf(),
-                DrowZzzPhaseState.WaitingForDraw);
+                DrowZzzPhaseState.WaitingForDraw, outcome: null);
             // Then
             Assert.That(session.DrawDrowsyPoints[PlayerId.Of("p1")], Is.EqualTo(-20));
         }
@@ -607,7 +607,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 Sdp(("p1", 10), ("p2", 0)),
                 EmptyDdpPool,
                 Inf(),
-                DrowZzzPhaseState.WaitingForDraw);
+                DrowZzzPhaseState.WaitingForDraw, outcome: null);
             // When / Then
             Assert.That(session.TotalPoints(PlayerId.Of("p1")), Is.EqualTo(115));
         }
@@ -623,7 +623,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 Sdp(("p1", 10), ("p2", 0)),
                 EmptyDdpPool,
                 Inf(),
-                DrowZzzPhaseState.WaitingForDraw);
+                DrowZzzPhaseState.WaitingForDraw, outcome: null);
             // When / Then
             Assert.That(session.TotalPoints(PlayerId.Of("p1")), Is.EqualTo(105));
         }
@@ -639,7 +639,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 Sdp(("p1", -20), ("p2", 0)),
                 EmptyDdpPool,
                 Inf(),
-                DrowZzzPhaseState.WaitingForDraw);
+                DrowZzzPhaseState.WaitingForDraw, outcome: null);
             // When / Then
             Assert.That(session.TotalPoints(PlayerId.Of("p1")), Is.EqualTo(50));
         }
@@ -655,7 +655,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 Sdp(),
                 EmptyDdpPool,
                 Inf(),
-                DrowZzzPhaseState.WaitingForDraw);
+                DrowZzzPhaseState.WaitingForDraw, outcome: null);
             // When / Then
             Assert.That(session.TotalPoints(PlayerId.Of("p1")), Is.EqualTo(0));
         }
@@ -675,7 +675,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 Ddp(), Sdp(),
                 EmptyDdpPool,
                 influences,
-                DrowZzzPhaseState.WaitingForDraw);
+                DrowZzzPhaseState.WaitingForDraw, outcome: null);
             // Then
             Assert.That(session.Influences[PlayerId.Of("p1")][0], Is.EqualTo(inf));
         }
@@ -686,7 +686,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             Assert.Throws<ArgumentNullException>(() =>
                 new DrowZzzGameSession(
                     NewGameState(), Fdp(("p1", 0), ("p2", 10)), Ddp(), Sdp(),
-                    EmptyDdpPool, null, DrowZzzPhaseState.WaitingForDraw));
+                    EmptyDdpPool, null, DrowZzzPhaseState.WaitingForDraw, outcome: null));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-179")]
@@ -701,7 +701,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             Assert.Throws<ArgumentException>(() =>
                 new DrowZzzGameSession(
                     gs, Fdp(("p1", 0), ("p2", 10)), Ddp(), Sdp(),
-                    EmptyDdpPool, influences, DrowZzzPhaseState.WaitingForDraw));
+                    EmptyDdpPool, influences, DrowZzzPhaseState.WaitingForDraw, outcome: null));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-179")]
@@ -715,7 +715,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             Assert.Throws<ArgumentException>(() =>
                 new DrowZzzGameSession(
                     NewGameState(), Fdp(("p1", 0), ("p2", 10)), Ddp(), Sdp(),
-                    EmptyDdpPool, influences, DrowZzzPhaseState.WaitingForDraw));
+                    EmptyDdpPool, influences, DrowZzzPhaseState.WaitingForDraw, outcome: null));
         }
 
         // ===== DZ-179: Influences の差異が Equals に反映される =====
@@ -729,12 +729,12 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 NewGameState(), Fdp(("p1", 0), ("p2", 10)), Ddp(), Sdp(),
                 EmptyDdpPool,
                 Inf(("p1", new[] { inf }), ("p2", Array.Empty<PlayerInfluence>())),
-                DrowZzzPhaseState.WaitingForDraw);
+                DrowZzzPhaseState.WaitingForDraw, outcome: null);
             var s2 = new DrowZzzGameSession(
                 NewGameState(), Fdp(("p1", 0), ("p2", 10)), Ddp(), Sdp(),
                 EmptyDdpPool,
                 Inf(),  // p1 も空
-                DrowZzzPhaseState.WaitingForDraw);
+                DrowZzzPhaseState.WaitingForDraw, outcome: null);
             // When / Then
             Assert.That(s1, Is.Not.EqualTo(s2));
         }
@@ -748,14 +748,71 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 NewGameState(), Fdp(("p1", 0), ("p2", 10)), Ddp(), Sdp(),
                 EmptyDdpPool,
                 Inf(("p1", new[] { inf }), ("p2", Array.Empty<PlayerInfluence>())),
-                DrowZzzPhaseState.WaitingForDraw);
+                DrowZzzPhaseState.WaitingForDraw, outcome: null);
             var s2 = new DrowZzzGameSession(
                 NewGameState(), Fdp(("p1", 0), ("p2", 10)), Ddp(), Sdp(),
                 EmptyDdpPool,
                 Inf(("p1", new[] { inf }), ("p2", Array.Empty<PlayerInfluence>())),
-                DrowZzzPhaseState.WaitingForDraw);
+                DrowZzzPhaseState.WaitingForDraw, outcome: null);
             // When / Then
             Assert.That(s1, Is.EqualTo(s2));
+        }
+
+        // ===== DZ-192: Outcome プロパティの値保持 / IsTerminated computed / Equals 寄与(M3-PR1)=====
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-192")]
+        public void Given_Outcomeにnull_When_DrowZzzGameSessionを生成_Then_IsTerminatedはfalse()
+        {
+            var session = new DrowZzzGameSession(
+                NewGameState(), Fdp(("p1", 0), ("p2", 10)), Ddp(), Sdp(),
+                EmptyDdpPool, Inf(), DrowZzzPhaseState.WaitingForDraw,
+                outcome: null);
+            Assert.That(session.IsTerminated, Is.False);
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-192")]
+        public void Given_OutcomeにWinnerOutcome_When_DrowZzzGameSessionを生成_Then_Outcomeが入力と一致する()
+        {
+            var winner = new WinnerOutcome(PlayerId.Of("p1"));
+            var session = new DrowZzzGameSession(
+                NewGameState(), Fdp(("p1", 0), ("p2", 10)), Ddp(), Sdp(),
+                EmptyDdpPool, Inf(), DrowZzzPhaseState.WaitingForDraw,
+                outcome: winner);
+            Assert.That(session.Outcome, Is.EqualTo(winner));
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-192")]
+        public void Given_OutcomeにWinnerOutcome_When_DrowZzzGameSessionを生成_Then_IsTerminatedはtrue()
+        {
+            var session = new DrowZzzGameSession(
+                NewGameState(), Fdp(("p1", 0), ("p2", 10)), Ddp(), Sdp(),
+                EmptyDdpPool, Inf(), DrowZzzPhaseState.WaitingForDraw,
+                outcome: new WinnerOutcome(PlayerId.Of("p1")));
+            Assert.That(session.IsTerminated, Is.True);
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-192")]
+        public void Given_OutcomeにDrawOutcome_When_DrowZzzGameSessionを生成_Then_IsTerminatedはtrue()
+        {
+            var session = new DrowZzzGameSession(
+                NewGameState(), Fdp(("p1", 0), ("p2", 10)), Ddp(), Sdp(),
+                EmptyDdpPool, Inf(), DrowZzzPhaseState.WaitingForDraw,
+                outcome: new DrawOutcome());
+            Assert.That(session.IsTerminated, Is.True);
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-192")]
+        public void Given_Outcome異なる2セッション_When_Equals_Then_false()
+        {
+            var sessionA = new DrowZzzGameSession(
+                NewGameState(), Fdp(("p1", 0), ("p2", 10)), Ddp(), Sdp(),
+                EmptyDdpPool, Inf(), DrowZzzPhaseState.WaitingForDraw,
+                outcome: null);
+            var sessionB = new DrowZzzGameSession(
+                NewGameState(), Fdp(("p1", 0), ("p2", 10)), Ddp(), Sdp(),
+                EmptyDdpPool, Inf(), DrowZzzPhaseState.WaitingForDraw,
+                outcome: new WinnerOutcome(PlayerId.Of("p1")));
+            Assert.That(sessionA, Is.Not.EqualTo(sessionB));
         }
     }
 }

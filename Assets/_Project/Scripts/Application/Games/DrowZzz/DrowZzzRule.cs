@@ -85,6 +85,11 @@ namespace Drowsy.Application.Games.DrowZzz
             {
                 throw new ArgumentNullException(nameof(action));
             }
+            // M3-PR1: ゲーム終了後はいかなる Action も illegal(ADR-0010 §6、Round 22 への遷移ブロックも兼ねる)
+            if (session.IsTerminated)
+            {
+                return false;
+            }
             return action switch
             {
                 StartGameAction => false, // ADR-0006 §Implementation Notes §StartGameUseCase の IsLegalMove 経由での扱い
@@ -93,6 +98,51 @@ namespace Drowsy.Application.Games.DrowZzz
                 EndTurnAction => session.PhaseState == DrowZzzPhaseState.WaitingForEndTurn,
                 _ => throw new NotImplementedException(
                     $"DrowZzzRule.IsLegalMove ({action.GetType().Name}) は M1 範囲では到達不可。将来 DrowZzzAction 派生型を追加する PR で対応する"),
+            };
+        }
+
+        /// <summary>
+        /// 与えられた <paramref name="session"/> がゲーム終了状態かどうかを返す。M3-PR1 で追加(ADR-0010 §1)。
+        /// </summary>
+        /// <param name="session">問い合わせ対象のセッション</param>
+        /// <returns><see cref="DrowZzzGameSession.Outcome"/> が非 null なら <c>true</c></returns>
+        /// <exception cref="ArgumentNullException">session が null</exception>
+        public bool IsTerminated(DrowZzzGameSession session)
+        {
+            if (session is null)
+            {
+                throw new ArgumentNullException(nameof(session));
+            }
+            return session.IsTerminated;
+        }
+
+        /// <summary>
+        /// 与えられた <paramref name="session"/> から勝者を返す。M3-PR1 で追加(ADR-0010 §1)。
+        /// </summary>
+        /// <param name="session">問い合わせ対象のセッション</param>
+        /// <returns>
+        /// <see cref="WinnerOutcome"/> の場合は <see cref="WinnerOutcome.Winner"/>、<see cref="DrawOutcome"/> の場合は <c>null</c>。
+        /// </returns>
+        /// <exception cref="ArgumentNullException">session が null</exception>
+        /// <exception cref="InvalidOperationException"><see cref="IsTerminated"/> が <c>false</c> の session に対する呼び出し</exception>
+        public PlayerId GetWinner(DrowZzzGameSession session)
+        {
+            if (session is null)
+            {
+                throw new ArgumentNullException(nameof(session));
+            }
+            if (!session.IsTerminated)
+            {
+                throw new InvalidOperationException(
+                    "GetWinner は未終了の session に対しては呼べません。先に IsTerminated を確認してください(ADR-0010 §1)");
+            }
+            return session.Outcome switch
+            {
+                WinnerOutcome w => w.Winner,
+                DrawOutcome => null,
+                // 構造的に到達不可だが、将来 GameOutcome 派生型が追加された場合の防御
+                _ => throw new NotImplementedException(
+                    $"DrowZzzRule.GetWinner: 未知の GameOutcome 派生型 ({session.Outcome?.GetType().Name})"),
             };
         }
 
@@ -150,6 +200,13 @@ namespace Drowsy.Application.Games.DrowZzz
             if (action is null)
             {
                 throw new ArgumentNullException(nameof(action));
+            }
+            // M3-PR1: 防御的検証(ADR-0006 §3 / ADR-0010 §6)。IsLegalMove が先にガードする想定だが、
+            // 直接 Apply を呼ぶ呼び出し側(テスト経路 / 将来の利用側)に対しても illegal 状態を明示する。
+            if (session.IsTerminated)
+            {
+                throw new InvalidOperationException(
+                    "Apply は終了済 session(Outcome != null)に対して呼べません。先に IsLegalMove で合法性を確認してください(ADR-0010 §6)。");
             }
             return action switch
             {
@@ -327,7 +384,42 @@ namespace Drowsy.Application.Games.DrowZzz
             // 0 件なら no-op、影響を持つ場合は順次 TickEffect 適用 + RemainingCount-1、0 到達で list から除去。
             nextSession = TickInfluencesForCurrentPlayer(nextSession);
 
+            // M3-PR1: Round 21 完了検出 + Outcome 設定(ADR-0010 §4(b))。
+            // 「ターン境界(CurrentPlayerIndex == 0)で新 RoundNumber > MaxRoundNumber(22 以上)」が終了時勝利の境界。
+            //   - RoundNumber は Clock の単位(全プレイヤー 1 巡 = 1 ターン、Clock.RoundNumber)
+            //   - TurnNumber は Domain の単位(1 プレイヤー 1 行動 = 1 フェーズ、TurnState.TurnNumber)
+            //   - N=2 で Round 22 到達は TurnNumber=43 / CurrentPlayerIndex=0 の瞬間
+            // TotalPoints を比較し、低い方を WinnerOutcome、等値なら DrawOutcome を session に設定する。
+            // ADR-0010 §4「順序保証」の通り、DDP 抽選(3.)/ 影響 Tick(4.)の後に評価する。
+            if (newTurn.CurrentPlayerIndex == 0
+                && nextSession.Clock.RoundNumber > DrowZzzClockConstants.MaxRoundNumber)
+            {
+                nextSession = nextSession with { Outcome = DetermineEndOfGameOutcome(nextSession) };
+            }
+
             return nextSession;
+        }
+
+        // 終了時勝利の Outcome を決定する: 各プレイヤーの TotalPoints を比較し、
+        // (a) 低い方が一意なら WinnerOutcome(lower)、(b) 等値なら DrawOutcome を返す。
+        // tiebreaker は ADR-0010 §7 で「設けない」と確定済(両者同点で朝を迎えた = 引き分け、SDP / DDP / FDP 個別比較なし)。
+        // N>2 拡張時は本メソッドの「2 名比較」を「最小値プレイヤー集合」探索に一般化する必要(現状 N=2 想定)。
+        private static GameOutcome DetermineEndOfGameOutcome(DrowZzzGameSession session)
+        {
+            var players = session.GameState.Players;
+            // N=2 想定。N=1 は StartGameUseCase で弾かれている前提だが、防御的に処理。
+            if (players.Count != 2)
+            {
+                throw new InvalidOperationException(
+                    $"M3-PR1 範囲では N=2 のみ対応(現在 Players.Count={players.Count})。N>2 拡張は Phase 3 候補。");
+            }
+            var pointsA = session.TotalPoints(players[0].Id);
+            var pointsB = session.TotalPoints(players[1].Id);
+            if (pointsA == pointsB)
+            {
+                return new DrawOutcome();
+            }
+            return new WinnerOutcome(pointsA < pointsB ? players[0].Id : players[1].Id);
         }
 
         // ターン境界 DDP 抽選: GameState.Players 順に 1 枚ずつ DdpPool 先頭から取り出し、
