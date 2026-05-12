@@ -875,10 +875,11 @@ namespace Drowsy.Application.Games.DrowZzz
             {
                 newPending[i] = existingPending[i];
             }
+            // positional record のため named argument は PascalCase(プロパティ名)で指定
             newPending[existingPending.Count] = new PendingCounteredEffect(
-                counterCard: action.Counter,
-                originalCard: action.Target,
-                originalEffects: originalEffects);
+                CounterCard: action.Counter,
+                OriginalCard: action.Target,
+                OriginalEffects: originalEffects);
             return session with
             {
                 GameState = newGameState,

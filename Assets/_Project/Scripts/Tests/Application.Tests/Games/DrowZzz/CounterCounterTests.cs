@@ -100,9 +100,9 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var defaultPending = new PendingCounteredEffect[]
             {
                 new PendingCounteredEffect(
-                    counterCard: CardBId,
-                    originalCard: CardAId,
-                    originalEffects: new IEffect[] { new AdjustSdpEffect(SdpTarget.Self, 10) }),
+                    CounterCard: CardBId,
+                    OriginalCard: CardAId,
+                    OriginalEffects: new IEffect[] { new AdjustSdpEffect(SdpTarget.Self, 10) }),
             };
             return new DrowZzzGameSession(
                 gs, fdp, ddp, sdp, DdpPool.Empty, influences,
@@ -273,8 +273,8 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             // Given: Pending 最後エントリの CounterCard != action.Target(CardBId)
             var rule = NewRule();
             var other = new PendingCounteredEffect(
-                counterCard: PlainId, originalCard: CardAId,
-                originalEffects: new IEffect[] { new AdjustSdpEffect(SdpTarget.Self, 10) });
+                CounterCard: PlainId, OriginalCard: CardAId,
+                OriginalEffects: new IEffect[] { new AdjustSdpEffect(SdpTarget.Self, 10) });
             var session = NewSessionAfterCounter(pending: new[] { other });
             // When / Then: target = CardBId だが最後エントリの CounterCard = PlainId
             Assert.That(rule.IsLegalMove(session, new CounterAction(CardCId, CardBId)), Is.False);
@@ -296,8 +296,8 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             // Given: Pending 最後エントリの CounterCard = FrenzyBId(Frenzy 持ち)
             var rule = NewRule();
             var frenzyEntry = new PendingCounteredEffect(
-                counterCard: FrenzyBId, originalCard: CardAId,
-                originalEffects: new IEffect[] { new AdjustSdpEffect(SdpTarget.Self, 10) });
+                CounterCard: FrenzyBId, OriginalCard: CardAId,
+                OriginalEffects: new IEffect[] { new AdjustSdpEffect(SdpTarget.Self, 10) });
             var session = NewSessionAfterCounter(pending: new[] { frenzyEntry });
             // When / Then: target = FrenzyBId は Frenzy 持ち → 経路 2 illegal
             Assert.That(rule.IsLegalMove(session, new CounterAction(CardCId, FrenzyBId)), Is.False);
