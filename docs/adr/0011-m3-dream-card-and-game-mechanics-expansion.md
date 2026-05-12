@@ -860,6 +860,86 @@ W-1「`IsLegalAbandon` の static 修飾子残置」は、`ApplyAbandon` を non
 
 DZ-209「未来未開示キーワードで enum 末尾追加」のような **設計判断の記録** として書きたいが、現時点ではテスト不可能な要件は `[Optional]` マーカーで明示する運用パターンを確立。`scripts/check-traceability.sh` の必須要件 ERROR を回避しつつ、要件の意図を ADR / 仕様 .md に残せる(ADR-0007 / 0010 で確立した [Ubiquitous] マーカー運用の拡張、用途別の使い分け基準が明確化)。
 
+### M3-PR5b 完成記録(2026-05-13、Counter 機構 + WaitingForCounterResponse + Frenzy 機能化)
+
+**完成 PR**: PR #53 `feat(app): Counter 機構(CounterAction + WaitingForCounterResponse + Frenzy 機能化)を実装 (M3-PR5b)`(merged `4d40934`、`.meta` 1 件は本完成記録 PR で同梱 chore commit として追加 — オーナーの Unity Editor 操作タイミングで M3-PR5b 実装 PR には間に合わなかったため)。本 ADR §4.3 / §4.5 で確定したキーワード能力機構の **Counter 部分**(3 分割 5a / 5b / 5c の 2 段階目)。
+
+#### Definition of Done 達成項目(本 ADR §4.3 / §4.5 で確定した仕様の最初の実装)
+
+| スコープ項目 | 達成状況 | 備考 |
+| ---- | ---- | ---- |
+| `DrowZzzPhaseState.WaitingForCounterResponse` 追加 | ✓ | enum 末尾配置で serialize 互換性確保、ADR-0011 §4.3.3 候補 (i) 採用(JIT 確定 2026-05-13)|
+| `CounterAction(CardId Counter, CardId Target)` 新規 | ✓ | `DrowZzzAction` 派生、null 二重ガード(positional ctor / `with` 式)、DZ-216 |
+| `PassCounterAction` 新規(marker) | ✓ | `WaitingForCounterResponse` で「反撃しない」明示、PhaseState のみ `WaitingForEndTurn` 遷移、DZ-217 |
+| `DrowZzzRule.ApplyPlayCard` 後の PhaseState 分岐 | ✓ | 相手手札に Counter 持ちあれば `WaitingForCounterResponse`、なければ従来 `WaitingForEndTurn`、DZ-215 |
+| `IsLegalCounter` / `ApplyCounter` 5 段判定 | ✓ | PhaseState / 反撃側手札 / Counter キーワード / Field 先頭 / Frenzy なし、DZ-218 / DZ-221 |
+| 効果無効化セマンティクス (C):target Discard へ | ✓ | `Field.Draw()` で target 取り出し → Discard に target → counter の順で AddTop、DZ-219 |
+| Frenzy 機能化(`CounterAction.IsLegalMove` で target 判定)| ✓ | target 効果列に `KeywordedEffect([Frenzy, _])` 含む → false、DZ-221 |
+| `HasInstinctKeyword` の generic 化 → `HasKeywordInEffects(_, Keyword)` | ✓ | M3-PR5a code-reviewer P-3 反映、既存呼び出し 2 箇所(`IsLegalAbandon` / `ApplyAbandon`)を update、Counter / Frenzy 判定で再利用 |
+| `AssociateAction.IsLegalMove` の排他リスト明示 | ✓ | `WaitingForCounterResponse` を排他リストで明示除外、設計意図を保存(W-2 反映)|
+| ADR-0006「自分ターン中のみカードプレイ可能」原則の更新形式 | ✓ | **本 PR で確定**:**別 ADR を切らず本 ADR §4.3.2 に記録**(SSOT 集約、ADR-0006 を Supersede ではなく拡張、M3-PR5a 完成記録での「M3-PR5b 完成記録で正式化」確定事項を反映)|
+
+#### 仕様 ID / NUnit 増加
+
+- 仕様 ID 新規採番(DZ-214〜DZ-221、8 件):
+  - **DZ-214**: `WaitingForCounterResponse` PhaseState の存在([Ubiquitous])
+  - **DZ-215**: `PlayCardAction` 後の PhaseState 分岐(相手手札 Counter 持ち / EarlyWin 経路 IsTerminated ガード)
+  - **DZ-216**: `CounterAction` の null 二重ガード + [Ubiquitous]
+  - **DZ-217**: `PassCounterAction` の [Ubiquitous](marker)
+  - **DZ-218**: `CounterAction.IsLegalMove` 合法条件 4 項目
+  - **DZ-219**: `CounterAction.Apply` 状態遷移(Field 空 / Discard 追加 / 手札除去 / PhaseState 遷移)
+  - **DZ-220**: `PassCounterAction.IsLegalMove` / `Apply`
+  - **DZ-221**: Frenzy vs Counter で illegal-move
+- NUnit Property: **+6 件(unique)→ 累計 332 件**(テスト件数は +24、`[Ubiquitous]` DZ-214 / DZ-217 は暗黙カバー)
+  - 新規ファイル `CounterActionTests`(24 件、`.meta` は本完成記録 PR の chore commit で追加)
+
+#### 本 PR で確定した ADR-0011 §4.3 / §4.5 内の JIT 確定ポイント(2026-05-13)
+
+| 項目 | 確定内容 |
+| ---- | ---- |
+| 効果無効化のセマンティクス | **(C) target カードを捨て札へ**(プレイ済だが効果列は走らず、Discard に移動)|
+| 「狂乱を反撃で打ち消そう」とした場合 | **illegal-move で不可**(`CounterAction.IsLegalMove` で false、Frenzy 持ち target に反撃はできない)|
+| 相手ターン中の反撃プレイ機構 | **(i) `WaitingForCounterResponse` PhaseState 追加**(初期推奨案 (i) を採用、enum 末尾配置で serialize 互換性維持)|
+| ADR-0006 原則更新形式 | **別 ADR を切らず ADR-0011 §4.3.2 に記録**(SSOT 集約、ADR-0006 を Supersede ではなく拡張)|
+
+不採用案(再確認):
+- 効果無効化 (A) Field に残し効果列のみ skip / (B) target を手札に戻す:JIT 確定で (C) Discard 採用
+- Frenzy vs Counter で「合法だが no-op」:プレイ可能だが target 不変は UX 複雑、JIT 確定で illegal 採用
+- (ii) CounterableEffectStack プロパティ(MTG 風スタック):構造変更大、N=2 想定の本ゲームでは (i) で十分
+- (iii) PhaseState を変えず CounterAction.IsLegalMove 独自合法条件:合法条件複雑化
+
+#### code-reviewer subagent 反映(警告 3 / 提案 6 → 8 件反映、1 件 Skip)
+
+| ID | 種別 | 内容 | 反映 |
+| ---- | ---- | ---- | ---- |
+| W-1 | 警告 | `IsLegalCounter` コメント (2) が実装と逆の意味(現プレイヤー vs 反撃側プレイヤー)| ✓ コメント修正(「反撃側プレイヤー(counterPlayerIndex)の手札に存在」と明示)|
+| W-2 | 警告 | `IsLegalAssociate` の PhaseState 排他リストが `WaitingForCounterResponse` 追加後も「現状 3 値のみ」と記述、設計意図が空白 | ✓ コメント更新(「自ターン 3 値のみ許可、`WaitingForCounterResponse` は相手ターン中のため除外」)+ `counter.md` に注記 |
+| W-3 | 警告 | DZ-215 の `EarlyWin` 経路(IsTerminated ガード)が仕様には書かれているがテスト未対応 | ✓ `EarlyWin` で PhaseState 上書きされないテスト 1 件追加 |
+| P-1 | 提案 | `opponentIndex` と `counterPlayerIndex` の命名が `ApplyPlayCard` / `IsLegalCounter` / `ApplyCounter` で別 | ✓ `counterPlayerIndex` に統一 |
+| P-2 | 提案 | `HasCounterCardInHand` の non-static 根拠コメント未記載 | ✓ コメント追記(`_catalog` 利用のため non-static、cf. `HasKeywordInEffects` 系は catalog 非依存で static)|
+| P-3 | 提案 | DZ-219 の `Discard.Cards[1] == TargetId` 検証テストが欠落 | ✓ テスト 1 件追加 |
+| P-4 | 提案 | `counter.md` DZ-218 に「catalog 未登録 = GetEffects 空列で false」の暗黙挙動が未明記 | ✓ 仕様 .md に明記 |
+| P-5 | 提案 | `IsLegalCounter` の `TryGet` 省略パターンが `IsLegalAssociate` の `TryGet` パターンと非対称 | ✓ `counter.md` に「`GetEffects` の未登録 = 空列設計を本仕様で利用」と記録、コード変更なし |
+| P-6 | 提案 | `[Ubiquitous]` 要件への `[Property]` 付与基準が曖昧 | Skip — 過去 PR(`AbandonActionTests` / `EarlyWinTriggerEffectTests`)で実装テスト経由の暗黙カバー運用が確立、本 PR も同パターン継承 |
+
+#### M3-PR5b 進行中の学び
+
+##### 学び 1: 「既存テスト破壊回避」のための条件付き PhaseState 分岐
+
+新 PhaseState `WaitingForCounterResponse` を導入する際、PlayCard 後を **無条件で** 遷移させると、既存テスト群(`PlayCard 後に WaitingForEndTurn`)を全て破壊する。本 PR では「相手手札に Counter 持ちあるかどうか」で条件分岐する設計を採用し、catalog に Counter 持ちカード未登録の既存テスト(M1-PR5 / M2-PR3〜PR5)が全件継続動作する形にした。**新 enum 値の導入で既存テスト破壊範囲を最小化** するパターンが確立。
+
+##### 学び 2: M3-PR5a P-3 提案の M3-PR5b 反映パターン
+
+M3-PR5a code-reviewer の P-3「`HasInstinctKeyword` 命名汎用化」を **本 PR で `HasKeywordInEffects(_, Keyword)` に generic 化** し、Counter / Frenzy 判定で再利用。「次 PR で必要になる前にリファクタ提案を反映する」運用が、M3-PR5 系列の連続実装で実効性を示した。
+
+##### 学び 3: `EarlyWinTriggerEffect` 経路 vs PhaseState 上書きの優先順位
+
+`ApplyPlayCard` 後の PhaseState 分岐で `!session.IsTerminated && PhaseState == WaitingForEndTurn` を条件にすることで、`EarlyWinTriggerEffect` で `Outcome` 確定済の session に対して `WaitingForCounterResponse` を上書きしない設計を確立。M3-PR1(終了判定)で導入した `Outcome != null` ガードが、後続 PR の状態遷移ロジックにも一貫して適用される設計原則として運用された。
+
+##### 学び 4: 「.meta 漏れ」の完成記録 PR 同梱パターン
+
+オーナーの Unity Editor 操作タイミングで `.meta` ファイルが実装 PR(M3-PR5b、PR #53)に間に合わなかった場合、**M3-PR5b 完成記録 PR(本 PR)に chore commit として同梱** する運用を本 PR で確立。過去 PR(PR #49 / #51)では実装 PR 内の追加 commit として `.meta` を追加していたが、本 PR では実装 PR マージ後の発覚という timing で、完成記録 PR 内の独立 commit(`chore: ...`)として追加する。完成記録 PR の純度は docs-only から少し下がるが、漏れの修復を事務的に処理する **柔軟運用** として認める。
+
 ### M3 完成記録の追記タイミング
 
 本 ADR の M3-PR3 完成記録は §直上に追記済。M3-PR4 以降(連想機構 / キーワード能力 / 夢カード)は各 PR 単位で本 ADR §M3-PR-N 完成記録(2026-MM-DD)として追記する(ADR-0007 / ADR-0009 / ADR-0010 §「完成記録の追記タイミング」と同パターン)。M3 全体の完成時に §M3 完成記録(全体)を別途追加、Definition of Done 達成方法を集約する。
