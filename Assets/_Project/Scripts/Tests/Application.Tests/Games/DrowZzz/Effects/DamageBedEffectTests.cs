@@ -51,7 +51,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz.Effects
             return new DrowZzzGameSession(
                 gs, fdp, ddp, sdp, EmptyDdpPool, influences,
                 DrowZzzPhaseState.WaitingForPlay, outcome: null,
-                bedDamages: bed);
+                bedDamages: bed, System.Array.Empty<PendingCounteredEffect>());
         }
 
         // ===== DZ-193: 構築の正常系 =====

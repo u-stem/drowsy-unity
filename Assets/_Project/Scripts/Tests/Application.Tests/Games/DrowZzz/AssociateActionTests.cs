@@ -91,7 +91,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 [PlayerId.Of("p2")] = 0,
             };
             return new DrowZzzGameSession(
-                gs, fdp, ddp, sdp, DdpPool.Empty, influences, phase, outcome: null, bedDamages: bed);
+                gs, fdp, ddp, sdp, DdpPool.Empty, influences, phase, outcome: null, bedDamages: bed, System.Array.Empty<PendingCounteredEffect>());
         }
 
         // ===== DZ-205: IsLegalMove の合法条件(全 PhaseState + 80 以上 + 連想可能カード登録)=====
@@ -280,7 +280,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             };
             return new DrowZzzGameSession(
                 gs, fdp, ddp, sdp, DdpPool.Empty, influences,
-                DrowZzzPhaseState.WaitingForDraw, outcome: null, bedDamages: bed);
+                DrowZzzPhaseState.WaitingForDraw, outcome: null, bedDamages: bed, System.Array.Empty<PendingCounteredEffect>());
         }
 
         // ===== Apply 防御例外(IsLegalMove 違反時の明示)=====

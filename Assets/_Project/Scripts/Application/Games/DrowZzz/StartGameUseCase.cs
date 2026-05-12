@@ -142,7 +142,7 @@ namespace Drowsy.Application.Games.DrowZzz
                 // M3-PR1: 新規セッションは未終了(ADR-0010 §3)
                 outcome: null,
                 // M3-PR2: 全プレイヤーの BedDamages を 0% で初期化(ADR-0011 §3)
-                bedDamages: bedDamagesDict);
+                bedDamages: bedDamagesDict, System.Array.Empty<PendingCounteredEffect>());
         }
 
         // 引数検証を 1 メソッドに集約(out で fdpPool を返し本体ロジックの再アクセスを省略)

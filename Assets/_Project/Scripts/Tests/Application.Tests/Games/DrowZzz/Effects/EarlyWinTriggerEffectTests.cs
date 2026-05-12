@@ -46,7 +46,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz.Effects
             };
             return new DrowZzzGameSession(
                 gs, fdp, ddp, sdp, DdpPool.Empty, influences, DrowZzzPhaseState.WaitingForPlay,
-                outcome: null, bedDamages: new Dictionary<PlayerId, int> { [PlayerId.Of("p1")] = 0, [PlayerId.Of("p2")] = 0 });
+                outcome: null, bedDamages: new Dictionary<PlayerId, int> { [PlayerId.Of("p1")] = 0, [PlayerId.Of("p2")] = 0 }, System.Array.Empty<PendingCounteredEffect>());
         }
 
         // ===== DZ-183: 夜 + 持ち点 100 で WinnerOutcome 設定 =====

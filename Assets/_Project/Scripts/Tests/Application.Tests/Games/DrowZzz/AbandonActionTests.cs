@@ -61,7 +61,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 [PlayerId.Of("p2")] = 0,
             };
             return new DrowZzzGameSession(
-                gs, fdp, ddp, sdp, EmptyDdpPool, influences, phase, outcome: null, bedDamages: bed);
+                gs, fdp, ddp, sdp, EmptyDdpPool, influences, phase, outcome: null, bedDamages: bed, System.Array.Empty<PendingCounteredEffect>());
         }
 
         // ===== DZ-199: IsLegalMove の合法条件(WaitingForPlay + 手札 1 枚以上 + CardIndex 範囲内)=====

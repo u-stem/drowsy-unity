@@ -83,7 +83,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 [PlayerId.Of("p2")] = 0,
             };
             return new DrowZzzGameSession(
-                gs, fdp, ddp, sdp, DdpPool.Empty, influences, phase, outcome: null, bedDamages: bed);
+                gs, fdp, ddp, sdp, DdpPool.Empty, influences, phase, outcome: null, bedDamages: bed, System.Array.Empty<PendingCounteredEffect>());
         }
 
         // ===== DZ-215: PlayCardAction 後の PhaseState 分岐(相手手札に Counter 持ち → WaitingForCounterResponse)=====
@@ -113,7 +113,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 },
                 DrowZzzPhaseState.WaitingForPlay,
                 outcome: null,
-                bedDamages: new Dictionary<PlayerId, int> { [PlayerId.Of("p1")] = 0, [PlayerId.Of("p2")] = 0 });
+                bedDamages: new Dictionary<PlayerId, int> { [PlayerId.Of("p1")] = 0, [PlayerId.Of("p2")] = 0 }, System.Array.Empty<PendingCounteredEffect>());
             var next = rule.Apply(session, new PlayCardAction(TargetId));
             Assert.That(next.PhaseState, Is.EqualTo(DrowZzzPhaseState.WaitingForCounterResponse));
         }
@@ -143,7 +143,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 },
                 DrowZzzPhaseState.WaitingForPlay,
                 outcome: null,
-                bedDamages: new Dictionary<PlayerId, int> { [PlayerId.Of("p1")] = 0, [PlayerId.Of("p2")] = 0 });
+                bedDamages: new Dictionary<PlayerId, int> { [PlayerId.Of("p1")] = 0, [PlayerId.Of("p2")] = 0 }, System.Array.Empty<PendingCounteredEffect>());
             var next = rule.Apply(session, new PlayCardAction(TargetId));
             Assert.That(next.PhaseState, Is.EqualTo(DrowZzzPhaseState.WaitingForEndTurn));
         }
@@ -189,7 +189,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 },
                 DrowZzzPhaseState.WaitingForCounterResponse,
                 outcome: null,
-                bedDamages: new Dictionary<PlayerId, int> { [PlayerId.Of("p1")] = 0, [PlayerId.Of("p2")] = 0 });
+                bedDamages: new Dictionary<PlayerId, int> { [PlayerId.Of("p1")] = 0, [PlayerId.Of("p2")] = 0 }, System.Array.Empty<PendingCounteredEffect>());
             Assert.That(rule.IsLegalMove(session, new CounterAction(CounterId, TargetId)), Is.False);
         }
 
@@ -361,7 +361,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 },
                 DrowZzzPhaseState.WaitingForPlay,
                 outcome: null,
-                bedDamages: new Dictionary<PlayerId, int> { [PlayerId.Of("p1")] = 0, [PlayerId.Of("p2")] = 0 });
+                bedDamages: new Dictionary<PlayerId, int> { [PlayerId.Of("p1")] = 0, [PlayerId.Of("p2")] = 0 }, System.Array.Empty<PendingCounteredEffect>());
 
             var next = rule.Apply(session, new PlayCardAction(bedtimeCard));
             // Outcome が設定済 → WaitingForCounterResponse には遷移しない(IsTerminated ガード)

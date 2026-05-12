@@ -684,27 +684,40 @@ namespace Drowsy.Application.Games.DrowZzz
             return false;
         }
 
-        // CounterAction の合法性(M3-PR5b、ADR-0011 §4.3 / JIT 確定 2026-05-13):
-        // (1) PhaseState == WaitingForCounterResponse
-        // (2) action.Counter が **反撃側プレイヤー(相手 counterPlayerIndex = 1 - currentIndex)** の手札に存在
-        //     (W-1 反映 2026-05-13:WaitingForCounterResponse 中の currentPlayerIndex は元の PlayCard 側プレイヤーを指す。
-        //      反撃を打つのは「currentPlayer の相手」で、N=2 想定で一意決定する)
-        // (3) action.Counter の効果列に Counter キーワードを含む
-        // (4) action.Target が Field.Cards[0](直近プレイ)
-        // (5) action.Target の効果列に Frenzy を含まない(JIT 確定 2026-05-13:Frenzy vs Counter は illegal-move)
+        // CounterAction の合法性(M3-PR5b で経路 1 / M3-PR5c で経路 2 追加、ADR-0011 §4.3 / §4.4):
+        //
+        // 経路 1: 反撃 B(相手ターン中、PhaseState == WaitingForCounterResponse)— M3-PR5b 確定
+        //   (1) PhaseState == WaitingForCounterResponse
+        //   (2) action.Counter が **反撃側プレイヤー(相手 counterPlayerIndex = 1 - currentIndex)** の手札に存在
+        //   (3) action.Counter の効果列に Counter キーワードを含む
+        //   (4) action.Target が Field.Cards[0](直近プレイ)
+        //   (5) action.Target の効果列に Frenzy を含まない(Frenzy vs Counter は illegal-move、ADR-0011 §4.5)
+        //
+        // 経路 2: 反撃の反撃 C(自ターン中、PhaseState == WaitingForEndTurn + Pending 非空)— M3-PR5c、ADR-0011 §4.4
+        //   (1) PhaseState == WaitingForEndTurn
+        //   (2) PendingCounteredEffects 非空、かつ最後のエントリの CounterCard == action.Target
+        //       (LIFO で「最後に登録された B」を打ち消す semantics、N=2 想定で最後のエントリのみ照合)
+        //   (3) action.Counter が **現プレイヤー(= 元 A プレイヤー、自ターン中)** の手札に存在
+        //   (4) action.Counter の効果列に Counter キーワードを含む
+        //   (5) action.Target(= B)の効果列に Frenzy を含まない(対称設計、B が Frenzy 持ちなら反撃の反撃も不可)
+        //
+        // それ以外の PhaseState ではすべて illegal(false)。
         private bool IsLegalCounter(DrowZzzGameSession session, CounterAction action)
         {
-            if (session.PhaseState != DrowZzzPhaseState.WaitingForCounterResponse)
+            return session.PhaseState switch
             {
-                return false;
-            }
+                DrowZzzPhaseState.WaitingForCounterResponse => IsLegalCounterAsCounter(session, action),
+                DrowZzzPhaseState.WaitingForEndTurn => IsLegalCounterAsCounterCounter(session, action),
+                _ => false,
+            };
+        }
+
+        // 経路 1 の合法判定(M3-PR5b の挙動を維持):反撃側プレイヤー = N=2 想定で currentIndex の相手側。
+        // W-1 反映 2026-05-13:WaitingForCounterResponse 中の currentPlayerIndex は元の PlayCard 側プレイヤーを指す。
+        // 反撃を打つのは「currentPlayer の相手」で、N=2 想定で一意決定する。
+        private bool IsLegalCounterAsCounter(DrowZzzGameSession session, CounterAction action)
+        {
             int currentIndex = session.GameState.Turn.CurrentPlayerIndex;
-            // current player は「相手のターン中に反撃する側」。N=2 想定では PlayCard を打ったのは「currentIndex とは別の側」だが、
-            // 本実装では PlayCard 後にターン交代せず PhaseState のみ WaitingForCounterResponse に遷移しているため、
-            // CounterAction を打つのは依然として「currentPlayerIndex のプレイヤー以外」ではなく、
-            // ADR-0011 §4.3.3 を踏まえて「反撃応答中は相手プレイヤーが action 主体」と解釈する。
-            // 簡単化:CounterAction の Counter は **どちらの手札から取り出すか** を明示的にする設計を採らず、
-            // 「Counter カードを持つプレイヤー(= 相手プレイヤー、N=2 で一意)」の手札を参照する。
             int counterPlayerIndex = currentIndex == 0 ? 1 : 0;
             if (counterPlayerIndex >= session.GameState.Players.Count)
             {
@@ -736,21 +749,74 @@ namespace Drowsy.Application.Games.DrowZzz
             return true;
         }
 
-        // CounterAction の状態遷移(M3-PR5b、ADR-0011 §4.3 / JIT 確定 2026-05-13):
-        // (1) 反撃側プレイヤー(N=2 で currentIndex の相手側)の手札から action.Counter を Remove → Discard へ
-        // (2) Field 先頭(action.Target)を Remove → Discard へ(無効化セマンティクス C、JIT 確定 2026-05-13)
-        // (3) PhaseState → WaitingForEndTurn(currentIndex は変更せず、元のプレイヤーのターン進行に戻る)
-        // 元カード Target の効果は「既に Apply 済」だが、ADR-0010 / M3-PR5b 範囲では「効果無効化」は
-        // 「Field から Discard に移し、effect 履歴は変更しない」(M3-PR5c で `PendingCounteredEffects` 経由の
-        // 遡及発動を実装する際に effect 履歴を遡る設計だが、本 PR では未実装、ADR-0011 §4.4)
+        // 経路 2 の合法判定(M3-PR5c、ADR-0011 §4.4 / JIT 確定 2026-05-12):
+        // 自ターン中の WaitingForEndTurn フェーズで、最後に登録された Pending の B を action.Target に取って反撃の反撃を行う。
+        // currentIndex は元 A プレイヤー(= 反撃の反撃を打つ側 = 自ターンの主体)、N=2 で一意。
+        private bool IsLegalCounterAsCounterCounter(DrowZzzGameSession session, CounterAction action)
+        {
+            // (2) PendingCounteredEffects 非空 + 最後エントリの CounterCard == action.Target
+            var pending = session.PendingCounteredEffects;
+            if (pending.Count == 0)
+            {
+                return false;
+            }
+            var lastEntry = pending[pending.Count - 1];
+            if (!lastEntry.CounterCard.Equals(action.Target))
+            {
+                return false;
+            }
+            // (3) action.Counter が現プレイヤー(= A プレイヤー、自ターン中)の手札に存在
+            int currentIndex = session.GameState.Turn.CurrentPlayerIndex;
+            var currentHand = session.GameState.Players[currentIndex].Hand;
+            if (!currentHand.Contains(action.Counter))
+            {
+                return false;
+            }
+            // (4) action.Counter の効果列に Counter キーワードを含む
+            var counterEffects = _catalog.GetEffects(action.Counter);
+            if (!HasKeywordInEffects(counterEffects, Keyword.Counter))
+            {
+                return false;
+            }
+            // (5) action.Target(= B)の効果列に Frenzy を含まない(対称設計、B が Frenzy 持ちなら反撃の反撃も不可)
+            var targetEffects = _catalog.GetEffects(action.Target);
+            if (HasKeywordInEffects(targetEffects, Keyword.Frenzy))
+            {
+                return false;
+            }
+            return true;
+        }
+
+        // CounterAction の状態遷移(M3-PR5b で経路 1 / M3-PR5c で経路 2 追加、ADR-0011 §4.3 / §4.4):
+        //
+        // 経路 1: 反撃 B(相手ターン中、PhaseState == WaitingForCounterResponse)— M3-PR5b 確定
+        //   (1) 反撃側プレイヤー(N=2 で currentIndex の相手側)の手札から action.Counter を Remove → Discard へ
+        //   (2) Field 先頭(action.Target = A)を Remove → Discard へ(無効化セマンティクス C、JIT 確定 2026-05-13)
+        //   (3) PhaseState → WaitingForEndTurn(currentIndex は変更せず、元プレイヤーのターン進行に戻る)
+        //   (4) M3-PR5c で追加:PendingCounteredEffects に (CounterCard=action.Counter, OriginalCard=action.Target,
+        //       OriginalEffects=A の効果列) を追加(遡及発動用、ADR-0011 §4.4)
+        //
+        // 経路 2: 反撃の反撃 C(自ターン中、PhaseState == WaitingForEndTurn)— M3-PR5c、ADR-0011 §4.4
+        //   (1) 現プレイヤー(= A プレイヤー、自ターン中)の手札から action.Counter を Remove → Discard へ
+        //   (2) Field は変更しない(B はすでに Discard 済、A もすでに Discard 済、再移動なし)
+        //   (3) PendingCounteredEffects から最後エントリ(= 打ち消し対象 B のエントリ)を取り出し、削除
+        //   (4) 取り出したエントリの OriginalEffects を _interpreter.Apply で順次評価(A の効果遡及発動、JIT 確定 2026-05-12)
+        //   (5) PhaseState → WaitingForEndTurn 維持(C プレイで Pending 消化、続いて EndTurnAction 待ち)
         private DrowZzzGameSession ApplyCounter(DrowZzzGameSession session, CounterAction action)
         {
-            // 防御的 IsLegalMove 検証(IsLegalCounter と同じ 5 段)
-            if (session.PhaseState != DrowZzzPhaseState.WaitingForCounterResponse)
+            return session.PhaseState switch
             {
-                throw new InvalidOperationException(
-                    $"CounterAction は WaitingForCounterResponse フェーズでのみ合法です (現フェーズ: {session.PhaseState})");
-            }
+                DrowZzzPhaseState.WaitingForCounterResponse => ApplyCounterAsCounter(session, action),
+                DrowZzzPhaseState.WaitingForEndTurn => ApplyCounterAsCounterCounter(session, action),
+                _ => throw new InvalidOperationException(
+                    $"CounterAction は WaitingForCounterResponse / WaitingForEndTurn フェーズでのみ合法です (現フェーズ: {session.PhaseState})"),
+            };
+        }
+
+        // 経路 1 の状態遷移(M3-PR5b の挙動 + M3-PR5c で PendingCounteredEffects 登録を追加)。
+        private DrowZzzGameSession ApplyCounterAsCounter(DrowZzzGameSession session, CounterAction action)
+        {
+            // 防御的 IsLegalMove 検証(IsLegalCounterAsCounter と同じ 5 段)
             int currentIndex = session.GameState.Turn.CurrentPlayerIndex;
             int counterPlayerIndex = currentIndex == 0 ? 1 : 0;
             if (counterPlayerIndex >= session.GameState.Players.Count)
@@ -775,7 +841,10 @@ namespace Drowsy.Application.Games.DrowZzz
                 throw new InvalidOperationException(
                     $"CounterAction の Target ({action.Target.Value}) は Field 先頭ではありません");
             }
-            if (HasKeywordInEffects(_catalog.GetEffects(action.Target), Keyword.Frenzy))
+            // 遡及発動用に A の効果列を catalog から取得し、Frenzy 検証で兼用しつつ Pending 登録用の Snapshot として保持する
+            // (P-1 反映 2026-05-12:変数 originalEffects は Frenzy 判定にも使う、効果列を 2 回取得しない設計)。
+            var originalEffects = _catalog.GetEffects(action.Target);
+            if (HasKeywordInEffects(originalEffects, Keyword.Frenzy))
             {
                 throw new InvalidOperationException(
                     $"CounterAction の Target ({action.Target.Value}) は Frenzy キーワード持ち効果列を含むため反撃不可です(ADR-0011 §4.5)");
@@ -799,11 +868,96 @@ namespace Drowsy.Application.Games.DrowZzz
                 Field = newField,
                 Discard = newDiscard,
             };
+            // (4) M3-PR5c: PendingCounteredEffects に (B, A, A の効果列) を末尾追加(遡及発動用、ADR-0011 §4.4)
+            var existingPending = session.PendingCounteredEffects;
+            var newPending = new PendingCounteredEffect[existingPending.Count + 1];
+            for (int i = 0; i < existingPending.Count; i++)
+            {
+                newPending[i] = existingPending[i];
+            }
+            // positional record のため named argument は PascalCase(プロパティ名)で指定
+            newPending[existingPending.Count] = new PendingCounteredEffect(
+                CounterCard: action.Counter,
+                OriginalCard: action.Target,
+                OriginalEffects: originalEffects);
             return session with
             {
                 GameState = newGameState,
                 PhaseState = DrowZzzPhaseState.WaitingForEndTurn,
+                PendingCounteredEffects = newPending,
             };
+        }
+
+        // 経路 2 の状態遷移(M3-PR5c、ADR-0011 §4.4 / JIT 確定 2026-05-12):反撃の反撃 C と元 A の効果遡及発動。
+        private DrowZzzGameSession ApplyCounterAsCounterCounter(DrowZzzGameSession session, CounterAction action)
+        {
+            // 防御的 IsLegalMove 検証(IsLegalCounterAsCounterCounter と同じ 4 段)
+            var pending = session.PendingCounteredEffects;
+            if (pending.Count == 0)
+            {
+                throw new InvalidOperationException(
+                    "CounterAction の経路 2(反撃の反撃)は PendingCounteredEffects が空の場合 illegal です");
+            }
+            var lastEntry = pending[pending.Count - 1];
+            if (!lastEntry.CounterCard.Equals(action.Target))
+            {
+                throw new InvalidOperationException(
+                    $"CounterAction の Target ({action.Target.Value}) は PendingCounteredEffects 最後エントリの CounterCard ({lastEntry.CounterCard.Value}) と一致しません");
+            }
+            int currentIndex = session.GameState.Turn.CurrentPlayerIndex;
+            var currentPlayer = session.GameState.Players[currentIndex];
+            if (!currentPlayer.Hand.Contains(action.Counter))
+            {
+                throw new InvalidOperationException(
+                    $"CounterAction の Counter ({action.Counter.Value}) は現プレイヤー(= 元 A プレイヤー)の手札に含まれません");
+            }
+            if (!HasKeywordInEffects(_catalog.GetEffects(action.Counter), Keyword.Counter))
+            {
+                throw new InvalidOperationException(
+                    $"CounterAction の Counter ({action.Counter.Value}) は Counter キーワード持ち効果列を含みません");
+            }
+            if (HasKeywordInEffects(_catalog.GetEffects(action.Target), Keyword.Frenzy))
+            {
+                throw new InvalidOperationException(
+                    $"CounterAction の Target ({action.Target.Value}, = B) は Frenzy キーワード持ち効果列を含むため反撃の反撃不可です(ADR-0011 §4.5)");
+            }
+
+            // (1) 現プレイヤーの手札から Counter カードを Remove → Discard へ
+            var updatedCurrentPlayer = currentPlayer with { Hand = currentPlayer.Hand.Remove(action.Counter) };
+            var newDiscard = session.GameState.Discard.AddTop(action.Counter);
+            // Players 配列の差し替え(現プレイヤーのみ)
+            var newPlayers = new PlayerState[session.GameState.Players.Count];
+            for (int i = 0; i < newPlayers.Length; i++)
+            {
+                newPlayers[i] = i == currentIndex ? updatedCurrentPlayer : session.GameState.Players[i];
+            }
+            // (2) Field は変更しない(B / A はすでに Discard 済、経路 1 で移動済)
+            var newGameState = session.GameState with
+            {
+                Players = newPlayers,
+                Discard = newDiscard,
+            };
+            // (3) PendingCounteredEffects から最後エントリを削除
+            var newPending = new PendingCounteredEffect[pending.Count - 1];
+            for (int i = 0; i < pending.Count - 1; i++)
+            {
+                newPending[i] = pending[i];
+            }
+            var currentSession = session with
+            {
+                GameState = newGameState,
+                PendingCounteredEffects = newPending,
+                // PhaseState は WaitingForEndTurn 維持(C プレイで Pending 消化、続いて EndTurnAction 待ち)
+            };
+            // (4) OriginalEffects を順次 Apply(遡及発動、ADR-0011 §4.4)
+            //     遡及発動時の context は EffectContext.Default(元 A プレイ時の Choice / InfluenceRemovalIndex は保存していないため)
+            //     N=2 想定で context 依存の動的効果(RemoveInfluenceEffect 等)が遡及発動に巻き込まれるケースは想定外、
+            //     必要なら ADR §4.4 拡張で context スナップショット保存を検討(本 PR では Default で十分)
+            foreach (var effect in lastEntry.OriginalEffects)
+            {
+                currentSession = _interpreter.Apply(currentSession, effect);
+            }
+            return currentSession;
         }
 
         // PassCounterAction の状態遷移(M3-PR5b、ADR-0011 §4.3.3):
@@ -836,11 +990,18 @@ namespace Drowsy.Application.Games.DrowZzz
                     $"EndTurnAction は WaitingForEndTurn フェーズでのみ合法です (現フェーズ: {session.PhaseState})");
             }
 
-            var gameState = session.GameState;
+            // M3-PR5c: PendingCounteredEffects の未消化エントリを自ターン終了時に一括破棄(ADR-0011 §4.4 / JIT 確定 2026-05-12)。
+            // ターン進行(GameState.Turn.Next)前にクリアすることで、「このターンに残った Pending を破棄してから次ターンへ」
+            // という意味論を明確化する(次ターンの主体に古い Pending が引き継がれない)。
+            var sessionAfterPendingClear = session.PendingCounteredEffects.Count == 0
+                ? session
+                : session with { PendingCounteredEffects = System.Array.Empty<PendingCounteredEffect>() };
+
+            var gameState = sessionAfterPendingClear.GameState;
             var newTurn = gameState.Turn.Next(gameState.Players.Count);
             var newGameState = gameState with { Turn = newTurn };
 
-            var nextSession = session with
+            var nextSession = sessionAfterPendingClear with
             {
                 GameState = newGameState,
                 PhaseState = DrowZzzPhaseState.WaitingForDraw,
