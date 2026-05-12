@@ -701,6 +701,84 @@ JIT 確定済(本 PR 同梱):
 
 本 PR(M3-PR3)では `CardIndex` 制約を「範囲内 + 手札非空」のみとし、「本能を持つ効果列のカードは捨てる対象として選べない」制約は M3-PR5(キーワード能力)に先送り。これは ADR-0011 §「実装 PR 分割計画」の段階的縦串実装方針と整合(機構ごとに完結する PR で段階的に拡張)。
 
+### M3-PR4 完成記録(2026-05-13、連想機構 + マーカー effect)
+
+**完成 PR**: PR #49 `feat(app): 連想機構(AssociateAction + AssociatableMarkerEffect)を実装 (M3-PR4)`(merged `2365fe9`、`.meta` は同 PR の `afe4d83` で追加)。本 ADR §1 で確定した「連想(特殊ドロー)」機構の最初の実装。
+
+#### Definition of Done 達成項目(本 ADR §1 で確定した仕様の最初の実装)
+
+| スコープ項目 | 達成状況 | 備考 |
+| ---- | ---- | ---- |
+| `AssociateAction(CardId Card)` Action record 追加 | ✓ | `DrowZzzAction` 派生型、`Card` は null 不可で `PlayCardAction.Card` と同じ二重ガード(positional ctor / `with` 式の両経路)|
+| `AssociatableMarkerEffect` マーカー record 新設 | ✓ | フィールドなし `sealed record : IEffect`、`EarlyWinTriggerEffect` と同パターン(マーカー的役割)|
+| `DrowZzzRule.IsLegalAssociate` 合法性判定 | ✓ | PhaseState 3 種 + `TotalPoints >= 80` + 連想可能カード判別(catalog 登録 + 効果列にマーカー含む)、DZ-205 |
+| `DrowZzzRule.ApplyAssociate` 状態遷移 | ✓ | 現プレイヤーの `Hand.Add(action.Card)`、`PhaseState` 不変 + 他全フィールド不変、DZ-206 |
+| `EffectInterpreter.Apply(AssociatableMarkerEffect)` の no-op 評価 | ✓ | switch case 追加で `_` ケース safety net を保ったまま、常時 session 不変返却、DZ-208 |
+| `DrowZzzAssociationConstants.AssociationThreshold = 80` 新設 | ✓ | L2 不変量として constants 集約、`DrowZzzClockConstants` / `DdpPoolConstants` / `DrowZzzVictoryConstants` / `DrowZzzBedConstants` と同パターン |
+| 連想対象の領域 = (c)/(d) catalog 直接生成(JIT 確定 2026-05-13)| ✓ | 連想可能カードは初期山札に含まれず catalog 経由のみで手札に追加、`Deck` / `Discard` / `Field` は全て不変 |
+| FDS 境界 = 80 以上(JIT 確定 2026-05-13、`80+` 採用)| ✓ | `TotalPoints >= AssociationThreshold` で発動可、`TotalPoints == 79` は不可境界 |
+| 連想タイミング = 自ターン中のみ(JIT 確定 2026-05-13)| ✓ | PhaseState 3 種すべて(`WaitingForDraw` / `WaitingForPlay` / `WaitingForEndTurn`)で合法、ADR-0006「自ターン中のみ」原則を破壊しない |
+| 連想可能カードの判別方式 = (i) マーカー effect 方式 | ✓ | ADR-0011 §1 起票時の「初期推奨」を本 PR で採用、「夢」専用ではなく汎用ドロー機構として設計 |
+
+#### 仕様 ID / NUnit 増加
+
+- 仕様 ID 新規採番:
+  - **DZ-204**: `AssociateAction` の null 二重ガード(positional ctor + `with` 式)
+  - **DZ-205**: `IsLegalMove` 合法条件(PhaseState + 80 以上 + 連想可能カード + 終了済 session 不可)
+  - **DZ-206**: `Apply` の状態遷移(手札 +1、他全フィールド不変)
+  - **DZ-207**: `AssociatableMarkerEffect` の record 値同値性
+  - **DZ-208**: `AssociatableMarkerEffect` の no-op 評価
+- NUnit Property: **+5 件 → 累計 322 件**
+  - 新規ファイル `AssociateActionTests`(21 件、DZ-204 / DZ-205 / DZ-206 を MC/DC 相当ケースで網羅)
+  - 新規ファイル `AssociatableMarkerEffectTests`(4 件、DZ-207 / DZ-208 を網羅)
+
+#### 本 PR で確定した ADR-0011 §1 内の JIT 確定ポイント
+
+| 項目 | 確定内容(JIT 確認 2026-05-13)|
+| ---- | ---- |
+| 連想対象の領域 | **(c)/(d) `ICardCatalog` から直接生成 / 別 Pile**(連想可能カードは初期山札に含まれず、catalog 経由のみで手札に追加)|
+| FDS 境界 | **80 以上**(80+ で発動可、`AssociationThreshold = 80`、「FDS」= `TotalPoints` = FDP + DDP + SDP の用語規約)|
+| 連想タイミング | **自ターン中のみ**(PhaseState 3 種すべてで合法、相手ターン中は不可)|
+
+判別方式は ADR-0011 §1 起票時の「初期推奨案 (i) マーカー effect 方式」を本 PR で採用(`AssociatableMarkerEffect`)。残る 1 項目「使用制限」(連想で引いたカードを次の自分のターン以降使用可能とする制約、ADR-0011 §6)は本 PR スコープ外として **M3-PR6(夢カード統合)に委譲**。
+
+不採用案(再確認):
+- `DrawCardAction(bool Associate = false)`:通常 / 特殊ドローの semantic 混在、`IsLegalMove` 条件が複雑化
+- `DrowZzzPhaseState.WaitingForAssociation`:連想は割り込み式でフェーズ化と合わない
+- `AssociateCardEffect`(効果 record):連想は宣言型 action、効果 record とは別軸
+- 「夢」専用 `AssociateDreamAction`:JIT 確定 2026-05-12 で「連想は夢以外にも登場」と確定、汎用機構として設計
+- 連想領域 (a) 山札 top / (b) 山札の特定位置:「特殊な手段」と整合しない
+- FDS 境界「81 以上(80 超)」:JIT 確定で「80 以上」を採用、境界の混在を「以上」側に確定
+
+#### code-reviewer subagent 反映(警告 3 / 提案 3 → 5 件反映、1 件 Skip)
+
+| ID | 種別 | 内容 | 反映 |
+| ---- | ---- | ---- | ---- |
+| W-1 | 警告 | `IsLegalAssociate` / `ApplyAssociate` の `non-static` 理由がコメント未記載(将来 `_catalog` 不要化時に static 化判断を見落とすリスク)| ✓ コメント補記(`_catalog` 使用のため non-static、cf. `IsLegalAbandon` / `ApplyAbandon` は catalog 不要で `static`)|
+| W-2 | 警告 | DZ-206「他全フィールド不変」の仕様にテストが SDP / BedDamages / Outcome を網羅していない(将来 `ApplyAssociate` に誤って状態更新を追加した時のリグレッション検出漏れ)| ✓ テスト 3 件追加(SDP 不変 / BedDamages 不変 / Outcome null 維持)、`AssociateActionTests` 17 件 → 21 件 |
+| W-3 | 警告 | 終了済 session(`session.IsTerminated == true`)に対する `IsLegalMove` の false 返却が仕様 DZ-205 に明記されているがテストなし | ✓ テスト 1 件追加(`Given_終了済session_When_IsLegalMove_Then_false`)|
+| P-1 | 提案 | `IsLegalAssociate` PhaseState チェックコメントの「相手ターン中は currentPlayerIndex で示されるプレイヤーが自分ではない」記述が長い + 結論不明確 | ✓ 「呼び出し側 UseCase が currentPlayerIndex のチェックを担う設計」と責務分担を明示する形に書き直し |
+| P-2 | 提案 | `AssociateAction` xmldoc の `<remarks>` が 5 段落で長すぎる(ADR-0011 §1 への参照で代替可能)| Skip — プロジェクト全体で「xmldoc で設計意図を記す」スタイルを採用しており、現状でも規約違反ではないため見送り |
+| P-3 | 提案 | `DrowZzzAssociationConstants.AssociationThreshold` の L2 vs L3 判断根拠が xmldoc に未明示 | ✓ xmldoc に「ゲームルールとして固定された前提でデザイナーバランス調整値ではない」根拠を 1 段落追加 |
+
+#### M3-PR4 進行中の学び
+
+##### 学び 1: マーカー effect 方式の汎用性
+
+`EarlyWinTriggerEffect` で確立した「マーカー effect = カード分類」パターン(ADR-0010 §5)が連想機構にも自然に適用できた。本 PR で `AssociatableMarkerEffect` を導入することで、後続の連想可能カード(「夢」カード No.00 を含む)を **同じパターン** で表現可能になった。`ICardCatalog.GetEffects` 経由で型安全に判別でき、`CardData.Attributes` の汎用 dict 流用(案 (ii))と比較して型安全性 / 拡張性ともに優位(本 ADR §1 不採用案で確認済)。
+
+##### 学び 2: JIT 確認の 3 軸並列(M3-PR3 の 2 軸並列の自然な発展)
+
+「連想対象の領域 / FDS 境界 / タイミング」の 3 項目を **同時に AskUserQuestion で確認** する方式で、M3-PR4 着手前にすべての設計判断を確定できた。M3-PR3 で確立した「2 軸並列」パターン(JIT 学び 1)の自然な発展で、機構の複雑度に応じて並列軸数を増やす運用パターンが確立。
+
+##### 学び 3: catalog-as-card-source の独立した責務領域
+
+連想領域の (c)/(d) 採用で、`ICardCatalog` が **「効果列の引き元」だけでなく「カード生成元」** の責務も兼ねる構造が顕在化。「カードが山札に含まれない」セマンティクスを catalog 経由でのみ表現することで、初期山札設計と連想可能カード設計を分離できた。M4 で ScriptableObject 化(`Drowsy.Infrastructure.Games.DrowZzz.ScriptableObjectCardCatalog` 想定)でもこの責務分離は維持される(両者を 1 SO に統合 vs 分離 SO はその時点で判断)。
+
+##### 学び 4: 「使用制限機構」の M3-PR6 への委譲判断
+
+引き継ぎ JIT 共有時に「連想で引いたカードは次の自分のターン以降使用可能」(ADR-0011 §6 / §1 末尾)という制約が並んで議論されたが、M3-PR4 では **「連想で手札に追加する」までを範囲とし、使用制限機構は M3-PR6 へ委譲** する判断を採用。理由は (1) 連想機構自体は使用制限なしでも完結する、(2) 使用制限機構は「夢」カード以外の連想可能カードでも同様に必要な機構なので M3-PR6 で汎用設計するのが筋、(3) ADR-0011 §「実装 PR 分割計画」の段階的縦串実装方針と整合。本 PR スコープを明示することで、後続 PR の責務範囲がより明確になった。
+
 ### M3 完成記録の追記タイミング
 
 本 ADR の M3-PR3 完成記録は §直上に追記済。M3-PR4 以降(連想機構 / キーワード能力 / 夢カード)は各 PR 単位で本 ADR §M3-PR-N 完成記録(2026-MM-DD)として追記する(ADR-0007 / ADR-0009 / ADR-0010 §「完成記録の追記タイミング」と同パターン)。M3 全体の完成時に §M3 完成記録(全体)を別途追加、Definition of Done 達成方法を集約する。
