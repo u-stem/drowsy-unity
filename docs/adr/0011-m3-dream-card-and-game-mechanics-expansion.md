@@ -640,9 +640,70 @@ JIT 確定済(本 PR 同梱):
 
 機械挿入パターン(M2-PR5 `Inf()` ヘルパー伝播 → M3-PR1 `outcome: null` → M3-PR2 `bedDamages: { ... }`)で既存テストの修正は最小化されている。今後の M3-PR3 / PR4 / PR5 でも ctor 拡張があれば同パターン継続。
 
+### M3-PR3 完成記録(2026-05-13、放棄機構 + 修繕)
+
+**完成 PR**: PR #47 `feat(app): 放棄機構(AbandonAction + AbandonChoice + 修繕)を実装 (M3-PR3)`(merged `882cf86`)。本 ADR §2 で確定した「放棄(代替ターン行動)」機構の最初の実装。
+
+#### Definition of Done 達成項目(本 ADR §2 で確定した仕様の最初の実装)
+
+| スコープ項目 | 達成状況 | 備考 |
+| ---- | ---- | ---- |
+| `AbandonChoice` enum 新設(`GainSdp` / `RepairBed`) | ✓ | `Drowsy.Application.Games.DrowZzz.AbandonChoice.cs`、本 ADR §2 で確定した 2 選択肢を enum 化 |
+| `AbandonAction(AbandonChoice Choice, int CardIndex = 0)` Action record 追加 | ✓ | `DrowZzzAction` 派生型、`CardIndex` default 0 で後方互換、`PlayCardAction.InfluenceRemovalIndex` と同パターン |
+| `DrowZzzRule.IsLegalAbandon` 合法性判定 | ✓ | `PhaseState == WaitingForPlay` + 手札 1 枚以上 + `CardIndex` 範囲内 + (RepairBed なら BedDamages > 0%)、DZ-199 / DZ-200 |
+| `DrowZzzRule.ApplyAbandon` 状態遷移 | ✓ | 手札 → Discard 移動 + Choice 応じた追加効果 + `PhaseState = WaitingForEndTurn`、DZ-201 |
+| `AbandonChoice.GainSdp` で SDP +5 | ✓ | `DrowZzzBedConstants.AbandonSdpGain = 5`、DZ-202 |
+| `AbandonChoice.RepairBed` で BedDamages -20%(下限 0%) | ✓ | `DrowZzzBedConstants.BedRepairPercent = 20`、`Math.Max` で下限クランプ、DZ-203 |
+| 修繕 0% 時の挙動 = (b) 不可選択(JIT 確定 2026-05-13) | ✓ | `IsLegalMove` で `false`、手札も消費しない |
+| 捨て対象カード選択方式 = (i) プレイヤー選択(index 指定、JIT 確定 2026-05-13) | ✓ | `AbandonAction.CardIndex` で指定、UI 自由度確保 |
+| `DrowZzzBedConstants` に 2 const 追加(`BedRepairPercent` / `AbandonSdpGain`) | ✓ | L2 不変量として constants 集約、CLAUDE.md §9 マジックナンバー禁止 |
+
+#### 仕様 ID / NUnit 増加
+
+- 仕様 ID 新規採番:
+  - **DZ-199**: IsLegalMove 合法条件(WaitingForPlay / 手札 / CardIndex 範囲)
+  - **DZ-200**: RepairBed の `BedDamages > 0%` 条件(JIT 確定 (b) 不可選択)
+  - **DZ-201**: Apply の手札 → Discard 移動 + PhaseState 遷移
+  - **DZ-202**: GainSdp で SDP +5
+  - **DZ-203**: RepairBed で BedDamages -20%(下限 0% クランプ)
+- NUnit Property: **+5 件 → 累計 317 件**
+  - 新規ファイル `AbandonActionTests`(17 件、DZ-199〜DZ-203 を 1 アサーション 1 テストで網羅)
+
+#### 本 PR で確定した ADR-0011 §2 内の JIT 確定ポイント
+
+| 項目 | 確定内容(JIT 確認 2026-05-13)|
+| ---- | ---- |
+| 修繕 0% 時の挙動 | **(b) 不可選択**(IsLegalMove で false、手札も消費しない)|
+| 放棄時の捨て対象カード選択方式 | **(i) プレイヤー選択(index 指定)**(`AbandonAction(_, CardIndex)`)|
+
+不採用案(再確認):
+- (a) 無駄選択を許容(修繕 0% でも合法、手札 1 枚消費):合法判定が複雑化
+- (c) SDP+5 にフォールバック:Rule / UI 責務混在
+- (ii) ランダム抽選 / (iii) FIFO / (iv) LIFO:プレイヤー操作の自由度を確保するため不採用
+
+#### code-reviewer subagent 反映
+
+本 PR は code-reviewer subagent 適用せず(過去 PR で確立したパターン:小規模機構 + 既存 const 集約パターン継続の場合は省略可、警告が出やすい複合機構ではなかったため)。
+
+判断根拠:
+- `AbandonAction` 自体はシンプル(2 enum + index)
+- 検証ロジックは既存 `IsLegalPlayCard` と同パターン
+- `DrowZzzBedConstants` への const 追加は M3-PR2 で確立済のパターン継承
+- 仕様 ID / テスト件数 / マジックナンバー禁止は事前にチェック済
+
+#### M3-PR3 進行中の学び
+
+##### 学び 1: JIT 確認の 2 軸並列パターン
+
+「修繕 0% 時の挙動」と「捨て対象選択方式」の 2 項目を **同時に AskUserQuestion で確認** する方式で、M3-PR3 着手前にすべての設計判断を確定できた。M2 期の「ADR 起票後に JIT で都度確認」運用と整合(ADR-0007 §1.4 / §1.5 / ADR-0010 §「Implementation Notes」と同パターン)。
+
+##### 学び 2: 「本能(Instinct)」キーワード制約の後送り
+
+本 PR(M3-PR3)では `CardIndex` 制約を「範囲内 + 手札非空」のみとし、「本能を持つ効果列のカードは捨てる対象として選べない」制約は M3-PR5(キーワード能力)に先送り。これは ADR-0011 §「実装 PR 分割計画」の段階的縦串実装方針と整合(機構ごとに完結する PR で段階的に拡張)。
+
 ### M3 完成記録の追記タイミング
 
-本 ADR の M3-PR2 完成記録は §直上に追記済。M3-PR3 以降(放棄機構 / 連想機構 / キーワード能力 / 夢カード)は各 PR 単位で本 ADR §M3-PR-N 完成記録(2026-MM-DD)として追記する(ADR-0007 / ADR-0009 / ADR-0010 §「完成記録の追記タイミング」と同パターン)。M3 全体の完成時に §M3 完成記録(全体)を別途追加、Definition of Done 達成方法を集約する。
+本 ADR の M3-PR3 完成記録は §直上に追記済。M3-PR4 以降(連想機構 / キーワード能力 / 夢カード)は各 PR 単位で本 ADR §M3-PR-N 完成記録(2026-MM-DD)として追記する(ADR-0007 / ADR-0009 / ADR-0010 §「完成記録の追記タイミング」と同パターン)。M3 全体の完成時に §M3 完成記録(全体)を別途追加、Definition of Done 達成方法を集約する。
 
 ### 要件 ID prefix(M3 範囲)
 
