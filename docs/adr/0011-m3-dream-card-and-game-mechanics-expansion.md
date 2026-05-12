@@ -1019,6 +1019,182 @@ M3-PR5a code-reviewer の P-3「`HasInstinctKeyword` 命名汎用化」を **本
 
 M3-PR5b では `.meta` 漏れが実装 PR マージ後に発覚し、完成記録 PR(PR #54)で `chore commit` として同梱する柔軟運用を確立した。本 M3-PR5c では `.meta` 不在を Unity Editor 側で生成された直後に検出し、**コンパイル fix(named arg PascalCase 化)+ `.meta` 2 件を同一 fix commit に同梱** して実装 PR(#55)内で完結させる運用を採用。完成記録 PR は純粋に docs-only(本 ADR 追記 + CLAUDE.md §11 既更新の確認のみ)に保てる。**実装 PR マージ前のオーナー作業タイミングで `.meta` を回収できれば、完成記録 PR の docs-only 純度を保つ** ことを優先するパターン。
 
+### M3-PR6 完成記録(2026-05-14、カード No.00「夢」+ Marker 2 種 + 連想後使用制限機構)
+
+**完成 PR**: PR #57 `feat(app): カード No.00「夢」+ Marker 2 種 + 連想後使用制限機構を実装 (M3-PR6)`(merged `27c130b`、2 commit 同梱:実装 commit `602685f` + .meta 同梱 fix `483d724`)。本 ADR §6 / §7 で確定した **M3 完成 PR**「夢」カードの統合実装。連想機構(M3-PR4)・キーワード能力(M3-PR5a〜c)・早期勝利機構(M3-PR1)・時刻分岐(M2-PR3)を 1 枚に統合する end-to-end カードの最初の実装。
+
+#### Definition of Done 達成項目(本 ADR §6 / §7 で確定した仕様の最初の実装)
+
+| スコープ項目 | 達成状況 | 備考 |
+| ---- | ---- | ---- |
+| カード No.00「夢」を `InMemoryCardCatalog` テストヘルパーに登録 | ✓ | `DreamCardTests.NewCatalogWithDream()` で 4 effect 列(`AssociatableMarkerEffect` + `RequiresMinimumTotalPointsMarkerEffect(100)` + `UsageRestrictionMarkerEffect` + `TimeOfDayBranchEffect`)を最上位に並べる構造で登録、initial deck には含めない(連想専用、DZ-228) |
+| `RequiresMinimumTotalPointsMarkerEffect(int Threshold)` sealed record 新規 | ✓ | `Threshold >= 1` 二重ガード(positional ctor / `with` 式、`PlayerInfluence.RemainingCount` パターン継承)、`EffectInterpreter` で no-op case 追加、DZ-239〜242 |
+| `UsageRestrictionMarkerEffect` sealed record 新規(2 役兼用) | ✓ | フィールドなし sealed record、効果列内 → `ApplyAssociate` の Influence 付与 trigger、Influence の `TickEffect` → `IsLegalPlayCard` の illegal フラグの 2 役を 1 型で表現、DZ-243〜245 |
+| `DrowZzzRule.IsLegalPlayCard` 拡張 | ✓ | 効果列の最上位 1 ループ scan で `ChoiceEffect` 範囲 + `RequiresMinimumTotalPointsMarkerEffect` 閾値 + `UsageRestrictionMarkerEffect` 検出を同時処理、`HasUsageRestrictionInfluence` ヘルパーで Influence の TickEffect を walk(DZ-231 / DZ-233 / DZ-234) |
+| `DrowZzzRule.ApplyAssociate` 拡張 | ✓ | `AssociatableMarker` / `UsageRestrictionMarker` 検出を **1 ループに統合**(code-reviewer W-3 反映)、後者検出時に自プレイヤーへ `PlayerInfluence(OwnPhaseStart, UsageRestrictionMarkerEffect, 1)` を末尾追加、`session with { Influences = newInfluences }` で更新(`ApplyApplyInfluence` パターン継承、DZ-230) |
+| `EffectInterpreter` case 追加 | ✓ | 2 marker の no-op case(`AssociatableMarkerEffect` と同パターン、判別用マーカーで副作用なし) |
+| 「夢」の Frenzy / Instinct キーワード統合 | ✓ | 夜効果列の `KeywordedEffect([Frenzy, Instinct], EarlyWinTriggerEffect)` を `HasKeywordInEffects` 再帰 walk(M3-PR5a 確立)が検出 → `IsLegalCounter` で反撃不可(DZ-237)/ `IsLegalAbandon` で捨て対象不可(DZ-238) |
+| 仕様 md 3 件 + .feature 1 件 | ✓ | `cards/00-dream.{md,feature}` + `effects/requires-minimum-total-points-marker.md` + `effects/usage-restriction-marker.md`、ADR-0011 §6 / §7 への参照と JIT 確定 6 項目の記録 |
+| .meta ファイル同梱 | ✓ | 新規 .cs 5 件の .meta を本実装 PR 内 fix commit(`483d724`)で同梱、M3-PR5c で確立した「実装 PR 内 fix 同梱」パターン継承 |
+
+#### 仕様 ID / NUnit 増加
+
+- 仕様 ID 新規採番(DZ-228〜DZ-245、18 件):
+  - **DZ-228**: 「夢」カードの `InMemoryCardCatalog` 登録 + initial deck 非含 + [Ubiquitous]
+  - **DZ-229**: 「夢」が連想可能カード(AssociatableMarkerEffect 持ち)+ [Ubiquitous]
+  - **DZ-230**: 連想時の Influence 付与(件数 / TickEffect 型 / RemainingCount / Trigger / PhaseState 不変、6 件に分割)
+  - **DZ-231**: UsageRestriction 影響保有中の illegal-move 化
+  - **DZ-232**: Tick 後の合法化(Influence なし状態で IsLegalMove true)
+  - **DZ-233**: FDS 99 で illegal(閾値未満)
+  - **DZ-234**: FDS 100 で legal(inclusive 境界)
+  - **DZ-235**: 夜 + FDS 100 → WinnerOutcome(早期勝利統合)
+  - **DZ-236**: 朝 → 自 SDP -80 + Outcome null(2 件)
+  - **DZ-237**: Frenzy で反撃を受けない
+  - **DZ-238**: Instinct で放棄の捨て対象に選べない
+  - **DZ-239**: `RequiresMinimumTotalPointsMarkerEffect` sealed record 構造 + [Ubiquitous]
+  - **DZ-240**: Threshold 0 / 負値 / with 式での防御(3 件)
+  - **DZ-241**: 同一 Threshold 値同値 / 異なる Threshold 非等値(2 件)
+  - **DZ-242**: EffectInterpreter で no-op
+  - **DZ-243**: `UsageRestrictionMarkerEffect` sealed record 構造 + [Ubiquitous]
+  - **DZ-244**: 異なる 2 インスタンス値同値
+  - **DZ-245**: EffectInterpreter で no-op(直接 Apply パス、Tick 経由は DZ-232 統合テストでカバー)
+- NUnit Property: **+14 件(unique)→ 累計 352 件**(テスト件数は +23、`[Ubiquitous]` DZ-228 / 229 / 239 / 243 は構造的暗黙カバー)
+  - 新規ファイル `DreamCardTests`(15 件)/ `RequiresMinimumTotalPointsMarkerEffectTests`(6 件)/ `UsageRestrictionMarkerEffectTests`(2 件)
+
+#### 本 PR で確定した ADR-0011 §6 内の JIT 確定ポイント(2026-05-14)
+
+| 項目 | 確定内容 |
+| ---- | ---- |
+| 朝効果「-80 / ±0」の解釈 | **自分 -80 / 相手 ±0**(M2-PR3 / M2-PR5 慣例「自分 / 相手」順、`AdjustSdpEffect(SdpTarget.Self, -80)` 単体) |
+| 「次の自分のターン以降」の実装方式 | **候補 C `PlayerInfluence` 流用**:連想時に自プレイヤーへ `PlayerInfluence(OwnPhaseStart, UsageRestrictionMarkerEffect, 1)` を付与、次の自フェーズ Tick で `RemainingCount` 1→0 で除去(N=2 想定で「相手 1 フェーズ経由後の自フェーズ」を 1 で表現) |
+| 連想条件と使用条件の境界記号 | **両方 inclusive(≥)に統一**:連想は `TotalPoints ≥ 80`(M3-PR4 で確定済)/ 使用は `TotalPoints ≥ 100`(`DrowZzzVictoryConstants.EarlyWinScoreThreshold` と同値で **意図的に一致**、夜の早期勝利を狙う設計と整合) |
+| 山札配置 | **連想専用**:`InMemoryCardCatalog` 登録のみ、initial deck には混入させない(連想機構 ADR-0011 §1 の「`ICardCatalog` から直接生成」semantics と整合) |
+| Marker 方式 | **`AssociatableMarkerEffect`(M3-PR4 確立)と同パターン**で 2 件新設:`RequiresMinimumTotalPointsMarkerEffect(int Threshold)` + `UsageRestrictionMarkerEffect`(2 役兼用) |
+| 検出 walk スコープ | **最上位の効果列のみ scan**(`TimeOfDayBranchEffect` / `KeywordedEffect` / `ChoiceEffect` の inner には walk しない)、将来 nested 配置が必要なカードが出てきた時点で再帰化(`HasKeywordInEffect` と同方針) |
+
+不採用案(再確認):
+- 「夢」の使用条件を `PlayCardAction.IsLegalMove` 内に CardId === "00" で hardcode:マーカー方式と一貫しない、将来同様カードが出た時に再利用不能。Marker effect 採用で汎用化
+- `RequiresMinimumTotalPointsMarkerEffect` と `UsageRestrictionMarkerEffect` を結合(1 record で表現):意味論が別軸(使用条件 vs 連想後制限)で結合すると Threshold 0 と「制限なし」の semantic 区別が曖昧化
+- `CardData.Attributes` dict で使用条件を表現:ADR-0011 §9「キーワード能力を Attributes dict で表現は不採用」と同根拠(効果単位の付与が必要)
+- 朝効果を「相手のみ -80」or「双方 -80」:JIT 共有原文「-80 / ±0」を M2-PR3 慣例で確定、戦略バランス(朝に夢を使うと自分が損する → 夜の早期勝利を狙う設計)と整合
+- 「次の自分のターン以降」を Session の別フィールド(`DreamCooldown` 等)で表現:Session ctor 引数増加 + N=2 専用機構になり、`PlayerInfluence` 流用で「既存の Tick 経路に乗せる」設計の方が拡張性高い
+
+#### code-reviewer subagent 反映(警告 4 / 提案 6 → 8 件反映、2 件 docs/todo.md で追跡)
+
+| ID | 種別 | 内容 | 反映 |
+| ---- | ---- | ---- | ---- |
+| W-1 | 警告 | DZ-230 で Influence 件数のみ assertion、中身(TickEffect 型 / RemainingCount / Trigger)未検証 | ✓ テストを 6 件に分割、別 assertion 化(1 テスト 1 アサーション原則維持、`AssociateAction.Apply` のバグを type-level で検出可能化) |
+| W-2 | 警告 | usage-restriction-marker.md DZ-245 トレーサビリティテーブルが実装と乖離 | ✓ テーブル記載を実装メソッド名と一致、Tick 経由パスは DZ-232 統合テスト + M2-PR5 Tick 経路独立テストでカバーする旨を明記 |
+| W-3 | 警告 | `ApplyAssociate` で effects を 2 回 scan(AssociatableMarker と UsageRestrictionMarker で分離) | ✓ 1 ループに統合、マーカー追加時の誤用パターン(両 scan の片方だけ更新する等)を予防 |
+| W-4 | 警告 | `RemainingCount=1` のハードコード(N=2 前提のマジックナンバー) | ✓ `docs/todo.md` に「N>2 拡張時の `RemainingCount` 再評価」エントリ追加、現スコープでは N=2 固定で OK |
+| P-1 | 提案 | `UsageRestrictionMarkerEffect` の 2 役兼用設計の将来分離検討 | ✓ `docs/todo.md` に「2 役兼用の将来分離検討」エントリ追加、現スコープでは 2 役兼用で文書化充実(xmldoc / spec md / interpreter コメント 3 箇所) |
+| P-2 | 提案 | `hasUsageRestrictionInfluence: bool` パラメータ設計 | Skip — 現スコープでは bool で十分、複数 Influence シナリオが出たら overload 追加 |
+| P-3 | 提案 | 00-dream.md DZ-230 / DZ-232 トレーサビリティテーブルが実装と乖離 | ✓ テーブル記載を実装メソッド名と一致、DZ-230 を 6 件分割 + DZ-232 を 1 件に整理 |
+| P-4 | 提案 | DZ-237 の Counter 用 dummy effect(`AdjustSdpEffect(Self, 0)`)の意図不明瞭 | ✓ 「Counter キーワードを表す最低限の効果列、Inner は IsLegalCounter で評価されない」1 行コメント追加 |
+| P-5 | 提案 | `nameof(value)` で診断メッセージ不正確 | ✓ `nameof(Threshold)` に変更、`with` 式経由でも例外メッセージにプロパティ名が出るように修正 |
+| P-6 | 提案 | 00-dream.md 定数依存に `RemainingCount=1` 未記載 | ✓ 定数依存テーブル下に「`RemainingCount=1` は N=2 前提のハードコード、`docs/todo.md` で追跡」を追記、SSOT を一箇所に集約 |
+
+#### M3-PR6 進行中の学び
+
+##### 学び 1: 「2 役兼用 marker」設計パターン(同一型を文脈別意味で再利用)
+
+`UsageRestrictionMarkerEffect` は **効果列内の trigger marker**(連想時の Influence 付与開始の合図)と **Influence の TickEffect**(使用制限フラグ + Tick で除去される no-op 効果)の **2 役を 1 型で兼用** する設計を採用。両文脈で「`EffectInterpreter.Apply` は no-op」という同じ評価結果を返すため矛盾なし。M3-PR5c 学び 2「経路 1 / 経路 2 の switch 分岐パターン」(同一 Action の文脈別解釈)の effect 版に相当。
+
+利点:
+- 型分離コスト(2 型 + EffectInterpreter case 2 件 + 仕様 md 2 件)を抑制
+- 「同じ marker が出現する 2 つの文脈は意味的に関連している」(連想で付与する制限 と 制限フラグ)を型システムで表現
+
+懸念(`docs/todo.md` で追跡):
+- 将来「Influence 側だけ別 semantics(例: Tick 時に追加効果)」が必要になった場合の分離コスト
+- 初見の読み手が 2 役を読み解くまでに認知負荷あり(xmldoc / spec md / interpreter コメント 3 箇所で意図文書化済)
+
+##### 学び 2: トレーサビリティテーブルの「テストメソッド名先行記述」問題
+
+仕様 md を書く段階でトレーサビリティテーブルにテストメソッド名を **将来形** で記述する運用は、code-reviewer W-2 / P-3 で「テーブル記載のテストが存在しない」指摘を受けた。仕様 → テストの順で書く TDD ループでは、仕様段階でメソッド名を確定的に書くと、後続でテストを書く際に「+ 件分割」「件数を減らす」等の調整が入った時にテーブルが古い記述のまま残る。
+
+**対策**: 仕様 md の初期版ではトレーサビリティテーブルを「DZ-NNN | (テスト追加予定) | 内容」と placeholder にし、テスト実装完了後に **テストファイル名 + メソッド名を実装と一致させる更新** を必須化。本 PR では実装完了後に code-reviewer 指摘で再整合させたが、次回からは「仕様 md → テスト実装 → 仕様 md トレーサビリティ更新」を 3 ステップで明示する運用を推奨。
+
+##### 学び 3: マーカー effect の「最上位 scan vs 再帰 walk」設計判断
+
+本 PR で導入した 2 件の marker(`RequiresMinimumTotalPointsMarkerEffect` / `UsageRestrictionMarkerEffect`)は **最上位の効果列のみ scan** する設計を採用。一方、M3-PR5a で導入した `KeywordedEffect` の検出は `HasKeywordInEffects` で **`TimeOfDayBranchEffect` / `ChoiceEffect` の inner まで再帰 walk** する設計。
+
+設計の使い分け:
+- **キーワード(Frenzy / Instinct / Counter)**: 効果単位で付与される属性(夜効果のみ Frenzy 等の nested 配置が必要、ADR-0011 §6「夢」カードの夜効果列に Frenzy+Instinct 付き `EarlyWinTriggerEffect` を nest する設計から要請)→ **再帰 walk**
+- **使用条件 / 使用制限 marker**: カード単位で適用される条件(夜・朝で変わらない単一閾値、夜・朝で変わらない使用制限)→ **最上位 scan**
+
+将来 nested 配置が必要なカードが出てきた時点で再帰 walk 化する判断は仕様 md にも明記(本 PR `requires-minimum-total-points-marker.md` / `usage-restriction-marker.md` §「検出 walk のスコープ」)。
+
+##### 学び 4: M3 完成 PR の規模 vs 学びの収束
+
+M3-PR6 は M3 完成 PR として 1295 行 / 13 ファイルの **過去最大規模 PR** になった(M3-PR5c は約 800 行 / 8 ファイル、M3-PR5a は約 700 行 / 6 ファイル)。理由は「夢」カードが既存 4 機構(連想 / キーワード / 早期勝利 / 時刻分岐)+ 2 新規 marker effect + 連想後使用制限機構を 1 PR で統合する必要があったため。
+
+ただし、code-reviewer 指摘件数(警告 4 / 提案 6 = 計 10 件)は M3-PR5c(警告 3 / 提案 5 = 計 8 件)と同水準で、規模に比例して爆発はしていない。これは M3-PR2〜PR5c で確立した規約(positional record の named arg、wrapper effect の Equals/GetHashCode、Marker 方式)が複雑度を吸収しているため。本 ADR 起票時の §8 分割計画(7 PR で約 14 PR)の精神(レビュー粒度を保つ)が M3 完成段階でも維持されている。
+
+### M3 完成記録(全体、2026-05-14、ゲームメカニクス拡張完成)
+
+M3 マイルストーン(ADR-0010 + ADR-0011)で確定した「勝利条件 / 終了処理 + ゲームメカニクス拡張」スコープが **M3-PR1 〜 M3-PR6 の 7 PR(M3-PR5 を 5a / 5b / 5c に 3 分割)で完成**。本節は各 PR の累積結果 + Definition of Done の総括を集約する。
+
+#### 確定機構(7 PR の累積)
+
+| PR | 機構 | 主な追加 |
+| ---- | ---- | ---- |
+| M3-PR1(PR #42 / #43 fix / #46) | 終了判定 + 早期勝利 | `IGameRule.IsTerminated` / `GetWinner` / `GameOutcome` (`WinnerOutcome` / `DrawOutcome`)/ `EarlyWinTriggerEffect` / Round 21 完了検出 / 終了済 session の Apply 防御 |
+| M3-PR2(PR #45 / #46) | ベッド破損 + DamageBedEffect | `DrowZzzGameSession.BedDamages` / `DamageBedEffect(SdpTarget, int Percent)`(5 の倍数検証)/ 自フェーズ開始時の SDP マイナス計算 / 100% クランプ |
+| M3-PR3(PR #47 / #48) | 放棄機構 + 修繕 | `AbandonAction(AbandonChoice, int CardIndex)` / `AbandonChoice` enum(`GainSdp` / `RepairBed`)/ 0% では修繕不可 |
+| M3-PR4(PR #49 / #50) | 連想機構 + AssociatableMarkerEffect | `AssociateAction(CardId Card)` / `AssociatableMarkerEffect` marker / `DrowZzzAssociationConstants.AssociationThreshold = 80` / 自ターン中 3 PhaseState で合法 |
+| M3-PR5a(PR #51 / #52) | キーワード基盤 + Instinct | `Keyword` enum 3 値(`Frenzy` / `Instinct` / `Counter`)/ `KeywordedEffect(IReadOnlyList<Keyword>, IEffect)` wrapper / `HasKeywordInEffects` 再帰 walk / Instinct で放棄の捨て対象不可 |
+| M3-PR5b(PR #53 / #54) | Counter 機構 + Frenzy | `CounterAction(CardId Counter, CardId Target)` / `PassCounterAction` / `DrowZzzPhaseState.WaitingForCounterResponse` / Frenzy で反撃不可 |
+| M3-PR5c(PR #55 / #56) | 反撃の反撃 + 元カード遡及発動 | `PendingCounteredEffect` sealed record / `DrowZzzGameSession.PendingCounteredEffects` LIFO collection / 経路 1 + 経路 2 switch / 自ターン終了 Pending 一括クリア |
+| **M3-PR6**(PR #57 / 本完成記録 PR) | **カード No.00「夢」+ Marker 2 種 + 連想後使用制限機構** | `RequiresMinimumTotalPointsMarkerEffect(int Threshold)` / `UsageRestrictionMarkerEffect`(2 役兼用)/ `IsLegalPlayCard` 拡張 / `ApplyAssociate` の Influence 付与 / 「夢」end-to-end 統合 |
+
+#### 採番増加(M3 全体)
+
+| Prefix | M3 着手前(M2-PR5 完了時) | M3-PR6 完了時 | 増加 |
+| ---- | ---- | ---- | ---- |
+| DZ- | 約 180 件 | 245 件 | +65 件(M3-PR1: +6 / PR2: +8 / PR3: +5 / PR4: +7 / PR5a: +7 / PR5b: +8 / PR5c: +6 / PR6: +18) |
+| APP- | 39 件 | 43 件 | +4 件(M3-PR1〜PR2 で `IGameRule` 拡張) |
+| NUnit Property unique | 約 240 件 | 352 件 | +112 件 |
+
+#### Session ctor の breaking change 履歴(M3 範囲)
+
+| PR | 引数数 | 追加フィールド |
+| ---- | ---- | ---- |
+| M3 着手前(M2-PR5 完了) | 7 | (Influences まで) |
+| M3-PR1 | 8 | `+ GameOutcome outcome` |
+| M3-PR2 | 9 | `+ Dictionary<PlayerId, int> bedDamages` |
+| M3-PR5c | **10** | `+ IReadOnlyList<PendingCounteredEffect> pendingCounteredEffects` |
+| M3-PR6 | 10(変動なし) | 既存 `Influences` 流用で Session ctor 拡張回避(`UsageRestrictionMarkerEffect` を `PlayerInfluence` の TickEffect として既存 collection に乗せる設計、ADR-0011 §6 候補 C)|
+
+M3-PR6 で **Session ctor 拡張なしで「夢」を統合できた** ことは設計上の重要な達成。新規機構を増やすたびに Session ctor 引数を増やす(breaking change 連発)パターンを回避でき、`PlayerInfluence` という汎用機構が「使用制限」「継続影響」「未来拡張」の複数文脈で再利用できることを実証。
+
+#### M3 全体の確立パターン
+
+1. **JIT 確定運用**:各 PR 着手時にプロジェクトオーナーから JIT 共有 → ADR-0011 §「M3-PR-N 着手時の JIT 確認項目」+ 仕様 md「本 PR で確定した JIT 項目」セクションで永続化(ADR-0007 §1.4 / §1.5 + ADR-0010 §「Implementation Notes」継承)
+2. **Marker effect 方式**:M3-PR4 で `AssociatableMarkerEffect` を確立 → M3-PR6 で `RequiresMinimumTotalPointsMarkerEffect` / `UsageRestrictionMarkerEffect` 2 件追加 → カード単位の条件 / 制限を effect 列に効率的に表現するパターンが汎用化
+3. **再帰 walk vs 最上位 scan の使い分け**:M3-PR5a `HasKeywordInEffect` 再帰 walk(キーワード)+ M3-PR6 最上位 scan(使用条件 / 制限 marker)の意図的な使い分けが確立
+4. **2 役兼用パターン**:M3-PR5c 「経路 1 / 経路 2 switch」(同一 Action の文脈別解釈)+ M3-PR6 「2 役兼用 marker」(同一 effect の文脈別意味)の設計パターン群
+5. **完成記録 PR の docs-only 純度**:M3-PR5c 学び 4 で確立した「実装 PR 内 fix 同梱」運用が M3-PR6 でも適用(.meta 同梱を fix commit `483d724` で完結)、本完成記録 PR は純粋に docs-only
+6. **トレーサビリティの双方向整合性**:`scripts/check-traceability.sh` で仕様 ID と NUnit Property の整合性を pre-commit で担保、M3 全 PR で違反 0 件
+7. **code-reviewer 指摘件数**:M3-PR2 から PR6 まで「警告 3〜4 / 提案 4〜6 = 計 7〜10 件」で安定、規模に比例して爆発しない品質メンテナンス可能性を実証
+
+#### M3 完成 vs M4 着手の境界
+
+本完成記録 PR マージ後、CLAUDE.md §11「Phase 進捗」は M3 完成 + M4 着手予定に更新する:
+
+- **旧**: `**M3**: **進行中** — ADR-0010 完成、ADR-0011 起票済(M3-PR2 / ... / PR6 完成)、§M3 完成記録(全体)が次の対象`
+- **新**: `**M3**(勝利条件 / 終了処理 + ゲームメカニクス拡張): **完結**(ADR-0010 + ADR-0011、7 PR で完成、NUnit Property 352 件、Session ctor 10 引数化、Marker effect 方式 + 再帰 walk + 2 役兼用パターン確立)`
+- **新**: `**M4**(永続化 / SO 化): 未着手(次の対象)`
+
+#### M4 / M5 に持ち越す項目
+
+`docs/todo.md` の以下のエントリは M4 / M5 着手時に再評価対象:
+
+- N>2 拡張時の `UsageRestrictionMarkerEffect` Influence の `RemainingCount` 再評価(M3-PR6 W-4 反映、Phase 3 候補)
+- `UsageRestrictionMarkerEffect` の 2 役兼用設計の将来分離検討(M3-PR6 P-1 反映、後続カード仕様共有時)
+- `StartGameUseCase` から未使用の `ICardCatalog` 依存削除(M4 SO 化時に再評価)
+- M2 効果追加時の「ドロー総数 ≤ 山札サイズ」確認(M2 完成 PR で再計算、現状余裕 4 枚)
+- Roslynator.Analyzers の導入 or CLAUDE.md §7 訂正(Phase 整備)
+
 ### M3 完成記録の追記タイミング
 
 本 ADR の M3-PR3 完成記録は §直上に追記済。M3-PR4 以降(連想機構 / キーワード能力 / 夢カード)は各 PR 単位で本 ADR §M3-PR-N 完成記録(2026-MM-DD)として追記する(ADR-0007 / ADR-0009 / ADR-0010 §「完成記録の追記タイミング」と同パターン)。M3 全体の完成時に §M3 完成記録(全体)を別途追加、Definition of Done 達成方法を集約する。
