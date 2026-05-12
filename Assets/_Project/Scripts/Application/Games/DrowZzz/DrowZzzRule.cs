@@ -97,9 +97,53 @@ namespace Drowsy.Application.Games.DrowZzz
                 PlayCardAction p => IsLegalPlayCard(session, p),
                 EndTurnAction => session.PhaseState == DrowZzzPhaseState.WaitingForEndTurn,
                 AbandonAction a => IsLegalAbandon(session, a),  // M3-PR3: 放棄(代替ターン行動)、ADR-0011 §2
+                AssociateAction a => IsLegalAssociate(session, a),  // M3-PR4: 連想(特殊ドロー)、ADR-0011 §1
                 _ => throw new NotImplementedException(
                     $"DrowZzzRule.IsLegalMove ({action.GetType().Name}) は M1 範囲では到達不可。将来 DrowZzzAction 派生型を追加する PR で対応する"),
             };
+        }
+
+        // AssociateAction の合法性(M3-PR4、ADR-0011 §1、JIT 確定 2026-05-13):
+        // (1) PhaseState は 3 種すべて(WaitingForDraw / WaitingForPlay / WaitingForEndTurn)で合法
+        //     = 「自ターン中のいつでも」。本メソッドは「現プレイヤー視点で session が WaitingForXxx のいずれか」のみを判定し、
+        //       「呼び出し主体が現プレイヤーか」のチェックは呼び出し側 UseCase が currentPlayerIndex に対して行う設計
+        //       (ADR-0006 §3 / IsLegalMove 一般原則:`session.Players[CurrentPlayerIndex]` が暗黙の actor)。
+        //       相手ターン中(自分が currentPlayer でない場合)に本メソッドが true を返しうるが、それは現プレイヤー視点で
+        //       合法という意味であり、呼び出し主体の判定とは別軸(ADR-0011 §1 / ADR-0006「自ターン中のみ」原則と整合)。
+        // (2) TotalPoints[currentPlayer] >= AssociationThreshold(= 80)
+        // (3) action.Card が catalog に登録されている + 効果列に AssociatableMarkerEffect を含む
+        // 修飾子: `_catalog` を使用するため non-static(cf. `IsLegalAbandon` / `ApplyAbandon` は catalog 不要で `static`)
+        private bool IsLegalAssociate(DrowZzzGameSession session, AssociateAction action)
+        {
+            // (1) PhaseState チェック(全 PhaseState 値で許可、enum 拡張時の防御として switch を使わず in 範囲チェック)
+            //     ※ 現状 DrowZzzPhaseState は 3 値のみだが、将来追加された値も「ターン中いつでも」原則に含めるかは ADR で判断する想定
+            if (session.PhaseState != DrowZzzPhaseState.WaitingForDraw
+                && session.PhaseState != DrowZzzPhaseState.WaitingForPlay
+                && session.PhaseState != DrowZzzPhaseState.WaitingForEndTurn)
+            {
+                return false;
+            }
+            // (2) TotalPoints >= 80
+            int currentIndex = session.GameState.Turn.CurrentPlayerIndex;
+            var currentPlayerId = session.GameState.Players[currentIndex].Id;
+            if (session.TotalPoints(currentPlayerId) < DrowZzzAssociationConstants.AssociationThreshold)
+            {
+                return false;
+            }
+            // (3) action.Card が catalog に登録 + 効果列に AssociatableMarkerEffect を含む
+            if (!_catalog.TryGet(action.Card, out _))
+            {
+                return false;
+            }
+            var effects = _catalog.GetEffects(action.Card);
+            foreach (var e in effects)
+            {
+                if (e is AssociatableMarkerEffect)
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         // AbandonAction の合法性(M3-PR3、ADR-0011 §2):
@@ -244,9 +288,72 @@ namespace Drowsy.Application.Games.DrowZzz
                 PlayCardAction p => ApplyPlayCard(session, p),
                 EndTurnAction => ApplyEndTurn(session),
                 AbandonAction a => ApplyAbandon(session, a),  // M3-PR3: 放棄(代替ターン行動)、ADR-0011 §2
+                AssociateAction a => ApplyAssociate(session, a),  // M3-PR4: 連想(特殊ドロー)、ADR-0011 §1
                 _ => throw new NotImplementedException(
                     $"DrowZzzRule.Apply ({action.GetType().Name}) は M1 範囲では到達不可 (StartGameAction は StartGameUseCase 経由)。将来 DrowZzzAction 派生型を追加する PR で対応する"),
             };
+        }
+
+        // AssociateAction の状態遷移(M3-PR4、ADR-0011 §1):
+        // (1) action.Card を catalog から取得し、現プレイヤーの Hand.Add で手札に追加
+        // (2) PhaseState / Field / Deck / Discard / DDP / SDP / Influences / BedDamages / Outcome は不変
+        //     (連想は「割り込み式」、現フェーズを維持して手札にカードを 1 枚追加するだけ)
+        // 防御的検証は IsLegalAssociate と同じ 3 段(PhaseState / TotalPoints / catalog + marker)を踏襲し、
+        // 違反時は InvalidOperationException を投げる(ADR-0006 §3 / Apply 防御パターン)。
+        // 修飾子: `_catalog` を使用するため non-static(cf. `ApplyAbandon` / `ApplyDrawCard` は catalog 不要で `static`)
+        private DrowZzzGameSession ApplyAssociate(DrowZzzGameSession session, AssociateAction action)
+        {
+            // 防御的 IsLegalMove 検証
+            if (session.PhaseState != DrowZzzPhaseState.WaitingForDraw
+                && session.PhaseState != DrowZzzPhaseState.WaitingForPlay
+                && session.PhaseState != DrowZzzPhaseState.WaitingForEndTurn)
+            {
+                throw new InvalidOperationException(
+                    $"AssociateAction は自ターン中のいずれかのフェーズでのみ合法です (現フェーズ: {session.PhaseState})");
+            }
+            int currentIndex = session.GameState.Turn.CurrentPlayerIndex;
+            var currentPlayer = session.GameState.Players[currentIndex];
+            if (session.TotalPoints(currentPlayer.Id) < DrowZzzAssociationConstants.AssociationThreshold)
+            {
+                throw new InvalidOperationException(
+                    $"AssociateAction は TotalPoints >= {DrowZzzAssociationConstants.AssociationThreshold} でのみ合法です " +
+                    $"(現在: {session.TotalPoints(currentPlayer.Id)}、ADR-0011 §1 JIT 確定 2026-05-13)");
+            }
+            if (!_catalog.TryGet(action.Card, out _))
+            {
+                throw new InvalidOperationException(
+                    $"AssociateAction.Card ({action.Card.Value}) は catalog に登録されていません");
+            }
+            var effects = _catalog.GetEffects(action.Card);
+            bool hasMarker = false;
+            foreach (var e in effects)
+            {
+                if (e is AssociatableMarkerEffect)
+                {
+                    hasMarker = true;
+                    break;
+                }
+            }
+            if (!hasMarker)
+            {
+                throw new InvalidOperationException(
+                    $"AssociateAction.Card ({action.Card.Value}) は連想可能カードではありません " +
+                    "(効果列に AssociatableMarkerEffect が含まれていない、ADR-0011 §1)");
+            }
+
+            // (1) 現プレイヤーの Hand に action.Card を追加(catalog 経由の直接生成、初期山札 / Pile を一切変更しない)
+            var updatedPlayer = currentPlayer with { Hand = currentPlayer.Hand.Add(action.Card) };
+
+            // Players 配列を新しい配列に置換(現プレイヤーのみ差し替え、AbandonAction / DrawCardAction と同パターン)
+            var newPlayers = new PlayerState[session.GameState.Players.Count];
+            for (int i = 0; i < newPlayers.Length; i++)
+            {
+                newPlayers[i] = i == currentIndex ? updatedPlayer : session.GameState.Players[i];
+            }
+            var newGameState = session.GameState with { Players = newPlayers };
+
+            // (2) PhaseState は変更しない(割り込み式、現フェーズ維持)
+            return session with { GameState = newGameState };
         }
 
         // AbandonAction の状態遷移(M3-PR3、ADR-0011 §2):

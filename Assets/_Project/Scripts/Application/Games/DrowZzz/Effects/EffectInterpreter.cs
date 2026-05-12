@@ -82,6 +82,9 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
                 EarlyWinTriggerEffect _ => ApplyEarlyWinTrigger(session),
                 // M3-PR2: ベッド破損率増加(ADR-0011 §3、Target プレイヤーの BedDamages を Percent 増加、上限 100% クランプ)
                 DamageBedEffect damage => ApplyDamageBed(session, damage),
+                // M3-PR4: 連想可能カードを示すマーカー effect(ADR-0011 §1)。判別用に効果列に置かれるだけで、
+                // 評価時は session 不変返却(no-op)。連想で手札に追加する動作は AssociateAction の Apply 経路で行う。
+                AssociatableMarkerEffect _ => session,
 
                 _ => throw new NotImplementedException(
                     $"EffectInterpreter.Apply ({effect.GetType().Name}) は本実装範囲では到達不可。" +
