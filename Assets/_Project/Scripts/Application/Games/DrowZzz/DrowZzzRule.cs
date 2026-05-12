@@ -98,6 +98,8 @@ namespace Drowsy.Application.Games.DrowZzz
                 EndTurnAction => session.PhaseState == DrowZzzPhaseState.WaitingForEndTurn,
                 AbandonAction a => IsLegalAbandon(session, a),  // M3-PR3: 放棄(代替ターン行動)、ADR-0011 §2
                 AssociateAction a => IsLegalAssociate(session, a),  // M3-PR4: 連想(特殊ドロー)、ADR-0011 §1
+                CounterAction c => IsLegalCounter(session, c),  // M3-PR5b: 反撃、ADR-0011 §4.3
+                PassCounterAction => session.PhaseState == DrowZzzPhaseState.WaitingForCounterResponse,  // M3-PR5b: 反撃応答スキップ
                 _ => throw new NotImplementedException(
                     $"DrowZzzRule.IsLegalMove ({action.GetType().Name}) は M1 範囲では到達不可。将来 DrowZzzAction 派生型を追加する PR で対応する"),
             };
@@ -115,8 +117,10 @@ namespace Drowsy.Application.Games.DrowZzz
         // 修飾子: `_catalog` を使用するため non-static(cf. `IsLegalAbandon` / `ApplyAbandon` は catalog 不要で `static`)
         private bool IsLegalAssociate(DrowZzzGameSession session, AssociateAction action)
         {
-            // (1) PhaseState チェック(全 PhaseState 値で許可、enum 拡張時の防御として switch を使わず in 範囲チェック)
-            //     ※ 現状 DrowZzzPhaseState は 3 値のみだが、将来追加された値も「ターン中いつでも」原則に含めるかは ADR で判断する想定
+            // (1) PhaseState チェック:自ターン中のフェーズ 3 値のみ許可(ADR-0011 §1 / ADR-0006「自ターン中のみ」原則)
+            //     M3-PR5b で WaitingForCounterResponse を追加したが、これは「相手ターン中の反撃応答フェーズ」のため
+            //     連想(自ターン中行動)は不可。本排他リストは明示的に WaitingForCounterResponse を除外する形で書く
+            //     (W-2 反映 2026-05-13:enum 4 値時代に対応、設計意図を明示)。
             if (session.PhaseState != DrowZzzPhaseState.WaitingForDraw
                 && session.PhaseState != DrowZzzPhaseState.WaitingForPlay
                 && session.PhaseState != DrowZzzPhaseState.WaitingForEndTurn)
@@ -183,21 +187,23 @@ namespace Drowsy.Application.Games.DrowZzz
             //  - KeywordedEffect (Instinct なし): Inner も walk(nested KeywordedEffect 対応)
             var targetCard = currentHand.Cards[action.CardIndex];
             var effects = _catalog.GetEffects(targetCard);
-            if (HasInstinctKeyword(effects))
+            if (HasKeywordInEffects(effects, Keyword.Instinct))
             {
                 return false;
             }
             return true;
         }
 
-        // Instinct キーワード検出ヘルパー(M3-PR5a、ADR-0011 §4.2):
-        // 効果列を再帰的に walk して、KeywordedEffect で Keyword.Instinct を含むものを探す。
+        // 汎用キーワード検出ヘルパー(M3-PR5a で `HasInstinctKeyword` 専用、M3-PR5b で汎用化、
+        // ADR-0011 §4 / M3-PR5a code-reviewer P-3 反映):
+        // 効果列を再帰的に walk して、KeywordedEffect で指定 keyword を含むものを探す。
         // 既存 wrapper effect(TimeOfDayBranchEffect / ChoiceEffect)の nest にも対応。
-        private static bool HasInstinctKeyword(IReadOnlyList<IEffect> effects)
+        // M3-PR5a: Instinct(放棄機構)/ M3-PR5b: Counter(相手手札判定)/ Frenzy(target 判定)で共通利用。
+        private static bool HasKeywordInEffects(IReadOnlyList<IEffect> effects, Keyword keyword)
         {
             for (int i = 0; i < effects.Count; i++)
             {
-                if (HasInstinctKeyword(effects[i]))
+                if (HasKeywordInEffect(effects[i], keyword))
                 {
                     return true;
                 }
@@ -205,26 +211,26 @@ namespace Drowsy.Application.Games.DrowZzz
             return false;
         }
 
-        // 単一 IEffect 再帰判定:KeywordedEffect で Instinct を持つか、ラッパー effect の inner に含まれるか。
+        // 単一 IEffect 再帰判定:KeywordedEffect で指定 keyword を持つか、ラッパー effect の inner に含まれるか。
         // top-level の `_catalog.GetEffects` リスト + ラッパー内部の効果列の両方を 1 つのロジックで扱う。
-        private static bool HasInstinctKeyword(IEffect effect)
+        private static bool HasKeywordInEffect(IEffect effect, Keyword keyword)
         {
             switch (effect)
             {
                 case KeywordedEffect kw:
-                    if (kw.HasKeyword(Keyword.Instinct))
+                    if (kw.HasKeyword(keyword))
                     {
                         return true;
                     }
                     // Inner も再帰 walk(nested KeywordedEffect 対応、例:KeywordedEffect([Frenzy], KeywordedEffect([Instinct], _)))
-                    return HasInstinctKeyword(kw.Inner);
+                    return HasKeywordInEffect(kw.Inner, keyword);
                 case TimeOfDayBranchEffect tod:
-                    // 夜効果と朝効果のどちらに Instinct があっても「カードに Instinct が含まれる」とみなす
-                    return HasInstinctKeyword(tod.NightEffects) || HasInstinctKeyword(tod.MorningEffects);
+                    // 夜効果と朝効果のどちらに該当 keyword があっても「カードに含まれる」とみなす
+                    return HasKeywordInEffects(tod.NightEffects, keyword) || HasKeywordInEffects(tod.MorningEffects, keyword);
                 case ChoiceEffect c:
                     for (int i = 0; i < c.Branches.Count; i++)
                     {
-                        if (HasInstinctKeyword(c.Branches[i]))
+                        if (HasKeywordInEffects(c.Branches[i], keyword))
                         {
                             return true;
                         }
@@ -232,7 +238,7 @@ namespace Drowsy.Application.Games.DrowZzz
                     return false;
                 default:
                     // 他の effect(AdjustSdp / DrawCard / DamageBed / Influence 系 / EarlyWinTrigger /
-                    // AssociatableMarker)は内部に effect を持たないため、Instinct 判定の対象外
+                    // AssociatableMarker)は内部に effect を持たないため、keyword 判定の対象外
                     return false;
             }
         }
@@ -351,6 +357,8 @@ namespace Drowsy.Application.Games.DrowZzz
                 EndTurnAction => ApplyEndTurn(session),
                 AbandonAction a => ApplyAbandon(session, a),  // M3-PR3: 放棄(代替ターン行動)、ADR-0011 §2
                 AssociateAction a => ApplyAssociate(session, a),  // M3-PR4: 連想(特殊ドロー)、ADR-0011 §1
+                CounterAction c => ApplyCounter(session, c),  // M3-PR5b: 反撃、ADR-0011 §4.3
+                PassCounterAction => ApplyPassCounter(session),  // M3-PR5b: 反撃応答スキップ
                 _ => throw new NotImplementedException(
                     $"DrowZzzRule.Apply ({action.GetType().Name}) は M1 範囲では到達不可 (StartGameAction は StartGameUseCase 経由)。将来 DrowZzzAction 派生型を追加する PR で対応する"),
             };
@@ -450,7 +458,7 @@ namespace Drowsy.Application.Games.DrowZzz
             }
             // M3-PR5a: Instinct を含むカードを捨て対象として指定した場合は illegal(ADR-0011 §4.2)
             var instinctTarget = currentPlayer.Hand.Cards[action.CardIndex];
-            if (HasInstinctKeyword(_catalog.GetEffects(instinctTarget)))
+            if (HasKeywordInEffects(_catalog.GetEffects(instinctTarget), Keyword.Instinct))
             {
                 throw new InvalidOperationException(
                     $"AbandonAction の CardIndex ({action.CardIndex}) は Instinct キーワードを含むカード ({instinctTarget.Value}) を指しています。" +
@@ -636,7 +644,178 @@ namespace Drowsy.Application.Games.DrowZzz
                     currentSession = _interpreter.Apply(currentSession, effect, context);
                 }
             }
+
+            // M3-PR5b: PlayCardAction 後の PhaseState 分岐(ADR-0011 §4.3.3、JIT 確定 2026-05-13 候補 (i) 採用):
+            //  - 相手プレイヤーの手札に Counter キーワード持ち効果列を含むカードが 1 枚以上 → WaitingForCounterResponse 遷移
+            //  - 0 枚 → WaitingForEndTurn(従来通り、既存テスト破壊回避)
+            // currentSession の PhaseState を再判定して上書き(効果評価後の最終 PhaseState を決定)
+            // Outcome が設定済(EarlyWinTriggerEffect 等で勝利確定)の場合は遷移しない(終了済 session はそのまま返却)
+            if (!currentSession.IsTerminated && currentSession.PhaseState == DrowZzzPhaseState.WaitingForEndTurn)
+            {
+                // counterPlayerIndex の命名を IsLegalCounter / ApplyCounter と統一(P-1 反映 2026-05-13)
+                int counterPlayerIndex = currentIndex == 0 ? 1 : 0;
+                if (counterPlayerIndex < currentSession.GameState.Players.Count)
+                {
+                    var counterPlayerHand = currentSession.GameState.Players[counterPlayerIndex].Hand;
+                    if (HasCounterCardInHand(counterPlayerHand))
+                    {
+                        currentSession = currentSession with { PhaseState = DrowZzzPhaseState.WaitingForCounterResponse };
+                    }
+                }
+            }
             return currentSession;
+        }
+
+        // 相手プレイヤーの手札に Counter キーワード持ち効果列を含むカードがあるか(M3-PR5b、ADR-0011 §4.3.3):
+        // Hand 内の各 CardId について catalog から効果列を取得し、HasKeywordInEffects(_, Counter) で判定。
+        // 1 枚でも見つかれば true、なければ false(後者は従来の WaitingForEndTurn 遷移を維持、既存テスト破壊回避)。
+        // 修飾子: `_catalog` を使用するため non-static(P-2 反映、cf. HasKeywordInEffects / HasKeywordInEffect は
+        // catalog 非依存で static)
+        private bool HasCounterCardInHand(Hand hand)
+        {
+            for (int i = 0; i < hand.Count; i++)
+            {
+                var effects = _catalog.GetEffects(hand.Cards[i]);
+                if (HasKeywordInEffects(effects, Keyword.Counter))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // CounterAction の合法性(M3-PR5b、ADR-0011 §4.3 / JIT 確定 2026-05-13):
+        // (1) PhaseState == WaitingForCounterResponse
+        // (2) action.Counter が **反撃側プレイヤー(相手 counterPlayerIndex = 1 - currentIndex)** の手札に存在
+        //     (W-1 反映 2026-05-13:WaitingForCounterResponse 中の currentPlayerIndex は元の PlayCard 側プレイヤーを指す。
+        //      反撃を打つのは「currentPlayer の相手」で、N=2 想定で一意決定する)
+        // (3) action.Counter の効果列に Counter キーワードを含む
+        // (4) action.Target が Field.Cards[0](直近プレイ)
+        // (5) action.Target の効果列に Frenzy を含まない(JIT 確定 2026-05-13:Frenzy vs Counter は illegal-move)
+        private bool IsLegalCounter(DrowZzzGameSession session, CounterAction action)
+        {
+            if (session.PhaseState != DrowZzzPhaseState.WaitingForCounterResponse)
+            {
+                return false;
+            }
+            int currentIndex = session.GameState.Turn.CurrentPlayerIndex;
+            // current player は「相手のターン中に反撃する側」。N=2 想定では PlayCard を打ったのは「currentIndex とは別の側」だが、
+            // 本実装では PlayCard 後にターン交代せず PhaseState のみ WaitingForCounterResponse に遷移しているため、
+            // CounterAction を打つのは依然として「currentPlayerIndex のプレイヤー以外」ではなく、
+            // ADR-0011 §4.3.3 を踏まえて「反撃応答中は相手プレイヤーが action 主体」と解釈する。
+            // 簡単化:CounterAction の Counter は **どちらの手札から取り出すか** を明示的にする設計を採らず、
+            // 「Counter カードを持つプレイヤー(= 相手プレイヤー、N=2 で一意)」の手札を参照する。
+            int counterPlayerIndex = currentIndex == 0 ? 1 : 0;
+            if (counterPlayerIndex >= session.GameState.Players.Count)
+            {
+                return false;
+            }
+            var counterHand = session.GameState.Players[counterPlayerIndex].Hand;
+            if (!counterHand.Contains(action.Counter))
+            {
+                return false;
+            }
+            // (3) Counter カードに Counter キーワードあり
+            var counterEffects = _catalog.GetEffects(action.Counter);
+            if (!HasKeywordInEffects(counterEffects, Keyword.Counter))
+            {
+                return false;
+            }
+            // (4) Target は Field 先頭(直近プレイ、ADR-0006 §M1-PR5 補足 AddTop)
+            var field = session.GameState.Field;
+            if (field.Count == 0 || !field.Cards[0].Equals(action.Target))
+            {
+                return false;
+            }
+            // (5) Target の効果列に Frenzy を含まない(Frenzy は反撃を受けない、ADR-0011 §4.5)
+            var targetEffects = _catalog.GetEffects(action.Target);
+            if (HasKeywordInEffects(targetEffects, Keyword.Frenzy))
+            {
+                return false;
+            }
+            return true;
+        }
+
+        // CounterAction の状態遷移(M3-PR5b、ADR-0011 §4.3 / JIT 確定 2026-05-13):
+        // (1) 反撃側プレイヤー(N=2 で currentIndex の相手側)の手札から action.Counter を Remove → Discard へ
+        // (2) Field 先頭(action.Target)を Remove → Discard へ(無効化セマンティクス C、JIT 確定 2026-05-13)
+        // (3) PhaseState → WaitingForEndTurn(currentIndex は変更せず、元のプレイヤーのターン進行に戻る)
+        // 元カード Target の効果は「既に Apply 済」だが、ADR-0010 / M3-PR5b 範囲では「効果無効化」は
+        // 「Field から Discard に移し、effect 履歴は変更しない」(M3-PR5c で `PendingCounteredEffects` 経由の
+        // 遡及発動を実装する際に effect 履歴を遡る設計だが、本 PR では未実装、ADR-0011 §4.4)
+        private DrowZzzGameSession ApplyCounter(DrowZzzGameSession session, CounterAction action)
+        {
+            // 防御的 IsLegalMove 検証(IsLegalCounter と同じ 5 段)
+            if (session.PhaseState != DrowZzzPhaseState.WaitingForCounterResponse)
+            {
+                throw new InvalidOperationException(
+                    $"CounterAction は WaitingForCounterResponse フェーズでのみ合法です (現フェーズ: {session.PhaseState})");
+            }
+            int currentIndex = session.GameState.Turn.CurrentPlayerIndex;
+            int counterPlayerIndex = currentIndex == 0 ? 1 : 0;
+            if (counterPlayerIndex >= session.GameState.Players.Count)
+            {
+                throw new InvalidOperationException(
+                    $"CounterAction は N=2 想定で動作します (Players.Count={session.GameState.Players.Count})");
+            }
+            var counterPlayer = session.GameState.Players[counterPlayerIndex];
+            if (!counterPlayer.Hand.Contains(action.Counter))
+            {
+                throw new InvalidOperationException(
+                    $"CounterAction の Counter ({action.Counter.Value}) は反撃側プレイヤーの手札に含まれません");
+            }
+            if (!HasKeywordInEffects(_catalog.GetEffects(action.Counter), Keyword.Counter))
+            {
+                throw new InvalidOperationException(
+                    $"CounterAction の Counter ({action.Counter.Value}) は Counter キーワード持ち効果列を含みません");
+            }
+            var field = session.GameState.Field;
+            if (field.Count == 0 || !field.Cards[0].Equals(action.Target))
+            {
+                throw new InvalidOperationException(
+                    $"CounterAction の Target ({action.Target.Value}) は Field 先頭ではありません");
+            }
+            if (HasKeywordInEffects(_catalog.GetEffects(action.Target), Keyword.Frenzy))
+            {
+                throw new InvalidOperationException(
+                    $"CounterAction の Target ({action.Target.Value}) は Frenzy キーワード持ち効果列を含むため反撃不可です(ADR-0011 §4.5)");
+            }
+
+            // (1) 反撃側プレイヤーの手札から Counter カードを Remove → Discard へ
+            var updatedCounterPlayer = counterPlayer with { Hand = counterPlayer.Hand.Remove(action.Counter) };
+            // (2) Field 先頭の Target カードを Draw で取り出し → Discard へ
+            //     (Pile に任意位置 Remove API はなく、IsLegalCounter で Field.Cards[0] == Target を検証済のため Draw で安全)
+            var (drawnTarget, newField) = field.Draw();
+            var newDiscard = session.GameState.Discard.AddTop(drawnTarget).AddTop(action.Counter);
+            // Players 配列の差し替え(反撃側のみ)
+            var newPlayers = new PlayerState[session.GameState.Players.Count];
+            for (int i = 0; i < newPlayers.Length; i++)
+            {
+                newPlayers[i] = i == counterPlayerIndex ? updatedCounterPlayer : session.GameState.Players[i];
+            }
+            var newGameState = session.GameState with
+            {
+                Players = newPlayers,
+                Field = newField,
+                Discard = newDiscard,
+            };
+            return session with
+            {
+                GameState = newGameState,
+                PhaseState = DrowZzzPhaseState.WaitingForEndTurn,
+            };
+        }
+
+        // PassCounterAction の状態遷移(M3-PR5b、ADR-0011 §4.3.3):
+        // PhaseState を WaitingForEndTurn に遷移するのみ(他状態すべて不変、相手のターン進行を継続)
+        private static DrowZzzGameSession ApplyPassCounter(DrowZzzGameSession session)
+        {
+            if (session.PhaseState != DrowZzzPhaseState.WaitingForCounterResponse)
+            {
+                throw new InvalidOperationException(
+                    $"PassCounterAction は WaitingForCounterResponse フェーズでのみ合法です (現フェーズ: {session.PhaseState})");
+            }
+            return session with { PhaseState = DrowZzzPhaseState.WaitingForEndTurn };
         }
 
         // EndTurnAction の状態遷移:

@@ -132,4 +132,61 @@ namespace Drowsy.Application.Games.DrowZzz
             init => _card = value ?? throw new ArgumentNullException(nameof(value));
         }
     }
+
+    /// <summary>
+    /// 反撃(Counter)アクション。M3-PR5b で導入(ADR-0011 §4.3)。
+    /// 相手プレイヤーが直前にプレイした <see cref="Target"/> カードに対し、本プレイヤーが <see cref="Counter"/> カード
+    /// (効果列に <see cref="Drowsy.Application.Games.DrowZzz.Effects.Keyword.Counter"/> を含む)を使って反撃する。
+    /// </summary>
+    /// <param name="Counter">反撃のためにプレイする現プレイヤーの手札カード(Counter キーワード持ち効果列を含む)</param>
+    /// <param name="Target">無効化対象の相手プレイヤーがプレイした Field 上のカード</param>
+    /// <remarks>
+    /// JIT 確定 2026-05-13(本 PR で確定):
+    /// <list type="bullet">
+    /// <item><b>効果無効化セマンティクス</b>: (C) target カードを捨て札(Discard)へ移動。プレイ済だが効果は走らず、
+    /// カードは捨て札に行く。</item>
+    /// <item><b>Frenzy vs Counter</b>: target カードの効果列に <see cref="Drowsy.Application.Games.DrowZzz.Effects.Keyword.Frenzy"/> を
+    /// 含む KeywordedEffect がある場合、<see cref="DrowZzzRule.IsLegalMove"/> で false(illegal-move で不可)。</item>
+    /// </list>
+    /// <para>
+    /// 合法フェーズは <see cref="DrowZzzPhaseState.WaitingForCounterResponse"/> のみ
+    /// (ADR-0011 §4.3.3 で確定した「(i) WaitingForCounterResponse PhaseState 追加」採用、JIT 確定 2026-05-13)。
+    /// </para>
+    /// <para>
+    /// 「反撃の反撃」+ 元カード遡及発動(ADR-0011 §4.4)は本 PR(M3-PR5b)範囲外、**M3-PR5c で別途実装**。
+    /// 「Counter キーワード持ち効果の PlayCardAction 経路 skip」(ADR-0011 §4.3.1 自ターン通常プレイで Counter 非付与の
+    /// 効果のみ発動)も本 PR 範囲外、別 PR で対応。
+    /// </para>
+    /// </remarks>
+    public sealed record CounterAction(CardId Counter, CardId Target) : DrowZzzAction
+    {
+        // null 防御の二重ガード(PlayCardAction.Card / AssociateAction.Card と同パターン)
+        private readonly CardId _counter = Counter ?? throw new ArgumentNullException(nameof(Counter));
+        private readonly CardId _target = Target ?? throw new ArgumentNullException(nameof(Target));
+
+        /// <summary>反撃のためにプレイする現プレイヤーの手札カード。</summary>
+        public CardId Counter
+        {
+            get => _counter;
+            init => _counter = value ?? throw new ArgumentNullException(nameof(value));
+        }
+
+        /// <summary>無効化対象の相手プレイヤーがプレイした Field 上のカード。</summary>
+        public CardId Target
+        {
+            get => _target;
+            init => _target = value ?? throw new ArgumentNullException(nameof(value));
+        }
+    }
+
+    /// <summary>
+    /// 反撃応答スキップ(Pass)アクション。M3-PR5b で導入(ADR-0011 §4.3.3)。
+    /// <see cref="DrowZzzPhaseState.WaitingForCounterResponse"/> で「反撃しない」を明示的に宣言し、
+    /// <see cref="DrowZzzPhaseState.WaitingForEndTurn"/> に遷移する(相手のターン進行を継続)。
+    /// </summary>
+    /// <remarks>
+    /// `WaitingForCounterResponse` フェーズで唯一合法な「進行 action」(<see cref="CounterAction"/> 以外)。
+    /// 本 action 自体は session 状態を PhaseState 遷移以外変更しない(手札 / Field / DP / 影響 / Outcome すべて不変)。
+    /// </remarks>
+    public sealed record PassCounterAction : DrowZzzAction;
 }
