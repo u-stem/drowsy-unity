@@ -980,8 +980,15 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         {
             // Given(TurnNumber=42 → Round 21 後手フェーズ完了直前、CurrentPlayerIndex=1)
             //   後手 EndTurn 後に TurnNumber=43、Round=22、CurrentPlayerIndex=0 → Round 22 到達検出
-            //   p1: SDP=10、p2: SDP=50 → p1 が低スコアで勝者
+            //   NewSession のデフォルト FDP は { p1: 0, p2: 10 } で TotalPoints に non-zero 差分を入れるため
+            //   本テストでは FDP も 0/0 に上書きし、TotalPoints の差分を SDP のみに依存させる
+            //   p1: SDP=10、p2: SDP=50 → TotalPoints p1=10 / p2=50 → p1 が低スコアで勝者
             var rule = NewRule();
+            var fdp = new Dictionary<PlayerId, int>
+            {
+                [PlayerId.Of("p1")] = 0,
+                [PlayerId.Of("p2")] = 0,
+            };
             var sdp = new Dictionary<PlayerId, int>
             {
                 [PlayerId.Of("p1")] = 10,
@@ -991,7 +998,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 phase: DrowZzzPhaseState.WaitingForEndTurn,
                 turnNumber: 42,
                 currentPlayerIndex: 1);
-            session = session with { SecondDrowsyPoints = sdp };
+            session = session with { FirstDrowsyPoints = fdp, SecondDrowsyPoints = sdp };
             // When
             var next = rule.Apply(session, new EndTurnAction());
             // Then
@@ -1002,7 +1009,14 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_Round21最終フェーズで両者同点_When_EndTurnでRound22到達_Then_OutcomeはDraw()
         {
             // Given(両者同点 SDP=10、ADR-0010 §7 tiebreaker なし)
+            //   NewSession のデフォルト FDP は { p1: 0, p2: 10 } で同点にならないため、FDP も 0/0 に上書き。
+            //   TotalPoints p1=0+0+10=10、p2=0+0+10=10 で完全同点 → DrawOutcome
             var rule = NewRule();
+            var fdp = new Dictionary<PlayerId, int>
+            {
+                [PlayerId.Of("p1")] = 0,
+                [PlayerId.Of("p2")] = 0,
+            };
             var sdp = new Dictionary<PlayerId, int>
             {
                 [PlayerId.Of("p1")] = 10,
@@ -1012,7 +1026,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 phase: DrowZzzPhaseState.WaitingForEndTurn,
                 turnNumber: 42,
                 currentPlayerIndex: 1);
-            session = session with { SecondDrowsyPoints = sdp };
+            session = session with { FirstDrowsyPoints = fdp, SecondDrowsyPoints = sdp };
             // When
             var next = rule.Apply(session, new EndTurnAction());
             // Then
