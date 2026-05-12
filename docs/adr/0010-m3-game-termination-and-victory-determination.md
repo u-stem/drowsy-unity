@@ -209,6 +209,10 @@ private static DrowZzzGameSession ApplyEarlyWinTrigger(DrowZzzGameSession sessio
 | `DrowZzzRule.ApplyPlayCard` で個別判定(effect record を作らない) | 「カード効果は effect record で表現」の ADR-0007 §1 設計と矛盾、新規効果種別ごとに rule が肥大化 |
 | Domain 層に `EarlyWinTriggerEffect` を置く | DrowZzz 固有の概念(他ゲームに転用しない)、Application 層配置で Domain ゲーム非依存(ADR-0002)を維持 |
 
+#### §5 の発動条件は ADR-0011 §7 で拡張(本 ADR を覆さず文脈追加)
+
+ADR-0011(M3 詳細拡張、2026-05-12 起票)§7 で、`EarlyWinTriggerEffect` を発火させるためのゲーム文脈が拡張される:本 §5 の API(夜 + 持ち点 ≥ 100 で `Outcome = WinnerOutcome` 設定)はそのまま維持しつつ、「夢」カードを **連想で引いて + 次の自分のターン以降に + 夜効果としてプレイ + FDS ≥ 100** という多段階の発動経路が追加される。本 ADR は ADR-0011 を Superseded by にせず、効果 record 単体の評価ロジックを定義する基盤として継続有効。詳細は ADR-0011 §7 を参照。
+
 ### 6. Round 22 への遷移ブロック(IsLegalMove 拡張)
 
 ゲーム終了後の `IsLegalMove` は **全 Action 種別に対して `false`** を返す:
