@@ -565,9 +565,84 @@ JIT 確定済(本 PR 同梱):
 - 連想条件「FDS 80 超」と使用条件「FDS 100 以上」の境界(「超」vs「以上」の混在意図)
 - 「夢」が初期山札に含まれるか / 連想専用カードか
 
+### M3-PR2 完成記録(2026-05-12、ベッド破損機構 + DamageBedEffect)
+
+**完成 PR**: PR #45 `feat(app): ベッド破損機構 + DamageBedEffect を実装 (M3-PR2)`(merged `2494e73`)。本 ADR §3 で確定したベッド破損率の状態保持と、自フェーズ開始時の SDP マイナス計算の最初の実装。
+
+#### Definition of Done 達成項目(本 ADR §3 で確定した仕様の最初の実装)
+
+| スコープ項目 | 達成状況 | 備考 |
+| ---- | ---- | ---- |
+| `DrowZzzBedConstants` L2 const 集約クラス新設 | ✓ | `BedDamageRatePerSdp = 5`(JIT 確定「5% につき -1」)/ `MinBedDamagePercent = 0` / `MaxBedDamagePercent = 100`、`DrowZzzClockConstants` / `DdpPoolConstants` / `DrowZzzVictoryConstants` と同パターン |
+| `DrowZzzGameSession.BedDamages` プロパティ追加(9 引数 ctor 化、5 度目の breaking change)| ✓ | `IReadOnlyDictionary<PlayerId, int>`、cross-field 検証(キー集合 = Players)+ 範囲検証(0〜100% で `ArgumentException`)、Equals 順序非依存マルチセット同値 + GetHashCode(seed 4)、DZ-198 |
+| `DrowZzzRule.ApplyEndTurn` 自フェーズ開始時のベッド破損 SDP マイナス計算 | ✓ | private static `ApplyBedDamageToCurrentPlayer`、新 current player の `BedDamages / 5`(整数除算)を SDP から減算、0% / 1〜4% は no-op、DZ-197 |
+| 順序保証(ADR-0011 §5)の最先頭にベッドダメージステップを配置 | ✓ | ベッド破損 → DDP 抽選(M2-PR4)→ 影響 Tick(M2-PR5)→ Outcome 設定(M3-PR1)の順 |
+| `DamageBedEffect(SdpTarget Target, int Percent)` 効果 record 新設 | ✓ | 5 の正の倍数検証(`Percent <= 0` / `Percent % 5 != 0` で `ArgumentException`)、`with { Percent = ... }` 経由も init setter で同検証、DZ-193 / DZ-194 |
+| `EffectInterpreter` で `DamageBedEffect` 評価 | ✓ | 対象 `BedDamages` を `Percent` 増加 + `MaxBedDamagePercent`(100%)で上限クランプ、DZ-195 / DZ-196 |
+| `StartGameUseCase` で `BedDamages` 0% 初期化 | ✓ | 全プレイヤーが「破損 0% のベッド」からスタート |
+| 既存 11 テストファイルへの `bedDamages` 機械挿入 | ✓ | Python 機械挿入で 59 箇所、M2-PR5 / M3-PR1 で確立した「機械挿入 + keyword 引数」パターン継続 |
+
+#### 仕様 ID / NUnit 増加
+
+- 仕様 ID 新規採番:
+  - **DZ-193〜DZ-196**: `DamageBedEffect`(`effects/damage-bed-effect.md`)
+  - **DZ-197**: 自フェーズ開始時 SDP マイナス計算(`bed-damage.md`、`DrowZzzRule.ApplyEndTurn`)
+  - **DZ-198**: `BedDamages` プロパティ(値保持 / null / cross-field / 負値 / 100超 / Equals 寄与)
+- NUnit Property: **+21 件 → 累計 312 件**
+  - 新規ファイル `DamageBedEffectTests`(11 件)
+  - `DrowZzzRuleTests` +4 件(DZ-197)
+  - `DrowZzzGameSessionTests` +6 件(DZ-198)
+
+#### 本 PR で確定した ADR-0011 §3 内の JIT 確定ポイント
+
+- 破損率増加トリガー = `DamageBedEffect` 効果 record(M3-PR2 で新設、JIT 確定済)
+- ダメージ計算式 = `bedDamage / 5`(整数除算、`DrowZzzBedConstants.BedDamageRatePerSdp = 5`)
+- 破損率の増加幅 = 常に 5 の正の倍数(record 検証で強制)
+- 上限クランプ = `MaxBedDamagePercent`(100%)
+- 自フェーズ開始時のダメージは新 current player にのみ適用(EndTurn 後の rotate 先)
+
+#### code-reviewer subagent 反映(警告 4 / 提案 4 → 6 件反映、2 件 Skip)
+
+警告(本 PR 内反映):
+
+- **W-1**: `DrowZzzGameSessionTests` に DZ-198 専用 6 テストを正式追加(機械挿入だけでは欠落)
+- **W-2**: `EffectInterpreter.cs` のコメント分断を整理(`ResolveTargetPlayerId` 前の説明文を意味的に連結)
+- **W-3**: `DrowZzzRuleTests.NewSession` に `bedDamages` オプション引数追加(`ddp` / `influences` と同パターン)
+- **W-4**: テスト名「p1のEndTurn後にp1にローテート」→「p1のEndTurnでp2がcurrentになる」(誤読防止)
+
+提案(軽微反映):
+
+- **P-1**: `DamageBedEffect.ValidatePercent` の paramName 固定挙動をコメント補足
+- **P-4**: `DamageBedEffectTests` で `EmptyDdpPool` フィールドを採用
+
+提案(別 PR 候補で Skip):
+
+- P-2: `bedDamages` インライン辞書 59 箇所のリファクタ(`ZeroBedDamages()` ヘルパー化)
+- P-3: 仕様文書の EARS 日英混在の統一
+
+#### M3-PR2 進行中の学び
+
+##### 学び 1: code-reviewer の早期検出 — DZ-198 テストの完全欠落
+
+機械挿入(既存テストへの `bedDamages: { ... }` 追加)を「DZ-198 のテスト追加」と誤認していたが、code-reviewer subagent の W-1 で完全欠落を検出。テスト数の整合性(PR description との照合)はレビュー観点として有効と再確認。
+
+##### 学び 2: 5 度目の breaking change パターンの確立
+
+`DrowZzzGameSession` の ctor 引数拡張パターンが完全に確立:
+
+| PR | ctor 引数数 | 追加要素 |
+| ---- | ---- | ---- |
+| M2-PR3 | 3 → 4 | SDP |
+| M2-PR4 | 4 → 6 | DDP / DdpPool |
+| M2-PR5 | 6 → 7 | Influences |
+| M3-PR1 | 7 → 8 | Outcome |
+| **M3-PR2** | **8 → 9** | **BedDamages** |
+
+機械挿入パターン(M2-PR5 `Inf()` ヘルパー伝播 → M3-PR1 `outcome: null` → M3-PR2 `bedDamages: { ... }`)で既存テストの修正は最小化されている。今後の M3-PR3 / PR4 / PR5 でも ctor 拡張があれば同パターン継続。
+
 ### M3 完成記録の追記タイミング
 
-本 ADR の §M3-PR2〜PR6 完成記録は、各 PR 単位で本 ADR §M3-PR-N 完成記録(2026-MM-DD)として直前に追記する(ADR-0007 / ADR-0009 / ADR-0010 §「完成記録の追記タイミング」と同パターン)。M3 全体の完成時に §M3 完成記録(全体)を別途追加、Definition of Done 達成方法を集約する。
+本 ADR の M3-PR2 完成記録は §直上に追記済。M3-PR3 以降(放棄機構 / 連想機構 / キーワード能力 / 夢カード)は各 PR 単位で本 ADR §M3-PR-N 完成記録(2026-MM-DD)として追記する(ADR-0007 / ADR-0009 / ADR-0010 §「完成記録の追記タイミング」と同パターン)。M3 全体の完成時に §M3 完成記録(全体)を別途追加、Definition of Done 達成方法を集約する。
 
 ### 要件 ID prefix(M3 範囲)
 

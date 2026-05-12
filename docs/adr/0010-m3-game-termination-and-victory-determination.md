@@ -434,9 +434,54 @@ public static class DrowZzzVictoryConstants
 
 M3-PR1 着手時に最新採番状況を `grep -hroE "\b(APP|DZ|CFG)-[0-9]+\b" docs/specs/ | sort -u | tail` で再確認、連番継続。
 
+### M3-PR1 完成記録(2026-05-12、ゲーム終了判定 + 勝者決定 + 早期勝利 + 引き分け仕様)
+
+**完成 PR**: PR #42 `feat(app): IGameRule.IsTerminated/GetWinner + 早期勝利 + 引き分け仕様を実装 (M3-PR1)`(merged `a1bf50c`)+ 関連 hot-fix PR #43 `fix(test): Round 21 完了テストの FDP デフォルト依存を解消`(merged `d744bd6`)。
+
+#### Definition of Done 達成項目(本 ADR §1〜§9 で確定した仕様の最初の実装)
+
+| スコープ項目 | 達成状況 | 備考 |
+| ---- | ---- | ---- |
+| `IGameRule<TAction, TSession>` に `IsTerminated(TSession) : bool` / `GetWinner(TSession) : PlayerId` を追加 | ✓ | 既存最小 API(2 メソッド)→ 4 メソッドに拡張(本 ADR §1)、`GetWinner` 未終了時は `InvalidOperationException` / 引き分け時は `null` |
+| `GameOutcome` 階層を Domain 層に新設(`abstract record` + `WinnerOutcome(PlayerId Winner)` + `DrawOutcome`)| ✓ | Domain 配置(`Drowsy.Domain.Game.GameOutcome.cs`、本 ADR §2)、`WinnerOutcome` は null 防御の二重ガード、`DrawOutcome` はマーカー的派生型 |
+| `DrowZzzGameSession.Outcome` プロパティ追加(8 引数 ctor 化)| ✓ | `GameOutcome?`(null = 未終了)、`IsTerminated` computed プロパティ(本 ADR §3) |
+| 終了トリガー 2 経路の実装 | ✓ | (a) `EarlyWinTriggerEffect` 評価時に `Clock.IsNight && TotalPoints[currentPlayer] >= 100` で `WinnerOutcome` 設定 / (b) `DrowZzzRule.ApplyEndTurn` 内 Round 21 完了検出で `TotalPoints` 比較 → 低い方が勝者 / 等値なら `DrawOutcome`(本 ADR §4) |
+| `EarlyWinTriggerEffect` 効果 record 新設(マーカー記録)| ✓ | フィールドなし `sealed record`、閾値は `DrowZzzVictoryConstants.EarlyWinScoreThreshold = 100` 集約(本 ADR §5 / §9) |
+| Round 22 への遷移ブロック | ✓ | `DrowZzzRule.IsLegalMove` で `session.Outcome != null` は全 Action illegal、`Apply` 側にも防御的 `InvalidOperationException`(本 ADR §6) |
+| 引き分け仕様の確定実装 | ✓ | TotalPoints 等値で `DrawOutcome`、tiebreaker なし(本 ADR §7、ADR-0009 §6 保留分の JIT 確定) |
+| `MaxRoundNumber` の `DrowZzzClockConstants` 維持判断 | ✓ | `IGameConfig.cs` コメント訂正同梱、L2 不変量として constants 単一情報源(本 ADR §8) |
+| `EarlyWinScoreThreshold` を新規 `DrowZzzVictoryConstants` に集約 | ✓ | 勝利条件関連定数の意味グループ分離(本 ADR §9) |
+
+#### 仕様 ID / NUnit 増加
+
+- 仕様 ID 新規採番: GS-101〜GS-105(GameOutcome、Domain 層)/ APP-041〜APP-043(IGameRule M3 拡張)/ DZ-183〜DZ-192(EarlyWinTriggerEffect / DrowZzzRule M3 拡張 / DrowZzzGameSession.Outcome)
+- NUnit Property: **+38 件 →累計 305 件**(M3-PR1 マージ直後)、PR #43 hot-fix で論理修正のみ
+  - 新規 2 ファイル: `GameOutcomeTests`(6 件)/ `EarlyWinTriggerEffectTests`(5 件)
+  - 既存拡張: `IGameRuleTests`(+5)/ `DrowZzzRuleTests`(+10)/ `DrowZzzGameSessionTests`(+5)
+- 既存 11 テストファイルに `outcome: null` を Python 機械挿入(52 箇所、M2-PR5 `Inf()` ヘルパー伝播パターン継続)
+
+#### code-reviewer subagent 反映
+
+- W-1: `DrowZzzGameSessionTests` に DZ-179 専用 5 テスト追加
+- W-2: `ChoiceEffectTests.BuildMinimalSession` の FQN を using で整理
+- W-3: `ApplyInfluenceEffectTests` クラスサマリに DZ-161 追記
+- P-1: `GameOutcome.cs` xmldoc から Application 層 cref を削除
+- P-2: `DrowZzzRule.Apply` に終了済 session への防御的 `InvalidOperationException` 追加
+- P-4: `ApplyEndTurn` コメントで `TurnNumber` / `RoundNumber` を区別明示
+- W-3: discard 変数 `DrawOutcome _` を `DrawOutcome` パターンマッチに簡素化(警告 W-3 別件)
+
+#### hot-fix PR #43(merged `d744bd6`)の経緯
+
+M3-PR1 マージ後の Unity Test Runner で `Given_Round21最終フェーズで両者同点_When_EndTurnでRound22到達_Then_OutcomeはDraw` が失敗:
+
+- 原因: `DrowZzzRuleTests.NewSession` のデフォルト FDP が `{ p1: 0, p2: 10 }` で非ゼロ差分を含み、SDP=10/10 でも TotalPoints が 10 vs 20 で不一致
+- 修正: DZ-190 関連 2 テストで FDP も 0/0 に明示上書き、TotalPoints の差分を SDP のみに依存させる
+
+学び:**ヘルパーのデフォルト値が「非対称な初期状態」を表現している場合、新規テストが「対称性」を前提とするなら明示的に上書きする必要がある**。今後のテスト追加時に意識すべきパターン。
+
 ### M2-M3 完成記録の追記タイミング
 
-本 ADR の M3-PR1〜PR-N 完成記録は、各 PR 単位で本 ADR §M3-PR-N 完成記録(2026-MM-DD)として直前に追記する(ADR-0007 / ADR-0009 §「完成記録の追記タイミング」と同パターン)。M3 全体の完成時に §M3 完成記録(全体)を別途追加、Definition of Done 達成方法を集約する。
+本 ADR の M3-PR1 完成記録は §直上に追記済。M3-PR2 以降の機構実装(ベッド破損 / 放棄 / 連想 / キーワード能力 / 夢カード)は **ADR-0011** §M3-PR-N 完成記録に追記される運用(ADR-0011 §「M3 完成記録の追記タイミング」と整合)。M3 全体の完成時に §M3 完成記録(全体)を別途追加、Definition of Done 達成方法を集約する。
 
 ### Phase 2 の進捗バナー更新(本 ADR 起票 PR では行わない)
 
