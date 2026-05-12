@@ -90,6 +90,10 @@ namespace Drowsy.Infrastructure.Games.DrowZzz
                 {
                     // CardId.Of / CardData ctor / ToCardData が投げる ArgumentException(派生 ArgumentNullException 含む)を catch。
                     // それ以外の例外(OutOfMemoryException 等)は伝播させる(M4-PR1 code-reviewer P-2 反映 2026-05-14)。
+                    // 注:Designer 編集中の即時通知として Debug.LogError(Asset リンク付き)を使う(M4-PR1 JIT 確定 2026-05-14)。
+                    // EditMode テスト(INF-012 `Given_不正attributes_When_Get正常id_Then_他entryは影響なし`)では
+                    // 本経路を意図的に発火させ LogAssert.Expect(LogType.Error, ...) で消費する。Unity Test Framework の仕様により
+                    // Console には赤色エラーログが残るが、これは「テスト成功の証拠」(M4-PR1 JIT 再確定 2026-05-13:Console 赤化は意図通り)。
                     Debug.LogError(
                         $"ScriptableObjectCardCatalog: entry[{i}] (CardIdValue='{entry.CardIdValue}') の構築に失敗しました。skip します: {ex.Message}",
                         this);
@@ -117,6 +121,10 @@ namespace Drowsy.Infrastructure.Games.DrowZzz
                 }
                 if (!seen.Add(entry.CardIdValue))
                 {
+                    // 注:Designer 編集中の即時通知として Debug.LogError(Asset リンク付き)を使う(M4-PR1 JIT 確定 2026-05-14)。
+                    // EditMode テスト(INF-009 `Given_重複CardIdValue_When_OnValidate_Then_DebugLogError`)では
+                    // 本経路を意図的に発火させ LogAssert.Expect(LogType.Error, ...) で消費する。Unity Test Framework の仕様により
+                    // Console には赤色エラーログが残るが、これは「テスト成功の証拠」(M4-PR1 JIT 再確定 2026-05-13:Console 赤化は意図通り)。
                     Debug.LogError(
                         $"ScriptableObjectCardCatalog: entry[{i}] の CardIdValue '{entry.CardIdValue}' が他 entry と重複しています(後勝ち適用)。Designer は重複を解消してください(M4-PR1 JIT 確定 2026-05-14)。",
                         this);

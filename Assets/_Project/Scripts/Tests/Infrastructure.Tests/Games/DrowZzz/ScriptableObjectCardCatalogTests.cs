@@ -19,6 +19,15 @@ namespace Drowsy.Infrastructure.Tests.Games.DrowZzz
     /// テスト経路を構築する。INF-001 / INF-002 / INF-003(Ubiquitous structural)/ INF-008(Optional、M4-PR2 で実装拡張)は
     /// テスト免除。
     /// </summary>
+    /// <remarks>
+    /// <b>Console の赤色 LogError は意図通り</b>(M4-PR1 JIT 再確定 2026-05-13):
+    /// 本 fixture の <c>INF-009</c>(重複 CardIdValue)/ <c>INF-012</c>(不正 attributes 構築失敗)2 テストは
+    /// 本番ロジックの <see cref="Debug.LogError"/> 経路を **意図的に発火** させ、
+    /// <see cref="UnityEngine.TestTools.LogAssert.Expect(UnityEngine.LogType, System.Text.RegularExpressions.Regex)"/>
+    /// で消費する(テストの Pass/Fail には影響しない)。Unity Test Framework の仕様により expect 済の LogError も
+    /// Console には赤色ログとして残るが、これは **「テストが仕様通り Debug.LogError を発火させた証拠」** であり、
+    /// 失敗ではない(`LogAssert.Expect` API ドキュメント参照)。12 テストすべてが PASS する状態が正常。
+    /// </remarks>
     [TestFixture]
     public sealed class ScriptableObjectCardCatalogTests
     {
@@ -111,6 +120,8 @@ namespace Drowsy.Infrastructure.Tests.Games.DrowZzz
         }
 
         // ===== INF-009: OnValidate 重複 ID → Debug.LogError =====
+        // 注:本テストは本番ロジックの Debug.LogError を **意図的に発火** させ LogAssert.Expect で消費する。
+        // Console に赤色 LogError が残るのは Unity Test Framework の仕様で、PASS の証拠(fixture xmldoc 参照)。
 
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "INF-009")]
         public void Given_重複CardIdValue_When_OnValidate_Then_DebugLogError()
@@ -178,6 +189,8 @@ namespace Drowsy.Infrastructure.Tests.Games.DrowZzz
         }
 
         // ===== INF-012: 不正 attributes(構築失敗 entry)の skip =====
+        // 注:本テストは本番ロジックの Debug.LogError を **意図的に発火** させ LogAssert.Expect で消費する。
+        // Console に赤色 LogError が残るのは Unity Test Framework の仕様で、PASS の証拠(fixture xmldoc 参照)。
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "INF-012")]
         public void Given_不正attributes_When_Get正常id_Then_他entryは影響なし()
