@@ -26,5 +26,16 @@ namespace Drowsy.Application.Games.DrowZzz
 
         /// <summary>ベッド破損率の上限(100%、L2)。<see cref="Effects.DamageBedEffect"/> はこの値でクランプ。</summary>
         public const int MaxBedDamagePercent = 100;
+
+        /// <summary>
+        /// 1 回の修繕(<see cref="AbandonChoice.RepairBed"/>)で減少するベッド破損率(20%、L2、ADR-0011 §2 / M3-PR3)。
+        /// 修繕後の値は <see cref="MinBedDamagePercent"/>(0%)で下限クランプ。
+        /// </summary>
+        public const int BedRepairPercent = 20;
+
+        /// <summary>
+        /// <see cref="AbandonChoice.GainSdp"/> で得られる SDP の増分(+5、L2、ADR-0011 §2 / M3-PR3)。
+        /// </summary>
+        public const int AbandonSdpGain = 5;
     }
 }
