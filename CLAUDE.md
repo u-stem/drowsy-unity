@@ -276,7 +276,7 @@ PR 別の完成記録 / 進行中マイルストーンの詳細は **各 ADR の
   - **M1**(ターン進行 + カードプレイ最小骨格): 完成(ADR-0006、PR #22〜#28)
   - **M2**(カード効果): **進行中** — M2-PR1(効果インフラ)/ M2-PR2(Clock)/ M2-PR3(SDP + カード No.01)/ M2-PR4(DDP + 自動抽選)/ M2-PR5(継続影響 + カード No.02)完成、M2-PR6 以降は後続効果カードを JIT 共有で逐次追加
   - **M3**(勝利条件 / 終了処理 + ゲームメカニクス拡張): **完結**(ADR-0010 + ADR-0011、7 PR で完成:M3-PR1 終了判定 / PR2 ベッド破損 / PR3 放棄 / PR4 連想 / PR5a〜c キーワード基盤 + Counter + 反撃の反撃 / PR6 カード No.00「夢」+ Marker 2 種 + 連想後使用制限機構、NUnit Property 352 件、Session ctor 10 引数化、Marker effect 方式 + 再帰 walk vs 最上位 scan + 2 役兼用パターン確立)
-  - **M4**(永続化 / SO 化 + ユーザー設定): **進行中** — ADR-0012 起票済、M4-PR1(ScriptableObjectCardCatalog 骨格 + Infrastructure.Tests 新設)着手予定
+  - **M4**(永続化 / SO 化 + ユーザー設定): **進行中** — ADR-0012 起票済、M4-PR1(ScriptableObjectCardCatalog 骨格 + Infrastructure.Tests 新設)完成、M4-PR2(IEffect の SO 表現方式確定 + AdjustSdpEffect SO 対応)着手予定
   - **M5**(Bootstrap / Presentation): 未着手
 
 ## 12. TODO 追跡
