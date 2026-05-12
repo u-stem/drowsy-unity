@@ -56,6 +56,28 @@
 
 ## 未着手
 
+- [ ] **N>2 拡張時の `UsageRestrictionMarkerEffect` Influence の `RemainingCount` 再評価** `priority: low`
+  - **Why**: M3-PR6 で「夢」カードの使用制限を `PlayerInfluence(OwnPhaseStart, UsageRestrictionMarkerEffect, 1)` で表現した(ADR-0011 §6 JIT 確定 2026-05-14、`DrowZzzRule.ApplyAssociate` 内)。`RemainingCount=1` は N=2 前提で「相手 1 フェーズ経由後の自フェーズ Tick で除去」のセマンティクスを実現する値。N>2 拡張(Phase 3 候補)では「相手 N-1 フェーズ経由」になるため再評価が必要
+  - **Done when**:
+    - N>2 サポート設計が議論される時点で本 TODO を進行中に移動し、選択肢を整理:
+      - 選択 A: `RemainingCount` を `players.Count - 1` で動的化(`DrowZzzRule.ApplyAssociate` 内で計算)
+      - 選択 B: 「次の自フェーズ」を別機構(マーカー Influence + 専用 Tick ロジック)で表現
+      - 選択 C: N=2 固定運用を ADR で明文化(本 TODO は完了済みへ)
+    - 結果がリポジトリに反映済み(実装変更 or ADR 明記 or 本 TODO の Notes に「採用しない理由」記載)
+  - **Related**: [ADR-0011 §6](adr/0011-m3-dream-card-and-game-mechanics-expansion.md)、`Assets/_Project/Scripts/Application/Games/DrowZzz/DrowZzzRule.cs`(`ApplyAssociate` 内 `RemainingCount=1` ハードコード)、M3-PR6 code-reviewer W-4 反映(2026-05-14)
+  - **Notes**: 現スコープ(N=2)では問題なし。Phase 3 で N>2 拡張を本格検討する時点で再評価
+
+- [ ] **`UsageRestrictionMarkerEffect` の 2 役兼用設計の将来分離検討** `priority: low`
+  - **Why**: M3-PR6 で `UsageRestrictionMarkerEffect` を 2 役兼用 marker として導入(ADR-0011 §6):(1) カード効果列内 = `AssociateAction.Apply` の Influence 付与 trigger、(2) `PlayerInfluence.TickEffect` = `IsLegalPlayCard` の illegal フラグ。両文脈で「no-op 評価」という同じ semantics を返すため現時点で矛盾はないが、将来「Influence 側だけ別の semantics(例: Tick 時に追加効果)」が必要になった場合、型分離コストが大きくなる
+  - **Done when**:
+    - 後続カードで「同じマーカーを効果列内 / Influence の両方で使うが、Influence 側だけ追加 semantics を持たせたい」要件が出てきた時点で本 TODO を進行中に移動し、以下を選択:
+      - 選択 A: `UsageRestrictionMarkerEffect`(効果列用)と `UsageRestrictionInfluenceEffect`(Influence 用)に型分離
+      - 選択 B: 2 役兼用を維持し、Tick 時の追加 semantics は別 effect record で表現
+      - 選択 C: 後続カードが現れなければ本 TODO を完了済みへ(2 役兼用維持の理由を Notes に記録)
+    - 結果がリポジトリに反映済み
+  - **Related**: [ADR-0011 §6](adr/0011-m3-dream-card-and-game-mechanics-expansion.md)、`Assets/_Project/Scripts/Application/Games/DrowZzz/Effects/UsageRestrictionMarkerEffect.cs`、M3-PR6 code-reviewer P-1 反映(2026-05-14)
+  - **Notes**: 現スコープでは 2 役兼用で問題なし(xmldoc / spec md / EffectInterpreter コメントの 3 箇所で意図文書化済)。将来のカード仕様共有時に再評価
+
 - [ ] **`StartGameUseCase` から未使用の `ICardCatalog` 依存削除を検討する** `priority: low`
   - **Why**: ADR-0006 §3 で「constructor injection は維持」と判断し、M1-PR3 で `StartGameUseCase` constructor に `ICardCatalog` を含めたが、M1 範囲で実は一切参照していない(`StartGameUseCase.cs` remarks に「本 PR (M1-PR3) では参照しない」と明記)。ADR-0007 §3 で M2-PR1 にて `ICardCatalog<IEffect>` へジェネリック化すると、`StartGameUseCase` が `IEffect` を内部利用しないにもかかわらず型引数を constructor シグネチャに持つ「設計上の割り切り」が発生する。ADR-0006 §3 を覆す変更になるため本 ADR-0007 スコープ外としたが、SO 化(M4)時に `StartGameUseCase` がカード情報を本当に必要としないことが確定したら依存削除を別 PR / 別 ADR で再評価したい
   - **Done when**:

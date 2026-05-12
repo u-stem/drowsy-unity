@@ -290,6 +290,9 @@ namespace Drowsy.Application.Games.DrowZzz
 
         // PlayCardAction の合法性: WaitingForPlay フェーズ + 現プレイヤーの Hand に Card が含まれる
         // + (選択式カードなら) Choice が ChoiceEffect.Branches の範囲内
+        // + (M3-PR6) RequiresMinimumTotalPointsMarkerEffect(T) があれば TotalPoints >= T
+        // + (M3-PR6) UsageRestrictionMarkerEffect が効果列にあり、かつ自プレイヤーの Influences が
+        //   UsageRestrictionMarkerEffect を TickEffect として保有していれば illegal(連想後の使用制限)
         // M2-PR5: Choice 範囲外を illegal-move 化(InfluenceRemovalIndex は範囲外でも graceful no-op するため illegal 化しない)
         private bool IsLegalPlayCard(DrowZzzGameSession session, PlayCardAction action)
         {
@@ -298,13 +301,17 @@ namespace Drowsy.Application.Games.DrowZzz
                 return false;
             }
             int currentIndex = session.GameState.Turn.CurrentPlayerIndex;
+            var currentPlayerId = session.GameState.Players[currentIndex].Id;
             if (!session.GameState.Players[currentIndex].Hand.Contains(action.Card))
             {
                 return false;
             }
-            // Choice 範囲チェック: カードが ChoiceEffect を含む場合、action.Choice が範囲内である必要がある。
-            // 非選択式カードでは Choice は無視され、(action.Choice != 0) でも合法とする(default 0 想定)。
+            // 効果列の最上位 scan を 1 ループで完結させる(ChoiceEffect 範囲チェック +
+            // RequiresMinimumTotalPointsMarkerEffect 閾値チェック + UsageRestrictionMarkerEffect 存在判定を同時に行う)。
+            // M3-PR6 JIT 確定 2026-05-14:walk スコープは「最上位のみ」(wrapper effect の inner には walk しない、
+            // 将来 nested 配置が必要なカードが出てきた時点で再帰化、ADR-0011 §6 / `HasKeywordInEffect` と同方針)。
             var effects = _catalog.GetEffects(action.Card);
+            bool hasUsageRestrictionMarker = false;
             foreach (var e in effects)
             {
                 if (e is ChoiceEffect ce)
@@ -315,8 +322,42 @@ namespace Drowsy.Application.Games.DrowZzz
                     }
                     // 1 カードに ChoiceEffect は高々 1 回想定だが、複数あっても各々を範囲チェック
                 }
+                else if (e is RequiresMinimumTotalPointsMarkerEffect req)
+                {
+                    // 閾値未満なら illegal(ADR-0011 §6、「夢」FDS ≥ 100 等の使用条件)
+                    if (session.TotalPoints(currentPlayerId) < req.Threshold)
+                    {
+                        return false;
+                    }
+                }
+                else if (e is UsageRestrictionMarkerEffect)
+                {
+                    hasUsageRestrictionMarker = true;
+                }
+            }
+            // 連想後使用制限チェック:カード側が marker を持ち、かつ自プレイヤーが該当 Influence を保有している時のみ illegal。
+            // (marker 単独では illegal にしない。Influence 単独でも、対象カードに marker がなければ illegal にしない。
+            // 両者揃った時のみ「このカードは連想後の使用制限中」と判定、ADR-0011 §6 JIT 確定 2026-05-14)
+            if (hasUsageRestrictionMarker
+                && HasUsageRestrictionInfluence(session.Influences[currentPlayerId]))
+            {
+                return false;
             }
             return true;
+        }
+
+        // 自プレイヤーの Influences に UsageRestrictionMarkerEffect を TickEffect として持つものがあるかを判定する。
+        // M3-PR6、ADR-0011 §6:連想で付与された PlayerInfluence(OwnPhaseStart, UsageRestrictionMarkerEffect, 1) の検出経路。
+        private static bool HasUsageRestrictionInfluence(IReadOnlyList<PlayerInfluence> influences)
+        {
+            for (int i = 0; i < influences.Count; i++)
+            {
+                if (influences[i].TickEffect is UsageRestrictionMarkerEffect)
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         /// <summary>
@@ -394,17 +435,25 @@ namespace Drowsy.Application.Games.DrowZzz
                 throw new InvalidOperationException(
                     $"AssociateAction.Card ({action.Card.Value}) は catalog に登録されていません");
             }
+            // M3-PR6: AssociatableMarker と UsageRestrictionMarker を 1 ループで同時検出する。
+            // (M3-PR4 では AssociatableMarker のみだったため単独 scan で十分だったが、本 PR で UsageRestriction を追加した
+            // 際、検出ロジックを 1 ループに合流させてマーカー追加時の誤用パターン(両 scan の片方だけ更新する等)を防ぐ。
+            // M3-PR6 code-reviewer W-3 反映 2026-05-14)
             var effects = _catalog.GetEffects(action.Card);
-            bool hasMarker = false;
+            bool hasAssociatableMarker = false;
+            bool hasUsageRestrictionMarker = false;
             foreach (var e in effects)
             {
                 if (e is AssociatableMarkerEffect)
                 {
-                    hasMarker = true;
-                    break;
+                    hasAssociatableMarker = true;
+                }
+                else if (e is UsageRestrictionMarkerEffect)
+                {
+                    hasUsageRestrictionMarker = true;
                 }
             }
-            if (!hasMarker)
+            if (!hasAssociatableMarker)
             {
                 throw new InvalidOperationException(
                     $"AssociateAction.Card ({action.Card.Value}) は連想可能カードではありません " +
@@ -422,8 +471,41 @@ namespace Drowsy.Application.Games.DrowZzz
             }
             var newGameState = session.GameState with { Players = newPlayers };
 
-            // (2) PhaseState は変更しない(割り込み式、現フェーズ維持)
-            return session with { GameState = newGameState };
+            // (2) M3-PR6:対象カードの効果列に UsageRestrictionMarkerEffect があれば、自プレイヤーに使用制限 Influence を付与する
+            //     (ADR-0011 §6、JIT 確定 2026-05-14:候補 C `PlayerInfluence` 流用で「次の自分のターン以降」を表現)。
+            //     最上位 scan で本 marker を検出 → PlayerInfluence(OwnPhaseStart, UsageRestrictionMarkerEffect, 1) を末尾追加。
+            //     `RemainingCount=1` で次の自フェーズ Tick 時に 0 になり除去される(N=2 想定で相手 1 フェーズ経由後の自フェーズ、
+            //     N>2 拡張時の対応は `docs/todo.md` で追跡、M3-PR6 code-reviewer W-4 反映 2026-05-14)。
+            var newSession = session with { GameState = newGameState };
+            if (hasUsageRestrictionMarker)
+            {
+                var restrictionInfluence = new PlayerInfluence(
+                    InfluenceTrigger.OwnPhaseStart,
+                    new UsageRestrictionMarkerEffect(),
+                    1);
+                var newInfluences = new Dictionary<PlayerId, IReadOnlyList<PlayerInfluence>>(newSession.Influences.Count);
+                foreach (var kv in newSession.Influences)
+                {
+                    if (kv.Key.Equals(currentPlayer.Id))
+                    {
+                        var newList = new PlayerInfluence[kv.Value.Count + 1];
+                        for (int i = 0; i < kv.Value.Count; i++)
+                        {
+                            newList[i] = kv.Value[i];
+                        }
+                        newList[kv.Value.Count] = restrictionInfluence;
+                        newInfluences[kv.Key] = newList;
+                    }
+                    else
+                    {
+                        newInfluences[kv.Key] = kv.Value;
+                    }
+                }
+                newSession = newSession with { Influences = newInfluences };
+            }
+
+            // (3) PhaseState は変更しない(割り込み式、現フェーズ維持)
+            return newSession;
         }
 
         // AbandonAction の状態遷移(M3-PR3、ADR-0011 §2):
