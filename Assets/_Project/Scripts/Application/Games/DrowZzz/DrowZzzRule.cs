@@ -150,8 +150,10 @@ namespace Drowsy.Application.Games.DrowZzz
         // (1) PhaseState == WaitingForPlay(PlayCardAction の代替フェーズ)
         // (2) 手札に 1 枚以上のカード + CardIndex が範囲内
         // (3) AbandonChoice.RepairBed 選択時のみ、現プレイヤーの BedDamages > 0%(JIT 確定 2026-05-13:0% では修繕不可)
-        // 「本能(Instinct)」キーワードによる手札除外は M3-PR5 で追加(本 PR 範囲では未対応)
-        private static bool IsLegalAbandon(DrowZzzGameSession session, AbandonAction action)
+        // (4) M3-PR5a 追加: 対象カードの効果列に Keyword.Instinct を含む KeywordedEffect が含まれていない(ADR-0011 §4.2)
+        // 修飾子: `_catalog` を使用するため non-static(M3-PR5a で Instinct チェックを追加した時点で static → non-static、
+        // cf. `ApplyAbandonGainSdp` / `ApplyAbandonRepairBed` は catalog 不要で static のまま)
+        private bool IsLegalAbandon(DrowZzzGameSession session, AbandonAction action)
         {
             if (session.PhaseState != DrowZzzPhaseState.WaitingForPlay)
             {
@@ -172,7 +174,67 @@ namespace Drowsy.Application.Games.DrowZzz
                     return false;
                 }
             }
+            // M3-PR5a: Instinct キーワードを効果列に含むカードは「捨てる対象」として選択不可(ADR-0011 §4.2)。
+            // 効果列を再帰的に walk:
+            //  - top-level: KeywordedEffect で Instinct を持つ → true
+            //  - TimeOfDayBranchEffect: NightEffects / MorningEffects の両方を walk(「夢」カードの NightEffects 内
+            //    に KeywordedEffect が nest されるパターン、ADR-0011 §6 想定)
+            //  - ChoiceEffect: 全 branch を walk
+            //  - KeywordedEffect (Instinct なし): Inner も walk(nested KeywordedEffect 対応)
+            var targetCard = currentHand.Cards[action.CardIndex];
+            var effects = _catalog.GetEffects(targetCard);
+            if (HasInstinctKeyword(effects))
+            {
+                return false;
+            }
             return true;
+        }
+
+        // Instinct キーワード検出ヘルパー(M3-PR5a、ADR-0011 §4.2):
+        // 効果列を再帰的に walk して、KeywordedEffect で Keyword.Instinct を含むものを探す。
+        // 既存 wrapper effect(TimeOfDayBranchEffect / ChoiceEffect)の nest にも対応。
+        private static bool HasInstinctKeyword(IReadOnlyList<IEffect> effects)
+        {
+            for (int i = 0; i < effects.Count; i++)
+            {
+                if (HasInstinctKeyword(effects[i]))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // 単一 IEffect 再帰判定:KeywordedEffect で Instinct を持つか、ラッパー effect の inner に含まれるか。
+        // top-level の `_catalog.GetEffects` リスト + ラッパー内部の効果列の両方を 1 つのロジックで扱う。
+        private static bool HasInstinctKeyword(IEffect effect)
+        {
+            switch (effect)
+            {
+                case KeywordedEffect kw:
+                    if (kw.HasKeyword(Keyword.Instinct))
+                    {
+                        return true;
+                    }
+                    // Inner も再帰 walk(nested KeywordedEffect 対応、例:KeywordedEffect([Frenzy], KeywordedEffect([Instinct], _)))
+                    return HasInstinctKeyword(kw.Inner);
+                case TimeOfDayBranchEffect tod:
+                    // 夜効果と朝効果のどちらに Instinct があっても「カードに Instinct が含まれる」とみなす
+                    return HasInstinctKeyword(tod.NightEffects) || HasInstinctKeyword(tod.MorningEffects);
+                case ChoiceEffect c:
+                    for (int i = 0; i < c.Branches.Count; i++)
+                    {
+                        if (HasInstinctKeyword(c.Branches[i]))
+                        {
+                            return true;
+                        }
+                    }
+                    return false;
+                default:
+                    // 他の effect(AdjustSdp / DrawCard / DamageBed / Influence 系 / EarlyWinTrigger /
+                    // AssociatableMarker)は内部に effect を持たないため、Instinct 判定の対象外
+                    return false;
+            }
         }
 
         /// <summary>
@@ -360,7 +422,10 @@ namespace Drowsy.Application.Games.DrowZzz
         // (1) 現プレイヤーの手札から CardIndex のカードを除去 → Discard に AddTop
         // (2) Choice に応じて SDP +5 (GainSdp) or BedDamages -20% (RepairBed、下限 0%)
         // (3) PhaseState = WaitingForEndTurn(PlayCardAction と同じフェーズ遷移)
-        private static DrowZzzGameSession ApplyAbandon(DrowZzzGameSession session, AbandonAction action)
+        // (4) M3-PR5a: Instinct を含むカードを CardIndex 対象として指定した場合は InvalidOperationException
+        // 修飾子: `_catalog` を使用するため non-static(IsLegalAbandon と対称、M3-PR5a で static → non-static、
+        // cf. `ApplyAbandonGainSdp` / `ApplyAbandonRepairBed` / `ApplyDrawCard` は catalog 不要で static のまま)
+        private DrowZzzGameSession ApplyAbandon(DrowZzzGameSession session, AbandonAction action)
         {
             // 防御的 IsLegalMove 検証
             if (session.PhaseState != DrowZzzPhaseState.WaitingForPlay)
@@ -382,6 +447,14 @@ namespace Drowsy.Application.Games.DrowZzz
             {
                 throw new InvalidOperationException(
                     $"AbandonChoice.RepairBed は BedDamages > 0% でのみ合法です (現在: {session.BedDamages[currentPlayer.Id]}%、ADR-0011 §2 JIT 確定)");
+            }
+            // M3-PR5a: Instinct を含むカードを捨て対象として指定した場合は illegal(ADR-0011 §4.2)
+            var instinctTarget = currentPlayer.Hand.Cards[action.CardIndex];
+            if (HasInstinctKeyword(_catalog.GetEffects(instinctTarget)))
+            {
+                throw new InvalidOperationException(
+                    $"AbandonAction の CardIndex ({action.CardIndex}) は Instinct キーワードを含むカード ({instinctTarget.Value}) を指しています。" +
+                    "Instinct を含むカードは放棄(捨て対象)として選択できません(ADR-0011 §4.2)");
             }
 
             // (1) 手札から CardIndex のカードを Discard に移動

@@ -85,6 +85,13 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
                 // M3-PR4: 連想可能カードを示すマーカー effect(ADR-0011 §1)。判別用に効果列に置かれるだけで、
                 // 評価時は session 不変返却(no-op)。連想で手札に追加する動作は AssociateAction の Apply 経路で行う。
                 AssociatableMarkerEffect _ => session,
+                // M3-PR5a: キーワード能力を inner effect に付与するラッパー(ADR-0011 §4)。Keywords 自体は判別用属性で
+                // 副作用を持たず、Inner effect を context 込みで再帰的に Apply するだけ。
+                // Instinct は AbandonAction.IsLegalMove で利用、Frenzy / Counter は M3-PR5b 以降で機構化。
+                // 注:本実装は M3-PR5a 範囲で「Counter キーワードを持つ効果が PlayCardAction 経路で評価された場合に
+                // Inner を実行する」暫定挙動を取る。M3-PR5b で PlayCardAction.Apply 側で Counter 付き効果を skip する機構を
+                // 追加した時点で、本 case はそのまま継続(skip 判定は呼び出し側の責務、interpreter は意味論上 Inner を Apply)。
+                KeywordedEffect kw => Apply(session, kw.Inner, context),
 
                 _ => throw new NotImplementedException(
                     $"EffectInterpreter.Apply ({effect.GetType().Name}) は本実装範囲では到達不可。" +

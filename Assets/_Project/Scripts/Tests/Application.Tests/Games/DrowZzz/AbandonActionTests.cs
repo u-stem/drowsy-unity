@@ -225,5 +225,118 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             Assert.Throws<InvalidOperationException>(() =>
                 rule.Apply(session, new AbandonAction(AbandonChoice.RepairBed)));
         }
+
+        // ===== DZ-213: Instinct を含むカードは AbandonAction の CardIndex 対象から除外(M3-PR5a、ADR-0011 §4.2)=====
+
+        // Instinct 効果列を持つカード c1 を catalog に登録した rule(c2 は効果列なし = Instinct なし)
+        private static DrowZzzRule NewRuleWithInstinctOnC1()
+        {
+            var entries = new[]
+            {
+                new KeyValuePair<CardId, CardData>(CardId.Of("c1"), new CardData("instinct card", new Dictionary<string, int>())),
+                new KeyValuePair<CardId, CardData>(CardId.Of("c2"), new CardData("normal card", new Dictionary<string, int>())),
+            };
+            var effects = new[]
+            {
+                new KeyValuePair<CardId, IReadOnlyList<IEffect>>(
+                    CardId.Of("c1"),
+                    new IEffect[]
+                    {
+                        new KeywordedEffect(
+                            new[] { Keyword.Instinct },
+                            new AssociatableMarkerEffect()),
+                    }),
+            };
+            return new DrowZzzRule(new InMemoryCardCatalog(entries, effects), new EffectInterpreter());
+        }
+
+        [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-213")]
+        public void Given_c1がInstinct_CardIndex0_When_IsLegalMove_Then_false()
+        {
+            // c1(Instinct)を捨て対象に指定 → false
+            var rule = NewRuleWithInstinctOnC1();
+            var session = NewSession(handCount: 2);
+            Assert.That(rule.IsLegalMove(session, new AbandonAction(AbandonChoice.GainSdp, CardIndex: 0)), Is.False);
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-213")]
+        public void Given_c1がInstinct_CardIndex1_When_IsLegalMove_Then_true()
+        {
+            // c2(Instinct なし)を捨て対象に指定 → true(catalog に c2 を登録、効果列なし扱い)
+            var rule = NewRuleWithInstinctOnC1();
+            var session = NewSession(handCount: 2);
+            Assert.That(rule.IsLegalMove(session, new AbandonAction(AbandonChoice.GainSdp, CardIndex: 1)), Is.True);
+        }
+
+        [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-213")]
+        public void Given_c1がInstinct_CardIndex0_When_Apply_Then_InvalidOperationException()
+        {
+            var rule = NewRuleWithInstinctOnC1();
+            var session = NewSession(handCount: 2);
+            Assert.Throws<InvalidOperationException>(() =>
+                rule.Apply(session, new AbandonAction(AbandonChoice.GainSdp, CardIndex: 0)));
+        }
+
+        [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-213")]
+        public void Given_ChoiceEffect内にInstinct_When_IsLegalMove_Then_false()
+        {
+            // W-4 反映:ChoiceEffect.Branches の片方に KeywordedEffect([Instinct], _) が nest されているケース
+            // (HasInstinctKeyword の再帰 walk で ChoiceEffect 経路を網羅)
+            var entries = new[]
+            {
+                new KeyValuePair<CardId, CardData>(CardId.Of("c1"), new CardData("choice with instinct branch", new Dictionary<string, int>())),
+                new KeyValuePair<CardId, CardData>(CardId.Of("c2"), new CardData("normal", new Dictionary<string, int>())),
+            };
+            var effects = new[]
+            {
+                new KeyValuePair<CardId, IReadOnlyList<IEffect>>(
+                    CardId.Of("c1"),
+                    new IEffect[]
+                    {
+                        new ChoiceEffect(new IReadOnlyList<IEffect>[]
+                        {
+                            // 選択 0: 通常効果(Instinct なし)
+                            new IEffect[] { new AdjustSdpEffect(SdpTarget.Self, Delta: 1) },
+                            // 選択 1: KeywordedEffect([Instinct], _) を含む
+                            new IEffect[]
+                            {
+                                new KeywordedEffect(new[] { Keyword.Instinct }, new AssociatableMarkerEffect()),
+                            },
+                        }),
+                    }),
+            };
+            var rule = new DrowZzzRule(new InMemoryCardCatalog(entries, effects), new EffectInterpreter());
+            var session = NewSession(handCount: 2);
+            Assert.That(rule.IsLegalMove(session, new AbandonAction(AbandonChoice.GainSdp, CardIndex: 0)), Is.False);
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-213")]
+        public void Given_TimeOfDayBranch内にInstinct_When_IsLegalMove_Then_false()
+        {
+            // TimeOfDayBranchEffect の NightEffects に KeywordedEffect([Instinct], _) が nest されているケース
+            // (ADR-0011 §6「夢」カードの想定パターン、再帰 walk で検出される)
+            var entries = new[]
+            {
+                new KeyValuePair<CardId, CardData>(CardId.Of("c1"), new CardData("nested instinct", new Dictionary<string, int>())),
+                new KeyValuePair<CardId, CardData>(CardId.Of("c2"), new CardData("normal", new Dictionary<string, int>())),
+            };
+            var effects = new[]
+            {
+                new KeyValuePair<CardId, IReadOnlyList<IEffect>>(
+                    CardId.Of("c1"),
+                    new IEffect[]
+                    {
+                        new TimeOfDayBranchEffect(
+                            nightEffects: new IEffect[]
+                            {
+                                new KeywordedEffect(new[] { Keyword.Instinct }, new AssociatableMarkerEffect()),
+                            },
+                            morningEffects: new IEffect[0]),
+                    }),
+            };
+            var rule = new DrowZzzRule(new InMemoryCardCatalog(entries, effects), new EffectInterpreter());
+            var session = NewSession(handCount: 2);
+            Assert.That(rule.IsLegalMove(session, new AbandonAction(AbandonChoice.GainSdp, CardIndex: 0)), Is.False);
+        }
     }
 }
