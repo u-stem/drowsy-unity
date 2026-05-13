@@ -39,6 +39,15 @@ pre-commit:
       glob: "Assets/_Project/**/*.cs"
       run: dotnet format whitespace --verify-no-changes drowsy-unity.slnx --include {staged_files}
 
+    # C# 型解決 / コンパイルエラーの機械検出(CS0246 / CS1614 / Roslyn Analyzer 警告 等)
+    # Unity 6 が生成する .csproj は dotnet build と完全互換(M4-PR2 で実証 2026-05-13)。
+    # `--no-restore` で初回以降の高速化(NuGet 復元は初回のみ)、約 4 秒で全 6 csproj をビルド。
+    # Unity Editor 起動なしで CS エラー / SerializeReference 型不整合 / Roslyn Analyzer error / warning を検出。
+    # テスト実行は Unity Test Runner が必須なため別経路(scripts/run-unity-tests.sh、手動 / CI)。
+    dotnet-build:
+      glob: "Assets/_Project/**/*.cs"
+      run: dotnet build drowsy-unity.slnx --nologo --verbosity quiet
+
 commit-msg:
   commands:
     # Conventional Commits 規約検証
