@@ -6,8 +6,11 @@ namespace Drowsy.Application.Games.DrowZzz
     /// (ADR-0008 / ADR-0009 で確定)を `RoundNumber` から派生する computed プロパティとして提供する。
     /// </summary>
     /// <param name="RoundNumber">
-    /// ゲーム内ターン番号(1 起点)。<see cref="DrowZzzGameSession.Clock"/> から
-    /// <see cref="DrowZzzGameSession.CurrentRound"/> と同義の値が渡される(ADR-0008 §2、案 X 採用)。
+    /// ゲーム内ターン番号(1 起点)。<see cref="DrowZzzGameSession.Clock"/> プロパティで
+    /// <c>(TurnState.TurnNumber + 1) / 2</c> を評価した値が渡される(ADR-0008 §2、案 X 採用)。
+    /// <see cref="DrowZzzGameSession.CurrentRound"/> は本値の薄いショートカット
+    /// (`docs/todo.md`「`DrowZzzGameSession.CurrentRound` を `Clock.RoundNumber` 経由に整理」
+    /// 2026-05-13 完了で書き換え済)。
     /// </param>
     /// <remarks>
     /// 設計指針(ADR-0008 §1):

@@ -285,21 +285,29 @@ namespace Drowsy.Application.Games.DrowZzz
         }
 
         /// <summary>
-        /// DrowZzz の「ターン (=ラウンド)」を Phase 1 <c>TurnNumber</c> から計算する(N=2 想定)。
-        /// N&gt;2 拡張は Phase 3 候補(ADR-0006 §Negative)。
-        /// </summary>
-        public int CurrentRound => (_gameState.Turn.TurnNumber + 1) / 2;
-
-        /// <summary>
-        /// DrowZzz のゲーム内時計(<see cref="CurrentRound"/> 由来の値オブジェクト)。
+        /// DrowZzz のゲーム内時計。Phase 1 <c>TurnNumber</c> から DrowZzz 用語(ターン =
+        /// ラウンド、N=2 想定)への変換を担う唯一の情報源(ADR-0008 §2 案 X、計算式集約点)。
         /// </summary>
         /// <remarks>
-        /// ADR-0008 §2 で確定した案 X(computed プロパティ採用)。真の単一情報源は
-        /// <c>TurnState.TurnNumber</c> で、<see cref="DrowZzzClock.RoundNumber"/> ≡ <see cref="CurrentRound"/>
-        /// が構造的に保証される(DZ-097)。<c>Equals</c> / <c>GetHashCode</c> での二重カウントは不要。
+        /// 真の単一情報源は <c>TurnState.TurnNumber</c>。本プロパティで
+        /// <c>(TurnNumber + 1) / 2</c> 計算を実行し、以降の <see cref="CurrentRound"/> /
+        /// <see cref="DrowZzzClock.RoundNumber"/> / <c>Hour</c> / <c>Minute</c> はすべて
+        /// 本プロパティ経由で参照される。N&gt;2 拡張は Phase 3 候補(ADR-0006 §Negative)。
         /// 詳細は <c>docs/specs/games/drowzzz/clock.md</c> を参照。
         /// </remarks>
-        public DrowZzzClock Clock => new DrowZzzClock(CurrentRound);
+        public DrowZzzClock Clock => new DrowZzzClock((_gameState.Turn.TurnNumber + 1) / 2);
+
+        /// <summary>
+        /// DrowZzz の「ターン (=ラウンド)」を返すショートカット。実体は
+        /// <see cref="Clock"/>.<see cref="DrowZzzClock.RoundNumber"/> への委譲。
+        /// </summary>
+        /// <remarks>
+        /// 後方互換のため Property API として維持。計算式の真の単一情報源は
+        /// <see cref="Clock"/> プロパティ。設計判断は ADR-0008 §3 +
+        /// `docs/todo.md`「`DrowZzzGameSession.CurrentRound` を `Clock.RoundNumber`
+        /// 経由に整理」(2026-05-13 完了済み)を参照。
+        /// </remarks>
+        public int CurrentRound => Clock.RoundNumber;
 
         /// <summary>
         /// DrowZzzGameSession を生成する。

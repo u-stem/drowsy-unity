@@ -25,7 +25,7 @@ ADR-0006 §2 の決定に基づき、DrowZzz の Application 層型骨格を `Dr
 ## 事象駆動要件 (Event-driven)
 
 - [DZ-006] When `DrowZzzGameSession` is constructed with valid arguments, the property values shall be retained.
-- [DZ-010] When `DrowZzzGameSession.CurrentRound` is computed (N=2), the value shall equal `(GameState.Turn.TurnNumber + 1) / 2`.
+- [DZ-010] When `DrowZzzGameSession.CurrentRound` is computed (N=2), the value shall equal `Clock.RoundNumber`, where `Clock.RoundNumber` itself equals `(GameState.Turn.TurnNumber + 1) / 2`. <!-- 来歴: 2026-05-13 `Clock` プロパティに計算式を集約し `CurrentRound` を `Clock.RoundNumber` 経由のショートカットに整理(`docs/todo.md` 同名 TODO 完了反映)-->
 - [DZ-036] When two `DrowZzzGameSession` instances have field values that are value-equal (with `FirstDrowsyPoints` insertion order possibly different but key-value pairs identical), `Equals` shall return `true`.
 - [DZ-012] When `DrowZzzRule.IsLegalMove` is called with a non-`StartGameAction` action in M1-PR3 stage, it shall throw `NotImplementedException`(本格実装は M1-PR4〜PR6 で各 Action 種別ごとに段階的に追加;`StartGameAction` 分岐は `setup.md` DZ-034 を参照).
 - [DZ-013] When `DrowZzzRule.Apply` is called in skeleton stage, it shall throw `NotImplementedException`.
