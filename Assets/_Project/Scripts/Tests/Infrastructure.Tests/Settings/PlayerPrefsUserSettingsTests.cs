@@ -397,5 +397,20 @@ namespace Drowsy.Infrastructure.Tests.Settings
             // When / Then
             Assert.Throws<ObjectDisposedException>(() => settings.Save());
         }
+
+        // ===== USR-027: Dispose の冪等性(二重呼び出しで例外なし、2026-05-13 カバレッジ補完) =====
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "USR-027")]
+        public void Given_既Dispose_When_2回目Dispose_Then_冪等で例外なし()
+        {
+            // Given
+            var settings = new PlayerPrefsUserSettings();
+            settings.Dispose();
+
+            // When / Then(`if (_disposed) return` 冪等性、二度目以降は no-op で例外なし、
+            // 内部 ReactiveProperty<T>.Dispose() を二度呼ばないことで R3 内部の二重 Dispose
+            // 例外を回避する設計、xmldoc remarks に明記済)
+            Assert.DoesNotThrow(() => settings.Dispose());
+        }
     }
 }
