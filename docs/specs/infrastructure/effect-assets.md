@@ -102,7 +102,54 @@ internal CardEntryAsset(
 
 ### `ToDomain()` 失敗(`ArgumentException` 系)の skip
 
-- [INF-019] [Optional] When an `EffectAsset.ToDomain()` call throws `ArgumentException`(派生 `ArgumentNullException` / `ArgumentOutOfRangeException` 含む)、the catalog's `RebuildCache` shall **skip** that element + call `Debug.LogError(message, this)`. The other elements and other entries shall be processed unaffected(`InMemoryCardCatalog` / 既存 `RebuildCache` の entry skip パターンと整合)。**全要素が ToDomain 失敗した場合も空配列を返す**(INF-018 と同じ `BuildEffectsFromAssets` の `list.Count == 0` フォールバック、M4-PR2 code-reviewer P-1 反映 2026-05-13)。本 PR(M4-PR2)範囲では `AdjustSdpEffectAsset.ToDomain` が `ArgumentException` を投げる自然な経路がないためテスト免除([Optional])。M4-PR3 で `KeywordedEffect` 等の wrapper effect の `Inner` null 経路が導入された時点で本格テスト追加(M4-PR3 で再評価、`docs/todo.md` で追跡:M4-PR2 code-reviewer P-2 反映 2026-05-13)。
+- [INF-019] When an `EffectAsset.ToDomain()` call throws `ArgumentException`(派生 `ArgumentNullException` / `ArgumentOutOfRangeException` 含む)、the catalog's `RebuildCache` shall **skip** that element + call `Debug.LogError(message, this)`. The other elements and other entries shall be processed unaffected(`InMemoryCardCatalog` / 既存 `RebuildCache` の entry skip パターンと整合)。**全要素が ToDomain 失敗した場合も空配列を返す**(INF-018 と同じ `BuildEffectsFromAssets` の `list.Count == 0` フォールバック、M4-PR2 code-reviewer P-1 反映 2026-05-13)。**M4-PR3 で `KeywordedEffectAsset.Inner` null 経路を介した本格テストを追加し Optional マーカーを解除**(`docs/todo.md` の INF-019 TODO を完了済へ移動、M4-PR3 着手記録 2026-05-13)。
+
+## M4-PR3 追加要件(残り 11 派生型 SO 対応 + wrapper 再帰 + 中間型 2 件)
+
+### 中間型 (Ubiquitous structural)
+
+- [INF-020] [Ubiquitous] `PlayerInfluenceAsset` shall be a `[Serializable] sealed class` with `InfluenceTrigger _trigger`, `[SerializeReference] EffectAsset _tickEffect`, `int _remainingCount` fields, declaring `PlayerInfluence ToDomain()`, in the same namespace.
+- [INF-021] When `PlayerInfluenceAsset(trigger, tickEffectAsset, remainingCount).ToDomain()` is called, the method shall return `new PlayerInfluence(trigger, tickEffectAsset.ToDomain(), remainingCount)`(`TickEffect` の再帰 ToDomain と `PlayerInfluence` ctor 防御に値を渡す)。
+- [INF-022] [Ubiquitous] `EffectBranchAsset` shall be a `[Serializable] sealed class` with `[SerializeReference] EffectAsset[] _effects` field, declaring `IReadOnlyList<EffectAsset> Effects` null-safe property(`ChoiceEffectAsset` の 2 次元配列を中間型で表現するための回避策、Unity が 2D 配列を直接シリアライズ不可)。
+
+### 非 wrapper 8 派生型(Ubiquitous structural + ToDomain 値伝達)
+
+| Asset 派生型 | Ubiquitous | ToDomain 値伝達 |
+| ---- | ---- | ---- |
+| `DrawCardEffectAsset` | [INF-023] | [INF-024] |
+| `ApplyInfluenceEffectAsset` | [INF-025] | [INF-026] |
+| `RemoveInfluenceEffectAsset` | [INF-027] | [INF-028] |
+| `EarlyWinTriggerEffectAsset` | [INF-029] | [INF-030] |
+| `DamageBedEffectAsset` | [INF-031] | [INF-032] |
+| `AssociatableMarkerEffectAsset` | [INF-033] | [INF-034] |
+| `RequiresMinimumTotalPointsMarkerEffectAsset` | [INF-035] | [INF-036] |
+| `UsageRestrictionMarkerEffectAsset` | [INF-037] | [INF-038] |
+
+- [INF-023] [Ubiquitous] `DrawCardEffectAsset` shall be a `[Serializable] sealed class` inheriting from `EffectAsset` with `SdpTarget _target` and `int _count` fields.
+- [INF-024] When `DrawCardEffectAsset(target, count).ToDomain()` is called, the method shall return `new DrawCardEffect(target, count)`(値伝達)。
+- [INF-025] [Ubiquitous] `ApplyInfluenceEffectAsset` shall be a `[Serializable] sealed class` inheriting from `EffectAsset` with `SdpTarget _target` and `PlayerInfluenceAsset _influence` fields.
+- [INF-026] When `ApplyInfluenceEffectAsset(target, influenceAsset).ToDomain()` is called, the method shall return `new ApplyInfluenceEffect(target, influenceAsset.ToDomain())`(`Influence` の再帰 ToDomain)。
+- [INF-027] [Ubiquitous] `RemoveInfluenceEffectAsset` shall be a `[Serializable] sealed class` inheriting from `EffectAsset` with `SdpTarget _target` field.
+- [INF-028] When `RemoveInfluenceEffectAsset(target).ToDomain()` is called, the method shall return `new RemoveInfluenceEffect(target)`。
+- [INF-029] [Ubiquitous] `EarlyWinTriggerEffectAsset` shall be a `[Serializable] sealed class` inheriting from `EffectAsset` with no fields(marker)。
+- [INF-030] When `EarlyWinTriggerEffectAsset().ToDomain()` is called, the method shall return `new EarlyWinTriggerEffect()`。
+- [INF-031] [Ubiquitous] `DamageBedEffectAsset` shall be a `[Serializable] sealed class` inheriting from `EffectAsset` with `SdpTarget _target` and `int _percent` fields.
+- [INF-032] When `DamageBedEffectAsset(target, percent).ToDomain()` is called, the method shall return `new DamageBedEffect(target, percent)`(`Percent` の 5 の倍数 / 正値検証は record 側)。
+- [INF-033] [Ubiquitous] `AssociatableMarkerEffectAsset` shall be a `[Serializable] sealed class` inheriting from `EffectAsset` with no fields(marker)。
+- [INF-034] When `AssociatableMarkerEffectAsset().ToDomain()` is called, the method shall return `new AssociatableMarkerEffect()`。
+- [INF-035] [Ubiquitous] `RequiresMinimumTotalPointsMarkerEffectAsset` shall be a `[Serializable] sealed class` inheriting from `EffectAsset` with `int _threshold` field.
+- [INF-036] When `RequiresMinimumTotalPointsMarkerEffectAsset(threshold).ToDomain()` is called, the method shall return `new RequiresMinimumTotalPointsMarkerEffect(threshold)`(`Threshold >= 1` は record 側で検証)。
+- [INF-037] [Ubiquitous] `UsageRestrictionMarkerEffectAsset` shall be a `[Serializable] sealed class` inheriting from `EffectAsset` with no fields(marker)。
+- [INF-038] When `UsageRestrictionMarkerEffectAsset().ToDomain()` is called, the method shall return `new UsageRestrictionMarkerEffect()`。
+
+### wrapper 3 派生型(Ubiquitous structural + 再帰 ToDomain)
+
+- [INF-039] [Ubiquitous] `TimeOfDayBranchEffectAsset` shall be a `[Serializable] sealed class` inheriting from `EffectAsset` with `[SerializeReference] EffectAsset[] _nightEffects` and `_morningEffects` fields.
+- [INF-040] When `TimeOfDayBranchEffectAsset(night[], morning[]).ToDomain()` is called, the method shall return `new TimeOfDayBranchEffect(nightDomain[], morningDomain[])` where each domain element is `EffectAsset.ToDomain()` evaluated in declaration order. null 要素は `ArgumentNullException` を投げる(INF-018 の wrapper 内側 null 経路、上位 catalog で graceful skip)。
+- [INF-041] [Ubiquitous] `ChoiceEffectAsset` shall be a `[Serializable] sealed class` inheriting from `EffectAsset` with `[SerializeField] EffectBranchAsset[] _branches` field.
+- [INF-042] When `ChoiceEffectAsset(branches[]).ToDomain()` is called, the method shall return `new ChoiceEffect(IReadOnlyList<IReadOnlyList<IEffect>>)` reconstructed from each `EffectBranchAsset.Effects` element's `ToDomain()`. `Branches.Count >= 2` は record 側で検証、null 要素は wrapper 同様 `ArgumentNullException` で伝播。
+- [INF-043] [Ubiquitous] `KeywordedEffectAsset` shall be a `[Serializable] sealed class` inheriting from `EffectAsset` with `[SerializeField] Keyword[] _keywords` and `[SerializeReference] EffectAsset _inner` fields.
+- [INF-044] When `KeywordedEffectAsset(keywords[], inner).ToDomain()` is called, the method shall return `new KeywordedEffect(keywords, inner.ToDomain())`. `Inner` が null の場合は `ArgumentNullException` を投げる(本経路が **INF-019 の Optional 解除を支える本格テスト** の対象)。
 
 ## 定数依存
 
@@ -132,4 +179,22 @@ internal CardEntryAsset(
 | INF-016 | `Given_SelfMinus5_When_ToDomain_Then_AdjustSdpEffectSelfMinus5` + `Given_Opponent10_When_ToDomain_Then_AdjustSdpEffectOpponent10` | 2 ケース(`SdpTarget.Self` / `Opponent` × `Delta` の値伝達) |
 | INF-017 | `Given_CardEntryに2effect_When_GetEffects_Then_IEffect配列を順序保持で返す` | 順序保証 |
 | INF-018 | `Given_Effects配列にnull要素_When_GetEffects_Then_null要素skip_他要素は影響なし` | SerializeReference null 防御(LogAssert.Expect で Debug.LogError マッチ) |
-| INF-019 | (本 PR 範囲では `AdjustSdpEffectAsset.ToDomain` が ArgumentException を投げる経路がないため future-test 候補 + Optional マーカー、M4-PR3 で wrapper effect の null Inner 経路が増えた時に本格テスト追加) | M4-PR3 で再評価 |
+| INF-019 | `ScriptableObjectCardCatalogTests.Given_KeywordedEffectAssetのInnerがnull_When_GetEffects_Then_skip + LogError` | M4-PR3 で Optional マーカー解除、`KeywordedEffectAsset.Inner` null 経路で本格テスト |
+| INF-020 | (テスト免除: Ubiquitous) | structural |
+| INF-021 | `PlayerInfluenceAssetTests.Given_*_When_ToDomain_Then_PlayerInfluenceを返す` | 値伝達 + 再帰 TickEffect |
+| INF-022 | (テスト免除: Ubiquitous) | structural |
+| INF-023〜INF-037 (奇数番号 8 件) | (テスト免除: Ubiquitous) | 各 sealed class + EffectAsset 継承構造 |
+| INF-024 | `DrawCardEffectAssetTests.Given_*` 2 件 | 値伝達 |
+| INF-026 | `ApplyInfluenceEffectAssetTests.Given_*` 1 件(再帰 PlayerInfluenceAsset) | 値伝達 + 再帰 |
+| INF-028 | `RemoveInfluenceEffectAssetTests.Given_*` 2 件 | 値伝達 |
+| INF-030 | `EarlyWinTriggerEffectAssetTests.Given_*` 1 件 | 値伝達(空) |
+| INF-032 | `DamageBedEffectAssetTests.Given_*` 2 件 | 値伝達(5 の倍数検証は record 側) |
+| INF-034 | `AssociatableMarkerEffectAssetTests.Given_*` 1 件 | 値伝達(空 marker) |
+| INF-036 | `RequiresMinimumTotalPointsMarkerEffectAssetTests.Given_*` 2 件 | 値伝達 |
+| INF-038 | `UsageRestrictionMarkerEffectAssetTests.Given_*` 1 件 | 値伝達(空 marker) |
+| INF-039 | (テスト免除: Ubiquitous) | structural |
+| INF-040 | `TimeOfDayBranchEffectAssetTests.Given_*` 2 件 | 夜・朝 + 再帰 ToDomain |
+| INF-041 | (テスト免除: Ubiquitous) | structural |
+| INF-042 | `ChoiceEffectAssetTests.Given_*` 1 件 | 2 次元再帰 ToDomain(中間型 EffectBranchAsset 経由) |
+| INF-043 | (テスト免除: Ubiquitous) | structural |
+| INF-044 | `KeywordedEffectAssetTests.Given_*` 2 件(値伝達 + Inner null 防御) | 再帰 ToDomain + INF-019 本格化経路 |
