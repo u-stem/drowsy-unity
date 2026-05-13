@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  link.xml: IL2CPP linker による型ストリッピングを防ぐ設定。
+
+  ADR-0012 §7「M4-PR5 着手時の JIT 確認項目」確定:WebGL/IL2CPP (AOT) での
+  Newtonsoft.Json round-trip を保証するため、reflection 経由で利用される
+  Drowsy.Domain / Drowsy.Application / Drowsy.Infrastructure 配下の serialize 対象型を
+  preserve="all" で保持する。
+
+  個別型 preserve ではなく assembly 全体 preserve を採用する理由:
+  - 12 IEffect 派生型 + 中間型 + value object 群を個別列挙するとメンテコスト高い
+  - 本 PR (M4-PR5) で確定した serialize 経路は今後 M5 / Phase 3 でも継続的に拡張される
+  - Domain / Application / Infrastructure 全体のサイズは現在小さく(数十 class)、
+    全 preserve でビルドサイズに与える影響は限定的(Editor 計測 + 必要に応じて M4-PR7 で粒度調整)
+-->
+<linker>
+  <!-- Domain layer: CardId / PlayerId / Pile / Hand / GameState / TurnState / GameOutcome / WinnerOutcome / DrawOutcome 等 -->
+  <assembly fullname="Drowsy.Domain" preserve="all" />
+
+  <!-- Application layer: DrowZzzGameSession / 12 IEffect 派生型 / PlayerInfluence / PendingCounteredEffect / DdpPool 等 -->
+  <assembly fullname="Drowsy.Application" preserve="all" />
+
+  <!-- Infrastructure layer: PersistedSessionV1 DTO / Converter 群(本 link.xml 同居) -->
+  <assembly fullname="Drowsy.Infrastructure" preserve="all" />
+
+  <!-- Newtonsoft.Json: reflection ベース API は IL2CPP で部分的に剥がされる可能性があるため、
+       コア型を preserve する(`com.unity.nuget.newtonsoft-json` は基本的に IL2CPP 動作実績ありで
+       追加 link.xml 不要だが、JsonConverter / JObject 関連の reflection 経路を保証するため明示) -->
+  <assembly fullname="Newtonsoft.Json" preserve="all" />
+</linker>
