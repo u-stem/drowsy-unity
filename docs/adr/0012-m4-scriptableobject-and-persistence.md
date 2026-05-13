@@ -628,6 +628,107 @@ M4-PR2 で発生した 2 件の CS エラー(CS0246 `EffectAsset` 名前解決 /
 
 ADR-0012 §3 で `IEffect` の SO 表現方式を 3 案(a / b / c)で比較し「**初期推奨 (a)**」を明示していたため、M4-PR2 着手時の JIT 確認が「初期推奨で進めて良いか」のシンプルな質問に収まった(2026-05-13 ユーザー JIT 確定 1 問で完了)。ADR-0011 起票時に確立した「初期推奨案を ADR に書く運用」(ADR-0007 §1.5 / ADR-0010 §「Implementation Notes」継承)が本 M4-PR2 でも有効と実証。M4-PR3 以降の JIT 確認(wrapper effect の Inner 表現 / 11 派生型展開分割)でも継承する。
 
+### M4-PR3 完成記録(2026-05-13、残り 11 派生型 EffectAsset + 中間型 2 件)
+
+**完成 PR**: PR #65 `feat(infra): 残り 11 派生型の EffectAsset + 中間型 2 件を実装 (M4-PR3)`(merged `37d5f1c`、1 commit に 13 派生型 / 中間型 + 21 テスト + 仕様 md 拡張を集約、約 987 行)。本 ADR §3 で確定した `IEffect` の SO 表現(案 a)を残り 11 派生型 + wrapper 再帰 + 2 中間型に展開し、**M4-PR4 で既存 3 カードの SO Asset 化を可能にする基盤を完成**。
+
+#### Definition of Done 達成項目(本 ADR §3 / §「M4-PR3 着手時の JIT 確認項目」で確定した仕様の実装)
+
+| スコープ項目 | 達成状況 | 備考 |
+| ---- | ---- | ---- |
+| 中間型 `PlayerInfluenceAsset` 新設 | ✓ | `InfluenceTrigger` + `[SerializeReference] EffectAsset _tickEffect` + `int RemainingCount`、再帰 ToDomain、INF-020 / INF-021 |
+| 中間型 `EffectBranchAsset` 新設 | ✓ | `[SerializeReference] EffectAsset[]`、`ChoiceEffect.Branches` の 2 次元配列を表現(Unity が 2D 配列を直接 serialize できない制約への対応)、INF-022 |
+| 非 wrapper 8 派生型 | ✓ | `DrawCardEffectAsset` / `ApplyInfluenceEffectAsset` / `RemoveInfluenceEffectAsset` / `EarlyWinTriggerEffectAsset` / `DamageBedEffectAsset` / `AssociatableMarkerEffectAsset` / `RequiresMinimumTotalPointsMarkerEffectAsset` / `UsageRestrictionMarkerEffectAsset`、INF-023 〜 INF-038 |
+| wrapper 3 派生型(再帰 ToDomain) | ✓ | `TimeOfDayBranchEffectAsset`(夜・朝 2 配列の再帰 + `ConvertList` DRY) / `ChoiceEffectAsset`(2 次元中間型再帰 + Branches null 防御) / `KeywordedEffectAsset`(`Inner` null 防御で INF-019 本格化を支える)、INF-039 〜 INF-044 |
+| INF-019 Optional 解除 | ✓ | `KeywordedEffectAsset.Inner` null 経路で catalog の `BuildEffectsFromAssets` graceful skip + Debug.LogError を本格テスト化、M4-PR2 持ち越し TODO 完了 |
+| テスト 4 ファイル(21 テスト) | ✓ | `SimpleEffectAssetsTests`(13) / `PlayerInfluenceAssetTests`(2) / `WrapperEffectAssetsTests`(6) / `ScriptableObjectCardCatalogTests` 拡張(INF-019) |
+| 仕様 md 拡張 | ✓ | `effect-assets.md` に INF-020〜044(25 件:Ubiquitous 16 + 通常 EARS 9)+ INF-019 昇格 + トレーサビリティテーブル拡張 |
+| .meta 16 件同梱 | ✓ | Unity Editor Focus 時の Auto-refresh で生成、本実装 commit に同梱(M4-PR2 と異なり 1 commit 完結) |
+
+#### 仕様 ID / NUnit 増加
+
+- 仕様 ID 新規採番(INF-020 〜 INF-044、25 件 + INF-019 昇格):
+  - **INF-020 / 022**:中間型 `PlayerInfluenceAsset` / `EffectBranchAsset` の Ubiquitous structural
+  - **INF-021**:`PlayerInfluenceAsset.ToDomain` 値伝達(再帰 TickEffect 含む)
+  - **INF-023 / 025 / 027 / 029 / 031 / 033 / 035 / 037**:非 wrapper 8 派生型の Ubiquitous structural
+  - **INF-024 / 026 / 028 / 030 / 032 / 034 / 036 / 038**:非 wrapper 8 派生型の `ToDomain()` 値伝達(`ApplyInfluenceEffectAsset` は `PlayerInfluenceAsset` 経由で再帰)
+  - **INF-039 / 041 / 043**:wrapper 3 派生型の Ubiquitous structural
+  - **INF-040 / 042 / 044**:wrapper 3 派生型の `ToDomain()` 再帰 + null 異常系(`TimeOfDayBranchEffectAsset` は夜・朝対称テスト、`ChoiceEffectAsset` は Branches null 要素、`KeywordedEffectAsset` は Inner null)
+  - **INF-019(昇格)**:Optional マーカー解除、`KeywordedEffectAsset.Inner` null 経路で本格テスト追加
+- NUnit Property unique: **+13 件 → 累計 376 件**(テスト件数 +21、Ubiquitous 16 件 + null safe(INF-015 等)はマーカー免除)
+  - 新規ファイル `SimpleEffectAssetsTests`(13) / `PlayerInfluenceAssetTests`(2) / `WrapperEffectAssetsTests`(6) + `ScriptableObjectCardCatalogTests` 拡張(1 件 INF-019)
+
+#### 本 PR で確定した ADR-0012 §「M4-PR3 着手時の JIT 確認項目」(2026-05-13)
+
+| 項目 | 確定内容 |
+| ---- | ---- |
+| wrapper effect の Inner 表現方式 | **`[SerializeReference] EffectAsset[]` で再帰**(`TimeOfDayBranchEffect` / `KeywordedEffect`)、`ChoiceEffect` の 2 次元は中間型 `EffectBranchAsset` 経由 |
+| PR 分割 | **1 PR に 11 派生型まとめて**(M3-PR6 規模で code-reviewer カバー可能、JIT 確定の通り 3a / 3b / 3c 分割は採用せず) |
+| OnValidate での business rule 検証 | **なし**(Application 層に一任、Ports & Adapters の責務分離維持、SO はデータ保持レイヤに徹する) |
+| M4-PR2 持ち越し P-3 / P-4(`EffectAsset.ToDomain` / `CardEntryAsset.Effects` の `internal` 化)| **両方 `public` 維持**(M5 Bootstrap / Presentation 連携での参照可能性、`internal` 化は後退の余地として `docs/todo.md` には残さない) |
+
+不採用案(再確認):
+- 案 (b) `IEffect` 自体を SO 化(Asset 数爆発)
+- 案 (c) JSON 文字列(Designer UX 悪化)
+- `[SerializeReference] IEffect[]` 直接(Application 層への Unity 属性侵入、ADR-0006 §4「Pure C# 哲学」に違反)
+- PR 3 分割(3a / 3b / 3c)(規模管理目的だが M3-PR6 規模で 1 PR カバー可能)
+- OnValidate での business rule 検証(Application 層と二重実装、責務逸脱)
+
+#### code-reviewer subagent 反映(警告 2 / 提案 4 → 6 件すべて反映)
+
+| ID | 種別 | 内容 | 反映 |
+| ---- | ---- | ---- | ---- |
+| W-1 | 警告 | `ChoiceEffectAsset` Branches 内 null 要素の異常系テスト不在(`TimeOfDayBranchEffectAsset` と非対称)| ✓ `WrapperEffectAssetsTests` に対称テスト追加 |
+| W-2 | 警告 | `ChoiceEffectAsset._branches` の `[SerializeField]` vs `[SerializeReference]` 不統一の説明不足 | ✓ docstring に「`EffectBranchAsset` sealed のため `[SerializeField]`、`EffectAsset[]` polymorphic のため `[SerializeReference]`」と根拠コメント追加 |
+| P-1 | 提案 | `DrawCardEffectAsset` の Count 無検証ポリシーが不明確(`DamageBedEffectAsset` との非対称)| ✓ docstring に graceful degradation 意図を明示(engine 側で「引ける分だけ」吸収、ADR-0007 §「山札枯渇」) |
+| P-2 | 提案 | `TimeOfDayBranchEffectAsset` の Abnormal が夜側のみ、朝側未テスト | ✓ `MorningEffects` 内 null 経路の対称テスト追加 |
+| P-3 | 提案 | `SimpleEffectAssetsTests` / `PlayerInfluenceAssetTests` に CS1614 alias コメント不在 | ✓ M4-PR1 慣例の `using Property = ...` + `using UnityEngine;` 根拠コメントを全 3 ファイルで統一 |
+| P-4 | 提案 | `DamageBedEffectAsset` 異常系(Percent 0 / 負値)のユニットテストなし | ✓ 設計方針「Abnormal は INF-019 統合経路で代表」をコメント明示(11 派生型 × 異常系の爆発を抑制) |
+
+#### M4-PR3 進行中の学び
+
+##### 学び 1: Unity Auto-refresh が Editor Focus 時のみ走る仕様
+
+新規 13 ファイル追加後に `dotnet build` pre-commit が CS0246 で失敗。Unity Editor が起動中であっても **VS Code / Terminal を foreground にしている間は `.meta` / `.csproj` が更新されない** ことが判明(Unity 6 default `Auto Refresh = Enabled (When App Has Focus)`、performance trade-off)。Unity Editor を一度 Focus する(クリック / Cmd+Tab)と AssetDatabase scan が走り csproj が即時更新された。
+
+**M4-PR3 で確立した運用**:
+- 新規 .cs 追加後に **Unity Editor を一度 Focus する習慣**(Editor 常駐ワークフローでも明示的な refresh tap が必要)
+- または `bash scripts/refresh-unity-assets.sh`(Editor 閉鎖時、PR #63 で整備済)
+
+user-level memory `unity-auto-refresh-focus-required.md` を新規作成し永続化。CLAUDE.md §7「Editor 常駐 + Auto-refresh が標準」は **「Editor が時々 Focus される前提」** と読むのが正確、と運用ルール化。M4-PR4 以降の Asset 追加でも再利用される雛形。
+
+##### 学び 2: `[SerializeReference] EffectAsset[]` で wrapper 再帰の確立
+
+`TimeOfDayBranchEffect` / `KeywordedEffect` / `ChoiceEffect` の wrapper 効果の Inner 表現を `[SerializeReference] EffectAsset[]`(Single Asset 再帰参照)で実現。Unity 6 の `[SerializeReference]` は polymorphic serialization を提供し、`EffectAsset` abstract base から派生 sealed class へのインスタンス参照を Inspector で polymorphic 編集可能化できる。
+
+`KeywordedEffect.Inner` のような単一参照は `[SerializeReference] EffectAsset _inner`、配列参照は `[SerializeReference] EffectAsset[]` の 2 パターンを使い分け。再帰の深さ制限は Unity SerializeReference 側でなく Application 層の record 構造(`KeywordedEffect(IEffect Inner)` で nested 可能)に従う。
+
+##### 学び 3: 中間型(`EffectBranchAsset`)で 2 次元配列を回避する Unity Serialize 制約への対応
+
+`ChoiceEffect.Branches`(`IReadOnlyList<IReadOnlyList<IEffect>>` 2 次元 list)を Unity Inspector で表現する場合、**Unity は配列の配列(2 次元配列)を直接 serialize できない** 制約に遭遇。`EffectBranchAsset` という中間型(`sealed class` + `[SerializeReference] EffectAsset[]`)を導入することで、外側 `EffectBranchAsset[]`(`[SerializeField]`)+ 内側 `EffectAsset[]`(`[SerializeReference]`)の 2 層構造で 2 次元を実現。
+
+設計上の論点:
+- 中間型 `EffectBranchAsset` を **`sealed` に保つ** ことで外側 `[SerializeField]` を維持(polymorphic 不要)
+- 内側の `EffectAsset[]` は abstract base 配列のため `[SerializeReference]` 必須
+- 属性不統一の見た目を解消するため docstring で「sealed 維持の根拠」を明示(code-reviewer W-2 反映)
+
+##### 学び 4: 1 PR に 11 派生型をまとめる規模管理(M3-PR6 と同等の規模)
+
+本 PR は 34 ファイル / 987 行(.meta 16 件含む)で M3-PR6(1295 行)に次ぐ規模。code-reviewer 指摘件数(警告 2 / 提案 4 = 計 6 件)は M3-PR6(警告 4 / 提案 6 = 計 10 件)を **下回る**:理由は
+
+1. M4-PR2 で `EffectAsset` 基底 + `AdjustSdpEffectAsset` の設計を検証済、本 PR はパターン追従
+2. wrapper 3 件・非 wrapper 8 件で同じ「`internal` ctor + `ToDomain()` + xmldoc」パターン
+3. PR #63 の `dotnet build` pre-commit で CS エラーを事前検出、レビュー前に解消可能化
+
+「初期推奨案を ADR に書く」+「M4-PR2 で 1 派生型先行検証」+「M4-PR3 で残り展開」の 3 段階構造が規模管理として有効と実証。M4-PR4(既存 3 カードの SO Asset 化)でも同パターン継承予定。
+
+### Phase 2 の進捗バナー更新(本完成記録 PR 同梱)
+
+CLAUDE.md §11「Phase 進捗」M4 行を以下に更新:
+
+- 旧: `**M4**(永続化 / SO 化 + ユーザー設定): **進行中** — ADR-0012 起票済、M4-PR1 / M4-PR2 完成、CLI 機械検知レイヤ整備(PR #63、dotnet build pre-commit + Unity CLI script)、M4-PR3(残り 11 派生型 SO 対応 + wrapper effect の Inner 表現方式確定)着手予定`
+- 新: `**M4**(永続化 / SO 化 + ユーザー設定): **進行中** — ADR-0012 起票済、M4-PR1 / M4-PR2 / M4-PR3 完成(SO 表現基盤完成:`EffectAsset` 基底 + 11 派生型 + 中間型 2 件 + wrapper 再帰 + INF-019 graceful skip 経路)、CLI 機械検知レイヤ整備(PR #63)、M4-PR4(既存 3 カード No.00 / No.01 / No.02 の SO Asset 化)着手予定`
+
 ### M4 完成記録の追記タイミング
 
 本 ADR の M4-PR1〜PR7 完成記録は各 PR 単位で本 ADR §M4-PR-N 完成記録(2026-MM-DD)として追記する(ADR-0007 / ADR-0010 / ADR-0011 §「完成記録の追記タイミング」と同パターン)。M4 全体の完成時に §M4 完成記録(全体)を別途追加、Definition of Done 達成方法を集約する。
