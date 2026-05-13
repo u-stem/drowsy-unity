@@ -125,3 +125,27 @@
       | SetSeVolume(0.5)      |
       | SetLanguage("ja")     |
       | Save()                |
+
+  @USR-005
+  シナリオアウトライン: LanguageCodes.IsSupported の機械検証 (正常系・Small)
+    もし LanguageCodes.IsSupported(<code>) を呼ぶ
+    ならば 戻り値は <expected> を返す
+
+    例:
+      | code      | expected |
+      | "ja"      | true     |
+      | "en"      | true     |
+      | "zh"      | false    |
+      | "JA"      | false    |
+      | "ja-JP"   | false    |
+      | ""        | false    |
+      | null      | false    |
+
+  @USR-027
+  シナリオ: Dispose の冪等性(二重呼び出しで例外なし) (正常系・Small)
+    # 機械検証は「例外なく完了する」のみ(`Assert.DoesNotThrow`)。
+    # 「内部 ReactiveProperty<T> を再 Dispose しない」は実装側の `if (_disposed) return`
+    # ガードによる構造的保証で、Gherkin Then ステップとしては観測しない(EARS 要件文 USR-027 で表明)。
+    前提 PlayerPrefs 空状態の PlayerPrefsUserSettings を Dispose 済
+    もし さらに Dispose() を呼ぶ
+    ならば 例外なく完了する

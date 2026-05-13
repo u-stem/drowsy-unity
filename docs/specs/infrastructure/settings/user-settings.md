@@ -12,7 +12,7 @@ ADR-0012 §8「`IUserSettings` + PlayerPrefs(サブスコープ、M4-PR6)」+ M4
 - [USR-002] [Ubiquitous] The `PlayerPrefsUserSettings` shall use the key prefix `drowsy.*` (`drowsy.bgm` / `drowsy.se` / `drowsy.lang`).(構造的保証、INF-014 / USR-006 系で間接検証)
 - [USR-003] [Ubiquitous] Default values shall be `BgmVolume` = 0.5, `SeVolume` = 0.5, `Language` = `"ja"`.(構造的保証、USR-007 / USR-008 / USR-009 で検証)
 - [USR-004] [Ubiquitous] `BgmVolume` and `SeVolume` shall be in the range [0.0, 1.0].(Setter clamp + ctor default 復帰で保証、USR-015 / USR-016 系で検証)
-- [USR-005] [Ubiquitous] Supported language codes shall be `"ja"` and `"en"`.(`LanguageCodes.Supported` で構造的保証)
+- [USR-005] Supported language codes shall be `"ja"` and `"en"`, and `LanguageCodes.IsSupported(code)` shall return `true` for these codes and `false` for any other input (including `null` / empty / case-different / locale-extended forms).(`[Ubiquitous]` マーカー削除して通常要件化、`LanguageCodesTests` 直接テストで機械検証、2026-05-13 カバレッジ補完 PR で昇格)
 
 ## 事象駆動要件 (Event-driven)
 
@@ -28,6 +28,7 @@ ADR-0012 §8「`IUserSettings` + PlayerPrefs(サブスコープ、M4-PR6)」+ M4
 - [USR-015] When `SetBgmVolume(v)` is called with `v > 1.0`, the `BgmVolume` getter shall return 1.0 (clamped).
 - [USR-016] When `SetBgmVolume(v)` is called with `v < 0.0`, the `BgmVolume` getter shall return 0.0 (clamped).
 - [USR-017] When `SetLanguage(code)` is called with `"en"`, the `Language` getter shall return `"en"` and `PlayerPrefs.GetString("drowsy.lang")` shall return `"en"`.
+- [USR-027] When `Dispose()` is called after the first `Dispose()` (二重 Dispose), the second call shall be a silent no-op (冪等性、`if (_disposed) return` ガードで内部 `ReactiveProperty<T>.Dispose()` を二度呼ばない正常系設計、code-reviewer S-1 で Event-driven に分類変更、2026-05-13 カバレッジ補完 PR で新規追加).
 
 ## 状態駆動要件 (State-driven)
 
@@ -87,7 +88,7 @@ CLAUDE.md §9「定数管理方針」階層別に分類:
 | USR-002 | (テスト免除: Ubiquitous) | key prefix は USR-006 / USR-014 / USR-017 で間接検証 |
 | USR-003 | (テスト免除: Ubiquitous) | default は USR-007 で検証 |
 | USR-004 | (テスト免除: Ubiquitous) | clamp range は USR-015 / USR-016 で検証 |
-| USR-005 | (テスト免除: Ubiquitous) | LanguageCodes.Supported で構造的保証 |
+| USR-005 | `Given_LanguageCode_When_IsSupported_Then_期待値を返す`(`[TestCase]` 6 ケース:`"ja"`/`"en"`/`"zh"`/`"JA"`/`"ja-JP"`/`""`)+ `Given_LanguageCodeがnull_When_IsSupported_Then_false` | `LanguageCodes.IsSupported` の直接機械検証、2026-05-13 カバレッジ補完 PR で Ubiquitous 解除 |
 | USR-006 | `Given_PlayerPrefs空_When_SetBgmVolume半端値_Then_BgmVolumeが反映される` / `Given_PlayerPrefs空_When_SetBgmVolume半端値_Then_PlayerPrefsBgmKeyが反映される` | 1 テスト 1 アサーション分割 |
 | USR-007 | `Given_PlayerPrefs空_When_インスタンス化_Then_BgmVolumeがdefault値を返す` / `Given_PlayerPrefs空_When_インスタンス化_Then_SeVolumeがdefault値を返す` / `Given_PlayerPrefs空_When_インスタンス化_Then_Languageがdefault値を返す` | 3 項目 = 3 テスト分割 |
 | USR-008 | `Given_PlayerPrefsに0_3_When_インスタンス化_Then_BgmVolumeは0_3を返す` | |
@@ -109,3 +110,4 @@ CLAUDE.md §9「定数管理方針」階層別に分類:
 | USR-024 | `Given_Dispose済_When_SetLanguage_Then_ObjectDisposedException` | |
 | USR-025 | `Given_Dispose済_When_Save_Then_ObjectDisposedException` | |
 | USR-026 | `Given_PlayerPrefsに範囲外SE_When_インスタンス化_Then_default0_5に復帰する` | SE ctor 範囲外復帰(USR-018 BGM 対称) |
+| USR-027 | `Given_既Dispose_When_2回目Dispose_Then_冪等で例外なし` | `_disposed` フラグ冪等性、Event-driven 系正常動作、2026-05-13 カバレッジ補完 PR で新規 |
