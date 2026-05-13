@@ -82,6 +82,7 @@ dotnet_naming_symbols.public_members.applicable_accessibilities = public,interna
 
 # ─── Roslyn Analyzer severity 制御 ───
 # Microsoft.CodeAnalysis.NetAnalyzers (CA-prefix) と Microsoft.Unity.Analyzers (UNT-prefix)
+# Roslynator.Analyzers (RCS-prefix) も含む
 # C# コンパイラ警告 (CS-prefix) も含めて重要ルールを error レベルに引き上げる
 
 # Null 安全 (C# nullable reference types)
@@ -108,6 +109,12 @@ dotnet_diagnostic.CA1716.severity = silent   # 言語予約語との衝突警告
 
 # 定数管理 (docs/architecture/constants-management.md / CLAUDE.md「9. 定数管理方針」)
 dotnet_diagnostic.CA1802.severity = warning  # static readonly のリテラル → const 化推奨 (マジックナンバー削減の一環)
+
+# ─── Roslynator.Analyzers (RCS-prefix) ───
+# ADR-0013 で導入。Roslynator は 200+ ルールを提供するが、既存コードへの影響を制御するため
+# baseline はカテゴリ全体を silent にし、後続 PR で個別ルールを段階的に warning/error へ昇格する。
+# (段階的有効化は docs/todo.md「Roslynator RCS ルールの段階的有効化」で追跡)
+dotnet_analyzer_diagnostic.category-roslynator.severity = silent
 
 # ───────────────────────────────────────────────
 # 設定ファイル

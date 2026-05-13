@@ -227,7 +227,7 @@ Assets/_Project/Scripts/Tests/
 仕様 / テスト規約の機械検知は CLAUDE.md「7. 機械検知方針」を参照。本ドキュメントの規約はすべて以下のいずれかで強制される:
 
 - lefthook (pre-commit / commit-msg)
-- Roslyn Analyzer(`Microsoft.CodeAnalysis.NetAnalyzers`, `Roslynator.Analyzers`)
+- Roslyn Analyzer(`Microsoft.CodeAnalysis.NetAnalyzers`, `Microsoft.Unity.Analyzers`, `Roslynator.Analyzers`)
 - カスタムスクリプト(`scripts/check-*.sh`)
 - GitHub Actions / GameCI(将来)
 - Unity Code Coverage パッケージ

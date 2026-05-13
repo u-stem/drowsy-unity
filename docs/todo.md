@@ -124,15 +124,14 @@
   - **Related**: [ADR-0007 §「山札枯渇」](adr/0007-m2-detail-card-effects.md)、[ADR-0006 §6](adr/0006-m1-detail-application-interfaces.md)、M2-PR2 以降(進行中)
   - **Notes**: 現時点の数値(ADR-0009 起票後): 初期配布 10、Draw 数 42(N=2 × 21 ラウンド × 1)、合計 52 ≤ 山札 56(余裕 4 枚)。M2 で 1 ターン複数 Draw 効果が入った時点で再計算が必要
 
-- [ ] **Roslynator.Analyzers の導入 or CLAUDE.md §7 訂正** `priority: low`
-  - **Why**: CLAUDE.md §7「Roslyn Analyzer 構成」に `Roslynator.Analyzers` が公開 Analyzer として導入予定と記載されているが、現状 NuGetForUnity (`Assets/Packages/`) に未配置。ドキュメントと実態が乖離しており、新規参加者(将来の自分含む)が混乱する
+- [ ] **Roslynator RCS ルールの段階的有効化(baseline silent → 個別 warning 化)** `priority: low`
+  - **Why**: [ADR-0013](adr/0013-roslynator-adoption.md) で `Roslynator.Analyzers` 4.15.0 を導入したが、既存コードへの影響を制御するため baseline `dotnet_analyzer_diagnostic.category-roslynator.severity = silent` で開始した。Roslynator は 200+ ルールを提供しており、コードシンプリフィケーション / リファクタリング系の主要ルール(例: RCS1003 If statement should not be on a single line、RCS1018 Add accessibility modifiers、RCS1090 Add call to ConfigureAwait 等)を段階的に warning / error 化することで機械検知レイヤの実効性を高めたい
   - **Done when**:
-    - 以下のいずれか A / B を選び、結果がリポジトリに反映済み:
-      - 選択 A: `Roslynator.Analyzers` を NuGetForUnity 経由で導入し、`.editorconfig` に severity 設定を追加
-      - 選択 B: CLAUDE.md §7 / README の Analyzer 一覧から `Roslynator.Analyzers` を削除し、`Microsoft.Unity.Analyzers` + `Microsoft.CodeAnalysis.NetAnalyzers` のみに訂正
-    - 設計判断レベル(導入する/しない)であれば ADR-0004 として記録。CLAUDE.md 訂正のみで済む選択 B なら同 PR に判断根拠コメントを残し ADR は不要
-  - **Related**: [`CLAUDE.md`](../CLAUDE.md) §7「Roslyn Analyzer 構成」
-  - **Notes**: Phase 1 中の任意のタイミングで判断。導入しない場合の Phase 1 後半までに訂正だけは入れたい
+    - 個別ルールを 1 PR あたり 3〜5 件程度ずつ warning / error 化(`.editorconfig` で `dotnet_diagnostic.RCSxxxx.severity` を追記)
+    - 各 warning 化 PR で既存コードの違反箇所を修正(またはルールを `silent` に戻す判断を Notes に記録)
+    - Phase 整備段階で「Roslynator ルールセットの確定版」を `.editorconfig` で表明し、本 TODO を完了済みへ移動(または ADR-0013 を `Superseded by` で更新)
+  - **Related**: [ADR-0013](adr/0013-roslynator-adoption.md)、[`.editorconfig`](../.editorconfig) の「Roslynator.Analyzers (RCS-prefix)」セクション、[Roslynator 公式 ルール一覧](https://josefpihrt.github.io/docs/roslynator/analyzers)
+  - **Notes**: 一度に大量のルール有効化は修正コストが大きいので、PR あたり数ルールずつ進める方針。影響大なルールは別途検討、必要なら本 TODO に細分エントリを追加する
 
 - [ ] **NRT (Nullable Reference Types) 有効化を検討する** `priority: low`
   - **Why**: PR-1 (CardData) で `CardData?` / `object?` のアノテーション 7 箇所に対し CS8632 警告が発生し、既存パターン(NRT 無効)に揃えて `?` を削除した経緯がある。Domain 全体で null 安全な API を表現したい場合、NRT 有効化が筋。判断は設計判断レベルになる可能性あり(ADR-0004 候補)
@@ -187,6 +186,17 @@
 (着手中のエントリをここに移動する)
 
 ## 完了済み
+
+- [x] **Roslynator.Analyzers の導入 or CLAUDE.md §7 訂正** `priority: low`
+  - **Why**: CLAUDE.md §7「Roslyn Analyzer 構成」に `Roslynator.Analyzers` が公開 Analyzer として導入予定と記載されているが、現状 NuGetForUnity (`Assets/Packages/`) に未配置。ドキュメントと実態が乖離しており、新規参加者(将来の自分含む)が混乱する
+  - **Done when** (resolved with 選択 A):
+    - ✓ JIT 判断で **選択 A(導入)** を採用、[ADR-0013](adr/0013-roslynator-adoption.md) を起票
+    - ✓ `Roslynator.Analyzers` 4.15.0 を NuGetForUnity 経由で導入(`Assets/packages.config` 追記、Unity Editor 起動 + Restore で `Assets/Packages/Roslynator.Analyzers.4.15.0/` 展開)
+    - ✓ `.editorconfig` に `dotnet_analyzer_diagnostic.category-roslynator.severity = silent` を baseline として追加(既存コードへの影響なし、個別ルールの段階的 warning 化は後続 TODO で追跡)
+    - ✓ 同時に CLAUDE.md §7 / docs/testing-strategy.md / README.md の Analyzer 一覧を実態整合化(`Microsoft.Unity.Analyzers` の §7 欠落も訂正)
+    - ✓ 結果がリポジトリに反映済み
+  - **Related**: [ADR-0013](adr/0013-roslynator-adoption.md)、[`CLAUDE.md`](../CLAUDE.md) §7「Roslyn Analyzer 構成」、本完了 PR(chore: Roslynator.Analyzers 導入、2026-05-13)
+  - **Notes**: 個別 RCS ルールの段階的 warning 化は新規 TODO「Roslynator RCS ルールの段階的有効化(baseline silent → 個別 warning 化)」で継続追跡。本 TODO は導入判断 + 実態整合化レベルで完了
 
 - [x] **`ApplyActionUseCase` / `DrowZzzRuleTests` の共通テストヘルパー抽出** `priority: low`
   - **Why**: M1-PR6 reviewer 指摘 P-2 と M1-PR7 着手時に確認した課題。`ApplyActionUseCaseTests.NewSession` と `DrowZzzRuleTests.NewSession` がほぼ同一実装で重複している。M2 でテストが増えると保守コストが上がる

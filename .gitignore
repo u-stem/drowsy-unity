@@ -118,9 +118,11 @@ Unity_lic.*
 # lefthook のユーザーローカルカスタマイズ(コミット対象外)
 lefthook-local.yml
 
-# NuGetForUnity が Packages/ 配下に置く NuGet メタデータディレクトリ
-# (NuGet.config の repositoryPath="./Packages" に起因、tools/install.ps1 等のみで Unity に不要)
+# NuGetForUnity が nupkg 展開時にリポジトリルートの Packages/ 配下に副次生成する
+# NuGet メタデータディレクトリ(tools/install.ps1 等の MSBuild 連携用 script のみで Unity に不要)
+# 本体の Analyzer DLL は Assets/Packages/ 配下に展開されコミット対象、ここで除外するのはルート側 cache のみ
 /Packages/Microsoft.*/
+/Packages/Roslynator.*/
 
 # Code Coverage パッケージの出力(レポート生成物、git 管理対象外)
 /CodeCoverage/
