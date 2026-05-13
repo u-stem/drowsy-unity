@@ -107,16 +107,6 @@
   - **Related**: [ADR-0011 §6](adr/0011-m3-dream-card-and-game-mechanics-expansion.md)、`Assets/_Project/Scripts/Application/Games/DrowZzz/Effects/UsageRestrictionMarkerEffect.cs`、M3-PR6 code-reviewer P-1 反映(2026-05-14)
   - **Notes**: 現スコープでは 2 役兼用で問題なし(xmldoc / spec md / EffectInterpreter コメントの 3 箇所で意図文書化済)。将来のカード仕様共有時に再評価
 
-- [ ] **`StartGameUseCase` から未使用の `ICardCatalog` 依存削除を検討する** `priority: low`
-  - **Why**: ADR-0006 §3 で「constructor injection は維持」と判断し、M1-PR3 で `StartGameUseCase` constructor に `ICardCatalog` を含めたが、M1 範囲で実は一切参照していない(`StartGameUseCase.cs` remarks に「本 PR (M1-PR3) では参照しない」と明記)。ADR-0007 §3 で M2-PR1 にて `ICardCatalog<IEffect>` へジェネリック化すると、`StartGameUseCase` が `IEffect` を内部利用しないにもかかわらず型引数を constructor シグネチャに持つ「設計上の割り切り」が発生する。ADR-0006 §3 を覆す変更になるため本 ADR-0007 スコープ外としたが、SO 化(M4)時に `StartGameUseCase` がカード情報を本当に必要としないことが確定したら依存削除を別 PR / 別 ADR で再評価したい
-  - **Done when**:
-    - 以下のいずれかが選択され、結果がリポジトリに反映済み:
-      - 選択 A: `StartGameUseCase` から `ICardCatalog` 依存を削除(constructor 引数 + フィールド削除)、必要なら ADR-0006 の決定を覆す ADR を追加で起票
-      - 選択 B: ADR-0007 §3「設計上の割り切り」を維持し、本 TODO を「採用しない理由」を Notes に追記して完了済み移動
-    - M4 着手時または SO 化判断時に再評価し、本 TODO を進行中 → 完了済みに移動
-  - **Related**: [ADR-0006 §3](adr/0006-m1-detail-application-interfaces.md)、[ADR-0007 §3 「`StartGameUseCase` の型引数結合」](adr/0007-m2-detail-card-effects.md)、`Assets/_Project/Scripts/Application/Games/DrowZzz/StartGameUseCase.cs:44`
-  - **Notes**: M2-PR1 では `ICardCatalog<IEffect>` 型引数変更のみで通すため、本 TODO は急がない。M4 (SO 化) 検討と同時期に再評価
-
 - [ ] **NRT (Nullable Reference Types) 有効化を検討する** `priority: low`
   - **Why**: PR-1 (CardData) で `CardData?` / `object?` のアノテーション 7 箇所に対し CS8632 警告が発生し、既存パターン(NRT 無効)に揃えて `?` を削除した経緯がある。Domain 全体で null 安全な API を表現したい場合、NRT 有効化が筋。判断は設計判断レベルになる可能性あり(ADR-0004 候補)
   - **Done when**:
@@ -195,6 +185,17 @@
       - `RCS1213`(未使用 private メンバー):`OnEnable` / `OnValidate` / `Awake` / `Start` / `Update` 等の **Unity ライフサイクルメソッド**を Roslynator が認識せず false positive(`ScriptableObjectCardCatalog.cs:56,63` の 2 件で検証済)。Unity ライフサイクルメソッド名単位の suppression(`[UsedImplicitly]` 属性付与 / 個別 `#pragma warning disable` / EditorConfig section override 等)を別 PR で評価する
 
 ## 完了済み
+
+- [x] **`StartGameUseCase` から未使用の `ICardCatalog` 依存削除を検討する** `priority: low`
+  - **Why**: ADR-0006 §3 で「constructor injection は維持」と判断し、M1-PR3 で `StartGameUseCase` constructor に `ICardCatalog` を含めたが、M1 範囲で実は一切参照していない(`StartGameUseCase.cs` remarks に「本 PR (M1-PR3) では参照しない」と明記)。ADR-0007 §3 で M2-PR1 にて `ICardCatalog<IEffect>` へジェネリック化すると、`StartGameUseCase` が `IEffect` を内部利用しないにもかかわらず型引数を constructor シグネチャに持つ「設計上の割り切り」が発生する。ADR-0006 §3 を覆す変更になるため本 ADR-0007 スコープ外としたが、SO 化(M4)時に `StartGameUseCase` がカード情報を本当に必要としないことが確定したら依存削除を別 PR / 別 ADR で再評価したい
+  - **Done when** (resolved with 選択 A):
+    - ✓ M4 完了時の JIT 判断で **選択 A(削除)** を採用、[ADR-0014](adr/0014-start-game-usecase-cardcatalog-removal.md) を起票
+    - ✓ `StartGameUseCase` から `ICardCatalog<IEffect>` 依存を削除(constructor 引数 + `_catalog` フィールド + 関連 using を除去、constructor は 2 引数 `(IRandomSource rng, IGameConfig config)` 化)
+    - ✓ 呼び出し側 2 箇所(`StartGameUseCaseTests.NewUseCase` / `M1IntegrationTests.NewUseCases`)を 2 引数 constructor に追従修正
+    - ✓ ADR-0006 §3 / ADR-0007 §3 は Status `Accepted` 維持で部分的更新として扱い、ADR-0014 の Related で参照経路を残す
+    - ✓ 結果がリポジトリに反映済み(dotnet build 0 警告 / 0 エラー / 5.34 秒、Unity Test Runner 実機緑確認はオーナー側)
+  - **Related**: [ADR-0014](adr/0014-start-game-usecase-cardcatalog-removal.md)、[ADR-0006 §3](adr/0006-m1-detail-application-interfaces.md)、[ADR-0007 §3 「`StartGameUseCase` の型引数結合」](adr/0007-m2-detail-card-effects.md)、`Assets/_Project/Scripts/Application/Games/DrowZzz/StartGameUseCase.cs`、本完了 PR(chore: StartGameUseCase ICardCatalog 依存削除、2026-05-13)
+  - **Notes**: ADR-0007 §3 が予告した「M4 完了時の再評価」を本 PR で達成。M5 Bootstrap で DI 統合する際は 2 引数 constructor をそのまま利用、 ADR-0014 の判断を覆す必要が出てきた場合は別 ADR で記録
 
 - [x] **Roslynator.Analyzers の導入 or CLAUDE.md §7 訂正** `priority: low`
   - **Why**: CLAUDE.md §7「Roslyn Analyzer 構成」に `Roslynator.Analyzers` が公開 Analyzer として導入予定と記載されているが、現状 NuGetForUnity (`Assets/Packages/`) に未配置。ドキュメントと実態が乖離しており、新規参加者(将来の自分含む)が混乱する
