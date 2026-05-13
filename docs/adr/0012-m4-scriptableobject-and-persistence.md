@@ -822,6 +822,112 @@ CLAUDE.md §11「Phase 進捗」M4 行を以下に更新:
 - 旧: `**M4**(永続化 / SO 化 + ユーザー設定): **進行中** — ADR-0012 起票済、M4-PR1 / M4-PR2 / M4-PR3 完成(SO 表現基盤完成…)、M4-PR4(既存 3 カード No.00 / No.01 / No.02 の SO Asset 化)着手予定`
 - 新: `**M4**(永続化 / SO 化 + ユーザー設定): **進行中** — ADR-0012 起票済、M4-PR1 / M4-PR2 / M4-PR3 / M4-PR4 完成(SO 表現基盤完成 + 既存 3 カード SO ↔ InMemory 同値性検証完了、43 テスト)、CLI 機械検知レイヤ整備(PR #63)、M4-PR5(`DrowZzzGameSession` JSON 永続化、初期推奨 Newtonsoft.Json)着手予定`
 
+### M4-PR5 完成記録(2026-05-13、DrowZzzGameSession JSON 永続化 + 43 テスト)
+
+**完成 PR**: PR #69 `feat(infra): DrowZzzGameSession JSON 永続化 + 43 テスト (M4-PR5)`(merged `b94eae7`、3 commit 同梱:実装本体 `19a236f`(Persistence namespace 新設 + 7 Converter + DTO + link.xml + IsExternalInit polyfill + Newtonsoft.Json パッケージ追加)/ テスト追加 `e3c4cac`(43 テスト + 4 fixture + asmdef precompiledReferences 拡張)/ EARS + .feature 追加 `f9e8ee0`(INF-048〜INF-071 = 24 要件採番 + Gherkin 16 ブロック:`シナリオ` 12 + `シナリオアウトライン` 4))。本 ADR §7 / §「M4-PR5 着手時の JIT 確認項目」で確定した「`DrowZzzGameSession` JSON 永続化(サブスコープ)」を Newtonsoft.Json + カスタム `JsonConverter` 経路で実装、**ADR-0005「Phase 2 完了の最小定義 = 永続化が動く」を充足する 1 ステップ** を達成。
+
+#### Definition of Done 達成項目(本 ADR §7 / §「M4-PR5 着手時の JIT 確認項目」で確定した仕様の実装)
+
+| スコープ項目 | 達成状況 | 備考 |
+| ---- | ---- | ---- |
+| `DrowZzzGameSessionSerializer` Save / Load 対称 API | ✓ | `Drowsy.Infrastructure.Persistence` namespace 新設、`Save(string path, DrowZzzGameSession)` / `Load(string path) → DrowZzzGameSession` + `DefaultSavePath()` helper、INF-049〜052 / INF-059 |
+| `schemaVersion: 1` flat 構造 | ✓ | ルート直下に schemaVersion + Session 10 引数 1:1、ネスト最小化(JIT 確定 §「スキーマバージョニング」継承)、INF-053 / INF-065 |
+| 12 `IEffect` 派生型 polymorphic | ✓ | `EffectJsonConverter` で `"type"` discriminator(SO 側 `EffectAsset` 命名から `Effect` / `EffectAsset` suffix 除去、M4-PR2/PR3 と整合)、3 段ネスト wrapper 再帰(`Keyworded → Choice → Keyworded → AdjustSdp`)round-trip 検証済、INF-054 / INF-066〜068 |
+| `GameOutcome` polymorphic | ✓ | `GameOutcomeJsonConverter` で `WinnerOutcome` / `DrawOutcome` 同パターン discriminator、INF-055 / INF-069〜070 |
+| Domain 非汚染 | ✓ | `CardId` / `PlayerId` / `Pile` / `Hand` / `GameState` / `TurnState` / `PlayerState` に Newtonsoft attribute / partial 追加なし、Converter 層で plain string / array に変換、ADR-0006 §4 Pure C# 哲学維持 |
+| `PersistedSessionV1` DTO 介在 | ✓ | `Dictionary<PlayerId, int>` を `Dictionary<string, int>` に flatten、Newtonsoft の Dictionary key TypeConverter 要件を回避(`internal` + `InternalsVisibleTo` でテストから可視) |
+| `link.xml` で IL2CPP AOT 保護 | ✓ | Drowsy.Domain / Drowsy.Application / Drowsy.Infrastructure / Newtonsoft.Json 全体 `preserve="all"`、WebGL Build での型ストリッピング防止(実機検証は M4-PR7) |
+| `IsExternalInit` polyfill | ✓ | Infrastructure assembly に ADR-0004 §「他 assembly での扱い」継承で複製(`PersistedSessionV1` record + init 構文で必要) |
+| 異常系 11 件 | ✓ | null / 空 path / 破損 JSON / 未対応 schemaVersion / type discriminator 欠落・未知 / 必須 property 欠落 すべて適切な例外型を返す(INF-061〜071) |
+| EARS + .feature 採番 | ✓ | `docs/specs/infrastructure/persistence/drowzzz-game-session-serializer.{md,feature}` 新設、INF-048〜INF-071 = 24 要件、Gherkin 16 ブロック(`シナリオ` 12 + `シナリオアウトライン` 4)|
+| `scripts/check-traceability.sh` pass | ✓ | INF-048 のみ `[Ubiquitous]` でテスト免除、残り 23 要件は対応テスト保有、`整合性 OK` 確認済 |
+| EditMode 全件 PASS | ✓ | Unity Editor Test Runner で全 422 件(既存 + 新規 43 件)PASS(2026-05-13、ツール上の TestCase / Test 換算差で 422 表示) |
+
+#### 仕様 ID / NUnit 増加
+
+- 仕様 ID 新規採番(INF-048 〜 INF-071、24 件、仕様 .md のセクション分類に揃える):
+  - **Ubiquitous(4 件、INF-048 〜 INF-051)**: schemaVersion 1 のみ Save/Load(INF-048、`[Ubiquitous]` マーカー付与でテスト免除、INF-065 異常系で代行)/ UTF-8 BOM なし(INF-049)/ 12 `IEffect` 派生型の `"type"` discriminator round-trip(INF-050)/ `WinnerOutcome` + `DrawOutcome` の `"type"` discriminator round-trip(INF-051)
+  - **Event-driven(8 件、INF-052 〜 INF-059)**: 親ディレクトリ自動作成(INF-052)/ 既存ファイル上書き(INF-053)/ Session 等価 round-trip(INF-054)/ wrapper effect 再帰解決(INF-055)/ `WinnerOutcome` JSON 形 `{"type":"Winner","winner":...}`(INF-056)/ `DrawOutcome` JSON 形 `{"type":"Draw"}`(INF-057)/ `GameOutcome` が null のとき `outcome` フィールドも null(INF-058)/ `DefaultSavePath(fileName)` = `persistentDataPath/drowzzz/fileName`(INF-059)
+  - **State-driven(1 件、INF-060)**: ファイル不在で `FileNotFoundException`
+  - **Unwanted(11 件、INF-061 〜 INF-071)**: null / 空 path / 破損 JSON / 未対応 schemaVersion / Effect type 欠落・未知 / GameOutcome type 欠落・未知 / 必須 property 欠落 / fileName 空白
+- NUnit Property unique: **+23 件 → 累計 402 件**(テスト件数 +43:`DrowZzzGameSessionSerializerTests` 21 + `EffectJsonConverterTests` 17 + `GameOutcomeJsonConverterTests` 5)
+- M4 累計テスト件数:**86 件**(M4-PR1 12 + M4-PR2 4 + M4-PR3 21 + M4-PR4 6 + M4-PR5 43)
+
+#### 本 PR で確定した ADR-0012 §「M4-PR5 着手時の JIT 確認項目」(2026-05-13)
+
+| 項目 | 確定内容 |
+| ---- | ---- |
+| Serializer 採用 | **Newtonsoft.Json**(`com.unity.nuget.newtonsoft-json` 3.2.1)、本 ADR §7 初期推奨を継承(Phase 3 で .NET 9+ への昇格議論はあり得るが本 M4 では現状維持) |
+| Discriminator 方式 | **カスタム `JsonConverter` で `"type"` 明示**(`TypeNameHandling.$type` 不採用、SO 側 `EffectAsset` の discriminator 命名と整合) |
+| `IRandomSource` seed 永続化 | **Phase 3 送り**(本 PR は Session round-trip のみ、Deterministic Replay は Phase 3 範囲) |
+| Save path | **`Application.persistentDataPath/drowzzz/` サブディレクトリ**(`DefaultSavePath(fileName)` helper で集約、サブディレクトリ自動作成は INF-058 で保証) |
+| WebGL/IL2CPP 検証 | **EditMode + link.xml のみ**(実機 WebGL build / IL2CPP AOT 動作検証は M4-PR7 完成 PR に送る、本 M4-PR5 では `link.xml` で型保持基盤のみ整備) |
+
+不採用案(再確認):
+- `System.Text.Json`:`[JsonDerivedType]` / `[JsonPolymorphic]` は .NET 7+ API で Unity 6 / `.NET Standard 2.1` ターゲット非対応、reflection ベース API は IL2CPP AOT で不動(本 ADR §7 表の評価そのまま)
+- `JsonUtility`:polymorphic / Dictionary / IReadOnlyList 対応貧弱
+- 手書き serializer:`IEffect` 12 派生型 handling のメンテコスト高
+- `TypeNameHandling.$type`:assembly-qualified 型名が Newtonsoft 内部実装結合度を上げる、refactor 耐性低
+- IRandomSource seed を本 PR に含める:Phase 3 範囲、M4-PR5 スコープ拡張のリスク
+
+#### code-reviewer subagent 反映(警告 1 / 提案 3 → 4 件すべて反映)
+
+| ID | 種別 | 内容 | 反映 |
+| ---- | ---- | ---- | ---- |
+| W-1 | 警告 | `EffectJsonConverterTests.cs` / `GameOutcomeJsonConverterTests.cs` で未使用 `using UnityEngine;` 残存 | ✓ 削除済 → その後 `using Property = NUnit.Framework.PropertyAttribute;` alias が `NUnit.Framework.Property`(class)と CS1614 で衝突することが発覚、alias も削除して **両方なしのパターン B を確立**(user-level memory `csharp-nunit-unityengine-property-conflict` に判定フロー追記)|
+| S-1 | 提案 | トレーサビリティ表のテスト名が実メソッド名と乖離 | ✓ 実メソッド名(日本語 `Given_X_When_Y_Then_Z` 形式)に揃え修正済 |
+| S-2 | 提案 | INF-049 / 050 / 051 が `[Ubiquitous]` マーカー付与で実テスト存在と矛盾 | ✓ Ubiquitous マーカー削除して通常 Event-driven 要件化、INF-048 のみ Ubiquitous 維持(schemaVersion 1 のみ生成は INF-065 異常系で実質検証)|
+| S-3 | 提案 | テスト件数の記載が 22 件 → 実際 43 件(`grep -c "\[Test"` で確認) | ✓ PR description / 本完成記録 / 仕様 md すべて 43 件で統一 |
+
+#### M4-PR5 進行中の学び
+
+##### 学び 1: NUnit `Property` 衝突は 2 パターン化(両 using か両方なし、`csharp-nunit-unityengine-property-conflict` memory 追記)
+
+M4-PR1 / PR2 で確立した「NUnit `PropertyAttribute` ↔ UnityEngine `PropertyAttribute` 衝突回避」は、**UnityEngine を使うかどうか** で 2 パターンに分岐することが本 PR で判明:
+
+| パターン | 条件 | 雛形 |
+| ---- | ---- | ---- |
+| **A: 両 using 必須** | `Debug.Log` / `ScriptableObject` 等で UnityEngine を直接使う | `using UnityEngine;` + `using Property = NUnit.Framework.PropertyAttribute;` |
+| **B: 両方なし** | UnityEngine を一切使わない(Newtonsoft 経路の round-trip テスト等) | `using UnityEngine;` も alias も書かない(`using NUnit.Framework;` 経由で `Property` は `NUnit.Framework.Property` 1 つに解決される)|
+
+本 PR で発見した CS1614(`'Property' は 'NUnit.Framework.Property' と 'NUnit.Framework.PropertyAttribute' 両方に該当`)は **alias を残したまま UnityEngine を削除すると発火** する。`NUnit.Framework.Property` という class が `NUnit.Framework.PropertyAttribute` と同じ短縮名で公開されているため、alias と class が衝突する仕組み。
+
+user-level memory `csharp-nunit-unityengine-property-conflict` に判定フロー(`UnityEngine 使う? → Yes: 両 using / No: 両方なし`)を追記済、M4-PR6 以降の Infrastructure.Tests 全テストファイルで雛形として継承する。
+
+##### 学び 2: Domain 非汚染を Converter 層 + DTO 介在で実現する Ports & Adapters 整合(ADR-0006 §4 / ADR-0012 §5 継承)
+
+Newtonsoft.Json は Dictionary key に `[TypeConverter]` を要求するため、`Dictionary<PlayerId, int>`(`Drowsy.Domain.Players.PlayerId`)を素直に直シリアライズすると Domain 型に Newtonsoft 依存が混入する。本 PR では `PersistedSessionV1` DTO で `Dictionary<string, int>` に flatten し、Save/Load 時に Converter 層で `PlayerId.Value ↔ string` を変換する設計を採用。
+
+この設計により:
+1. Domain 層 9 クラスは Newtonsoft attribute / partial / using 追加ゼロ(ADR-0006 §4 Pure C# 哲学維持)
+2. Application.Tests / Domain.Tests は Newtonsoft 非依存のまま実行可能(Test 独立性維持)
+3. JSON フォーマット変更時の影響範囲が Converter 層 + DTO に局所化(後方互換 schemaVersion migration の足場)
+
+**M4-PR6 の `PlayerPrefsUserSettings` も同パターン**(Domain は `IUserSettings` interface 定義のみ、PlayerPrefs 依存は Infrastructure 実装のみ)を継承予定。
+
+##### 学び 3: ADR §7 の「初期推奨」+ JIT 確定の運用(ADR-0011 / M4-PR2 同パターン)
+
+ADR-0012 §7 で `Serializer 選択` を 4 案で比較し「**初期推奨は Newtonsoft.Json**」を明示していたため、M4-PR5 着手時の JIT 確認は「初期推奨 5 項目で進めて良いか」のシンプルな質問に収まった(2026-05-13 ユーザー JIT 5 項目を 1 回で確定)。同パターンは M4-PR2(`IEffect` SO 表現案 a)/ M4-PR3(wrapper effect Inner 表現)/ M4-PR4(SO Asset テスト内動的構築)/ M4-PR5(本 PR)で 4 PR 連続で有効性を実証。
+
+M4-PR6(`IUserSettings` + PlayerPrefs)でも本 ADR §8「最小項目(JIT 確認待ち、初期推奨)」3 項目(BGM / SE / 言語)+ 4 JIT 項目に同パターン継承予定。
+
+##### 学び 4: `dotnet build` pre-commit + Unity Auto-refresh の連携が 5 PR 連続で安定運用化
+
+PR #63 で整備した `dotnet build` pre-commit(M4-PR2 後追加)は本 M4-PR5 でも実証:
+
+1. Claude が新規 .cs(Persistence namespace 17 ファイル + テスト 4 ファイル)を追加 → `dotnet build` pre-commit が **約 4 秒で型解決エラーを 0 エラー** で通過
+2. オーナーが Unity Editor を Focus → AssetDatabase Refresh → `.meta` 21 件 + csproj 更新
+3. `e3c4cac` commit で `.meta` 同梱(GUID 衝突確認後 push)
+
+M4-PR3 / PR4 / PR5 と 3 PR 連続で同パターンが成熟運用化、M4-PR6 以降も継続予定。
+
+### Phase 2 の進捗バナー更新(本完成記録 PR 同梱)
+
+CLAUDE.md §11「Phase 進捗」M4 行を以下に更新:
+
+- 旧: `**M4**(永続化 / SO 化 + ユーザー設定): **進行中** — ADR-0012 起票済、M4-PR1 / M4-PR2 / M4-PR3 / M4-PR4 完成(SO 表現基盤完成 + 既存 3 カード SO ↔ InMemory 同値性検証完了、43 テスト)、CLI 機械検知レイヤ整備(PR #63)、M4-PR5(`DrowZzzGameSession` JSON 永続化、初期推奨 Newtonsoft.Json)着手予定`
+- 新: `**M4**(永続化 / SO 化 + ユーザー設定): **進行中** — ADR-0012 起票済、M4-PR1 / M4-PR2 / M4-PR3 / M4-PR4 / M4-PR5 完成(SO 表現基盤 + 既存 3 カード SO ↔ InMemory 同値性 + `DrowZzzGameSession` JSON 永続化(Newtonsoft.Json + カスタム JsonConverter "type" discriminator + PersistedSessionV1 DTO + link.xml + IsExternalInit polyfill)、累計 86 テスト)、CLI 機械検知レイヤ整備(PR #63)、M4-PR6(`IUserSettings` + PlayerPrefs)着手予定`
+
 ### M4 完成記録の追記タイミング
 
 本 ADR の M4-PR1〜PR7 完成記録は各 PR 単位で本 ADR §M4-PR-N 完成記録(2026-MM-DD)として追記する(ADR-0007 / ADR-0010 / ADR-0011 §「完成記録の追記タイミング」と同パターン)。M4 全体の完成時に §M4 完成記録(全体)を別途追加、Definition of Done 達成方法を集約する。
