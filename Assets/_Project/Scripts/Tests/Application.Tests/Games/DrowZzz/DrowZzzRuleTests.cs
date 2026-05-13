@@ -8,86 +8,17 @@ using Drowsy.Application.Games.DrowZzz.Influences;
 using Drowsy.Domain.Cards;
 using Drowsy.Domain.Game;
 using Drowsy.Domain.Players;
+using static Drowsy.Application.Tests.Stubs.SessionFactory;
 
 namespace Drowsy.Application.Tests.Games.DrowZzz
 {
     [TestFixture]
     public class DrowZzzRuleTests
     {
-        // ===== ヘルパー =====
-
-        // M2-PR1: DrowZzzRule の constructor は ICardCatalog<IEffect> / EffectInterpreter を要求するようになった
-        // (ADR-0007 §3)。M1-PR5 までと同じ挙動を維持するため、効果定義のない catalog (= 全カード空効果列) +
-        // 標準 Interpreter を渡す。共通テストヘルパー抽出は docs/todo.md TODO で別途追跡。
-        private static DrowZzzRule NewRule() =>
-            new DrowZzzRule(
-                new InMemoryCardCatalog(new KeyValuePair<CardId, CardData>[0]),
-                new EffectInterpreter());
-
-        // 全引数オプション、デフォルトは N=2 / WaitingForDraw / 空 Deck / 空 Hand / 空 DdpPool / 全 DP=0 / 空 Influences
-        private static DrowZzzGameSession NewSession(
-            DrowZzzPhaseState phase = DrowZzzPhaseState.WaitingForDraw,
-            int currentPlayerIndex = 0,
-            Pile deck = null,
-            Hand p0Hand = null,
-            Hand p1Hand = null,
-            int turnNumber = 1,
-            DdpPool ddpPool = null,
-            IReadOnlyDictionary<PlayerId, int> ddp = null,
-            IReadOnlyDictionary<PlayerId, IReadOnlyList<PlayerInfluence>> influences = null,
-            IReadOnlyDictionary<PlayerId, int> bedDamages = null)
-        {
-            var p0 = new PlayerState(PlayerId.Of("p1"), p0Hand ?? Hand.Empty);
-            var p1 = new PlayerState(PlayerId.Of("p2"), p1Hand ?? Hand.Empty);
-            var gs = new GameState(
-                new[] { p0, p1 },
-                deck ?? Pile.Empty,
-                Pile.Empty,
-                Pile.Empty,
-                new TurnState(turnNumber, currentPlayerIndex));
-            var fdp = new Dictionary<PlayerId, int>
-            {
-                [PlayerId.Of("p1")] = 0,
-                [PlayerId.Of("p2")] = 10,
-            };
-            // SDP は M2-PR3 で追加(ADR-0009 §「DP 種別」)。本ヘルパー利用テストは SDP に関心がないため
-            // 全プレイヤー 0 で固定初期化する。
-            var sdp = new Dictionary<PlayerId, int>
-            {
-                [PlayerId.Of("p1")] = 0,
-                [PlayerId.Of("p2")] = 0,
-            };
-            // DDP / DdpPool は M2-PR4 で追加(ADR-0009 §「DP 種別」/ §「DDP プールの構造」)。
-            // DDP 自動抽選機構を検証しないテストはデフォルト DDP=0 / 空 DdpPool で十分。
-            var ddpResolved = ddp ?? new Dictionary<PlayerId, int>
-            {
-                [PlayerId.Of("p1")] = 0,
-                [PlayerId.Of("p2")] = 0,
-            };
-            // M2-PR5: Influences は引数指定なら採用、未指定なら空 list 固定
-            var influencesResolved = influences ?? new Dictionary<PlayerId, IReadOnlyList<PlayerInfluence>>
-            {
-                [PlayerId.Of("p1")] = Array.Empty<PlayerInfluence>(),
-                [PlayerId.Of("p2")] = Array.Empty<PlayerInfluence>(),
-            };
-            // M3-PR2: BedDamages は引数指定なら採用、未指定なら 0/0 固定(ADR-0011 §3、ddp / influences と同パターン)
-            var bedDamagesResolved = bedDamages ?? new Dictionary<PlayerId, int>
-            {
-                [PlayerId.Of("p1")] = 0,
-                [PlayerId.Of("p2")] = 0,
-            };
-            return new DrowZzzGameSession(gs, fdp, ddpResolved, sdp, ddpPool ?? DdpPool.Empty, influencesResolved, phase, outcome: null, bedDamages: bedDamagesResolved, System.Array.Empty<PendingCounteredEffect>());
-        }
-
-        private static Pile NewDeck(params string[] cardIds)
-        {
-            var cards = new CardId[cardIds.Length];
-            for (int i = 0; i < cardIds.Length; i++)
-            {
-                cards[i] = CardId.Of(cardIds[i]);
-            }
-            return new Pile(cards);
-        }
+        // ヘルパー(`NewSession` / `NewRule` / `NewDeck`)は M1-PR6 reviewer 指摘 P-2 起点の
+        // `docs/todo.md`「テストヘルパー抽出」TODO で 2026-05-13 に `Drowsy.Application.Tests.Stubs.SessionFactory`
+        // に統合。`using static SessionFactory` で呼び出し側を変えずに済む設計(本 fixture と
+        // `ApplyActionUseCaseTests` の重複を解消)。
 
         // ===== DZ-012 / DZ-013: 将来拡張防御 (M1 範囲外 DrowZzzAction 派生型のフォールバック)
         //       M1-PR6 で M1 範囲の全 Action 実装済となり、`_` ケースは到達不可だが
