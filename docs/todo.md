@@ -120,14 +120,6 @@
   - **Related**: [`CLAUDE.md`](../CLAUDE.md) §7「Roslyn Analyzer 構成」
   - **Notes**: Phase 1 中の任意のタイミングで判断。導入しない場合の Phase 1 後半までに訂正だけは入れたい
 
-- [ ] **`turn-state.md` から ADR-0006 §7 への相互参照を追加** `priority: low`
-  - **Why**: ADR-0006 §7 で Phase 1 `TurnState.TurnNumber` を「サブターン番号」と解釈し、DrowZzz の「ターン (=ラウンド)」は `(TurnNumber + 1) / 2` で計算する旨を確定した。一方で ADR-0006 は「`turn-state.md` 本体には手を入れない」(後方互換維持) と判断したため、`turn-state.md` 単独の読者には DrowZzz 用語との対応関係が見えない
-  - **Done when**:
-    - `docs/specs/domain/game/turn-state.md` の「関連」セクションに「DrowZzz での用語解釈: [ADR-0006 §7](../../../adr/0006-m1-detail-application-interfaces.md)」を 1 行追記
-    - 機械検証(traceability / spec-files)が通過
-  - **Related**: [ADR-0006 §7](adr/0006-m1-detail-application-interfaces.md)、PR #20 (本 TODO の発生源)
-  - **Notes**: 本 PR (ADR-0006 起票) のスコープ外にした理由は code-reviewer S-2 指摘で「双方向参照は別 PR に切り出す方が筋」と判断したため。M1-PR1 着手前または同時に対応する
-
 - [ ] **`ApplyActionUseCase` / `DrowZzzRuleTests` の共通テストヘルパー抽出** `priority: low`
   - **Why**: M1-PR6 reviewer 指摘 P-2 と M1-PR7 着手時に確認した課題。`ApplyActionUseCaseTests.NewSession` と `DrowZzzRuleTests.NewSession` がほぼ同一実装で重複している。M2 でテストが増えると保守コストが上がる
   - **Done when**:
@@ -184,21 +176,30 @@
   - **Related**: [ADR-0009 §6.5 / §「用語規約」](adr/0009-m2-m3-dp-and-victory-conditions.md)
   - **Notes**: 上記の `Clock.RoundNumber` → `TurnNumber` リネームと同 PR にまとめる方が効率的
 
-- [ ] **`DrowZzzGameSession.CurrentRound` を `Clock.RoundNumber` 経由に整理(後方互換維持リファクタ)** `priority: low`
-  - **Why**: ADR-0008 で `DrowZzzClock` 値オブジェクトを導入し、`session.Clock.RoundNumber == session.CurrentRound` の同義関係を確定した。ADR-0008 §3 では「`CurrentRound` は変更しない(後方互換維持)」と判断したため、現状は両者が独立に同じ計算式 `(TurnNumber + 1) / 2` を保持している。将来 `DrowZzzGameSession.CurrentRound => Clock.RoundNumber` の薄いショートカットに置き換えると概念が一本化される
-  - **Done when**:
-    - `DrowZzzGameSession.cs` の `CurrentRound` 計算プロパティ実装を `=> Clock.RoundNumber` に書き換え
-    - 既存テスト DZ-010(3 件)が `CurrentRound` を呼び続けても緑のまま
-    - EARS `docs/specs/games/drowzzz/skeleton.md` (DZ-010) の式表現を「`Clock.RoundNumber` 経由」に整合
-    - N>2 拡張時の対応(`Clock` 側の `Hour`/`Minute` 計算式更新)と同タイミングで実施するか別途検討
-  - **Related**: [ADR-0008 §3](adr/0008-m2-drowzzz-clock-and-night-morning.md)、[ADR-0006 §M1-PR2 / DZ-010](adr/0006-m1-detail-application-interfaces.md)、`Assets/_Project/Scripts/Application/Games/DrowZzz/DrowZzzGameSession.cs:82`
-  - **Notes**: M2 / M3 内のいずれかの PR で機械的に実施可能(1 行のリファクタ + テスト緑維持)。N>2 対応と同時に行うのが筋(`Hour`/`Minute` の N=2 前提も同じタイミングで再評価)
 
 ## 進行中
 
 (着手中のエントリをここに移動する)
 
 ## 完了済み
+
+- [x] **`turn-state.md` から ADR-0006 §7 への相互参照を追加** `priority: low`
+  - **Why**: ADR-0006 §7 で Phase 1 `TurnState.TurnNumber` を「サブターン番号」と解釈し、DrowZzz の「ターン (=ラウンド)」は `(TurnNumber + 1) / 2` で計算する旨を確定した。一方で ADR-0006 は「`turn-state.md` 本体には手を入れない」(後方互換維持) と判断したため、`turn-state.md` 単独の読者には DrowZzz 用語との対応関係が見えない
+  - **Done when** (all met):
+    - ✓ `docs/specs/domain/game/turn-state.md` の「関連」セクションに「DrowZzz での用語解釈: [ADR-0006 §7](../../../adr/0006-m1-detail-application-interfaces.md)(本仕様の `TurnState.TurnNumber` を DrowZzz では『サブターン番号』として解釈し、DrowZzz の「ターン(=ラウンド)」は `(TurnNumber + 1) / 2` で計算する。Domain 仕様自体は変更せず、ゲーム固有の用語マッピングを Application 層 ADR-0006 §7 で確定)」を 1 行追記
+    - ✓ 機械検証(traceability)が通過(仕様 ID 512 / Property ID 423、変更なし)
+  - **Related**: [ADR-0006 §7](adr/0006-m1-detail-application-interfaces.md)、PR #20(本 TODO の発生源、ADR-0006 起票時の code-reviewer S-2 指摘)、本完了 PR(chore housekeeping、2026-05-13)
+  - **Notes**: ADR-0006 起票時に code-reviewer S-2「双方向参照は別 PR に切り出す方が筋」と指摘され先送りされていた件、本セッションで chore housekeeping として解消(2026-05-13)
+
+- [x] **`DrowZzzGameSession.CurrentRound` を `Clock.RoundNumber` 経由に整理(後方互換維持リファクタ)** `priority: low`
+  - **Why**: ADR-0008 で `DrowZzzClock` 値オブジェクトを導入し、`session.Clock.RoundNumber == session.CurrentRound` の同義関係を確定した。ADR-0008 §3 では「`CurrentRound` は変更しない(後方互換維持)」と判断したため、現状は両者が独立に同じ計算式 `(TurnNumber + 1) / 2` を保持している。将来 `DrowZzzGameSession.CurrentRound => Clock.RoundNumber` の薄いショートカットに置き換えると概念が一本化される
+  - **Done when** (all met):
+    - ✓ `DrowZzzGameSession.cs` の `CurrentRound` 計算プロパティ実装を `=> Clock.RoundNumber` に書き換え、計算式 `(_gameState.Turn.TurnNumber + 1) / 2` は `Clock` プロパティ側に集約(計算式の真の単一情報源は `Clock` プロパティに一本化)
+    - ✓ 既存テスト DZ-010(3 件)が `CurrentRound` を呼び続けても緑のまま(`dotnet build` 0 エラー、Property API は不変)
+    - ✓ EARS `docs/specs/games/drowzzz/skeleton.md` (DZ-010) の式表現を「`Clock.RoundNumber` 経由」に整合(2026-05-13 todo.md 完了反映を注釈で記録)
+    - ✓ N>2 拡張時の対応(`Clock` 側の `Hour`/`Minute` 計算式更新)は本 PR スコープ外、別途 TODO「N>2 拡張時の `UsageRestrictionMarkerEffect` Influence の `RemainingCount` 再評価」+ TODO「`Clock.RoundNumber` / `CurrentRound` を `TurnNumber` / `CurrentTurn` に改名」で継続追跡
+  - **Related**: [ADR-0008 §3](adr/0008-m2-drowzzz-clock-and-night-morning.md)、[ADR-0006 §M1-PR2 / DZ-010](adr/0006-m1-detail-application-interfaces.md)、`Assets/_Project/Scripts/Application/Games/DrowZzz/DrowZzzGameSession.cs:287-303`(`Clock` プロパティに計算式集約 + `CurrentRound` ショートカット化)、本完了 PR(chore housekeeping、2026-05-13)
+  - **Notes**: ADR-0008 §3 の「`CurrentRound` は変更しない(後方互換維持)」決定を覆すリファクタ。Property 公開 API は不変、内部計算経路のみ Clock 経由に一本化。N>2 拡張時の更なる再評価は別 TODO で継続追跡(本 PR では `Clock` プロパティの計算式 `(TurnNumber + 1) / 2` の N=2 前提は維持、Phase 3 で再評価)
 
 - [x] **INF-019 `EffectAsset.ToDomain()` 失敗時の skip 経路の本格テスト追加(M4-PR3 で対応)** `priority: medium`
   - **Why**: M4-PR2 で `EffectAsset` 基底 + `AdjustSdpEffectAsset` を導入したが、`AdjustSdpEffect(SdpTarget, int)` は positional record に防御がなく `ArgumentException` を投げる自然な経路がないため INF-019 を Optional マーカーで先送り。M4-PR3 で `KeywordedEffect(IReadOnlyList<Keyword>, IEffect)` の `Inner` null 経路 / `RequiresMinimumTotalPointsMarkerEffect(int)` の `Threshold <= 0` 経路など `ArgumentException` を投げる派生型が複数導入される → これらの `ToDomain()` 失敗を catalog 経路で skip + `Debug.LogError` 発火する動作を本格テスト化する
