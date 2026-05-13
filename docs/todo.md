@@ -69,15 +69,6 @@
   - **Related**: [ADR-0012 §M4-PR6 完成記録](adr/0012-m4-scriptableobject-and-persistence.md)、[CLAUDE.md §6 カバレッジ目標](../CLAUDE.md)、Unity Test Runner + `com.unity.testtools.codecoverage` の手動計測手順は `docs/testing-strategy.md` 参照
   - **Notes**: M4-PR6 完成 PR #71 マージ後にオーナー目視で発覚、本 PR(M4-PR6 完成記録)で TODO 化して追跡。次の PR(M4-PR7 完成 PR 同梱 or 別 chore PR)で対応する判断はオーナー JIT、現時点では「未着手」として登録のみ
 
-- [ ] **INF-019 `EffectAsset.ToDomain()` 失敗時の skip 経路の本格テスト追加(M4-PR3 で対応)** `priority: medium`
-  - **Why**: M4-PR2 で `EffectAsset` 基底 + `AdjustSdpEffectAsset` を導入したが、`AdjustSdpEffect(SdpTarget, int)` は positional record に防御がなく `ArgumentException` を投げる自然な経路がないため INF-019 を Optional マーカーで先送り。M4-PR3 で `KeywordedEffect(IReadOnlyList<Keyword>, IEffect)` の `Inner` null 経路 / `RequiresMinimumTotalPointsMarkerEffect(int)` の `Threshold <= 0` 経路など `ArgumentException` を投げる派生型が複数導入される → これらの `ToDomain()` 失敗を catalog 経路で skip + `Debug.LogError` 発火する動作を本格テスト化する
-  - **Done when**:
-    - M4-PR3(11 派生型 SO 対応)着手時に `ToDomain()` で `ArgumentException` を投げる派生型を選び、Catalog テストとして「Effects 配列内に invalid asset を含めても他要素 / 他 entry が影響を受けない」を `LogAssert.Expect` で検証
-    - 本 INF-019 の `[Optional]` マーカーを外して通常 EARS に昇格、トレーサビリティ機械検証の対象に戻す
-    - 結果がリポジトリに反映済み(本 TODO を「完了済み」へ移動)
-  - **Related**: [ADR-0012 §3 / §「M4-PR3 着手時の JIT 確認項目」](adr/0012-m4-scriptableobject-and-persistence.md)、[`docs/specs/infrastructure/effect-assets.md`](specs/infrastructure/effect-assets.md) INF-019、M4-PR2 code-reviewer P-2 反映(2026-05-13)
-  - **Notes**: M4-PR3 の wrapper effect 派生型(`KeywordedEffectAsset` / `RequiresMinimumTotalPointsMarkerEffectAsset` 等)の SO 表現を確定するタイミングで JIT 確認項目に含める
-
 - [ ] **N>2 拡張時の `UsageRestrictionMarkerEffect` Influence の `RemainingCount` 再評価** `priority: low`
   - **Why**: M3-PR6 で「夢」カードの使用制限を `PlayerInfluence(OwnPhaseStart, UsageRestrictionMarkerEffect, 1)` で表現した(ADR-0011 §6 JIT 確定 2026-05-14、`DrowZzzRule.ApplyAssociate` 内)。`RemainingCount=1` は N=2 前提で「相手 1 フェーズ経由後の自フェーズ Tick で除去」のセマンティクスを実現する値。N>2 拡張(Phase 3 候補)では「相手 N-1 フェーズ経由」になるため再評価が必要
   - **Done when**:
@@ -137,16 +128,6 @@
   - **Related**: [ADR-0006 §7](adr/0006-m1-detail-application-interfaces.md)、PR #20 (本 TODO の発生源)
   - **Notes**: 本 PR (ADR-0006 起票) のスコープ外にした理由は code-reviewer S-2 指摘で「双方向参照は別 PR に切り出す方が筋」と判断したため。M1-PR1 着手前または同時に対応する
 
-- [ ] **`IGameConfig.MaxRoundNumber` を追加(M3 着手 PR 内で消化予定)** `priority: medium`
-  - **Why**: ADR-0006 §1.4 で「M3 着手 PR で `MaxRoundNumber` プロパティを `IGameConfig` に追加し、ゲーム終了判定 (`TurnState.TurnNumber > MaxRoundNumber × Players.Count`、ADR-0006 §7) に利用する」と確定済。M1 完成までは利用機会がないため M3 まで保留してきたが、忘却防止のため TODO エントリ化
-  - **Done when**:
-    - `IGameConfig.MaxRoundNumber` プロパティ追加(`Drowsy.Domain.Configuration`、`int` 型、DrowZzz 値 = 20)
-    - CFG-102 を `docs/specs/domain/configuration/game-config.md` に追加
-    - `StubGameConfig` (Tests/Stubs/) のデフォルト値追加
-    - M3 ゲーム終了判定 (`IsTerminated(session)` 等) で参照
-  - **Related**: [ADR-0006 §1.4](adr/0006-m1-detail-application-interfaces.md)、[ADR-0006 §7](adr/0006-m1-detail-application-interfaces.md)、M3 着手 PR (将来)
-  - **Notes**: ADR-0006 §M1 着手 PR 群 §M1-PR2 補足の「M3 で個別追加」方針通り
-
 - [ ] **`ApplyActionUseCase` / `DrowZzzRuleTests` の共通テストヘルパー抽出** `priority: low`
   - **Why**: M1-PR6 reviewer 指摘 P-2 と M1-PR7 着手時に確認した課題。`ApplyActionUseCaseTests.NewSession` と `DrowZzzRuleTests.NewSession` がほぼ同一実装で重複している。M2 でテストが増えると保守コストが上がる
   - **Done when**:
@@ -174,15 +155,6 @@
   - **Related**: [ADR-0009 §3](adr/0009-m2-m3-dp-and-victory-conditions.md)、[ADR-0007 §「山札枯渇」](adr/0007-m2-detail-card-effects.md)(類似構造の山札枯渇チェック TODO)
   - **Notes**: 現状想定下の総抽選 = N=2 × 5 = 10 枚 ≤ プール 39 枚(余裕 29 枚)
 
-- [ ] **早期勝利カードの仕様 JIT 確定待ち(M2-PR3+ で実装)** `priority: medium`
-  - **Why**: ADR-0009 §5 で「早期勝利は『特定の効果タイプを持つカード』のプレイで起こる」と確定したが、カード ID / カード名 / 効果 record 名 / 効果フィールド / 効果意味は M2-PR3+ で JIT 共有。ADR-0007 §6「1 PR = 1 effect record」運用に従い、最初の効果 record 着手時にプロジェクトオーナーから受け取る
-  - **Done when**:
-    - M2-PR3+ で「早期勝利トリガーカード」が effect record として実装される(例: `DeclareEarlyWinEffect` 等の仮称、JIT で確定)
-    - 当該カードの CardData (CardId, Name, Attributes) が `InMemoryCardCatalog` に登録される
-    - EARS / .feature で要件 ID 採番される
-  - **Related**: [ADR-0009 §5](adr/0009-m2-m3-dp-and-victory-conditions.md)、[ADR-0007 §6](adr/0007-m2-detail-card-effects.md)
-  - **Notes**: 「持ち点 ≥ 100」「Round ≤ 15」「カードプレイ」の 3 条件が揃ったプレイヤーが勝利、判定タイミング = `PlayCardAction.Apply` 内
-
 - [ ] **DDP / SDP / FDP の正式名変更可能性** `priority: low`
   - **Why**: プロジェクトオーナーから「FDP / DDP / SDP の名前はいずれも変更可能性あり」と共有済。M2 中の任意のタイミングで正式名が JIT 確定する可能性がある。識別子(record / フィールド名 / EARS / .feature)の変更を伴う場合は機械的リファクタを別 PR で実施
   - **Done when**:
@@ -191,17 +163,6 @@
     - ADR-0009 / ADR-0006 の関連箇所に新正式名を反映(注釈で旧称を残す)
   - **Related**: [ADR-0009 §1 / §Negative](adr/0009-m2-m3-dp-and-victory-conditions.md)、[ADR-0006 §2.2](adr/0006-m1-detail-application-interfaces.md)
   - **Notes**: 命名変更時期は不明、M2 完成 PR までに確定すれば一括変更、それ以降は M3 着手時に再評価
-
-- [ ] **`IRandomSource` の `DrowZzzRule` / `EndTurnAction` 経路への注入判断(M2-PR4 着手時に JIT)** `priority: medium`
-  - **Why**: ADR-0009 §4 で確定した「DDP 抽選を `EndTurnAction.Apply` 内で行う」案は `IRandomSource` を `DrowZzzRule` または `EndTurnAction` の経路に注入する必要がある。ADR-0007 §3 で確定した「`DrowZzzRule` constructor 引数は `ICardCatalog<IEffect>` / `EffectInterpreter` のみ」を破壊する可能性がある
-  - **Done when**:
-    - M2-PR4(DDP 抽選機構)着手時に注入方式を JIT 判断:
-      - 案 A: `DrowZzzRule` constructor に `IRandomSource` を追加(ADR-0007 §3 を覆す、別 ADR で記録)
-      - 案 B: `EndTurnAction` 側で別経路(static helper / sealed class 等)を作る
-      - 案 C: `ApplyActionUseCase` 経路に `IRandomSource` を持たせる
-    - 採用案で実装 + テスト更新 + ADR-0007 改訂が必要なら別 PR で起票
-  - **Related**: [ADR-0009 §4](adr/0009-m2-m3-dp-and-victory-conditions.md)、[ADR-0007 §3](adr/0007-m2-detail-card-effects.md)
-  - **Notes**: M2-PR4 着手時に JIT、本 PR 範囲外
 
 - [ ] **`Clock.RoundNumber` / `CurrentRound` を `TurnNumber` / `CurrentTurn` に改名(用語規約整合リファクタ)** `priority: low`
   - **Why**: ADR-0009 §「用語規約」で「ターン(大単位、30 分)/ フェーズ(中単位、1 プレイヤー 1 行動)/ PhaseState(待ち状態)」をボードゲーム一般用語(Eurogame 寄り)で確定したが、実装名は依然 `Clock.RoundNumber` / `DrowZzzGameSession.CurrentRound` のまま(本 PR スコープを限定するため実装名リネームは別 PR に分離)。用語規約と実装名の不整合は中長期で読みづらさを生む。`M1IntegrationTests.PlayOnePhase` / `PlayPhases` は ADR-0009 同 PR で改名済(旧 `PlayOneSubturn` / `PlaySubturns`)、本 TODO 対象外
@@ -238,6 +199,44 @@
 (着手中のエントリをここに移動する)
 
 ## 完了済み
+
+- [x] **INF-019 `EffectAsset.ToDomain()` 失敗時の skip 経路の本格テスト追加(M4-PR3 で対応)** `priority: medium`
+  - **Why**: M4-PR2 で `EffectAsset` 基底 + `AdjustSdpEffectAsset` を導入したが、`AdjustSdpEffect(SdpTarget, int)` は positional record に防御がなく `ArgumentException` を投げる自然な経路がないため INF-019 を Optional マーカーで先送り。M4-PR3 で `KeywordedEffect(IReadOnlyList<Keyword>, IEffect)` の `Inner` null 経路 / `RequiresMinimumTotalPointsMarkerEffect(int)` の `Threshold <= 0` 経路など `ArgumentException` を投げる派生型が複数導入される → これらの `ToDomain()` 失敗を catalog 経路で skip + `Debug.LogError` 発火する動作を本格テスト化する
+  - **Done when** (all met):
+    - ✓ M4-PR3 で `KeywordedEffectAsset.Inner` null 経路の `ScriptableObjectCardCatalogTests` 拡張(`Given_KeywordedEffectAssetのInnerがnull_When_GetEffects_Then_skip以外要素が残る`)で `LogAssert.Expect` ベースの本格テスト追加
+    - ✓ INF-019 の `[Optional]` マーカーを外して通常 EARS に昇格、トレーサビリティ機械検証の対象に戻す(ADR-0012 §M4-PR3 完成記録「INF-019 Optional 解除 ✓」)
+    - ✓ 結果がリポジトリに反映済み
+  - **Related**: [ADR-0012 §M4-PR3 完成記録](adr/0012-m4-scriptableobject-and-persistence.md)、PR #65(M4-PR3、merged `37d5f1c`)、[`docs/specs/infrastructure/effect-assets.md`](specs/infrastructure/effect-assets.md) INF-019、M4-PR2 code-reviewer P-2 反映(2026-05-13)
+  - **Notes**: M4-PR3 完了で本 TODO 解消(本完了済み移動は housekeeping PR で適用、2026-05-13)
+
+- [x] **`IGameConfig.MaxRoundNumber` を追加(M3 着手 PR 内で消化予定)** `priority: medium`
+  - **Why**: ADR-0006 §1.4 で「M3 着手 PR で `MaxRoundNumber` プロパティを `IGameConfig` に追加し、ゲーム終了判定に利用する」と確定済だった
+  - **Done when** (resolved with alternate decision):
+    - ✓ ADR-0010 §8 で「`MaxRoundNumber` は `IGameConfig` に追加しない、`DrowZzzClockConstants.MaxRoundNumber = 21` を維持(L2 = ドメイン上の真の不変量に分類、Clock 構造に紐づく)」と最終確定
+    - ✓ 当初の Done when 4 項目(IGameConfig 追加 / CFG-102 採番 / StubGameConfig 追加 / M3 終了判定での参照)はすべて **不採用方向** で解消、ADR-0010 §「不採用案」表に「`IGameConfig.MaxRoundNumber` プロパティ追加」を記録
+    - ✓ 結果がリポジトリに反映済み(`DrowZzzClockConstants.MaxRoundNumber` 維持、`IGameConfig` に追加なし)
+  - **Related**: [ADR-0010 §8](adr/0010-m3-game-termination-and-victory-determination.md)、[ADR-0006 §1.4 / §7](adr/0006-m1-detail-application-interfaces.md)、M3-PR1 実装 PR #42 / 完成記録 PR #46
+  - **Notes**: 当初 ADR-0006 で予約された方針を ADR-0010 で再評価 → 不採用に切替(L3 ゲームバランス調整可能値ではなく L2 構造的不変量と再分類)。本 TODO は「Done when の代替案達成」で完了済み(2026-05-13)
+
+- [x] **早期勝利カードの仕様 JIT 確定待ち(M2-PR3+ で実装)** `priority: medium`
+  - **Why**: ADR-0009 §5 で「早期勝利は『特定の効果タイプを持つカード』のプレイで起こる」と確定したが、カード ID / カード名 / 効果 record 名 / 効果フィールド / 効果意味は M2-PR3+ で JIT 共有
+  - **Done when** (all met):
+    - ✓ ADR-0010 §5 で `EarlyWinTriggerEffect : IEffect`(`Drowsy.Application.Games.DrowZzz.Effects`、引数なし record)を確定、`PlayCardAction.Apply` 内で `Clock.IsNight && TotalPoints[currentPlayer] >= EarlyWinScoreThreshold` を確認して `Outcome = WinnerOutcome` 設定
+    - ✓ M3-PR1 完成 PR で `EarlyWinTriggerEffect` 効果 record 実装 + ゲーム終了判定統合
+    - ✓ ADR-0011 §7 で「夢」カード(No.00)の効果列内に `KeywordedEffect([Frenzy, Instinct], EarlyWinTriggerEffect)` の形で統合、M3-PR6 で完成
+    - ✓ EARS / .feature で要件 ID 採番(`docs/specs/games/drowzzz/cards/dream-card.md` 等)
+  - **Related**: [ADR-0010 §5](adr/0010-m3-game-termination-and-victory-determination.md)、[ADR-0011 §7](adr/0011-m3-dream-card-and-game-mechanics-expansion.md)、M3-PR1 実装 PR #42 / 完成記録 PR #46、M3-PR6 実装 PR #57 / 完成記録 PR #58
+  - **Notes**: 「持ち点 ≥ 100(`EarlyWinScoreThreshold`)」「Round 1〜16(`Clock.IsNight`)」「カードプレイ」の 3 条件は ADR-0010 §5 で確定通り。M3 完結済(CLAUDE.md §11 「M3:**完結**」)で本 TODO 解消(2026-05-13)
+
+- [x] **`IRandomSource` の `DrowZzzRule` / `EndTurnAction` 経路への注入判断(M2-PR4 着手時に JIT)** `priority: medium`
+  - **Why**: ADR-0009 §4 で確定した「DDP 抽選を `EndTurnAction.Apply` 内で行う」案は `IRandomSource` を `DrowZzzRule` または `EndTurnAction` の経路に注入する必要がある。ADR-0007 §3 で確定した「`DrowZzzRule` constructor 引数は `ICardCatalog<IEffect>` / `EffectInterpreter` のみ」を破壊する可能性があった
+  - **Done when** (resolved with alternate decision):
+    - ✓ M2-PR4 着手時の JIT で **案 D「`DdpPool.Shuffle(IRandomSource rng)` を `DdpPool` 値オブジェクト自身に注入」** を採用(当初挙げた案 A / B / C いずれも不採用)
+    - ✓ `DrowZzzRule` constructor は ADR-0007 §3 の確定通り `ICardCatalog<IEffect>` / `EffectInterpreter` のみ(破壊なし、ADR-0007 改訂不要)
+    - ✓ `IRandomSource` の利用箇所は `StartGameUseCase` のみに局所化(constructor 受け取り `StartGameUseCase.cs:43,50` + 先後決定の Fisher-Yates Shuffle `:72` + FDP 抽選 Shuffle `:75` + `DdpPool.Shuffle` 呼び出し `:124`)、`DdpPool.Shuffle(IRandomSource rng)` 自体は `DdpPool.cs:85` に実装
+    - ✓ 結果がリポジトリに反映済み(M2-PR4 完成 PR)
+  - **Related**: [ADR-0009 §4](adr/0009-m2-m3-dp-and-victory-conditions.md)、[ADR-0007 §3](adr/0007-m2-detail-card-effects.md)、M2-PR4 実装 PR #37 / 完成記録 PR #38
+  - **Notes**: 「`DdpPool` 値オブジェクトに `IRandomSource` を注入する `Shuffle` メソッドを持たせる」設計が、当初 3 案より自然(値オブジェクト責務 + 純粋関数)。`DrowZzzRule` / `EndTurnAction` への `IRandomSource` 注入は **不要** となり、`StartGameUseCase` 起動時に `DdpPool` を Fisher-Yates Shuffle 済の状態で構築 → 以降は `DdpPool.Draw()` の純粋関数経由で抽選する設計に結実(2026-05-13 完了済み移動)
 
 - [x] **Pile に値同値性を追加する** `priority: medium`
   - **Why**: PR-2 で Hand に値同値性(`Equals` / `GetHashCode` / `operator==` / `!=`)を導入したが、既存 `Pile` は参照同値のまま残っていた。Domain 集合型(`Pile` / `Hand` / `CardData`)を全て値同値で揃え、後続 PR(PR-4 GameState など)での比較を一貫させる
