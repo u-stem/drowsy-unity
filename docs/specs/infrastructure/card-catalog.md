@@ -104,6 +104,52 @@ public sealed class AttributeEntry
 - [INF-011] When `_entries` contains an entry with `null` or whitespace `CardIdValue`、その entry は cache 構築時に **skip** される。catalog の他 entry には影響しない(graceful degradation)。
 - [INF-012] When `_entries` contains an entry whose `ToCardData()` throws(例:`Name` が null / 空白、`AttributeEntry.Key` が空白)、その entry は cache 構築時に **skip** + `Debug.LogError` 報告。catalog の他 entry には影響しない。
 
+## M4-PR4 追加要件:既存 3 カードの SO ↔ InMemory 同値性
+
+ADR-0012 §6 で確定した「既存 3 カード(No.00 / No.01 / No.02)の SO 移行」を本 PR で **テスト内動的構築 のみ** で実装(実 `.asset` ファイル配置は M4-PR7 / M5 で Designer ワークフロー実証時に追加、JIT 確定 2026-05-13)。`ScriptableObjectCardCatalog + CardEntryAsset + EffectAsset[]` で構築した SO catalog と、`InMemoryCardCatalog`(Application.Tests で利用中)を **同じ CardId で 1 対 1 のカードデータ + 効果列で構築** し、両者の `GetEffects(id)` を `Is.EqualTo`(record auto-equals + wrapper の `Equals` override 順序保持シーケンス同値)で比較する。
+
+評価軸(JIT 確定 2026-05-13、推奨案 a):
+
+- **ToDomain 経由の `IEffect[]` が record 値同値**(InMemory が返す `IReadOnlyList<IEffect>` と SO 経由(`EffectAsset.ToDomain` × N)で再構築した `IEffect[]` が `Is.EqualTo`)
+- 評価軸 b(`DrowZzzRule` 経由 end-to-end)は本 PR スコープ外:Application.Tests 既存 `CupOfThreatCardTests` / `GreenInvasionCardTests` / `DreamCardTests` が `InMemoryCardCatalog` 経由で end-to-end をカバー済、SO 表現の **構造同値** が本 PR の目的
+
+実装順序(JIT 確定 2026-05-13、難易度低 → 高):
+
+1. **No.01「コップ一杯の脅威」**:`TimeOfDayBranchEffect` 1 件(夜・朝 wrapper、`AdjustSdpEffect` / `DrawCardEffect` を nest)
+2. **No.02「緑の侵攻」**:`ChoiceEffect` 1 件(2 分岐、`AdjustSdpEffect` / `RemoveInfluenceEffect` / `ApplyInfluenceEffect(PlayerInfluence)`)
+3. **No.00「夢」**:4 effect 最上位(`AssociatableMarkerEffect` / `RequiresMinimumTotalPointsMarkerEffect(100)` / `UsageRestrictionMarkerEffect` / `TimeOfDayBranchEffect`)+ 夜効果に `KeywordedEffect([Frenzy, Instinct], EarlyWinTriggerEffect)` nest + 朝効果 `AdjustSdpEffect(Self, -80)`(M3-PR6 で確立した M3 全機構統合カード)
+
+### `Get`(`CardData`)と `GetEffects`(`IEffect[]`)の同値性
+
+- [INF-045] When `ScriptableObjectCardCatalog` is constructed with the SO representation of Card `"01"`「コップ一杯の脅威」, both `Get(CardId.Of("01")).Name` and `GetEffects(CardId.Of("01"))` shall equal the corresponding values from an `InMemoryCardCatalog` constructed with the same card data and effects.
+  - 関連:M2-PR3、ADR-0009 §戦略示唆
+  - SO 経路:`TimeOfDayBranchEffectAsset` の再帰 ToDomain → `TimeOfDayBranchEffect` 値同値
+  - 検証粒度:M4-PR4 code-reviewer P-3 反映 2026-05-13、補足を bullet に分離
+- [INF-046] When `ScriptableObjectCardCatalog` is constructed with the SO representation of Card `"02"`「緑の侵攻」, `Get(CardId.Of("02")).Name` and `GetEffects(CardId.Of("02"))` shall equal the corresponding `InMemoryCardCatalog` values.
+  - 関連:M2-PR5、ADR-0007 §1.5
+  - SO 経路:`ChoiceEffectAsset` の 2 次元再帰 + `PlayerInfluenceAsset` 中間型経由 ToDomain
+  - record 値同値:`ChoiceEffect.Branches` 順序保持シーケンス + `PlayerInfluence` auto-equals
+- [INF-047] When `ScriptableObjectCardCatalog` is constructed with the SO representation of Card `"00"`「夢」, `Get(CardId.Of("00")).Name` and `GetEffects(CardId.Of("00"))` shall equal the corresponding `InMemoryCardCatalog` values.
+  - 関連:M3-PR6、ADR-0011 §6 / §7(M3 全機構統合カード)
+  - SO 経路:4 最上位 marker / wrapper + nested `KeywordedEffectAsset([Frenzy, Instinct], EarlyWinTriggerEffectAsset)` + 朝効果 `AdjustSdpEffectAsset(Self, -80)`
+  - record 値同値:wrapper override Equals + marker auto-equals + KeywordedEffect.Inner 再帰
+
+### Application.Tests への影響(本 PR で変更なし)
+
+Application.Tests 配下の `CupOfThreatCardTests` / `GreenInvasionCardTests` / `DreamCardTests` は **本 PR で一切変更しない**(ADR-0006 §4 Pure C# 哲学 + ADR-0012 §5 併存戦略):
+
+- Application.Tests は引き続き `InMemoryCardCatalog` 経由で end-to-end テスト(`DrowZzzRule.Apply` 経路)を担う
+- Infrastructure.Tests(本 PR で追加)は SO 経由の **構造同値検証** に専念する Ports & Adapters 整合
+- 両者は同じ「3 カードの効果列定義」を共有(将来 M4-PR7 で実 .asset 配置時に SO 側を再ロード経路に切り替えても、本 PR で確立した同値性検証が回帰防御として機能)
+
+### トレーサビリティ(M4-PR4 追加分)
+
+| 要件 ID | カバーするテスト | 備考 |
+| ---- | ---- | ---- |
+| INF-045 | `CupOfThreatCardCatalogTests.Given_*` 2 件(`Get(Name)` 同値 + `GetEffects` IEffect[] 同値) | wrapper 1 段 + 非 wrapper 内側 |
+| INF-046 | `GreenInvasionCardCatalogTests.Given_*` 2 件(`Get(Name)` 同値 + `GetEffects` IEffect[] 同値) | ChoiceEffect 2 次元 + PlayerInfluence 中間型 |
+| INF-047 | `DreamCardCatalogTests.Given_*` 2 件(`Get(Name)` 同値 + `GetEffects` IEffect[] 同値) | M3 全機構統合(4 最上位 + nested KeywordedEffect 経路) |
+
 ## 定数依存
 
 該当なし。本 PR では数値定数を保持しない(将来 PR で `MaxEntries` 等の上限が必要になれば `DrowZzzCardCatalogConstants` に集約)。
