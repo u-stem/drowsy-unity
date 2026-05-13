@@ -928,6 +928,164 @@ CLAUDE.md §11「Phase 進捗」M4 行を以下に更新:
 - 旧: `**M4**(永続化 / SO 化 + ユーザー設定): **進行中** — ADR-0012 起票済、M4-PR1 / M4-PR2 / M4-PR3 / M4-PR4 完成(SO 表現基盤完成 + 既存 3 カード SO ↔ InMemory 同値性検証完了、43 テスト)、CLI 機械検知レイヤ整備(PR #63)、M4-PR5(`DrowZzzGameSession` JSON 永続化、初期推奨 Newtonsoft.Json)着手予定`
 - 新: `**M4**(永続化 / SO 化 + ユーザー設定): **進行中** — ADR-0012 起票済、M4-PR1 / M4-PR2 / M4-PR3 / M4-PR4 / M4-PR5 完成(SO 表現基盤 + 既存 3 カード SO ↔ InMemory 同値性 + `DrowZzzGameSession` JSON 永続化(Newtonsoft.Json + カスタム JsonConverter "type" discriminator + PersistedSessionV1 DTO + link.xml + IsExternalInit polyfill)、累計 86 テスト)、CLI 機械検知レイヤ整備(PR #63)、M4-PR6(`IUserSettings` + PlayerPrefs)着手予定`
 
+### M4-PR6 完成記録(2026-05-13、IUserSettings + PlayerPrefsUserSettings + R3 Observable 公開 + 26 テスト)
+
+**完成 PR**: PR #71 `feat(infra): IUserSettings + PlayerPrefsUserSettings + R3 Observable 公開 + 25 テスト (M4-PR6)`(merged `fd94cfc`、4 commit 同梱:実装本体 `e9bfaba`(Domain.Configuration 3 ファイル + Infrastructure.Settings 2 ファイル + Drowsy.Domain.asmdef 修正)/ テスト追加 `7dba333`(26 テストメソッド)/ EARS + .feature 追加 `4abe3c8`(USR-001〜USR-026 = 26 要件採番 + Gherkin 18 ブロック)/ fix `21f00ec`(`Drowsy.Infrastructure.Tests.asmdef` への R3.dll 追加漏れ + .meta 8 件同梱))。本 ADR §8 / §「M4-PR6 着手時の JIT 確認項目」で確定した「`IUserSettings` + PlayerPrefs(サブスコープ)」を R3 `ReactiveProperty<T>` 経由 + Domain.asmdef への R3 追加で実装、**ADR-0005「Phase 2 完了の最小定義 = ユーザー設定が動く」を充足する 1 ステップ + M5 Presentation 着手前の UI バインディング基盤を完成**。
+
+> 注釈:PR タイトル中の「25 テスト」は提出時のカウントミス(USR-021 を `[TestCase]` 4 ケースで分割した後にメソッド数を再確認していなかった)。**実際のテストメソッド数は 26 件 / `[TestCase]` 込みで実行 29 ケース**(本完成記録 PR の code-reviewer P-1 反映 2026-05-13)。以降の本セクション数値はすべて 26 / 29 を正とする。
+
+#### Definition of Done 達成項目(本 ADR §8 / §「M4-PR6 着手時の JIT 確認項目」で確定した仕様の実装)
+
+| スコープ項目 | 達成状況 | 備考 |
+| ---- | ---- | ---- |
+| `IUserSettings` interface 10 メンバ | ✓ | `Drowsy.Domain.Configuration` namespace、3 項目(BGM / SE / Language)x 3 役割(getter / Observable / setter)+ `Save()` の対称 API、`IGameConfig` と同居(ADR-0012 §8)。**`Dispose()` は interface 非含有**(`IDisposable` は実装側の `PlayerPrefsUserSettings` のみで継承、Domain に `IDisposable` を持ち込まない設計) |
+| 3 項目の default 値 | ✓ | `UserSettingsDefaults`(L4)で `BgmVolume` = 0.5 / `SeVolume` = 0.5 / `Language` = `LanguageCodes.Ja` = `"ja"`、CLAUDE.md §3 日本拠点既定と整合 |
+| PlayerPrefs key prefix `drowsy.*` | ✓ | `PlayerPrefsKeys`(internal const)で `"drowsy.bgm"` / `"drowsy.se"` / `"drowsy.lang"`、他プロジェクト PlayerPrefs と衝突回避 |
+| R3 `Observable<T>` 公開(M4-PR6 で) | ✓ | `BgmVolumeChanged` / `SeVolumeChanged` / `LanguageChanged` 3 プロパティ、Subscribe 時即発火(BehaviorSubject 相当)を interface xmldoc に明記、M5 UI バインディングで初期値別経路取得を不要化 |
+| `Drowsy.Domain.asmdef` に R3 配置 | ✓ | `overrideReferences: true` + `precompiledReferences: ["R3.dll"]`、`noEngineReferences: true` 維持(R3.dll は Pure C# library で UnityEngine 非依存)、CLAUDE.md §5 と整合 |
+| Volume = clamp / Language = throw の非対称設計 | ✓ | Volume は UI スライダー連続値を許容するため `Mathf.Clamp`、Language は離散値(ISO 639-1 形式)で許容セット外を `ArgumentException`、xmldoc で根拠明示 |
+| ctor のデータ衛生 | ✓ | PlayerPrefs に範囲外 / 未対応値が入っている場合(手書き編集 / 過去ファイル)は default 復帰、Setter 経路の clamp / throw と独立した防御層、USR-018 / USR-019 / USR-026 でテスト |
+| `Save()` 明示呼び出し | ✓ | setter 内部の自動 Save は disk I/O 頻発防止のため行わず、`Save()` で `PlayerPrefs.Save()` を集約呼び出し |
+| `Dispose()` パターン | ✓ | `_disposed` フラグ + 冪等(二重 Dispose 無音)、setter / Save は `ObjectDisposedException`、getter は `ReactiveProperty.Value` の保持値で最後の値を返す、xmldoc remarks に明示 |
+| EARS + .feature 採番 | ✓ | `docs/specs/infrastructure/settings/user-settings.{md,feature}` 新設、USR-001〜USR-026 = 26 要件、Gherkin 18 ブロック(`シナリオ` 16 + `シナリオアウトライン` 2)、USR-015 / USR-016 は独立シナリオで対称化(code-reviewer S-5 反映) |
+| `scripts/check-traceability.sh` pass | ✓ | USR-001〜USR-005 が `[Ubiquitous]` でテスト免除、残り 21 要件は対応テスト保有、`整合性 OK` 確認済(仕様 ID 512 / Property ID 423) |
+| `dotnet build` 0 エラー | ✓ | 警告 6 件はすべて R3 / System.* の pre-existing MSB3245 assembly resolve 警告で本 PR と無関係、Unity Editor 内では Library/PackageCache 経由で正しく解決 |
+| Unity Editor Console エラー 0 件 | ✓ | オーナーが Unity Editor Focus で Auto-refresh + csproj 再生成後に確認(2026-05-13)、`PlayerPrefsUserSettingsTests` 25 件は Test Runner で別途確認予定 |
+
+#### 仕様 ID / NUnit 増加
+
+- 仕様 ID 新規採番(USR-001 〜 USR-026、26 件、`USR-` prefix を本 M4-PR6 で初採番):
+  - **Ubiquitous(5 件、USR-001 〜 USR-005)**: 3 項目 expose(USR-001)/ key prefix `drowsy.*`(USR-002)/ default 値(USR-003)/ volume range [0,1](USR-004)/ supported languages `{ja, en}`(USR-005)すべて `[Ubiquitous]` マーカー付与でテスト免除、構造的保証で代替検証
+  - **Event-driven(12 件、USR-006 〜 USR-017)**: Setter の Getter / PlayerPrefs 両方反映(USR-006 / 014 / 017)/ ctor の default + 既存値復元(USR-007 / 008 / 009)/ R3 Observable 発火(USR-010 / 011 / 012)/ Save 永続化(USR-013)/ Volume clamp 上下限(USR-015 / 016)
+  - **State-driven(3 件、USR-018 / USR-019 / USR-026)**: BGM ctor 範囲外 default 復帰(USR-018)/ Lang ctor 未対応 default 復帰(USR-019)/ SE ctor 範囲外 default 復帰(USR-026、USR-018 と対称、code-reviewer S-2 反映で新設)
+  - **Unwanted(6 件、USR-020 〜 USR-025)**: SetLanguage null `ArgumentNullException`(USR-020)/ SetLanguage 未対応コード `ArgumentException`(USR-021、`[TestCase]` 4 ケース)/ Dispose 後の 4 操作 `ObjectDisposedException`(USR-022 〜 USR-025)
+- NUnit Property unique: **+21 件 → 累計 423 件**(テスト件数 +26:`PlayerPrefsUserSettingsTests` 26 メソッド、USR-021 のみ `[TestCase]` 4 ケースのため実行 29 ケース)
+- M4 累計テスト件数:**112 件**(M4-PR1 12 + M4-PR2 4 + M4-PR3 21 + M4-PR4 6 + M4-PR5 43 + M4-PR6 26)
+
+#### 本 PR で確定した ADR-0012 §「M4-PR6 着手時の JIT 確認項目」(2026-05-13)
+
+| 項目 | 確定内容 |
+| ---- | ---- |
+| 最小項目セット | **3 項目で確定**(BGM 音量 / SE 音量 / 言語コード、本 ADR §8 初期推奨ママ、追加項目は Phase 3 で必要時に拡張) |
+| 各項目の default 値 | **BGM 0.5 / SE 0.5 / 言語 ja**(本 ADR §8 初期推奨ママ、CLAUDE.md §3 日本拠点既定 + 音量中間値で初回起動の聴感を中立化) |
+| PlayerPrefs キー命名 prefix | **`drowsy.*`**(`drowsy.bgm` / `drowsy.se` / `drowsy.lang`、プロジェクト名 prefix + `.` 区切りで階層性表現、他プロジェクト PlayerPrefs と衝突回避) |
+| R3 `Observable<TValue>` 公開時期 | **本 M4-PR6 で interface に含める**(M5 UI バインディングの前倒し設計、ADR-0010 §「設計選択肢の不採用」と整合) |
+| **R3 配置(追加 JIT)** | **`Drowsy.Domain.asmdef` に precompiledReferences で R3.dll を追加**(Unity デファクト = Domain/Model に ReactiveProperty を入れるパターン、CLAUDE.md §4 で R3 を VContainer / UniTask と並ぶコア採用 lib として確定済との整合)|
+
+不採用案(再確認):
+- **System.Reactive / `IObservable<T>`(BCL 標準)を Domain に入れて R3 は Application 以降**(.NET エンタープライズデファクト):本プロジェクトは Unity + R3 採用済で BCL `IObservable<T>` と二重実装になる、トレードオフ的に Unity デファクト優先
+- **`Drowsy.Domain.Configuration.asmdef` を sub-asmdef 分離して R3 をそちらに限定**:asmdef 分割コスト + Domain 内クラス参照に assembly 参照を見直す保守負担、Phase 2 規模では過剰
+- **`IUserSettings` を Application 層に移して R3 は Application で**:ADR-0012 §8「Domain.Configuration namespace」確定を覆すことになり ADR 修正 PR が本 PR に合流、規模拡大
+- **Observable を別 interface(`IObservableUserSettings`)に切り出し**(Clean Architecture 学術派):M5 DI 注入が 2 箇所必要 + 1 実装 2 interface のボイラープレート、個人開発スコープでは過剰
+- **項目を 2 項目(言語を M5 送り)に縮小**:M5 i18n 設計時に PlayerPrefs スキーマ拡張 = 後方互換問題、本 M4-PR6 で言語含めて確定する方が schemaVersion 維持
+
+#### code-reviewer subagent 反映(警告 3 / 提案 5 → 7 件反映、1 件本完成記録 PR で別途反映)
+
+| ID | 種別 | 内容 | 反映 |
+| ---- | ---- | ---- | ---- |
+| W-1 | 警告 | `IUserSettings` Observable 3 プロパティの xmldoc に「Subscribe 時即発火」が未明記、将来の別実装(`Subject<T>` ベース等)で interface contract が曖昧 | ✓ 3 プロパティすべてに「Subscribe 時に現在値を即発火(BehaviorSubject 相当)」を明記、M5 UI バインディングの前倒し設計目的も追記 |
+| W-2 | 警告 | USR-007 / USR-006 / USR-014 / USR-017 のテストが複数アサーション(CLAUDE.md §5「1 テスト 1 アサーション」違反) | ✓ USR-007 を 3 メソッド(BGM / SE / Language 各々)/ USR-006 / 014 / 017 を各 2 メソッド(Getter / PlayerPrefs)に分割、トレーサビリティ表も同期更新 |
+| W-3 | 警告 | `UserSettingsDefaults` の定数層分類が xmldoc(L4)と spec md(L1)で不整合 | ✓ L4 に統一、`user-settings.md` 「定数依存」セクションを CLAUDE.md §9 階層分類(L4 / L2)で書き直し |
+| S-1 | 提案 | テスト内の key literal が `PlayerPrefsKeys` 内部定数と重複定義、key 変更時の二重修正リスク | ✓ テスト内 const を削除し `PlayerPrefsKeys.BgmVolume` 等の internal 定数を `InternalsVisibleTo` 経由で参照、DRY 化 |
+| S-2 | 提案 | SE の ctor 範囲外復帰要件 ID が未採番(BGM USR-018 のみで対称性なし) | ✓ USR-026(SE ctor 範囲外復帰、USR-018 BGM 対称)を新設、対応テスト `Given_PlayerPrefsに範囲外SE_When_インスタンス化_Then_default0_5に復帰する` 追加 |
+| S-3 | 提案 | `Drowsy.Domain.asmdef` の `overrideReferences: true + R3.dll` 採用理由を ADR-0012 §Implementation Notes に追記 | **本完成記録 PR で反映**(本 §「Implementation Notes:asmdef R3 採用方式」として下記追記、M4-PR6 fix commit `21f00ec` の Tests asmdef 追記漏れ教訓も同梱) |
+| S-4 | 提案 | `PlayerPrefsUserSettings.Dispose` の xmldoc に getter の挙動(最後の値を返す)が未明示 | ✓ Dispose xmldoc の remarks に「getter は Dispose 後も最後の値を返す(ReactiveProperty.Value の保持値が有効)」+ Observable Subscribe は OnCompleted 即終了 + 二重 Dispose 冪等を追記 |
+| S-5 | 提案 | `user-settings.feature` の `@USR-015 @USR-016` シナリオアウトラインが 1 ブロックに統合、NUnit 側の独立メソッドと非対称 | ✓ シナリオアウトライン 1 件を独立シナリオ 2 件に分割(`@USR-015 BGM の上限 clamp` / `@USR-016 BGM の下限 clamp`)、NUnit 側の独立メソッドと対称化 |
+
+#### Implementation Notes:asmdef R3 採用方式(code-reviewer S-3 反映)
+
+本 ADR §8 起票時には R3 配置の具体 asmdef 構成まで踏み込んでいなかったが、M4-PR6 着手時の JIT デファクト整理で「Unity デファクト = Domain/Model に R3 を入れる」を確定したため、本完成記録に記録する:
+
+- **`Drowsy.Domain.asmdef`**:`overrideReferences: false → true` に変更し、`precompiledReferences: ["R3.dll"]` を明示参照。`noEngineReferences: true` は維持(R3.dll は `netstandard2.1` build を提供する Pure C# library で UnityEngine 非依存)。`R3.Unity.asmdef` 参照ではなく `R3.dll` 直接参照を選ぶことで、R3.Unity が持つ MainThreadScheduler 等 UnityEngine binding を Domain に持ち込まない設計
+- **`Drowsy.Infrastructure.asmdef`**:`overrideReferences: false` のまま、autoReferenced な `R3.Unity` 経由で R3 を取得(本 M4-PR6 では asmdef 変更不要、既存設定で R3 が見える)
+- **`Drowsy.Infrastructure.Tests.asmdef`**:`overrideReferences: true` のため `precompiledReferences` に `R3.dll` を明示追加が必要。**M4-PR6 実装本体 commit `e9bfaba` ではこの追加が漏れ、Unity Editor で CS0246 が発火 → fix commit `21f00ec` で対応**。M4-PR5 で `Newtonsoft.Json.dll` を Tests asmdef に追加した時と同じ非対称(本 Infrastructure ↔ Infrastructure.Tests)パターンが本 M4-PR6 でも再発
+
+教訓(M4-PR7 / Phase 3 以降で継承):**`overrideReferences: true` の asmdef に新規 precompiled 依存を追加する際、関連する Tests asmdef にも同じ依存追加が必要**。M4-PR7 完成 PR の「Designer ワークフロー実証」に並行して「asmdef 依存追加チェックリスト」を `docs/architecture/` 配下に整備することを検討。
+
+#### M4-PR6 進行中の学び
+
+##### 学び 1: 「デファクト整理」を JIT 確認に持ち込む運用(M4-PR6 着手時の R3 配置判断)
+
+ADR-0012 §8 起票時には「R3 を Domain に含めるか」の細部判断まで踏み込んでいなかったため、M4-PR6 着手 JIT で 4 項目に絞っていた JIT 確認が 5 項目目(R3 配置)で「Drowsy.Domain.asmdef に R3 を入れて良いか?」とユーザーから問われた。ユーザーは「デファクトはどちら?」と業界慣習を確認する形のメタ質問で返してきたため、Claude が以下の整理を提示:
+
+1. **Unity Clean Architecture 系プロジェクト**: 選択肢 1(Domain.asmdef に R3 入れる)がデファクト
+2. **純 Clean Architecture / DDD 学術系**: 選択肢 4(別 interface 切り出し)が学術デファクト
+3. **.NET エンタープライズ系**: 選択肢 4 寄り、`IObservable<T>`(BCL 標準)なら Domain 許容
+
+3 派閥の整理に基づき「本プロジェクトでは Unity + R3 採用 + 個人開発スコープなので選択肢 1(Domain.asmdef に R3)を推奨」と Claude が提案、ユーザーが選択肢 1 を確定。
+
+**本パターン(JIT で派閥整理を提示 + 推奨提示 + ユーザー確定)は ADR で事前に書ききれなかった判断項目をオンザフライで埋める運用として有効**、M4-PR7 / M5 以降で同類の「ADR 初期推奨に書き切れなかった細部」が出た場合に継承予定。
+
+##### 学び 2: asmdef `overrideReferences: true` の Tests asmdef 同期漏れは「M4-PR5 → M4-PR6」と 2 PR 連続発生
+
+M4-PR5 で `Drowsy.Infrastructure.Tests.asmdef` に `Newtonsoft.Json.dll` を追加した際、本 PR では `R3.dll` の追加漏れが発生(実装本体 commit `e9bfaba` 後の Unity Editor 起動時に CS0246 で発覚、fix commit `21f00ec` で対応)。これは:
+
+- **Drowsy.Infrastructure.asmdef** は `overrideReferences: false` で autoReferenced 経由で取得
+- **Drowsy.Infrastructure.Tests.asmdef** は `overrideReferences: true` で明示追加が必要
+
+の非対称が原因。Infrastructure 本体側でビルド通る = Tests 側でもビルド通る、と誤って思考してしまうトラップ。
+
+**対策**: 上記 §「Implementation Notes:asmdef R3 採用方式」末尾の教訓として「`overrideReferences: true` の asmdef に新規 precompiled 依存を追加する際、関連する Tests asmdef にも同じ依存追加が必要」を残し、M4-PR7 で「asmdef 依存追加チェックリスト」整備を検討。
+
+##### 学び 3: R3 `ReactiveProperty<T>` の「Subscribe 時即発火」を interface 仕様に明記する重要性(code-reviewer W-1 反映の意義)
+
+`ReactiveProperty<T>` は BehaviorSubject 相当の挙動で Subscribe 時に現在値を即発火するが、interface 側で xmldoc 記述がないと、別実装(モック / `Subject<T>` ベース等)が「Subscribe 時即発火なし」で実装してもスペック上は合法になる。本 M4-PR6 では PlayerPrefsUserSettings のみが実装で問題が顕在化しなかったが、M5 Presentation でテスト用モックを書く / Phase 3 で Cloud Save 経由の別実装を作る場合に interface contract の曖昧さが破綻リスクになる。
+
+**確立した運用**: R3 `Observable<T>` を interface に含める場合、xmldoc に「Subscribe 時の発火挙動(即発火 vs 待機)」を必ず明記する。M4-PR7 / M5 で R3 Observable を持つ別 interface(`IGameSession` 等?)が出る場合に同パターン継承。
+
+##### 学び 4: 「1 テスト 1 アサーション」維持のためのメソッド分割パターン拡充(code-reviewer W-2 反映)
+
+M4-PR4 / M4-PR5 では 1 ファイル 5-21 テストの規模で複数アサーション集約はほぼ発生しなかったが、本 M4-PR6 では「3 項目(BGM / SE / Lang)× 3 役割(getter / Observable / setter)」の interface 構造により、USR-007 / USR-006 / USR-014 / USR-017 で複数アサーションが集約しやすいテスト形になっていた(reviewer 指摘前は USR-007 が 1 メソッド 3 assertion、USR-006 / 014 / 017 が各 1 メソッド 2 assertion で計 18 メソッド)。
+
+**確立したパターン**:
+- **3 項目 × default 値**(USR-007): 3 メソッド分割(BGM / SE / Language 各 1)
+- **Setter の Getter / PlayerPrefs 両方反映**(USR-006 / 014 / 017): 各 2 メソッド分割(Getter / PlayerPrefs)
+- **同 USR ID 複数バリエーション**(USR-021): `[TestCase]` 4 ケース 1 メソッドで `[Property]` を 1 つだけ付与
+
+これにより最終 26 メソッド / `[TestCase]` 込み実行 29 ケース。M4-PR7 / M5 以降で interface 規模が大きい PR で同パターン継承。
+
+##### 学び 5: `dotnet build` pre-commit + Unity Auto-refresh の連携が 6 PR 連続で成熟運用化
+
+PR #63 で整備した `dotnet build` pre-commit(M4-PR2 後追加)は本 M4-PR6 でも実証 + 限界も同時に露呈:
+
+1. **実装本体 commit `e9bfaba`**:Claude が新規 .cs 6 ファイル + asmdef 1 修正を staging、`dotnet build` pre-commit が **約 4 秒で 0 エラー** で通過(Drowsy.Domain.asmdef への R3 追加は csproj に反映済の状態で動作)
+2. **テスト commit `7dba333`**:同じく 0 エラー pass(ただし **Drowsy.Infrastructure.Tests.asmdef は変更なし**、`dotnet build` が csproj を読んで「Drowsy.Infrastructure.Tests.csproj が R3 参照を含まない」状態を見落としたメカニズムは現時点で原因不明、M4-PR7 で `scripts/refresh-unity-assets.sh` 連携と合わせて要調査)
+3. **EARS / .feature commit `4abe3c8`**:docs のみで build 関与なし
+4. **Unity Editor 起動時(オーナー検証)**:CS0246 発火、Tests asmdef の R3.dll 漏れが顕在化
+5. **fix commit `21f00ec`**:Tests asmdef 修正 + .meta 8 件同梱で pass
+
+`dotnet build` pre-commit は「Unity Editor 起動なしに型解決エラーを 4 秒で検出」(M4-PR2 後の chore PR #63 の主目的)に成功しているが、**csproj が古い状態で incremental rebuild すると一部の参照漏れを見落とすケースがある** ことが本 M4-PR6 で判明。M4-PR7 / Phase 3 以降は「実装本体 commit 前に `scripts/refresh-unity-assets.sh` を Unity Editor 閉鎖時に呼ぶか、Unity Editor を Focus して Auto-refresh する」を運用に組み込むことを検討。
+
+##### 学び 6: カバレッジ 100% 未達箇所のトラッキング(M4-PR6 完成 PR #71 マージ後にオーナー目視で発覚、次 PR で対応)
+
+M4-PR6 完成 PR #71 マージ後の Unity Test Runner + `com.unity.testtools.codecoverage` 手動計測で、M4 範囲(M4-PR1〜PR6)実装クラス群にカバレッジ 100% 未達箇所があることがオーナー目視で確認(2026-05-13、本完成記録 PR セッション)。CLAUDE.md §6 カバレッジ目標(Domain 95%+ / Application 80% / Infrastructure 60%)に対する達成状況の機械検証が CI 整備前(Phase 6 候補)のため未自動化、本 M4-PR6 完成記録 PR で `docs/todo.md` に追跡 TODO を起票:
+
+- **TODO**: 「M4 範囲のカバレッジ 100% 未達箇所の特定 + 補完テスト追加(次 PR 候補:M4-PR7 完成 PR 同梱 or 別 chore PR)」`priority: medium`
+- **対応 PR**: 「次の PR」(M4-PR7 完成 PR 同梱 or 別 chore PR)で JIT 確定、オーナー判断待ち
+- **完了条件**: CLAUDE.md §6 レイヤ目標値達成(100% 必達ではない、Cobertura レポート上の理由付き許容を含む)
+
+教訓:**Phase 6 CI 整備時にカバレッジ閾値割れの自動検出を組み込むこと**(CLAUDE.md §6 末尾「カバレッジ閾値割れは CI を失敗させる(後続フェーズで実装)」と整合)。本 M4 範囲のカバレッジ目視確認は手動運用のため、Phase 6 までは「PR 完成 → Test Runner 実行 → Coverage Window 目視 → 未達箇所を `docs/todo.md` に起票」の流れで継承。
+
+##### Note: Unity Test Runner で発火する Debug.LogError 4 種類はすべて意図(本 PR 進行中の確認)
+
+M4-PR6 完成 PR #71 マージ後の Unity Test Runner で以下 4 種類の `Debug.LogError` がオーナー目視で確認(2026-05-13)、すべて M4-PR1 / M4-PR2 / M4-PR3 で確立した「意図的発火 + `LogAssert.Expect`」パターンの正常動作:
+
+| LogError 発火 | テストメソッド | 仕様 ID / 根拠 |
+| ---- | ---- | ---- |
+| `entry[0].Effects[0] が null です` | `Given_Effects配列にnull要素_When_GetEffects_Then_null要素skip_他要素は影響なし` | INF-018(M4-PR1 確立) |
+| `KeywordedEffectAsset.Inner が null` | `Given_KeywordedEffectAssetのInnerがnull_When_GetEffects_Then_skip以外要素が残る` | INF-019(M4-PR3 §「Optional 解除」で本格テスト化) |
+| `entry[0] (CardIdValue='01') の構築に失敗` | `Given_不正attributes_When_Get正常id_Then_他entryは影響なし` | INF-020 系(CardData validation graceful skip) |
+| `CardIdValue '00' が他 entry と重複` | `Given_重複CardIdValue_When_OnValidate_Then_DebugLogError` | INF-014(M4-PR1 JIT 確定 2026-05-14、後勝ち + LogError 警告) |
+
+これらは本来 `LogAssert.Expect` で抑制されるべきだが、Test Runner UI 上は「期待された LogError」として表示される(テスト自体は PASS)。M4-PR6 の `PlayerPrefsUserSettings` テスト群由来ではなく既存テストの正常動作。M4-PR7 / Phase 3 以降の新規 PR で類似の LogError がオーナー目視で発火した場合、ADR-0012 §M4-PR1 完成記録「学び 2:Debug.LogError 意図的発火 + コメント多層化」を参照して「意図的発火か否か」を判断する運用を継承。
+
+### Phase 2 の進捗バナー更新(本完成記録 PR 同梱)
+
+CLAUDE.md §11「Phase 進捗」M4 行を以下に更新:
+
+- 旧: `**M4**(永続化 / SO 化 + ユーザー設定): **進行中** — ADR-0012 起票済、M4-PR1 〜 M4-PR5 完成 ... M4-PR6(`IUserSettings` + PlayerPrefs)着手予定`
+- 新: `**M4**(永続化 / SO 化 + ユーザー設定): **進行中** — ADR-0012 起票済、M4-PR1 〜 M4-PR5 完成 ... + M4-PR6(`IUserSettings` + `PlayerPrefsUserSettings`:Domain.asmdef に R3.dll precompiledReferences + ReactiveProperty<T> 経由の Observable 公開 + PlayerPrefs key prefix `drowsy.*` + ctor データ衛生 + 26 テスト追加)完成、M4 累計 112 テスト、M4-PR7(M4 完成 PR:統合確認 + Designer ワークフロー実証 + WebGL/IL2CPP 実機検証 + カバレッジ 100% 未達補完(`docs/todo.md` で追跡))着手予定`
+
 ### M4 完成記録の追記タイミング
 
 本 ADR の M4-PR1〜PR7 完成記録は各 PR 単位で本 ADR §M4-PR-N 完成記録(2026-MM-DD)として追記する(ADR-0007 / ADR-0010 / ADR-0011 §「完成記録の追記タイミング」と同パターン)。M4 全体の完成時に §M4 完成記録(全体)を別途追加、Definition of Done 達成方法を集約する。

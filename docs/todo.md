@@ -56,6 +56,19 @@
 
 ## 未着手
 
+- [ ] **M4 範囲のカバレッジ 100% 未達箇所の特定 + 補完テスト追加(次 PR 候補:M4-PR7 完成 PR 同梱 or 別 chore PR)** `priority: medium`
+  - **Why**: M4-PR6 完成後の Unity Test Runner + `com.unity.testtools.codecoverage` 計測でカバレッジ 100% 未達箇所がオーナー目視で確認された(2026-05-13、本 TODO 起票 PR #72 同梱の M4-PR6 完成記録セッション)。
+    - **確認済の事実**: オーナーが Coverage Window 上で「100% に達していない箇所がある」と目視確認
+    - **未確認の事実**: 具体的にどのクラス / どの経路かは未計測(本 TODO 着手時に Cobertura レポート取得から開始)
+    - **対象範囲想定**: CLAUDE.md §6 カバレッジ目標(Domain 95%+ / Application 80% / Infrastructure 60%)に対し、本 M4-PR1〜PR6 で実装された Domain / Infrastructure 新規クラス群(`IUserSettings` / `PlayerPrefsUserSettings` / `ScriptableObjectCardCatalog` / `EffectAsset` 派生 12 種 + 中間型 2 種 / `DrowZzzGameSessionSerializer` + 7 Converter / `PersistedSessionV1` DTO)を起点に未到達経路を抽出
+  - **Done when**:
+    - `com.unity.testtools.codecoverage` で C0(Statement)カバレッジレポートを取得し、Domain / Infrastructure 各クラスごとに未到達経路を抽出
+    - レイヤ目標(Domain 95%+ / Infrastructure 60%)を満たす補完テストを追加(`[TestCase]` でケース増やすか、新規テストメソッド追加)
+    - 100% 必達ではなく **CLAUDE.md §6 目標値を満たすこと** を完了条件とする(残った未到達経路は Cobertura レポート上の理由付きで許容)
+    - 結果がリポジトリに反映済み(本 TODO を「完了済み」へ移動、`Related` に PR 番号追記)
+  - **Related**: [ADR-0012 §M4-PR6 完成記録](adr/0012-m4-scriptableobject-and-persistence.md)、[CLAUDE.md §6 カバレッジ目標](../CLAUDE.md)、Unity Test Runner + `com.unity.testtools.codecoverage` の手動計測手順は `docs/testing-strategy.md` 参照
+  - **Notes**: M4-PR6 完成 PR #71 マージ後にオーナー目視で発覚、本 PR(M4-PR6 完成記録)で TODO 化して追跡。次の PR(M4-PR7 完成 PR 同梱 or 別 chore PR)で対応する判断はオーナー JIT、現時点では「未着手」として登録のみ
+
 - [ ] **INF-019 `EffectAsset.ToDomain()` 失敗時の skip 経路の本格テスト追加(M4-PR3 で対応)** `priority: medium`
   - **Why**: M4-PR2 で `EffectAsset` 基底 + `AdjustSdpEffectAsset` を導入したが、`AdjustSdpEffect(SdpTarget, int)` は positional record に防御がなく `ArgumentException` を投げる自然な経路がないため INF-019 を Optional マーカーで先送り。M4-PR3 で `KeywordedEffect(IReadOnlyList<Keyword>, IEffect)` の `Inner` null 経路 / `RequiresMinimumTotalPointsMarkerEffect(int)` の `Threshold <= 0` 経路など `ArgumentException` を投げる派生型が複数導入される → これらの `ToDomain()` 失敗を catalog 経路で skip + `Debug.LogError` 発火する動作を本格テスト化する
   - **Done when**:
