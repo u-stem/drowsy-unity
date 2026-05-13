@@ -37,8 +37,8 @@ namespace Drowsy.Application.Tests.Integration
         }
 
         // (StartGameUseCase, ApplyActionUseCase) のペアを生成
-        // M2-PR1: DrowZzzRule の依存追加 (catalog / interpreter) に追従。catalog は StartGameUseCase と
-        // DrowZzzRule で共有(同一型 ICardCatalog<IEffect> を両者が受け取り、空効果列を返す)。
+        // M2-PR1: DrowZzzRule の依存追加 (catalog / interpreter) に追従。
+        // ADR-0014: StartGameUseCase は ICardCatalog<IEffect> 依存を削除済(catalog は DrowZzzRule のみが受け取る)。
         private static (StartGameUseCase start, ApplyActionUseCase apply) NewUseCases(IRandomSource rng = null)
         {
             rng ??= new IdentityRandom();
@@ -46,7 +46,7 @@ namespace Drowsy.Application.Tests.Integration
             var interpreter = new EffectInterpreter();
             var rule = new DrowZzzRule(catalog, interpreter);
             var config = new StubGameConfig();
-            var start = new StartGameUseCase(rng, catalog, config);
+            var start = new StartGameUseCase(rng, config);
             var apply = new ApplyActionUseCase(rule);
             return (start, apply);
         }

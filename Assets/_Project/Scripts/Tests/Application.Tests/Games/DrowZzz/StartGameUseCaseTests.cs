@@ -2,10 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
-using Drowsy.Application;
-using Drowsy.Application.Catalog;
 using Drowsy.Application.Games.DrowZzz;
-using Drowsy.Application.Games.DrowZzz.Effects;
 using Drowsy.Application.Tests.Stubs;
 using Drowsy.Domain.Cards;
 using Drowsy.Domain.Configuration;
@@ -35,14 +32,13 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             return new Pile(cards);
         }
 
+        // ADR-0014: StartGameUseCase の ICardCatalog<IEffect> 依存削除に伴い catalog 引数を除去。
         private static StartGameUseCase NewUseCase(
             IRandomSource rng = null,
-            ICardCatalog<IEffect> catalog = null,
             IGameConfig config = null)
         {
             return new StartGameUseCase(
                 rng ?? new XorShiftRandom(DefaultSeed),
-                catalog ?? new InMemoryCardCatalog(new KeyValuePair<CardId, CardData>[0]),
                 config ?? new StubGameConfig());
         }
 
