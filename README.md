@@ -52,6 +52,7 @@ Domain (純粋ロジック、UnityEngine 非依存)
 | [NuGetForUnity](https://github.com/GlitchEnzo/NuGetForUnity) | 4.5.0 | NuGet パッケージ管理 |
 | [Microsoft.Unity.Analyzers](https://www.nuget.org/packages/Microsoft.Unity.Analyzers) | 1.26.0 | Unity 公式 Roslyn Analyzer |
 | [Microsoft.CodeAnalysis.NetAnalyzers](https://www.nuget.org/packages/Microsoft.CodeAnalysis.NetAnalyzers) | 10.0.203 | .NET 公式 Analyzer(IDE 内のみ機能) |
+| [Roslynator.Analyzers](https://www.nuget.org/packages/Roslynator.Analyzers) | 4.15.0 | コミュニティ Analyzer(200+ ルール、baseline silent、ADR-0013) |
 
 ## ディレクトリ構成
 
@@ -145,10 +146,12 @@ git config --global user.email "<numericId>+<your-handle>@users.noreply.github.c
 
 # 4. Unity Hub からプロジェクトを開く(初回はパッケージダウンロードに数分)
 
-# 5. NuGetForUnity の Analyzer を確認
+# 5. NuGetForUnity の Analyzer を確認 / Restore
 #    Unity Editor で NuGet > Manage NuGet Packages
-#    Microsoft.Unity.Analyzers 1.26.0 と
-#    Microsoft.CodeAnalysis.NetAnalyzers 10.0.203 が Installed か確認
+#    Microsoft.Unity.Analyzers 1.26.0 /
+#    Microsoft.CodeAnalysis.NetAnalyzers 10.0.203 /
+#    Roslynator.Analyzers 4.15.0 が Installed か確認
+#    (未 Installed の場合は `Restore Packages` ボタンで packages.config から展開)
 
 # 6. テスト実行(Window > General > Test Runner > EditMode > Run All)
 #    → 334 ケース全緑(Domain 205 / Application 129)
