@@ -56,6 +56,15 @@
 
 ## 未着手
 
+- [ ] **INF-019 `EffectAsset.ToDomain()` 失敗時の skip 経路の本格テスト追加(M4-PR3 で対応)** `priority: medium`
+  - **Why**: M4-PR2 で `EffectAsset` 基底 + `AdjustSdpEffectAsset` を導入したが、`AdjustSdpEffect(SdpTarget, int)` は positional record に防御がなく `ArgumentException` を投げる自然な経路がないため INF-019 を Optional マーカーで先送り。M4-PR3 で `KeywordedEffect(IReadOnlyList<Keyword>, IEffect)` の `Inner` null 経路 / `RequiresMinimumTotalPointsMarkerEffect(int)` の `Threshold <= 0` 経路など `ArgumentException` を投げる派生型が複数導入される → これらの `ToDomain()` 失敗を catalog 経路で skip + `Debug.LogError` 発火する動作を本格テスト化する
+  - **Done when**:
+    - M4-PR3(11 派生型 SO 対応)着手時に `ToDomain()` で `ArgumentException` を投げる派生型を選び、Catalog テストとして「Effects 配列内に invalid asset を含めても他要素 / 他 entry が影響を受けない」を `LogAssert.Expect` で検証
+    - 本 INF-019 の `[Optional]` マーカーを外して通常 EARS に昇格、トレーサビリティ機械検証の対象に戻す
+    - 結果がリポジトリに反映済み(本 TODO を「完了済み」へ移動)
+  - **Related**: [ADR-0012 §3 / §「M4-PR3 着手時の JIT 確認項目」](adr/0012-m4-scriptableobject-and-persistence.md)、[`docs/specs/infrastructure/effect-assets.md`](specs/infrastructure/effect-assets.md) INF-019、M4-PR2 code-reviewer P-2 反映(2026-05-13)
+  - **Notes**: M4-PR3 の wrapper effect 派生型(`KeywordedEffectAsset` / `RequiresMinimumTotalPointsMarkerEffectAsset` 等)の SO 表現を確定するタイミングで JIT 確認項目に含める
+
 - [ ] **N>2 拡張時の `UsageRestrictionMarkerEffect` Influence の `RemainingCount` 再評価** `priority: low`
   - **Why**: M3-PR6 で「夢」カードの使用制限を `PlayerInfluence(OwnPhaseStart, UsageRestrictionMarkerEffect, 1)` で表現した(ADR-0011 §6 JIT 確定 2026-05-14、`DrowZzzRule.ApplyAssociate` 内)。`RemainingCount=1` は N=2 前提で「相手 1 フェーズ経由後の自フェーズ Tick で除去」のセマンティクスを実現する値。N>2 拡張(Phase 3 候補)では「相手 N-1 フェーズ経由」になるため再評価が必要
   - **Done when**:
