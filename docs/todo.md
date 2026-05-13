@@ -56,6 +56,17 @@
 
 ## 未着手
 
+- [ ] **`DrowZzzGameConfigAsset.OnValidate` の ADR-0012 §4 検証 3 件追加実装(M5 以降)** `priority: low`
+  - **Why**: M4-PR7 第 1 弾(`DrowZzzGameConfigAsset` 実装)では ADR-0012 §4「Designer 検証(`OnValidate`、初期推奨)」3 件のうち **「null / 空」検出のみ**(INF-078 / INF-079)を実装し、残り 3 件は先送り(M4-PR7 code-reviewer W-3 反映)。理由:`_fdpPool.Length >= N` の N が SO 側ハードコードになり Phase 3 N>2 拡張で再修正必要 / `_fdpPool` 重複なしは `StartGameUseCase` 側で実行時 `ArgumentException` 担保済(Designer フィードバック即時性のみが論点)/ `_ddpPool` 合計値 0 は LogWarning のみで build を妨げず仕様の硬さも弱い。本番経路の fail-fast は確保済みのため `priority: low`
+  - **Done when**:
+    - `_fdpPool.Length >= プレイヤー数 N`(N=2 ハードコード or `IGameConfig` 経由動的化を判断)の検証を `OnValidate` に追加、INF-080 で採番、テスト追加
+    - `_fdpPool` 重複なし検証を `OnValidate` に追加(`Debug.LogError` + Asset リンク)、INF-081 で採番、テスト追加
+    - `_ddpPool` 合計値 0 検証を `OnValidate` に追加(`Debug.LogWarning` のみ、build を妨げない)、INF-082 で採番、テスト追加
+    - `docs/specs/infrastructure/game-config-asset.md` の「ADR-0012 §4 検証の縮退と先送り」セクションを「実装完了」に書き換え
+    - 結果がリポジトリに反映済み(本 TODO を「完了済み」へ移動、`Related` に PR 番号追記)
+  - **Related**: [ADR-0012 §4](adr/0012-m4-scriptableobject-and-persistence.md)、[`docs/specs/infrastructure/game-config-asset.md`](specs/infrastructure/game-config-asset.md)、`Assets/_Project/Scripts/Infrastructure/Configuration/DrowZzzGameConfigAsset.cs`(XML コメント `remarks` で先送り明記)、M4-PR7 code-reviewer W-3 反映
+  - **Notes**: 本番経路では `StartGameUseCase` が抽選時に `ArgumentException` を投げるため、本 OnValidate 強化は Designer の Inspector 編集中の即時フィードバック改善のみが対象(M5 / Phase 3 で UI 体験を煮詰める時点で再評価が筋)
+
 - [ ] **M4 範囲のカバレッジ 100% 未達箇所の特定 + 補完テスト追加(次 PR 候補:M4-PR7 完成 PR 同梱 or 別 chore PR)** `priority: medium`
   - **Why**: M4-PR6 完成後の Unity Test Runner + `com.unity.testtools.codecoverage` 計測でカバレッジ 100% 未達箇所がオーナー目視で確認された(2026-05-13、本 TODO 起票 PR #72 同梱の M4-PR6 完成記録セッション)。
     - **確認済の事実**: オーナーが Coverage Window 上で「100% に達していない箇所がある」と目視確認
