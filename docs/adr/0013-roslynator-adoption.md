@@ -153,6 +153,20 @@ Roslynator.Analyzers 4.15.0 の nupkg は `analyzers/dotnet/roslyn3.8/cs/` と `
 
 検証結果は本 ADR の `Implementation Notes` に追記する(`Status` を `Accepted` のまま維持、技術詳細の補足のみ)。
 
+### 検証結果(2026-05-13、本 PR 同コミット内)
+
+プロジェクトオーナー操作で `Edit > Preferences > External Tools > Regenerate project files` を実行 → 全 6 csproj が 16:06:22 に再生成 → `dotnet build drowsy-unity.slnx --nologo --verbosity quiet` を実行した結果:
+
+| 観測項目 | 結果 |
+| ---- | ---- |
+| csproj への Analyzer 参照追加 | 全 6 csproj(Domain / Application / Infrastructure + 各 Tests)に `<Analyzer Include="...Roslynator...">` が **16 件ずつ追加**(roslyn3.8 系 8 DLL + roslyn4.7 系 8 DLL 両方) |
+| `dotnet build` 結果 | **0 警告 / 0 エラー / 1.32 秒**(2 回目以降の incremental build) |
+| Loader Error | **観測されず**(両 Roslyn バージョン DLL を同時参照しても衝突なし) |
+| 重複診断 | **観測されず**(baseline `category-roslynator.severity = silent` が両バージョンに一括適用、Roslyn 内部で version-pick または無害な重複ロード) |
+| 既存 Analyzer 動作への影響 | NetAnalyzers / Unity.Analyzers / Unity.SourceGenerators の動作は不変、`dotnet build` も従来通り 1〜5 秒で完了 |
+
+**結論**: roslyn3.8 + roslyn4.7 両バージョン有効化を維持する。`roslyn3.8` 系から `RoslynAnalyzer` ラベルを除去する追加 PR は **不要**。後続の段階的有効化 PR(`docs/todo.md`「Roslynator RCS ルールの段階的有効化」)で個別 RCS ルールを `warning` 化する際にも、現状の baseline 構成のまま進められる。
+
 ## Related
 
 - 前提: [CLAUDE.md §7 機械検知方針](../../CLAUDE.md)(本 ADR で §7 を訂正)
