@@ -126,3 +126,10 @@ lefthook-local.yml
 
 # Code Coverage パッケージの出力(レポート生成物、git 管理対象外)
 /CodeCoverage/
+
+# macOS Finder が自動生成するメタデータファイル(リポジトリに不要)
+.DS_Store
+
+# Designer ワークフロー / PR description 用のローカルスクリーンショット保管庫
+# (M4-PR7 で確立、PR には GitHub の Attach files 経由で添付し、リポジトリには含めない)
+/docs/screenshots/
