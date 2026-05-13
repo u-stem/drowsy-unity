@@ -117,15 +117,6 @@
   - **Related**: [ADR-0006 §3](adr/0006-m1-detail-application-interfaces.md)、[ADR-0007 §3 「`StartGameUseCase` の型引数結合」](adr/0007-m2-detail-card-effects.md)、`Assets/_Project/Scripts/Application/Games/DrowZzz/StartGameUseCase.cs:44`
   - **Notes**: M2-PR1 では `ICardCatalog<IEffect>` 型引数変更のみで通すため、本 TODO は急がない。M4 (SO 化) 検討と同時期に再評価
 
-- [ ] **Roslynator RCS ルールの段階的有効化(baseline silent → 個別 warning 化)** `priority: low`
-  - **Why**: [ADR-0013](adr/0013-roslynator-adoption.md) で `Roslynator.Analyzers` 4.15.0 を導入したが、既存コードへの影響を制御するため baseline `dotnet_analyzer_diagnostic.category-roslynator.severity = silent` で開始した。Roslynator は 200+ ルールを提供しており、コードシンプリフィケーション / リファクタリング系の主要ルール(例: RCS1003 If statement should not be on a single line、RCS1018 Add accessibility modifiers、RCS1090 Add call to ConfigureAwait 等)を段階的に warning / error 化することで機械検知レイヤの実効性を高めたい
-  - **Done when**:
-    - 個別ルールを 1 PR あたり 3〜5 件程度ずつ warning / error 化(`.editorconfig` で `dotnet_diagnostic.RCSxxxx.severity` を追記)
-    - 各 warning 化 PR で既存コードの違反箇所を修正(またはルールを `silent` に戻す判断を Notes に記録)
-    - Phase 整備段階で「Roslynator ルールセットの確定版」を `.editorconfig` で表明し、本 TODO を完了済みへ移動(または ADR-0013 を `Superseded by` で更新)
-  - **Related**: [ADR-0013](adr/0013-roslynator-adoption.md)、[`.editorconfig`](../.editorconfig) の「Roslynator.Analyzers (RCS-prefix)」セクション、[Roslynator 公式 ルール一覧](https://josefpihrt.github.io/docs/roslynator/analyzers)
-  - **Notes**: 一度に大量のルール有効化は修正コストが大きいので、PR あたり数ルールずつ進める方針。影響大なルールは別途検討、必要なら本 TODO に細分エントリを追加する
-
 - [ ] **NRT (Nullable Reference Types) 有効化を検討する** `priority: low`
   - **Why**: PR-1 (CardData) で `CardData?` / `object?` のアノテーション 7 箇所に対し CS8632 警告が発生し、既存パターン(NRT 無効)に揃えて `?` を削除した経緯がある。Domain 全体で null 安全な API を表現したい場合、NRT 有効化が筋。判断は設計判断レベルになる可能性あり(ADR-0004 候補)
   - **Done when**:
@@ -186,6 +177,22 @@
   - **Related**: [ADR-0009 §3](adr/0009-m2-m3-dp-and-victory-conditions.md)、[ADR-0007 §「山札枯渇」](adr/0007-m2-detail-card-effects.md)(類似構造の山札枯渇チェック TODO)、本 TODO 着手 PR(chore: M2 Self-Review 項目化、2026-05-13)
   - **Notes**: 現状想定下の総抽選 = N=2 × 5 = 10 枚 ≤ プール 39 枚(余裕 29 枚)
     - **2026-05-13 部分対応(本 TODO 着手 PR)**: `.github/pull_request_template.md` の「該当する場合のみ」セクションに「M2 DDP 抽選効果追加時:DDP 総抽選回数 ≤ プール 39 枚」項目を追加し、本 PR 着手時点で完成済の M2-PR1〜PR5 以降(DDP 抽選効果追加 PR / M2 完成 PR)で機械的に確認される運用を確立。残る Done when 2 件(数値最終記録 / ADR 起票方針追記)は M2 完成 PR 時に対応
+
+- [ ] **Roslynator RCS ルールの段階的有効化(baseline silent → 個別 warning 化)** `priority: low`
+  - **Why**: [ADR-0013](adr/0013-roslynator-adoption.md) で `Roslynator.Analyzers` 4.15.0 を導入したが、既存コードへの影響を制御するため baseline `dotnet_analyzer_diagnostic.category-roslynator.severity = silent` で開始した。Roslynator は 200+ ルールを提供しており、コードシンプリフィケーション / リファクタリング系の主要ルール(例: RCS1003 If statement should not be on a single line、RCS1018 Add accessibility modifiers、RCS1090 Add call to ConfigureAwait 等)を段階的に warning / error 化することで機械検知レイヤの実効性を高めたい
+  - **Done when**:
+    - ⬜ 個別ルールを 1 PR あたり 3〜5 件程度ずつ warning / error 化(`.editorconfig` で `dotnet_diagnostic.RCSxxxx.severity` を追記)— **第 1 弾完了(2026-05-13)、後続 PR で継続**
+    - ⬜ 各 warning 化 PR で既存コードの違反箇所を修正(またはルールを `silent` に戻す判断を Notes に記録)
+    - ⬜ Phase 整備段階で「Roslynator ルールセットの確定版」を `.editorconfig` で表明し、本 TODO を完了済みへ移動(または ADR-0013 を `Superseded by` で更新)
+  - **Related**: [ADR-0013](adr/0013-roslynator-adoption.md)、[`.editorconfig`](../.editorconfig) の「Roslynator.Analyzers (RCS-prefix)」セクション、[Roslynator 公式 ルール一覧](https://josefpihrt.github.io/docs/roslynator/analyzers)、本 TODO 着手 PR(chore: Roslynator RCS 段階的有効化 第 1 弾、2026-05-13)
+  - **Notes**: 一度に大量のルール有効化は修正コストが大きいので、PR あたり数ルールずつ進める方針。影響大なルールは別途検討、必要なら本 TODO に細分エントリを追加する
+    - **2026-05-13 第 1 弾(本 TODO 着手 PR)**: 影響範囲の小さい 4 ルールを `warning` 化、いずれも既存コード違反 0 件で導入:
+      - `RCS1018` アクセス修飾子の明示
+      - `RCS1049` 冗長な boolean 比較の簡略化
+      - `RCS1163` 未使用パラメータ検出
+      - `RCS1170` read-only auto-property 化
+    - **第 1 弾から除外したルール(後続検討)**:
+      - `RCS1213`(未使用 private メンバー):`OnEnable` / `OnValidate` / `Awake` / `Start` / `Update` 等の **Unity ライフサイクルメソッド**を Roslynator が認識せず false positive(`ScriptableObjectCardCatalog.cs:56,63` の 2 件で検証済)。Unity ライフサイクルメソッド名単位の suppression(`[UsedImplicitly]` 属性付与 / 個別 `#pragma warning disable` / EditorConfig section override 等)を別 PR で評価する
 
 ## 完了済み
 
