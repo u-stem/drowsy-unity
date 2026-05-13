@@ -11,9 +11,12 @@ using Drowsy.Domain.Players;
 namespace Drowsy.Application.Tests.Stubs
 {
     /// <summary>
-    /// `ApplyActionUseCaseTests` / `DrowZzzRuleTests` の共通ヘルパー
-    /// (`NewSession` / `NewRule` / `NewDeck`)。他 fixture への段階的拡張は
-    /// `docs/todo.md` 参照。
+    /// Application.Tests 配下 fixture の共通ヘルパー(`NewSession` / `NewRule` / `NewDeck`)。
+    /// 統合済 fixture: `ApplyActionUseCaseTests` / `DrowZzzRuleTests`(2026-05-13)、
+    /// `DrowZzzGameSessionTests` / `EffectInterpreterTests`(2026-05-13 第 1 弾)。
+    /// 残 fixture(`CounterActionTests` / `AssociateActionTests` / `AbandonActionTests` /
+    /// `CupOfThreatCardTests` / `GreenInvasionCardTests` / `DreamCardTests` /
+    /// `CounterCounterTests` / `Effects/*Tests` 等)への段階的拡張は `docs/todo.md` で追跡。
     /// </summary>
     public static class SessionFactory
     {

@@ -7,6 +7,7 @@ using Drowsy.Application.Games.DrowZzz.Influences;
 using Drowsy.Domain.Cards;
 using Drowsy.Domain.Game;
 using Drowsy.Domain.Players;
+using static Drowsy.Application.Tests.Stubs.SessionFactory;
 
 namespace Drowsy.Application.Tests.Games.DrowZzz
 {
@@ -231,16 +232,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         }
 
         // ===== DZ-014〜017: with 式経路の null / cross-field 検証 =====
-
-        private static DrowZzzGameSession NewSession() =>
-            new DrowZzzGameSession(
-                NewGameState(),
-                Fdp(("p1", 0), ("p2", 10)),
-                Ddp(),
-                Sdp(),
-                EmptyDdpPool,
-                Inf(),
-                DrowZzzPhaseState.WaitingForDraw, outcome: null, bedDamages: new Dictionary<PlayerId, int> { [PlayerId.Of("p1")] = 0, [PlayerId.Of("p2")] = 0 }, System.Array.Empty<PendingCounteredEffect>());
+        // NewSession() は SessionFactory.NewSession() に統合済(docs/todo.md TODO #2 第 1 弾)。
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-014")]
         public void Given_既存Session_When_with_GameStateにnull_Then_ArgumentNullExceptionを投げる()

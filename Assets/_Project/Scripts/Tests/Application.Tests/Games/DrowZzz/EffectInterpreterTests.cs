@@ -1,12 +1,9 @@
 using System;
-using System.Collections.Generic;
-using Drowsy.Application.Catalog;
 using Drowsy.Application.Games.DrowZzz;
 using Drowsy.Application.Games.DrowZzz.Effects;
 using Drowsy.Application.Tests.Stubs;
-using Drowsy.Domain.Cards;
-using Drowsy.Domain.Players;
 using NUnit.Framework;
+using static Drowsy.Application.Tests.Stubs.SessionFactory;
 
 namespace Drowsy.Application.Tests.Games.DrowZzz
 {
@@ -19,24 +16,8 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
     public sealed class EffectInterpreterTests
     {
         // ===== ヘルパー =====
-        // session ≠ null を要求するテスト用に最小セッションを構築する。
-        // M1IntegrationTests / DrowZzzRuleTests と同じパターン(共通ヘルパー抽出は docs/todo.md TODO で別途追跡)。
-        // EffectInterpreter の _ ケースでは session の中身を参照しないため、StartGameUseCase で
-        // 最小構成 (N=2、10 枚山札) を生成すれば足りる。
-        private static DrowZzzGameSession NewSession()
-        {
-            var catalog = new InMemoryCardCatalog(new KeyValuePair<CardId, CardData>[0]);
-            var config = new StubGameConfig();
-            var rng = new IdentityRandom();
-            var start = new StartGameUseCase(rng, catalog, config);
-            var players = new[] { PlayerId.Of("p1"), PlayerId.Of("p2") };
-            var deck = new Pile(new[]
-            {
-                CardId.Of("c1"), CardId.Of("c2"), CardId.Of("c3"), CardId.Of("c4"), CardId.Of("c5"),
-                CardId.Of("c6"), CardId.Of("c7"), CardId.Of("c8"), CardId.Of("c9"), CardId.Of("c10"),
-            });
-            return start.Execute(players, deck);
-        }
+        // EffectInterpreter の _ ケース(APP-033/034/035)では session の中身を参照しないため、
+        // SessionFactory.NewSession() の空デッキ / 空ハンドで十分(docs/todo.md TODO #2 第 1 弾)。
 
         // ===== APP-033: session が null → ArgumentNullException("session") =====
 
