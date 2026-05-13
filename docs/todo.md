@@ -107,15 +107,6 @@
   - **Related**: [ADR-0011 §6](adr/0011-m3-dream-card-and-game-mechanics-expansion.md)、`Assets/_Project/Scripts/Application/Games/DrowZzz/Effects/UsageRestrictionMarkerEffect.cs`、M3-PR6 code-reviewer P-1 反映(2026-05-14)
   - **Notes**: 現スコープでは 2 役兼用で問題なし(xmldoc / spec md / EffectInterpreter コメントの 3 箇所で意図文書化済)。将来のカード仕様共有時に再評価
 
-- [ ] **NRT (Nullable Reference Types) 有効化を検討する** `priority: low`
-  - **Why**: PR-1 (CardData) で `CardData?` / `object?` のアノテーション 7 箇所に対し CS8632 警告が発生し、既存パターン(NRT 無効)に揃えて `?` を削除した経緯がある。Domain 全体で null 安全な API を表現したい場合、NRT 有効化が筋。判断は設計判断レベルになる可能性あり(ADR-0004 候補)
-  - **Done when**:
-    - NRT 有効化のコスト・利益を評価(全 Domain ファイルへの `?` アノテーション付与、Pile / CardId への影響、Unity 6 / 当該 Mono 版の互換性確認)
-    - 採用する場合: `csc.rsp` または `.editorconfig` で NRT 有効化、Domain 全体に nullable annotation を導入、既存 NUnit テスト全 Green を維持、Domain C0 95%+ を維持、ADR で判断記録
-    - 不採用の場合: ADR で「NRT を採らない理由」を記録(同じ問題を繰り返さないため)
-  - **Related**: PR #12 (CardData) のレビュー過程で発生した CS8632 警告対応, [`CLAUDE.md`](../CLAUDE.md) §7
-  - **Notes**: 必要性が高まった時点で再検討。Phase 2 以降で外部 API クライアント等の null 多発コードが入る前に判断したい
-
 - [ ] **DDP / SDP / FDP の正式名変更可能性** `priority: low`
   - **Why**: プロジェクトオーナーから「FDP / DDP / SDP の名前はいずれも変更可能性あり」と共有済。M2 中の任意のタイミングで正式名が JIT 確定する可能性がある。識別子(record / フィールド名 / EARS / .feature)の変更を伴う場合は機械的リファクタを別 PR で実施
   - **Done when**:
@@ -185,6 +176,16 @@
       - `RCS1213`(未使用 private メンバー):`OnEnable` / `OnValidate` / `Awake` / `Start` / `Update` 等の **Unity ライフサイクルメソッド**を Roslynator が認識せず false positive(`ScriptableObjectCardCatalog.cs:56,63` の 2 件で検証済)。Unity ライフサイクルメソッド名単位の suppression(`[UsedImplicitly]` 属性付与 / 個別 `#pragma warning disable` / EditorConfig section override 等)を別 PR で評価する
 
 ## 完了済み
+
+- [x] **NRT (Nullable Reference Types) 有効化を検討する** `priority: low`
+  - **Why**: PR-1 (CardData) で `CardData?` / `object?` のアノテーション 7 箇所に対し CS8632 警告が発生し、既存パターン(NRT 無効)に揃えて `?` を削除した経緯がある。Domain 全体で null 安全な API を表現したい場合、NRT 有効化が筋。判断は設計判断レベルになる可能性あり(ADR-0004 候補)
+  - **Done when** (resolved with 不採用案):
+    - ✓ M4 完了時の JIT 判断で **不採用** を採用、[ADR-0015](adr/0015-nullable-reference-types-not-adopting.md) を起票
+    - ✓ 影響範囲評価:プロダクション 87 ファイル(中 30 ファイル(34%)で `ArgumentNullException` 参照)+ テスト約 60 ファイル(中 27 ファイルで `ArgumentNullException` 参照、合計 57 ファイル)、 NRT 有効化で全 annotation 付与 + Unity 6 × NRT 互換性検証が必要、修正コストが追加価値を上回ると判断
+    - ✓ 「NRT を採らない理由」を ADR-0015 に記録(再評価条件 4 件を明示:M5 Bootstrap の null 多発コード / 他ゲーム追加時の型契約圧 / Unity / Roslyn 側の進化 / 既存 null 戦略の限界観測)
+    - ✓ 結果がリポジトリに反映済み(コード変更なし、 ADR-0015 + CLAUDE.md §11 + docs/adr/README.md インデックス + 本 TODO 完了処理のみ)
+  - **Related**: [ADR-0015](adr/0015-nullable-reference-types-not-adopting.md)、PR #12 (CardData) のレビュー過程で発生した CS8632 警告対応, [`CLAUDE.md`](../CLAUDE.md) §7、本完了 PR(chore: NRT 不採用判断 + ADR-0015 起票、2026-05-13)
+  - **Notes**: 再評価条件発生時に別 ADR で本 ADR-0015 を `Superseded by` で覆す前提。 ADR は永続的な禁則ではなく現時点の判断を記録するもの
 
 - [x] **`StartGameUseCase` から未使用の `ICardCatalog` 依存削除を検討する** `priority: low`
   - **Why**: ADR-0006 §3 で「constructor injection は維持」と判断し、M1-PR3 で `StartGameUseCase` constructor に `ICardCatalog` を含めたが、M1 範囲で実は一切参照していない(`StartGameUseCase.cs` remarks に「本 PR (M1-PR3) では参照しない」と明記)。ADR-0007 §3 で M2-PR1 にて `ICardCatalog<IEffect>` へジェネリック化すると、`StartGameUseCase` が `IEffect` を内部利用しないにもかかわらず型引数を constructor シグネチャに持つ「設計上の割り切り」が発生する。ADR-0006 §3 を覆す変更になるため本 ADR-0007 スコープ外としたが、SO 化(M4)時に `StartGameUseCase` がカード情報を本当に必要としないことが確定したら依存削除を別 PR / 別 ADR で再評価したい
