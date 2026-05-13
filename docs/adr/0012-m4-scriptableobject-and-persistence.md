@@ -729,6 +729,99 @@ CLAUDE.md §11「Phase 進捗」M4 行を以下に更新:
 - 旧: `**M4**(永続化 / SO 化 + ユーザー設定): **進行中** — ADR-0012 起票済、M4-PR1 / M4-PR2 完成、CLI 機械検知レイヤ整備(PR #63、dotnet build pre-commit + Unity CLI script)、M4-PR3(残り 11 派生型 SO 対応 + wrapper effect の Inner 表現方式確定)着手予定`
 - 新: `**M4**(永続化 / SO 化 + ユーザー設定): **進行中** — ADR-0012 起票済、M4-PR1 / M4-PR2 / M4-PR3 完成(SO 表現基盤完成:`EffectAsset` 基底 + 11 派生型 + 中間型 2 件 + wrapper 再帰 + INF-019 graceful skip 経路)、CLI 機械検知レイヤ整備(PR #63)、M4-PR4(既存 3 カード No.00 / No.01 / No.02 の SO Asset 化)着手予定`
 
+### M4-PR4 完成記録(2026-05-13、既存 3 カード SO ↔ InMemory 同値性検証)
+
+**完成 PR**: PR #67 `feat(infra): 既存 3 カード (No.01 / No.02 / No.00) の SO ↔ InMemory 同値性検証 (M4-PR4)`(merged `20bd853`、2 commit 同梱:実装 `d092484` + .meta 4 件 fix `e75daac`)。本 ADR §6 / §「M4-PR4 着手時の JIT 確認項目」で確定した「既存 3 カードの SO 移行」をテスト内動的構築で実装、M4-PR3 で完成した SO 表現基盤を 3 カード(No.01 / No.02 / No.00、M3 全機構統合の最深カード含む)で **回帰防御テスト化**。
+
+#### Definition of Done 達成項目(本 ADR §6 / §「M4-PR4 着手時の JIT 確認項目」で確定した仕様の実装)
+
+| スコープ項目 | 達成状況 | 備考 |
+| ---- | ---- | ---- |
+| `CupOfThreatCardCatalogTests` 新設 | ✓ | No.01 「コップ一杯の脅威」(M2-PR3):`TimeOfDayBranchEffectAsset` wrapper 1 段 + 内側 `AdjustSdpEffectAsset` / `DrawCardEffectAsset` の再帰 ToDomain 経路を検証、INF-045 |
+| `GreenInvasionCardCatalogTests` 新設 | ✓ | No.02「緑の侵攻」(M2-PR5):`ChoiceEffectAsset` 2 次元再帰 + 中間型 `EffectBranchAsset` + `PlayerInfluenceAsset` 中間型経由 + `ApplyInfluenceEffect` / `RemoveInfluenceEffect` 群、INF-046 |
+| `DreamCardCatalogTests` 新設 | ✓ | No.00「夢」(M3-PR6):M3 全機構統合(4 最上位 marker / wrapper + nested `KeywordedEffectAsset([Frenzy, Instinct], EarlyWinTriggerEffectAsset)` + 朝効果 `AdjustSdpEffectAsset(Self, -80)`)、INF-047 |
+| 仕様 md 拡張 | ✓ | `card-catalog.md` に M4-PR4 セクション + INF-045〜047 採番 + トレーサビリティ拡張、bullet 分離スタイル(P-3 反映で可読性向上) |
+| .meta 同梱 | ✓ | Unity Editor Focus 後の Auto-refresh で生成された 4 件(`Cards.meta` フォルダ用 + 3 テスト .cs 用)を fix commit `e75daac` で同梱、GUID 衝突 0 確認済 |
+| **Application.Tests への影響なし** | ✓ | 既存 `CupOfThreatCardTests` / `GreenInvasionCardTests` / `DreamCardTests` は変更ゼロ、Pure C# 哲学維持(ADR-0006 §4 / ADR-0012 §5) |
+
+#### 仕様 ID / NUnit 増加
+
+- 仕様 ID 新規採番(INF-045 〜 INF-047、3 件):
+  - **INF-045**:No.01「コップ一杯の脅威」の SO ↔ InMemory 同値性
+  - **INF-046**:No.02「緑の侵攻」の SO ↔ InMemory 同値性
+  - **INF-047**:No.00「夢」の SO ↔ InMemory 同値性(M3 全機構統合)
+- NUnit Property unique: **+3 件 → 累計 379 件**(テスト件数 +6、各カード × 2 ケース:`Get(Name)` 同値 + `GetEffects(IEffect[])` record 値同値)
+- M4 累計テスト件数:**43 件**(M4-PR1 12 + M4-PR2 4 + M4-PR3 21 + M4-PR4 6)
+
+#### 本 PR で確定した ADR-0012 §「M4-PR4 着手時の JIT 確認項目」(2026-05-13)
+
+| 項目 | 確定内容 |
+| ---- | ---- |
+| SO Asset 作成方法 | **テスト内動的構築のみ**(`ScriptableObject.CreateInstance + SetEntriesForTest`)、実 `.asset` 配置は M4-PR7 / M5 で Designer ワークフロー実証時に追加 |
+| 3 カード実装順序 | **No.01 → No.02 → No.00** の難易度低 → 高、各カード 1 fixture(`*CardCatalogTests` の 3 ファイル分割) |
+| 同値性評価軸 | **ToDomain 経由の `IEffect[]` が record 値同値**(`Is.EqualTo`、wrapper override Equals + record auto-equals)、`DrowZzzRule` 経由 end-to-end は Application.Tests がカバー済 |
+| Application.Tests 維持 | **変更ゼロ**(Pure C# 哲学維持、Infrastructure.Tests に新規 SO 経由テストを並行追加) |
+
+不採用案(再確認):
+- 実 `.asset` ファイル配置 + `AssetDatabase.LoadAssetAtPath` 経由(Unity Editor 起動必須、YAML 形式 .asset の GUID 管理コスト、M4-PR7 で実証時に切り替え)
+- 1 fixture 統合(3 カードを `[TestCase]` で parameterize、可読性低下)
+- No.00 から逆順実装(JIT 推奨の難易度低 → 高に反する)
+- `DrowZzzRule` 経由 end-to-end 同値性(Application.Tests と二重実装、責務逸脱)
+
+#### code-reviewer subagent 反映(警告 2 / 提案 3 → 4 件反映、1 件 M4-PR7 確認ポイント Skip)
+
+| ID | 種別 | 内容 | 反映 |
+| ---- | ---- | ---- | ---- |
+| W-1 | 警告 | GetName テスト 3 fixture の AAA 分離スタイル不統一(CupOfThreat は分離、他 2 は統合)| ✓ CupOfThreat 基準に統一、GreenInvasion / Dream を `// When` / `// Then` 分離 |
+| W-2 | 警告 | GreenInvasion ヘルパー名にカード名が含まれない(`DomainInfluence` / `SoInfluence`)| ✓ `GreenInvasionDomainInfluence` / `GreenInvasionSoInfluence` に rename(将来別カードのヘルパー追加時の衝突予防)|
+| P-1 | 提案 | 「Application.Tests を移植」コメント表記が不正確 | ✓ 3 fixture すべてで「同仕様で再実装」「Application.Tests と仕様共有」に書き換え、同期責任を呼び出し元に明示 |
+| P-2 | 提案 | `DreamCardCatalogTests` の using 数が多い件 | Skip — M4-PR7 で実 `.asset` 配置時に未使用 using 確認(本 PR ではアクション不要)|
+| P-3 | 提案 | 仕様 md INF-045〜047 の要件文密度が高い | ✓ bullet 分離スタイル(M4-PR7 の Designer 参照雛形として可読性向上)|
+
+#### M4-PR4 進行中の学び
+
+##### 学び 1: SO ↔ InMemory 同値性検証パターンの確立(M4-PR7 雛形)
+
+3 fixture 共通の構造:
+1. `NewSoCatalogWith*`:`ScriptableObject.CreateInstance + SetEntriesForTest + CardEntryAsset(internal ctor) + EffectAsset[]` で SO catalog を動的構築
+2. `NewInMemoryCatalogWith*`:Application.Tests と同仕様で `InMemoryCardCatalog` を構築(Pure C# 維持)
+3. `Get(Name)` 同値テスト 1 件 + `GetEffects(IEffect[])` 同値テスト 1 件
+
+この構造は **M4-PR7 で実 `.asset` 配置時に「SO 経路を `AssetDatabase.LoadAssetAtPath` 経由に切り替え」しても InMemory 側 + 同値性検証は不変** で機能する回帰防御として設計。M4-PR7 の Designer ワークフロー実証で同パターンを継承予定。
+
+##### 学び 2: ヘルパー命名に文脈情報を含める重要性(code-reviewer W-2 反映)
+
+`GreenInvasionDomainInfluence()` / `GreenInvasionSoInfluence()` のようにカード名を含めるヘルパー命名は、複数カードの fixture を持つ将来の Asset テストで衝突予防 / 誤読予防として有効。
+
+簡潔さを優先した `DomainInfluence()` は本 fixture では問題ないが、M4-PR5 以降で複数 fixture が同 namespace に存在する状況下で、ファイル間 grep / IDE jump-to-definition での読み手の負荷を増やすリスク。**カード固有のヘルパーは Card 名を含める** を本 PR で確立、M4-PR7 / M5 に継承。
+
+##### 学び 3: Application.Tests 不変 + Infrastructure.Tests 新設の Ports & Adapters 整合
+
+ADR-0006 §4「Pure C# 哲学」+ ADR-0012 §5「`InMemoryCardCatalog` ↔ `ScriptableObjectCardCatalog` 併存戦略」を本 PR で実証:
+
+- Application.Tests(`CupOfThreatCardTests` / `GreenInvasionCardTests` / `DreamCardTests` 3 ファイル、合計 25+ テスト)は **本 PR で一切変更しない**
+- Infrastructure.Tests(本 PR で 3 新規 fixture)は **SO 経路の構造同値検証** に専念
+- 同じカード仕様を 2 レイヤーで保持する「同期コスト」は本 PR 時点で 3 カード × 2 レイヤー = 6 ファイルだが、Pure C# 哲学(テスト独立性 + Unity Editor 非依存)を保つ Ports & Adapters の代償
+
+将来カード追加(Phase 3+)では、両レイヤー同期を `code-reviewer` が PR 単位で確認する運用で担保。
+
+##### 学び 4: `dotnet build` pre-commit + Unity Auto-refresh の連携が成熟
+
+PR #63 で整備した `dotnet build` pre-commit と M4-PR3 で確認した「Unity Editor Focus 時の Auto-refresh」が本 PR で **連携の成熟** を実証:
+
+1. Claude が新規 .cs を追加 → `dotnet build` pre-commit は **既存 csproj に新規 .cs が未追加でも 0 エラー**(M4-PR4 では既存 csproj に新規 fixture 用 .cs を含めずビルド成功)
+2. オーナーが Unity Editor を Focus → AssetDatabase Refresh → `.meta` + csproj 更新
+3. fix commit で `.meta` 同梱(GUID 衝突確認後 push)
+
+M4-PR3 / PR4 で同パターンが安定運用化、M4-PR5 以降の追加 PR でも継続予定。
+
+### Phase 2 の進捗バナー更新(本完成記録 PR 同梱)
+
+CLAUDE.md §11「Phase 進捗」M4 行を以下に更新:
+
+- 旧: `**M4**(永続化 / SO 化 + ユーザー設定): **進行中** — ADR-0012 起票済、M4-PR1 / M4-PR2 / M4-PR3 完成(SO 表現基盤完成…)、M4-PR4(既存 3 カード No.00 / No.01 / No.02 の SO Asset 化)着手予定`
+- 新: `**M4**(永続化 / SO 化 + ユーザー設定): **進行中** — ADR-0012 起票済、M4-PR1 / M4-PR2 / M4-PR3 / M4-PR4 完成(SO 表現基盤完成 + 既存 3 カード SO ↔ InMemory 同値性検証完了、43 テスト)、CLI 機械検知レイヤ整備(PR #63)、M4-PR5(`DrowZzzGameSession` JSON 永続化、初期推奨 Newtonsoft.Json)着手予定`
+
 ### M4 完成記録の追記タイミング
 
 本 ADR の M4-PR1〜PR7 完成記録は各 PR 単位で本 ADR §M4-PR-N 完成記録(2026-MM-DD)として追記する(ADR-0007 / ADR-0010 / ADR-0011 §「完成記録の追記タイミング」と同パターン)。M4 全体の完成時に §M4 完成記録(全体)を別途追加、Definition of Done 達成方法を集約する。
