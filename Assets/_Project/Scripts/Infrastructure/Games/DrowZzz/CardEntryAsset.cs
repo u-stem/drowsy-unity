@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Drowsy.Domain.Cards;
+using Drowsy.Infrastructure.Games.DrowZzz.Effects;
 using UnityEngine;
 
 namespace Drowsy.Infrastructure.Games.DrowZzz
@@ -8,13 +9,17 @@ namespace Drowsy.Infrastructure.Games.DrowZzz
     /// <summary>
     /// <see cref="ScriptableObjectCardCatalog"/> の 1 エントリ(= 1 カード)を表す
     /// <c>[Serializable]</c> POCO(M4-PR1 で導入、ADR-0012 §2)。
-    /// Unity Inspector で編集可能なカードデータと、将来追加される効果列(M4-PR2 / PR3)の保持を担う。
+    /// Unity Inspector で編集可能なカードデータ + 効果列(<see cref="EffectAsset"/> 配列)の保持を担う。
     /// </summary>
     /// <remarks>
     /// <see cref="ToCardData"/> で <see cref="Drowsy.Domain.Cards.CardData"/> に変換し、
     /// <see cref="ScriptableObjectCardCatalog.Get"/> / <see cref="ScriptableObjectCardCatalog.TryGet"/> 経路で
-    /// 呼び出し側へ返却する。本 PR 範囲では効果列フィールドは追加せず、M4-PR2 / PR3 で
-    /// <c>EffectAsset[] _effects</c>(SerializeReference 含む)を追加予定(ADR-0012 §3、INF-008)。
+    /// 呼び出し側へ返却する。
+    /// <para>
+    /// 効果列(<see cref="Effects"/>)は M4-PR2 で <c>[SerializeReference] EffectAsset[] _effects</c> を **追加済**
+    /// (ADR-0012 §3 案 (a) `[Serializable]` POCO + 変換層、JIT 確定 2026-05-13、M4-PR2 code-reviewer W-1 反映 2026-05-13)。
+    /// 最初の派生型 <see cref="AdjustSdpEffectAsset"/> を本 PR で導入、残り 11 派生型は M4-PR3 で順次追加する。
+    /// </para>
     /// </remarks>
     [Serializable]
     public sealed class CardEntryAsset
@@ -23,9 +28,10 @@ namespace Drowsy.Infrastructure.Games.DrowZzz
         [SerializeField] private string _name;
         [SerializeField] private AttributeEntry[] _attributes;
 
-        // M4-PR2 / PR3 で効果列フィールドを追加予定(ADR-0012 §3):
-        //   [SerializeReference] private IEffect[] _effects;  または [SerializeField] private EffectAsset[] _effectAssets;
-        // 採用案(a / b / c)は M4-PR2 着手時に JIT 確定する。
+        // M4-PR2 で追加(ADR-0012 §3 案 (a) `[Serializable]` POCO + 変換層、JIT 確定 2026-05-13):
+        // [SerializeReference] で polymorphic serialization を実現し、Designer が Inspector で複数派生型を選択可能。
+        // null 要素 / ToDomain 失敗は ScriptableObjectCardCatalog 側で graceful skip(INF-018 / INF-019)。
+        [SerializeReference] private EffectAsset[] _effects;
 
         /// <summary>カード ID 文字列(<see cref="CardId.Of"/> に渡す前の raw 値)。</summary>
         public string CardIdValue => _cardIdValue;
@@ -38,14 +44,29 @@ namespace Drowsy.Infrastructure.Games.DrowZzz
             _attributes ?? Array.Empty<AttributeEntry>();
 
         /// <summary>
-        /// テスト用 ctor。本番経路では Unity Inspector が <see cref="SerializeField"/> private field を直接初期化するため、
-        /// 本 ctor は <c>internal</c> でテスト asmdef からのみアクセス可能。
+        /// 効果列(M4-PR2 で追加、INF-015)。<see cref="ScriptableObjectCardCatalog.GetEffects"/> が
+        /// <see cref="EffectAsset.ToDomain"/> 経由で <see cref="IEffect"/> 派生型に変換して返す。
+        /// null フィールドは空配列にフォールバックする null-safe プロパティ。
         /// </summary>
-        internal CardEntryAsset(string cardIdValue, string name, AttributeEntry[] attributes)
+        public IReadOnlyList<EffectAsset> Effects =>
+            _effects ?? Array.Empty<EffectAsset>();
+
+        /// <summary>
+        /// テスト用 ctor。本番経路では Unity Inspector が <see cref="SerializeField"/> /
+        /// <see cref="SerializeReference"/> private field を直接初期化するため、
+        /// 本 ctor は <c>internal</c> でテスト asmdef からのみアクセス可能。
+        /// M4-PR2 で <paramref name="effects"/> 引数を末尾追加(default null で後方互換維持)。
+        /// </summary>
+        internal CardEntryAsset(
+            string cardIdValue,
+            string name,
+            AttributeEntry[] attributes,
+            EffectAsset[] effects = null)
         {
             _cardIdValue = cardIdValue;
             _name = name;
             _attributes = attributes;
+            _effects = effects;
         }
 
         /// <summary>

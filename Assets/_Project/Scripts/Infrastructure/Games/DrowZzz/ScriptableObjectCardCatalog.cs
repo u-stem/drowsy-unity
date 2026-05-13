@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Drowsy.Application;
 using Drowsy.Application.Games.DrowZzz.Effects;
 using Drowsy.Domain.Cards;
+using Drowsy.Infrastructure.Games.DrowZzz.Effects;
 using UnityEngine;
 
 namespace Drowsy.Infrastructure.Games.DrowZzz
@@ -37,14 +38,16 @@ namespace Drowsy.Infrastructure.Games.DrowZzz
     [CreateAssetMenu(menuName = "Drowsy/DrowZzz/Card Catalog", fileName = "DrowZzzCardCatalog")]
     public sealed class ScriptableObjectCardCatalog : ScriptableObject, ICardCatalog<IEffect>
     {
-        // M4-PR1 範囲では効果列を持たない:GetEffects は本配列を経由せず常に EmptyEffects を返す。
-        // M4-PR2 / PR3 で CardEntryAsset 側に効果列フィールドを追加し、本 catalog が効果列を返却する経路に拡張する。
+        // 共通 EmptyEffects(graceful 空列、INF-010 / INF-017 / 未登録 id の戻り値)。
         private static readonly IReadOnlyList<IEffect> EmptyEffects = Array.Empty<IEffect>();
 
         [SerializeField] private CardEntryAsset[] _entries;
 
-        // 構築済キャッシュ(同じ id を複数回 Get したときに毎回 ToCardData を呼ばないため)
+        // 構築済キャッシュ(同じ id を複数回 Get したときに毎回 ToCardData / ToDomain を呼ばないため)
         private Dictionary<CardId, CardData> _cache;
+        // M4-PR2 で追加:CardId → IEffect[] の効果列キャッシュ(INF-017)。EffectAsset[].ToDomain() を
+        // RebuildCache 時に集計、GetEffects は本キャッシュから取得して返す。
+        private Dictionary<CardId, IReadOnlyList<IEffect>> _effectsCache;
 
         /// <summary>
         /// Asset がロードされた時 / <see cref="ScriptableObject.CreateInstance{T}"/> で生成された時に呼ばれる。
@@ -65,9 +68,11 @@ namespace Drowsy.Infrastructure.Games.DrowZzz
 
         // 内部 cache 構築:重複 ID は「後勝ち」(InMemoryCardCatalog と同パターン)。
         // 不正 entry(null / 空 CardIdValue / 構築失敗)は skip + Debug.LogError(INF-010〜012)。
+        // M4-PR2: EffectAsset[].ToDomain() で _effectsCache も同時構築(INF-017〜019)。
         private void RebuildCache()
         {
             _cache = new Dictionary<CardId, CardData>();
+            _effectsCache = new Dictionary<CardId, IReadOnlyList<IEffect>>();
             if (_entries is null)
             {
                 return;
@@ -100,7 +105,48 @@ namespace Drowsy.Infrastructure.Games.DrowZzz
                     continue;
                 }
                 _cache[id] = data;  // 後勝ち(重複は OnValidate 側で別途警告)
+                _effectsCache[id] = BuildEffectsFromAssets(entry.Effects, i);
             }
+        }
+
+        // EffectAsset[] → IEffect[] への変換(M4-PR2、INF-017 / INF-018 / INF-019)。
+        // null 要素 / ToDomain 失敗(ArgumentException 系)は skip + Debug.LogError、他要素は影響なく処理を続ける。
+        // 全要素 skip / null array の場合は EmptyEffects を返す。
+        private IReadOnlyList<IEffect> BuildEffectsFromAssets(IReadOnlyList<EffectAsset> assets, int entryIndex)
+        {
+            if (assets is null || assets.Count == 0)
+            {
+                return EmptyEffects;
+            }
+            var list = new List<IEffect>(assets.Count);
+            for (int j = 0; j < assets.Count; j++)
+            {
+                var asset = assets[j];
+                if (asset is null)
+                {
+                    // SerializeReference の missing reference 復元 / 配列要素手動 null 挿入の防御(INF-018)。
+                    // 意図的発火経路として EditMode テスト(INF-018 ScriptableObjectCardCatalogTests)が
+                    // LogAssert.Expect で消費する(M4-PR1 学び 2「意図的発火コメント多層化」継承)。
+                    Debug.LogError(
+                        $"ScriptableObjectCardCatalog: entry[{entryIndex}].Effects[{j}] が null です。skip します(SerializeReference の missing reference 等、INF-018)。",
+                        this);
+                    continue;
+                }
+                try
+                {
+                    list.Add(asset.ToDomain());
+                }
+                catch (ArgumentException ex)
+                {
+                    // EffectAsset 派生型の ToDomain() が IEffect record ctor 防御で投げる ArgumentException
+                    // (派生 ArgumentNullException / ArgumentOutOfRangeException 含む)を catch、skip + LogError(INF-019)。
+                    // 例えば M4-PR3 で KeywordedEffect の Inner が null の場合に発火する可能性。
+                    Debug.LogError(
+                        $"ScriptableObjectCardCatalog: entry[{entryIndex}].Effects[{j}] ({asset.GetType().Name}) の ToDomain() に失敗しました。skip します: {ex.Message}",
+                        this);
+                }
+            }
+            return list.Count == 0 ? EmptyEffects : list;
         }
 
         // 重複 ID の検出(Editor のみ、Build / Runtime 経路では呼ばれない)。
@@ -135,9 +181,11 @@ namespace Drowsy.Infrastructure.Games.DrowZzz
         // Unity 6000.x では `ScriptableObject.CreateInstance` も `OnEnable` を呼ぶため通常 `_cache` は null にならないが、
         // Unity バージョン変更 / シリアライズ再構築の過渡的状態 / サブクラス化等の将来変化に対する保険として残す
         // (M4-PR1 code-reviewer W-4 反映 2026-05-14、過剰防御コメントを実情に即して補正)。
+        // M4-PR2 で _effectsCache 追加。`RebuildCache` は両 cache を必ず同時に初期化するため、どちらか一方が null なら
+        // 再構築すれば十分(両者は常に同期、M4-PR2 code-reviewer W-2 反映 2026-05-13:コメントと実装の方向を整合)。
         private void EnsureCacheBuilt()
         {
-            if (_cache is null)
+            if (_cache is null || _effectsCache is null)
             {
                 RebuildCache();
             }
@@ -170,11 +218,27 @@ namespace Drowsy.Infrastructure.Games.DrowZzz
         }
 
         /// <summary>
-        /// 効果列を返す。**本 PR(M4-PR1)範囲では常に空配列**(INF-008、Optional)。
-        /// M4-PR2 / PR3 で <see cref="CardEntryAsset"/> に効果列フィールドを追加し、本メソッドが
-        /// 効果列を返却する経路に拡張する(ADR-0012 §3 / §9)。
+        /// 登録済 <paramref name="id"/> に対応する効果列を返す(INF-017)。M4-PR2 で本格化:
+        /// <see cref="CardEntryAsset.Effects"/> に格納された <see cref="EffectAsset"/> を
+        /// <see cref="EffectAsset.ToDomain"/> 経由で <see cref="IEffect"/> に変換した結果を
+        /// <see cref="_effectsCache"/> から返す(<see cref="RebuildCache"/> 時に集計済)。
+        /// 未登録 id / null id / 効果なしカードは空配列を返す(graceful)。
         /// </summary>
-        public IReadOnlyList<IEffect> GetEffects(CardId id) => EmptyEffects;
+        /// <remarks>
+        /// M4-PR1 では <c>InMemoryCardCatalog.GetEffects</c> と同様、空配列固定の骨格実装だった(INF-008 Optional)。
+        /// M4-PR2 で <see cref="EffectAsset"/> 基底 + <see cref="AdjustSdpEffectAsset"/>(最初の派生型)を
+        /// 導入し、本メソッドが SO ベースで効果列を返却する経路に拡張(ADR-0012 §3 案 (a))。
+        /// 残り 11 派生型は M4-PR3 で順次対応。
+        /// </remarks>
+        public IReadOnlyList<IEffect> GetEffects(CardId id)
+        {
+            EnsureCacheBuilt();
+            if (id is null)
+            {
+                return EmptyEffects;
+            }
+            return _effectsCache.TryGetValue(id, out var effects) ? effects : EmptyEffects;
+        }
 
         /// <summary>
         /// テスト用:<see cref="_entries"/> を直接設定し、<see cref="OnValidate"/> 相当の処理

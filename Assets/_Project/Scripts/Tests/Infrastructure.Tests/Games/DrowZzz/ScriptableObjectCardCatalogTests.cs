@@ -3,8 +3,10 @@ using System.Text.RegularExpressions;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
+using Drowsy.Application.Games.DrowZzz.Effects;
 using Drowsy.Domain.Cards;
 using Drowsy.Infrastructure.Games.DrowZzz;
+using Drowsy.Infrastructure.Games.DrowZzz.Effects;
 // NUnit と UnityEngine の双方が PropertyAttribute を提供するため曖昧参照を回避する type alias
 // (Application.Tests / Domain.Tests は UnityEngine を import しないため不要だったが、本 Infrastructure.Tests は
 // Drowsy.Infrastructure 経由で UnityEngine が transitive に入ってくる + 直接 ScriptableObject / Debug / LogType を
@@ -44,6 +46,10 @@ namespace Drowsy.Infrastructure.Tests.Games.DrowZzz
         // 単一カード(CardId / Name のみ、属性なし)を構築するヘルパー
         private static CardEntryAsset NewEntry(string cardIdValue, string name) =>
             new CardEntryAsset(cardIdValue, name, System.Array.Empty<AttributeEntry>());
+
+        // 効果列付きカードを構築するヘルパー(M4-PR2 で追加、INF-017 〜 INF-019)
+        private static CardEntryAsset NewEntryWithEffects(string cardIdValue, string name, params EffectAsset[] effects) =>
+            new CardEntryAsset(cardIdValue, name, System.Array.Empty<AttributeEntry>(), effects);
 
         // ===== INF-004: Get(登録済 id) → CardData =====
 
@@ -186,6 +192,50 @@ namespace Drowsy.Infrastructure.Tests.Games.DrowZzz
             var data = catalog.Get(CardId.Of("00"));
             // Then(正常 entry は影響なく Get できる)
             Assert.That(data.Name, Is.EqualTo("夢"));
+        }
+
+        // ===== INF-017: GetEffects 本格化 =====
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "INF-017")]
+        public void Given_CardEntryに2effect_When_GetEffects_Then_IEffect配列を順序保持で返す()
+        {
+            // Given(2 effect を効果列に保持、ToDomain で IEffect[2] になる)
+            var catalog = CreateCatalog(NewEntryWithEffects(
+                "00", "夢",
+                new AdjustSdpEffectAsset(SdpTarget.Self, -5),
+                new AdjustSdpEffectAsset(SdpTarget.Opponent, 10)));
+            // When
+            var effects = catalog.GetEffects(CardId.Of("00"));
+            // Then(順序保持 + 値同値、INF-016 の ToDomain 値伝達を catalog 経由で検証)
+            var expected = new IEffect[]
+            {
+                new AdjustSdpEffect(SdpTarget.Self, -5),
+                new AdjustSdpEffect(SdpTarget.Opponent, 10),
+            };
+            Assert.That(effects, Is.EqualTo(expected));
+        }
+
+        // ===== INF-018: SerializeReference null 要素の skip =====
+        // 注:本テストは本番ロジックの Debug.LogError を **意図的に発火** させ LogAssert.Expect で消費する。
+        // Console に赤色 LogError が残るのは Unity Test Framework の仕様で、PASS の証拠(fixture xmldoc 参照)。
+
+        [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "INF-018")]
+        public void Given_Effects配列にnull要素_When_GetEffects_Then_null要素skip_他要素は影響なし()
+        {
+            // Given(Effects[0] が null、Effects[1] は valid AdjustSdpEffectAsset)
+            // 注:LogAssert.Expect は CreateCatalog の前に置く。ScriptableObject.CreateInstance 時点では _entries が null
+            // のため最初の OnEnable → RebuildCache は早期 return し BuildEffectsFromAssets に到達しない。
+            // 続く SetEntriesForTest → RebuildCache で初めて Effects walk が走り、null 要素検出 Debug.LogError が
+            // 1 回だけ発火する(M4-PR2 code-reviewer W-3 反映 2026-05-13:発火回数の前提を明示)。
+            LogAssert.Expect(LogType.Error, new Regex("entry\\[0\\]\\.Effects\\[0\\] が null"));
+            var catalog = CreateCatalog(NewEntryWithEffects(
+                "00", "夢",
+                null,  // SerializeReference の missing reference を模した null 要素
+                new AdjustSdpEffectAsset(SdpTarget.Self, -5)));
+            // When
+            var effects = catalog.GetEffects(CardId.Of("00"));
+            // Then(null は skip、valid 1 件が残る)
+            Assert.That(effects.Count, Is.EqualTo(1));
         }
 
         // ===== INF-012: 不正 attributes(構築失敗 entry)の skip =====
