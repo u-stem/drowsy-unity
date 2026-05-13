@@ -24,6 +24,8 @@
 - [ ] カバレッジ目標を維持(Domain C1 100%、Application 80%)
 - [ ] Roslyn Analyzer の警告ゼロ(Phase 4C-2 以降)
 - [ ] asmdef の references / dependency-rules.md と整合(レイヤ追加時)
+- [ ] **M2 効果追加時**:ドロー総数 ≤ 山札サイズ - 初期配布(現状 N=2 × MaxRound 21 × 1 Draw = 42、初期配布 10 を加えた 52 ≤ 山札 56、余裕 4 枚)。1 ターン複数 Draw 効果を追加した場合は再計算し、超過時は山札枯渇シナリオの仕様 ADR を別途起票([ADR-0007 §「山札枯渇」](/docs/adr/0007-m2-detail-card-effects.md) / [TODO #6](/docs/todo.md))
+- [ ] **M2 DDP 抽選効果追加時**:DDP 総抽選回数 ≤ プール 39 枚(現状 5 タイミング × N=2 = 10 枚 ≤ 39、余裕 29 枚)。DDP 追加抽選効果を導入した場合は再計算し、超過時はプール枯渇シナリオの仕様 ADR を別途起票([ADR-0009 §3](/docs/adr/0009-m2-m3-dp-and-victory-conditions.md) / [TODO #9](/docs/todo.md))
 
 ## レビュー実施
 
