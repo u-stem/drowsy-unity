@@ -73,6 +73,16 @@
       - **#B PlayerPrefsUserSettings.Dispose() 冪等性**: USR-027 新規(「二重 Dispose は silent no-op、内部 ReactiveProperty<T> を二度 Dispose しない」)+ `Given_既Dispose_When_2回目Dispose_Then_冪等で例外なし` テスト追加
     - **未完了の残作業**: オーナー側で Unity Test Runner + `com.unity.testtools.codecoverage` Window を実機計測し、本 #A / #B 以外の未到達経路を Cobertura レポートで特定 → 必要なら追加補完 PR(本 TODO は M4-PR7 完成 PR まで継続追跡)
 
+- [ ] **`SessionFactory` 共通ヘルパーへの M2-PR5 以降 13+ fixture の段階的統合** `priority: low`
+  - **Why**: 2026-05-13 chore PR で `ApplyActionUseCaseTests` / `DrowZzzRuleTests` を `Drowsy.Application.Tests.Stubs.SessionFactory` に統合済(`using static SessionFactory` 経路)。一方、M2-PR5 以降の fixture 群(`CounterActionTests` / `AssociateActionTests` / `AbandonActionTests` / `EffectInterpreterTests` / `CupOfThreatCardTests` / `GreenInvasionCardTests` / `DreamCardTests` / `CounterCounterTests` / `DrowZzzGameSessionTests` / `Effects/*Tests` 計 13+ fixture)にも類似 `NewSession` 重複が広がっており、各 fixture 固有の引数追加が発生する可能性あり
+  - **Done when**:
+    - 各 fixture を 1〜数件ずつ段階的に `SessionFactory.NewSession` 経由に切替(`using static SessionFactory` パターン)
+    - 必要に応じて `SessionFactory.NewSession` の引数を拡張(各 fixture 固有の引数を吸収できるかケースバイケースで判断、引数 11〜15 個まで増える可能性)
+    - 既存テスト全緑を維持
+    - 全 fixture 統合完了で本 TODO を「完了済み」に移動(または「採用しない」判断時は理由を Notes に明記)
+  - **Related**: 起点 PR(2026-05-13 chore: テストヘルパー抽出)、`docs/todo.md` 同 PR 完了済みエントリ「`ApplyActionUseCase` / `DrowZzzRuleTests` の共通テストヘルパー抽出」、`Assets/_Project/Scripts/Tests/Application.Tests/Stubs/SessionFactory.cs`
+  - **Notes**: 段階的拡張の方がレビュー負担小、`using static SessionFactory` で呼び出し側の修正コストは小さい。各 fixture 固有の引数追加で `SessionFactory` の引数が肥大化した場合は `TestSessionBuilder`(fluent API)パターンへのリファクタを検討
+
 - [ ] **N>2 拡張時の `UsageRestrictionMarkerEffect` Influence の `RemainingCount` 再評価** `priority: low`
   - **Why**: M3-PR6 で「夢」カードの使用制限を `PlayerInfluence(OwnPhaseStart, UsageRestrictionMarkerEffect, 1)` で表現した(ADR-0011 §6 JIT 確定 2026-05-14、`DrowZzzRule.ApplyAssociate` 内)。`RemainingCount=1` は N=2 前提で「相手 1 フェーズ経由後の自フェーズ Tick で除去」のセマンティクスを実現する値。N>2 拡張(Phase 3 候補)では「相手 N-1 フェーズ経由」になるため再評価が必要
   - **Done when**:
@@ -123,15 +133,6 @@
     - 設計判断レベル(導入する/しない)であれば ADR-0004 として記録。CLAUDE.md 訂正のみで済む選択 B なら同 PR に判断根拠コメントを残し ADR は不要
   - **Related**: [`CLAUDE.md`](../CLAUDE.md) §7「Roslyn Analyzer 構成」
   - **Notes**: Phase 1 中の任意のタイミングで判断。導入しない場合の Phase 1 後半までに訂正だけは入れたい
-
-- [ ] **`ApplyActionUseCase` / `DrowZzzRuleTests` の共通テストヘルパー抽出** `priority: low`
-  - **Why**: M1-PR6 reviewer 指摘 P-2 と M1-PR7 着手時に確認した課題。`ApplyActionUseCaseTests.NewSession` と `DrowZzzRuleTests.NewSession` がほぼ同一実装で重複している。M2 でテストが増えると保守コストが上がる
-  - **Done when**:
-    - `Tests/Application.Tests/Stubs/SessionFactory.cs`(または `TestSessionBuilder.cs`)等の共通ヘルパーを新設
-    - `DrowZzzRuleTests` / `ApplyActionUseCaseTests` / `M1IntegrationTests` を共通ヘルパーに切替
-    - 既存テスト全緑を維持
-  - **Related**: M1-PR6 reviewer 指摘 P-2 (PR #27 コメント)、M1-PR7 reviewer 指摘 (PR #28 コメント)
-  - **Notes**: M2 着手前または M2 中の早い段階で対応すると保守コストが上がる前に統一できる
 
 - [ ] **NRT (Nullable Reference Types) 有効化を検討する** `priority: low`
   - **Why**: PR-1 (CardData) で `CardData?` / `object?` のアノテーション 7 箇所に対し CS8632 警告が発生し、既存パターン(NRT 無効)に揃えて `?` を削除した経緯がある。Domain 全体で null 安全な API を表現したい場合、NRT 有効化が筋。判断は設計判断レベルになる可能性あり(ADR-0004 候補)
@@ -186,6 +187,16 @@
 (着手中のエントリをここに移動する)
 
 ## 完了済み
+
+- [x] **`ApplyActionUseCase` / `DrowZzzRuleTests` の共通テストヘルパー抽出** `priority: low`
+  - **Why**: M1-PR6 reviewer 指摘 P-2 と M1-PR7 着手時に確認した課題。`ApplyActionUseCaseTests.NewSession` と `DrowZzzRuleTests.NewSession` がほぼ同一実装で重複している。M2 でテストが増えると保守コストが上がる
+  - **Done when** (all met):
+    - ✓ `Tests/Application.Tests/Stubs/SessionFactory.cs` を新設(`NewSession` / `NewRule` / `NewDeck` の 3 共通ヘルパーを `public static class` で集約、`DrowZzzRuleTests.NewSession` のスーパーセット引数版)
+    - ✓ `DrowZzzRuleTests` / `ApplyActionUseCaseTests` を共通ヘルパーに切替(両 fixture から重複ヘルパー削除 + `using static Drowsy.Application.Tests.Stubs.SessionFactory;` で呼び出し側コードは無修正で互換性維持)
+    - ✓ 既存テスト全緑を維持(`dotnet build drowsy-unity.slnx` 0 エラー / 0 警告、Unity Editor Test Runner 確認はオーナー側で実機検証予定)
+    - **N/A**: 当初 Done when「`M1IntegrationTests` を共通ヘルパーに切替」は、本 fixture が `NewSession` を持たず `NewPlayers` / `NewDeck(int count)` / `NewUseCases` / `PlayOnePhase` / `PlayPhases` の別ヘルパー構成のため対象外(Done when の文言誤記、本完了済み移動で追記訂正)
+  - **Related**: M1-PR6 reviewer 指摘 P-2(PR #27 コメント)、M1-PR7 reviewer 指摘(PR #28 コメント)、本完了 PR(chore: テストヘルパー抽出、2026-05-13)
+  - **Notes**: 本 PR は Done when 起票時(M1-PR6/7 時点)の 2 fixture(`DrowZzzRuleTests` / `ApplyActionUseCaseTests`)に範囲限定。M2-PR5 以降の fixture 群(13+ fixture)にも類似 `NewSession` 重複が広がっているが、本 PR スコープ外。**段階的拡張は本 PR で新規未着手 TODO 「`SessionFactory` 共通ヘルパーへの M2-PR5 以降 13+ fixture の段階的統合」を起票して追跡**(`priority: low`、code-reviewer S-1 反映 2026-05-13)。`using static SessionFactory` パターンで呼び出し側の修正コストは小さく、後続 PR で段階的に統合可能
 
 - [x] **`turn-state.md` から ADR-0006 §7 への相互参照を追加** `priority: low`
   - **Why**: ADR-0006 §7 で Phase 1 `TurnState.TurnNumber` を「サブターン番号」と解釈し、DrowZzz の「ターン (=ラウンド)」は `(TurnNumber + 1) / 2` で計算する旨を確定した。一方で ADR-0006 は「`turn-state.md` 本体には手を入れない」(後方互換維持) と判断したため、`turn-state.md` 単独の読者には DrowZzz 用語との対応関係が見えない

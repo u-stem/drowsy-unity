@@ -8,74 +8,17 @@ using Drowsy.Application.Games.DrowZzz.Influences;
 using Drowsy.Domain.Cards;
 using Drowsy.Domain.Game;
 using Drowsy.Domain.Players;
+using static Drowsy.Application.Tests.Stubs.SessionFactory;
 
 namespace Drowsy.Application.Tests.Games.DrowZzz
 {
     [TestFixture]
     public class ApplyActionUseCaseTests
     {
-        // ===== ヘルパー(DrowZzzRuleTests と独立、本 fixture 完結)=====
-
-        // M2-PR1: DrowZzzRule constructor が ICardCatalog<IEffect> / EffectInterpreter を要求するため、
-        // M1 互換挙動を維持する最小依存 (空 catalog + 標準 Interpreter) を内部で組み立てる。
-        // 共通テストヘルパー抽出は docs/todo.md TODO で追跡。
-        private static DrowZzzRule NewRule() =>
-            new DrowZzzRule(
-                new InMemoryCardCatalog(new KeyValuePair<CardId, CardData>[0]),
-                new EffectInterpreter());
-
-        private static DrowZzzGameSession NewSession(
-            DrowZzzPhaseState phase = DrowZzzPhaseState.WaitingForDraw,
-            int currentPlayerIndex = 0,
-            Pile deck = null,
-            Hand p0Hand = null,
-            Hand p1Hand = null)
-        {
-            var p0 = new PlayerState(PlayerId.Of("p1"), p0Hand ?? Hand.Empty);
-            var p1 = new PlayerState(PlayerId.Of("p2"), p1Hand ?? Hand.Empty);
-            var gs = new GameState(
-                new[] { p0, p1 },
-                deck ?? Pile.Empty,
-                Pile.Empty,
-                Pile.Empty,
-                new TurnState(1, currentPlayerIndex));
-            var fdp = new Dictionary<PlayerId, int>
-            {
-                [PlayerId.Of("p1")] = 0,
-                [PlayerId.Of("p2")] = 10,
-            };
-            // SDP は M2-PR3 で追加(ADR-0009 §「DP 種別」)。本ヘルパー利用テストは SDP に関心がないため
-            // 全プレイヤー 0 で固定初期化する。
-            var sdp = new Dictionary<PlayerId, int>
-            {
-                [PlayerId.Of("p1")] = 0,
-                [PlayerId.Of("p2")] = 0,
-            };
-            // DDP / DdpPool は M2-PR4 で追加(ADR-0009 §「DP 種別」/ §「DDP プールの構造」)。
-            // 本ヘルパー利用テストは DDP 抽選機構を検証しないため、DDP=0 / 空 DdpPool で固定。
-            var ddp = new Dictionary<PlayerId, int>
-            {
-                [PlayerId.Of("p1")] = 0,
-                [PlayerId.Of("p2")] = 0,
-            };
-            // M2-PR5: Influences は本ヘルパー利用テストでは空 list 固定(影響操作機構は別 fixture で検証)
-            var influences = new Dictionary<PlayerId, IReadOnlyList<PlayerInfluence>>
-            {
-                [PlayerId.Of("p1")] = Array.Empty<PlayerInfluence>(),
-                [PlayerId.Of("p2")] = Array.Empty<PlayerInfluence>(),
-            };
-            return new DrowZzzGameSession(gs, fdp, ddp, sdp, DdpPool.Empty, influences, phase, outcome: null, bedDamages: new Dictionary<PlayerId, int> { [PlayerId.Of("p1")] = 0, [PlayerId.Of("p2")] = 0 }, System.Array.Empty<PendingCounteredEffect>());
-        }
-
-        private static Pile NewDeck(params string[] cardIds)
-        {
-            var cards = new CardId[cardIds.Length];
-            for (int i = 0; i < cardIds.Length; i++)
-            {
-                cards[i] = CardId.Of(cardIds[i]);
-            }
-            return new Pile(cards);
-        }
+        // ヘルパー(`NewSession` / `NewRule` / `NewDeck`)は M1-PR6 reviewer 指摘 P-2 起点の
+        // `docs/todo.md`「テストヘルパー抽出」TODO で 2026-05-13 に `Drowsy.Application.Tests.Stubs.SessionFactory`
+        // に統合(本 fixture と `DrowZzzRuleTests` の重複解消、`ApplyActionUseCaseTests.NewSession`
+        // は引数 5 個・固定値多めだったが SessionFactory はスーパーセット引数で同じ挙動を維持)。
 
         // ===== APP-023〜025: 各 Action 種別の正常委譲 (rule.Apply と等価) =====
 
