@@ -215,6 +215,27 @@ namespace Drowsy.Infrastructure.Tests.Games.DrowZzz
             Assert.That(effects, Is.EqualTo(expected));
         }
 
+        // ===== INF-019(昇格): EffectAsset.ToDomain() 失敗の skip(M4-PR3 で Optional 解除)=====
+        // 注:本テストは本番ロジックの Debug.LogError を **意図的に発火** させ LogAssert.Expect で消費する。
+        // KeywordedEffectAsset の Inner null 経路で ToDomain が ArgumentNullException を投げる → catalog で catch + skip。
+
+        [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "INF-019")]
+        public void Given_KeywordedEffectAssetのInnerがnull_When_GetEffects_Then_skip以外要素が残る()
+        {
+            // Given(Effects[0] = KeywordedEffectAsset(Inner=null)、Effects[1] = 正常な AdjustSdpEffectAsset)
+            // M4-PR3 で KeywordedEffectAsset を導入し、ToDomain() で Inner null を ArgumentNullException で
+            // 伝播 → catalog の BuildEffectsFromAssets が catch + skip + LogError 経路を活性化(INF-019 Optional 解除)
+            LogAssert.Expect(LogType.Error, new Regex("KeywordedEffectAsset.*の ToDomain\\(\\) に失敗"));
+            var catalog = CreateCatalog(NewEntryWithEffects(
+                "00", "夢",
+                new KeywordedEffectAsset(new[] { Keyword.Frenzy }, null),  // Inner null → ToDomain で ArgumentNullException
+                new AdjustSdpEffectAsset(SdpTarget.Self, -5)));
+            // When
+            var effects = catalog.GetEffects(CardId.Of("00"));
+            // Then(KeywordedEffectAsset は skip、残り 1 件)
+            Assert.That(effects.Count, Is.EqualTo(1));
+        }
+
         // ===== INF-018: SerializeReference null 要素の skip =====
         // 注:本テストは本番ロジックの Debug.LogError を **意図的に発火** させ LogAssert.Expect で消費する。
         // Console に赤色 LogError が残るのは Unity Test Framework の仕様で、PASS の証拠(fixture xmldoc 参照)。
