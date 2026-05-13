@@ -12,7 +12,7 @@
   "noEngineReferences": false,
   "allowUnsafeCode": false,
   "overrideReferences": true,
-  "precompiledReferences": ["nunit.framework.dll", "Newtonsoft.Json.dll"],
+  "precompiledReferences": ["nunit.framework.dll", "Newtonsoft.Json.dll", "R3.dll"],
   "includePlatforms": ["Editor"],
   "excludePlatforms": [],
   "defineConstraints": ["UNITY_INCLUDE_TESTS"],
