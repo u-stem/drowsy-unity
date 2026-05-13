@@ -379,6 +379,8 @@ Main.unity
 
 Designer ワークフローの完全な手順は [`docs/architecture/designer-workflow.md`](../architecture/designer-workflow.md)(M4-PR7 で確立)を参照。
 
+**`[SerializeReference]` の polymorphic 編集 UX**(M4-PR7 第 4 弾で確立):Unity 6 標準 UI では `EffectAsset` 派生型の型選択ドロップダウンが安定して表示されないため、`Assets/_Project/Scripts/Infrastructure/Editor/EffectAssetReferenceDrawer.cs`(Editor only、`Drowsy.Infrastructure.Editor` asmdef)を導入し、`[CustomPropertyDrawer(typeof(EffectAsset), useForChildren: true)]` で全派生型のドロップダウン UI を提供する。M5-PR3 で UI Toolkit を採用する際の Inspector 操作にも影響なし(Drawer は Unity Inspector 内部のみで動作、Build には乗らない)。
+
 #### 7.2 Bootstrap への注入経路
 
 **Inspector `[SerializeField]` 注入** を採用。Resources / AssetReference は M5 範囲では不採用(Phase 3 で Addressables 移行検討の余地)。
