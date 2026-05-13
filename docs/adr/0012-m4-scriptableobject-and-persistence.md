@@ -533,6 +533,101 @@ CLAUDE.md §11「Phase 進捗」M4 行を以下に更新:
 - 旧: `**M4**(永続化 / SO 化 + ユーザー設定): **進行中** — ADR-0012 起票済、M4-PR1(ScriptableObjectCardCatalog 骨格 + Infrastructure.Tests 新設)着手予定`
 - 新: `**M4**(永続化 / SO 化 + ユーザー設定): **進行中** — ADR-0012 起票済、M4-PR1 完成、M4-PR2(IEffect の SO 表現方式確定 + AdjustSdpEffect SO 対応)着手予定`
 
+### M4-PR2 完成記録(2026-05-13、IEffect の SO 表現 + AdjustSdpEffectAsset)
+
+**完成 PR**: PR #62 `feat(infra): IEffect の SO 表現 (案 a) + AdjustSdpEffectAsset を実装 (M4-PR2)`(merged `e3499a4`、2 commit 同梱:実装 + 初回コンパイル fix 込み `2ef7b2d` + using UnityEngine 追加 fix `7c7f963`)。本 ADR §3 / §「M4-PR2 着手時の JIT 確認項目」で確定した `IEffect` の SO 表現方式(案 a)と最初の SO 対応派生型 `AdjustSdpEffectAsset` を導入。
+
+**関連 chore PR**: PR #63 `chore(workflow): dotnet build pre-commit 統合 + Unity CLI script 整備`(merged `619e60f`)。本 PR の Unity Editor 起動依存(CS0246 / CS1614 が Editor 起動まで気付けなかった)を契機に、CLI 機械検知レイヤを整備。詳細は本完成記録 §「進行中の学び 2」。
+
+#### Definition of Done 達成項目(本 ADR §3 で確定した仕様の最初の実装)
+
+| スコープ項目 | 達成状況 | 備考 |
+| ---- | ---- | ---- |
+| `EffectAsset` 基底 abstract class 新設 | ✓ | `[Serializable]` + `abstract IEffect ToDomain()`、`Drowsy.Infrastructure.Games.DrowZzz.Effects` namespace、INF-013 Ubiquitous |
+| `AdjustSdpEffectAsset` sealed class 新設 | ✓ | `EffectAsset` 継承、`SdpTarget _target + int _delta` の 2 フィールド、`internal` ctor + `ToDomain` 実装、INF-014 / INF-016 |
+| `CardEntryAsset` 拡張 | ✓ | `[SerializeReference] EffectAsset[] _effects` フィールド追加 + `Effects` プロパティ + `internal` ctor 4 引数化(末尾 default null で後方互換維持)、INF-015 |
+| `ScriptableObjectCardCatalog.GetEffects` 本格化 | ✓ | `_effectsCache: Dictionary<CardId, IReadOnlyList<IEffect>>` 追加 + `RebuildCache` 内 `BuildEffectsFromAssets` 集計 + INF-008 Optional を空配列固定から SO ベース変換に拡張、INF-017 |
+| `SerializeReference` null 要素 + `ToDomain` 失敗の graceful skip | ✓ | `BuildEffectsFromAssets` で null 要素 + `ArgumentException` を catch → skip + `Debug.LogError`、`InMemoryCardCatalog` パターン継承、INF-018 / INF-019 Optional |
+| `AdjustSdpEffectAssetTests` 新設(EditMode) | ✓ | INF-016 値伝達 2 ケース(`SdpTarget.Self` / `Opponent` × `Delta`)、`Property` alias 雛形継承 |
+| `ScriptableObjectCardCatalogTests` 拡張 | ✓ | INF-017 順序保持 + INF-018 null skip `LogAssert.Expect`(M4-PR1 学び 2「意図的発火コメント多層化」継承)|
+| 仕様 md `effect-assets.md` 新設 | ✓ | INF-013 〜 INF-019(7 件、Ubiquitous 3 + 通常 EARS 3 + Optional 1) |
+
+#### 仕様 ID / NUnit 増加
+
+- 仕様 ID 新規採番(INF-013 〜 INF-019、7 件):
+  - **INF-013** `EffectAsset` abstract class 構造(`[Serializable]` + `abstract IEffect ToDomain()`)+ Ubiquitous
+  - **INF-014** `AdjustSdpEffectAsset` sealed class 構造(`EffectAsset` 継承 + 2 フィールド)+ Ubiquitous
+  - **INF-015** `CardEntryAsset.Effects` プロパティ(null safe)+ Ubiquitous
+  - **INF-016** `AdjustSdpEffectAsset.ToDomain` 値伝達(`SdpTarget` / `Delta` を `AdjustSdpEffect` record に渡す)
+  - **INF-017** `GetEffects(登録済 id)` が `CardEntryAsset.Effects` 順序で `IEffect[]` を返す
+  - **INF-018** `_effects` 内の null 要素は skip + `Debug.LogError`(`SerializeReference` の missing reference 防御)
+  - **INF-019** [Optional] `EffectAsset.ToDomain()` の `ArgumentException` を catch → skip + `Debug.LogError`(M4-PR3 で wrapper effect の Inner null 経路追加時に本格テスト追加、`docs/todo.md` で追跡)
+- NUnit Property unique: **+3 件 → 累計 363 件**(テスト件数は +4、`[Ubiquitous]` INF-013 / 014 / 015 と `[Optional]` INF-019 はマーカー免除)
+  - 新規ファイル `AdjustSdpEffectAssetTests`(2 件:INF-016 × 2 ケース)+ `ScriptableObjectCardCatalogTests` 拡張(2 件:INF-017 / INF-018)
+
+#### 本 PR で確定した ADR-0012 §「M4-PR2 着手時の JIT 確認項目」(2026-05-13)
+
+| 項目 | 確定内容 |
+| ---- | ---- |
+| `IEffect` の SO 表現方式 | **案 (a) `[Serializable]` POCO + 変換層**(`EffectAsset` 基底 + 派生 sealed class、`ToDomain()` 変換)|
+| `EffectAsset` 基底 class の API | **`abstract IEffect ToDomain()`**(`CardEntryAsset.ToCardData()` と同じ「To[Domain object]」命名)|
+| 第一号 SO 対応 effect | **`AdjustSdpEffect`** のみ(wrapper なし、Marker でない、最もシンプル)|
+| `[SerializeReference]` Unity バージョン | Unity 6 で OK(本 PR で前提化)|
+
+不採用案(再確認):
+- 案 (b) `IEffect` 自体を SO 化(SO Asset 数爆発、Designer 参照管理複雑化)
+- 案 (c) JSON 文字列で効果列を表現(Inspector UX 悪化、typo 検出不可)
+- `EffectAsset.ToDomain()` の `internal` 化(P-3、M4-PR3 着手時に wrapper effect の Inner 表現方針確定後再評価)
+- `CardEntryAsset.Effects` の `internal` 化(P-4、同上)
+
+#### code-reviewer subagent 反映(警告 3 / 提案 4 → 5 件反映、2 件 M4-PR3 着手時再評価)
+
+| ID | 種別 | 内容 | 反映 |
+| ---- | ---- | ---- | ---- |
+| W-1 | 警告 | `CardEntryAsset` クラス xmldoc が M4-PR1 完了後の未来形のまま残存 | ✓ M4-PR2 完了形に書き換え(「効果列フィールドは追加済」)|
+| W-2 | 警告 | `EnsureCacheBuilt` のコメントと実装の方向不一致 | ✓ 「両 cache は常に同期、どちらか null で再構築」と整合 |
+| W-3 | 警告 | INF-018 テストの `LogAssert.Expect` 発火回数の前提が暗黙 | ✓ `CreateInstance` 時点で `_entries` null のため最初の OnEnable は早期 return、SetEntriesForTest で初発火を明示コメント |
+| P-1 | 提案 | INF-018 / INF-019 仕様 md に「全要素 skip 時は空配列」未明記 | ✓ `BuildEffectsFromAssets` の `list.Count == 0` フォールバックを仕様 md に追記 |
+| P-2 | 提案 | INF-019 Optional 解除のための M4-PR3 連携が不明確 | ✓ `docs/todo.md` に「INF-019 本格テスト追加(M4-PR3 wrapper effect Inner null 経路で発火)」エントリ追加 |
+| P-3 | 提案 | `EffectAsset.ToDomain()` を `internal` 化検討 | Skip — **M4-PR3 着手時に再評価**(wrapper effect の Inner 表現が確定するまで `public` 維持)|
+| P-4 | 提案 | `CardEntryAsset.Effects` を `internal` 化検討 | Skip — **M4-PR3 着手時に再評価**(同上)|
+
+#### M4-PR2 進行中の学び
+
+##### 学び 1: NUnit / UnityEngine `PropertyAttribute` 衝突は `using UnityEngine;` も必須(M4-PR1 雛形の追補)
+
+M4-PR1 で確立した `using Property = NUnit.Framework.PropertyAttribute;` type alias は、`using UnityEngine;` を **直接書いた状態でのみ機能** する。本 PR の `AdjustSdpEffectAssetTests.cs` では `Debug` / `ScriptableObject` を直接使わないため `using UnityEngine;` を省略していたが、これだと C# attribute 構文 `[Property(...)]` の `Attribute` suffix 補完で `NUnit.Framework.PropertyAttribute` と `UnityEngine.PropertyAttribute` の 2 候補が分岐し CS1614 が発生(2026-05-13 ユーザー実機検証で判明、`7c7f963` で `using UnityEngine;` 追加して解消)。
+
+user-level memory `csharp-nunit-unityengine-property-conflict.md` を更新し、**「両 using 必須、軽量テストでも UnityEngine 省略不可」** を雛形として永続化。M4-PR3 以降の Infrastructure.Tests 配下の全テストファイルで両 using を継承する。
+
+##### 学び 2: `dotnet build` で Unity Editor 起動なしに CS エラーを CLI 検出できる(関連 PR #63 で機械検知レイヤ整備)
+
+M4-PR2 で発生した 2 件の CS エラー(CS0246 `EffectAsset` 名前解決 / CS1614 `Property` 曖昧)は **どちらも Unity Editor 起動するまで気付けなかった**。実証で `dotnet build drowsy-unity.slnx` が **約 4 秒で全 6 csproj をビルド** し、CS エラー + Roslyn Analyzer 警告を Editor 起動なしに検出できることが判明。
+
+関連 chore PR #63 で:
+- `lefthook.yml` pre-commit に `dotnet-build` を追加(`dotnet-format` と並列、毎 commit に約 4 秒コスト追加)
+- `scripts/run-unity-tests.sh`(Unity CLI `-batchmode -runTests` wrap、手動 / CI 用)
+- `scripts/refresh-unity-assets.sh`(`-batchmode -quit` で `.meta` / `.csproj` 機械再生成)
+- CLAUDE.md §7 機械検知方針を拡張(検知レイヤ全体像 + 検知対象 + `.meta` ワークフロー指針 3 セクション追加)
+
+**M4-PR3 以降は本 PR で確立した dotnet build pre-commit が型解決エラーを事前検出する基盤** が整い、Unity Editor 起動を介さないコーディングフィードバックループが短縮された。
+
+##### 学び 3: 「Editor 常駐 vs CLI batchmode」のワークフロー指針確立
+
+ユーザー JIT 質問「`.meta` を Editor 起動なしで機械生成できるか / 毎回 Editor を開くのは健全か」(2026-05-13)への回答として、CLAUDE.md §7 に **`.meta` / `.csproj` ワークフロー指針** を新セクションで明示:
+
+| 状況 | 推奨ワークフロー |
+| ---- | ---- |
+| Editor 常駐(VS Code / IDE と並行) | **Auto-refresh が標準**(Unity 公式推奨)|
+| Editor 閉鎖 / CI 自動化 | `scripts/refresh-unity-assets.sh` で機械再生成 |
+| Editor 起動中に CLI script を試す | 不可(Unity 1 プロセス制約)|
+
+実証:Unity Editor 起動中に `-batchmode` を呼ぶと「複数の Unity を起動して同じプロジェクトを開くことはできません」エラーで失敗(M4-PR2 セッションで確認)。
+
+##### 学び 4: 初期推奨案を ADR に明示する効果(案 a / b / c から (a) 採用)
+
+ADR-0012 §3 で `IEffect` の SO 表現方式を 3 案(a / b / c)で比較し「**初期推奨 (a)**」を明示していたため、M4-PR2 着手時の JIT 確認が「初期推奨で進めて良いか」のシンプルな質問に収まった(2026-05-13 ユーザー JIT 確定 1 問で完了)。ADR-0011 起票時に確立した「初期推奨案を ADR に書く運用」(ADR-0007 §1.5 / ADR-0010 §「Implementation Notes」継承)が本 M4-PR2 でも有効と実証。M4-PR3 以降の JIT 確認(wrapper effect の Inner 表現 / 11 派生型展開分割)でも継承する。
+
 ### M4 完成記録の追記タイミング
 
 本 ADR の M4-PR1〜PR7 完成記録は各 PR 単位で本 ADR §M4-PR-N 完成記録(2026-MM-DD)として追記する(ADR-0007 / ADR-0010 / ADR-0011 §「完成記録の追記タイミング」と同パターン)。M4 全体の完成時に §M4 完成記録(全体)を別途追加、Definition of Done 達成方法を集約する。
