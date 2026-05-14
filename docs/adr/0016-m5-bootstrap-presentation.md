@@ -112,11 +112,12 @@ ProjectLifetimeScope (DontDestroyOnLoad / Application 寿命)
 | `IUserSettings` | Project | Singleton (Disposable) | `Register<IUserSettings, PlayerPrefsUserSettings>(Lifetime.Singleton)` | `PlayerPrefsUserSettings.Dispose` は VContainer の `IObjectResolver.Dispose` で自動呼び出し(`IDisposable` 検出) |
 | `IDrowZzzGameSessionSerializer` | Project | Singleton | `Register<IDrowZzzGameSessionSerializer, DrowZzzGameSessionSerializer>(Lifetime.Singleton)` | M4-PR5 の `DrowZzzGameSessionSerializer` は stateless、interface 抽出が必要(本 ADR §5.2 で確定) |
 | `string`(セーブパス、Presenter ctor `string savePath` 引数として注入)| Project | Singleton | `RegisterInstance(DrowZzzGameSessionSerializer.DefaultSavePath())` | `DefaultSavePath` は `static` のため interface に含められず(W-1 / W-5 反映)、Project Singleton として string を登録。`Application.persistentDataPath` 呼び出しは Configure 内のメインスレッドで実行され、ワーカースレッドからの参照を回避。M5 範囲で string 登録は本 1 個のみ、型 `string` で衝突なく Resolve 可能。Phase 3 で「multi-slot save / log path 等」で複数 string 登録が必要になった時点で型別の wrapper(`SavePath` record 等)導入を再評価 |
-| `DrowZzzRule` | Project | Singleton | `Register<DrowZzzRule>(Lifetime.Singleton)` | stateless |
+| `EffectInterpreter` | Project | Singleton | `Register<EffectInterpreter>(Lifetime.Singleton)` | `DrowZzzRule` ctor の第 2 引数。VContainer は未登録の具象型を自動解決しないため明示登録が必要(M5-PR3 で実装、code-reviewer W-1 反映で本表に追記)|
+| `DrowZzzRule` | Project | Singleton | `Register<DrowZzzRule>(Lifetime.Singleton)` | stateless、ctor で `ICardCatalog<IEffect>` + `EffectInterpreter` を要求 |
 | `StartGameUseCase` | Game | Singleton | `Register<StartGameUseCase>(Lifetime.Singleton)` | ADR-0014 で 2 引数 ctor 化済、Game スコープに置くことで「対戦 1 回 1 instance」を担保 |
 | `ApplyActionUseCase` | Game | Singleton | `Register<ApplyActionUseCase>(Lifetime.Singleton)` | stateless、`DrowZzzRule` を constructor 注入 |
 | `DrowZzzGamePresenter` | Game | Singleton | `Register<DrowZzzGamePresenter>(Lifetime.Singleton).AsImplementedInterfaces().AsSelf()` | `IStartable` 実装で Boot 時に自動起動、`IDisposable` 実装で Game スコープ Dispose 時に CompositeDisposable / CTS / Subject 解放(本 ADR §3.2)。`AsSelf()` は単体テスト / View 参照で具象型 Resolve 経路を両立 |
-| `IDrowZzzGameView` 実装(View MonoBehaviour) | Game | Singleton | `RegisterComponentInHierarchy<DrowZzzGameView>().AsImplementedInterfaces()` | UIDocument を持つ MonoBehaviour、`[Inject]` で Presenter を受け取る |
+| `IDrowZzzGameView` 実装(View MonoBehaviour) | Game | Singleton | `RegisterComponentInHierarchy<DrowZzzGameView>().AsImplementedInterfaces()` | UIDocument を持つ MonoBehaviour。Presenter ctor の `IDrowZzzGameView` 引数として Container から解決される(依存方向は Presenter → View、View 側に `[Inject]` は不要、code-reviewer W-3 反映で訂正)|
 
 **`StartGameUseCase` を Singleton(Transient ではなく)で登録する理由**:M5 範囲では対戦 1 回限定で、ctor で受ける `IRandomSource` は Project Singleton(=各対戦で同一 instance を共有)。1 対戦内で `Execute()` は 1 回しか呼ばれないため Singleton と Transient で動作差なし、Singleton のほうがゲーム状態の単一情報源管理が明示的になる。Phase 3 で「新規対戦」を導入する場合は GameLifetimeScope ごと再生成するため、Singleton 寿命は GameLifetimeScope に従う形で自然にリセットされる。
 
@@ -418,12 +419,15 @@ public sealed class ProjectLifetimeScope : LifetimeScope
         // ワーカースレッドからの参照を回避、W-5 反映)
         builder.RegisterInstance(DrowZzzGameSessionSerializer.DefaultSavePath());
 
-        // Infrastructure
-        builder.Register<IRandomSource, XorShiftRandom>(Lifetime.Singleton);
+        // Infrastructure(XorShiftRandom は uint seed ctor のため Register<,> では解決不可、
+        // RegisterInstance で時刻ベース seed を渡す、code-reviewer W-2 反映)
+        builder.RegisterInstance<IRandomSource>(new XorShiftRandom(unchecked((uint)DateTime.UtcNow.Ticks)));
         builder.Register<IDrowZzzGameSessionSerializer, DrowZzzGameSessionSerializer>(Lifetime.Singleton);
         builder.Register<IUserSettings, PlayerPrefsUserSettings>(Lifetime.Singleton);
 
-        // Application
+        // Application(DrowZzzRule は ctor で ICardCatalog<IEffect> + EffectInterpreter を要求、
+        // EffectInterpreter は VContainer の自動解決対象外のため明示 Register、code-reviewer W-1 反映)
+        builder.Register<EffectInterpreter>(Lifetime.Singleton);
         builder.Register<DrowZzzRule>(Lifetime.Singleton);
     }
 }
@@ -708,6 +712,34 @@ PR 番号は GitHub マージ後に確定するため、本セクションは原
 - **次 PR への引き継ぎ**:
   - `IDrowZzzGameSessionSerializer` は M5-PR2 の Presenter ctor で 4 番目引数として注入される
   - `InMemoryDrowZzzGameSessionSerializer` fake は `Drowsy.Application.Tests.Stubs` 配置のため、`Drowsy.Presentation.Tests`(M5-PR2 新設)からは参照できない(asmdef 境界)。Presenter 単体テストでは別の Mock 実装(`Drowsy.Presentation.Tests.Stubs` 配下)を新設するか、Fake を `Drowsy.Application` 本体に昇格させる判断を M5-PR2 で行う
+
+#### M5-PR2 完成記録
+
+- **PR**:[#87](https://github.com/u-stem/drowsy-unity/pull/87)、squash merged → commit `8de677f`(2026-05-14)
+- **スコープ達成**:
+  - `IDrowZzzGameView` interface 抽出(`Drowsy.Presentation.Games.DrowZzz` namespace、`Render` / `RenderOutcome` + 3 event)
+  - `DrowZzzGamePresenter` Pure C# 実装(`IStartable, IDisposable`、ctor 6 引数 + null 防御、`Start` で event 配線 + Subject 購読 + `BootAsync.Forget`、`Dispose` で event 解除 + CTS / Disposables / Subject 解放 + 冪等性、Handler 3 種 + BootAsync 新規対戦経路は `NotImplementedException` stub)
+  - `Drowsy.Presentation.Tests` asmdef 新設(`Drowsy.Application.Tests` 参照で Stub 再利用、`R3.dll` precompiledReferences 追加)
+  - `MockDrowZzzGameView` / `MockUserSettings` / `MockDrowZzzGameSessionSerializer` 新設 + 契約テスト 12 件(PRES-002〜011 + PRES-013、PRES-008 は TestCase 2 件)
+  - EARS `docs/specs/presentation/games/drowzzz/presenter-skeleton.{md,feature}` 新設(PRES-001〜013、新規 prefix `PRES-`)
+  - `IdentityRandom` / `StubGameConfig` を internal → public 化(`Drowsy.Presentation.Tests` から再利用、`SessionFactory` が既に public な事実と整合)
+- **検証結果**:
+  - `dotnet build drowsy-unity.slnx`:0 警告 / 0 エラー / 1.66 秒
+  - `bash scripts/check-traceability.sh`:仕様 ID 547 件 / Property ID 456 件 / 整合性 OK
+  - lefthook pre-commit 全フック緑(2 commits 構成:`3e4fe64` ADR 完成記録 + `2ca6bb8` 実装本体)
+  - Unity Test Runner EditMode 緑確認はオーナー側で実機実施
+- **JIT 確定事項**:
+  - `IDrowZzzGameView.Render` の引数は non-null(`DrowZzzGameSession?` にしない、本 ADR §3.1 + ADR-0015 NRT 不採用方針整合)
+  - Presenter は `IStartable` 採用(別 `IBootable` interface は切らない、本 ADR §3.2 確定通り)
+  - BootAsync 新規対戦経路は `NotImplementedException` stub(M5-PR4 で `StartGameUseCase.Execute(players, initialDeck)` の引数生成戦略を JIT 確定後に本実装、本 ADR §3.2 line 238 の TBD と整合)
+  - `Drowsy.Presentation.Tests` から `Drowsy.Application.Tests` を参照(test asmdef 間依存、Stub 再利用、本番 Build 非混入、代替案の stubs 多重実装より DRY 性優先)
+- **本 ADR への訂正**:
+  - §10.1 の `Drowsy.Presentation.Tests` references リストを実態整合化(`Drowsy.Application.Tests` 追加 + 参照根拠の明記 + Mock リストを 3 種に整合)
+- **code-reviewer 指摘の反映**:T-1(重大、`NewContext` 内 `using var` のスコープ外 Dispose)+ W-1 / W-2 / W-3 / S-3 / S-4 を本 PR 内で反映、S-1 / S-2 / W-4 / W-5 は本 PR 範囲外と判断
+- **次 PR への引き継ぎ**:
+  - M5-PR3 で `ProjectLifetimeScope` / `GameLifetimeScope` の `Configure` を実装し、Presenter / View / UseCase を Register
+  - M5-PR3 の `DrowZzzGameView` MonoBehaviour が `IDrowZzzGameView` を実装、`RegisterComponentInHierarchy<DrowZzzGameView>()` で Game スコープに登録(M5-PR3 着手時 JIT 確定 2026-05-14)
+  - `MockDrowZzzGameSessionSerializer` に `catch (Exception ex)` 経路(LogError)を駆動する `LoadBehavior` バリアントが未実装(code-reviewer S-2)、M5-PR4 以降で必要なら追加
 
 ### M5 完成後の Phase 進捗バナー更新案
 
