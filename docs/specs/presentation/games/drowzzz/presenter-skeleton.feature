@@ -115,10 +115,29 @@
   シナリオ: 不合法な EndTurn では Auto-save が走らない (異常系・Small)
     前提 Boot 完了後、WaitingForDraw の session(EndTurn は不合法)
     もし MockView.FireEndTurnClicked() を呼ぶ
-    ならば TryApplyAction が false を返し、MockSerializer.SaveAsyncCallCount は 0 のまま
+    ならば EndTurnAction は適用されず、MockSerializer.SaveAsyncCallCount は 0 のまま
 
   @PRES-021
   シナリオ: Draw 成功時は Auto-save が走らない (正常系・Small)
     前提 Boot 完了後、WaitingForDraw の session
     もし MockView.FireDrawClicked() を呼ぶ
     ならば DrawCardAction は適用されるが、Auto-save は EndTurn 後のみのため SaveAsyncCallCount は 0 のまま
+
+  # ===== M5-PR7: Outcome の UI 反映と終了後の入力 disable =====
+
+  @PRES-031
+  シナリオ: Boot で IsTerminated な session を復元すると RenderOutcome が呼ばれる (正常系・Small)
+    前提 MockSerializer.LoadAsyncReturnSession = NewSession() with Outcome = WinnerOutcome(p1)
+    もし Start() を呼ぶ
+    ならば SessionStream 購読が IsTerminated を検出し、MockView.RenderedOutcomes.Count == 1
+
+  @PRES-032
+  シナリオ: Outcome 確定後の Handler 発火は無反応 (異常系・Small)
+    前提 IsTerminated な session を Boot で復元済
+    もし MockView.FireDrawClicked() を呼ぶ
+    ならば DrawCardAction は適用されず、MockView.RenderedSessions / RenderedOutcomes は Boot 時以降変化しない
+
+  # @PRES-033(Action 適用で IsTerminated になる早期勝利 / Round 21 完了経路 + Auto-save Final)は
+  # 本物 DrowZzzRule の終了経路を EditMode 単体テストで再現するのが統合的すぎるため Optional 手動 QA。
+  # Auto-save 集約(action is EndTurnAction || next.IsTerminated)と SessionStream の IsTerminated 分岐は
+  # PRES-019 / PRES-031 で機械検証済み(ADR-0016 §10)。

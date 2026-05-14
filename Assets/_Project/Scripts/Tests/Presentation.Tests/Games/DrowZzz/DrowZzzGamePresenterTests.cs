@@ -4,6 +4,7 @@ using NUnit.Framework;
 using Drowsy.Application.Games.DrowZzz;
 using Drowsy.Application.Tests.Stubs;
 using Drowsy.Domain.Cards;
+using Drowsy.Domain.Game;
 using Drowsy.Domain.Players;
 using Drowsy.Presentation.Games.DrowZzz;
 using static Drowsy.Application.Tests.Stubs.SessionFactory;
@@ -452,6 +453,53 @@ namespace Drowsy.Presentation.Tests.Games.DrowZzz
 
             // Then(Draw では Auto-save しない)
             Assert.That(ctx.Serializer.SaveAsyncCallCount, Is.EqualTo(0));
+
+            // Cleanup
+            ctx.Presenter.Dispose();
+            ctx.UserSettings.Dispose();
+        }
+
+        // ===== PRES-031 / PRES-032: Outcome 確定の UI 反映と終了後の入力 disable =====
+
+        // DrowZzzGameSession は sealed record で Outcome は init setter のため、with 式で IsTerminated な
+        // session を組み立てられる(本物 Rule で 21 ターン回す / 早期勝利カードをプレイする統合経路は不要)。
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "PRES-031")]
+        public void Given_terminatedSession_When_Boot_Then_RenderOutcomeInvoked()
+        {
+            // Given(Outcome 確定済み = IsTerminated の session を Boot で復元)
+            var ctx = NewContext();
+            var terminatedSession = NewSession() with { Outcome = new WinnerOutcome(PlayerId.Of("p1")) };
+            ctx.Serializer.LoadAsyncReturnSession = terminatedSession;
+
+            // When
+            ctx.Presenter.Start();
+
+            // Then(SessionStream 購読が IsTerminated を検出して RenderOutcome を 1 回呼ぶ)
+            Assert.That(ctx.View.RenderedOutcomes, Has.Count.EqualTo(1));
+
+            // Cleanup
+            ctx.Presenter.Dispose();
+            ctx.UserSettings.Dispose();
+        }
+
+        [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "PRES-032")]
+        public void Given_terminatedSession_When_DrawClicked_Then_NoReaction()
+        {
+            // Given(Outcome 確定済みの session を Boot で復元)
+            var ctx = NewContext();
+            var terminatedSession = NewSession() with { Outcome = new WinnerOutcome(PlayerId.Of("p1")) };
+            ctx.Serializer.LoadAsyncReturnSession = terminatedSession;
+            ctx.Presenter.Start();
+            var renderCountAfterBoot = ctx.View.RenderedSessions.Count;
+
+            var outcomeCountAfterBoot = ctx.View.RenderedOutcomes.Count;
+
+            // When(終了後の Handler 発火)
+            ctx.View.FireDrawClicked();
+
+            // Then(TryApplyAction の IsTerminated ガードで無反応、Render も RenderOutcome も増えない)
+            Assert.That(ctx.View.RenderedSessions.Count, Is.EqualTo(renderCountAfterBoot));
+            Assert.That(ctx.View.RenderedOutcomes.Count, Is.EqualTo(outcomeCountAfterBoot));
 
             // Cleanup
             ctx.Presenter.Dispose();
