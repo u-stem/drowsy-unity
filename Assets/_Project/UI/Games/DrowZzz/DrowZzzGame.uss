@@ -32,3 +32,28 @@
     min-width: 96px;
     height: 36px;
 }
+
+/* M5-PR6: 設定セクション(BGM/SE Slider + Language Dropdown) */
+
+.drowzzz-settings {
+    margin-top: 24px;
+    padding-top: 12px;
+    border-top-width: 1px;
+    border-top-color: rgb(60, 60, 75);
+}
+
+.drowzzz-section-title {
+    font-size: 18px;
+    -unity-font-style: bold;
+    color: rgb(220, 220, 235);
+    margin-bottom: 8px;
+}
+
+.drowzzz-slider {
+    margin-bottom: 6px;
+}
+
+.drowzzz-dropdown {
+    margin-top: 6px;
+    max-width: 240px;
+}
