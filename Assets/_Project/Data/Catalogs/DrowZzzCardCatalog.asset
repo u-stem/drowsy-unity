@@ -12,7 +12,66 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b2a43f78ab1fb46248fdfc9b064dc104, type: 3}
   m_Name: DrowZzzCardCatalog
   m_EditorClassIdentifier: Drowsy.Infrastructure::Drowsy.Infrastructure.Games.DrowZzz.ScriptableObjectCardCatalog
-  _entries: []
+  _entries:
+  - _cardIdValue: 01
+    _name: "\u30B3\u30C3\u30D7\u4E00\u676F\u306E\u8105\u5A01"
+    _attributes: []
+    _effects:
+    - rid: 8832664179837239380
+  - _cardIdValue: 02
+    _name: " \u7DD1\u306E\u4FB5\u653B"
+    _attributes: []
+    _effects:
+    - rid: 8832664179837239381
+  - _cardIdValue: 
+    _name: 
+    _attributes: []
+    _effects: []
   references:
     version: 2
-    RefIds: []
+    RefIds:
+    - rid: -2
+      type: {class: , ns: , asm: }
+    - rid: 8832664179837239380
+      type: {class: TimeOfDayBranchEffectAsset, ns: Drowsy.Infrastructure.Games.DrowZzz.Effects, asm: Drowsy.Infrastructure}
+      data:
+        _nightEffects:
+        - rid: 8832664179837239382
+        - rid: 8832664179837239383
+        - rid: 8832664179837239384
+        _morningEffects:
+        - rid: 8832664179837239385
+        - rid: 8832664179837239386
+    - rid: 8832664179837239381
+      type: {class: ChoiceEffectAsset, ns: Drowsy.Infrastructure.Games.DrowZzz.Effects, asm: Drowsy.Infrastructure}
+      data:
+        _branches:
+        - _effects:
+          - rid: -2
+        - _effects:
+          - rid: -2
+    - rid: 8832664179837239382
+      type: {class: AdjustSdpEffectAsset, ns: Drowsy.Infrastructure.Games.DrowZzz.Effects, asm: Drowsy.Infrastructure}
+      data:
+        _target: 0
+        _delta: -4
+    - rid: 8832664179837239383
+      type: {class: DrawCardEffectAsset, ns: Drowsy.Infrastructure.Games.DrowZzz.Effects, asm: Drowsy.Infrastructure}
+      data:
+        _target: 0
+        _count: 1
+    - rid: 8832664179837239384
+      type: {class: AdjustSdpEffectAsset, ns: Drowsy.Infrastructure.Games.DrowZzz.Effects, asm: Drowsy.Infrastructure}
+      data:
+        _target: 1
+        _delta: -10
+    - rid: 8832664179837239385
+      type: {class: AdjustSdpEffectAsset, ns: Drowsy.Infrastructure.Games.DrowZzz.Effects, asm: Drowsy.Infrastructure}
+      data:
+        _target: 0
+        _delta: -4
+    - rid: 8832664179837239386
+      type: {class: AdjustSdpEffectAsset, ns: Drowsy.Infrastructure.Games.DrowZzz.Effects, asm: Drowsy.Infrastructure}
+      data:
+        _target: 1
+        _delta: 10
