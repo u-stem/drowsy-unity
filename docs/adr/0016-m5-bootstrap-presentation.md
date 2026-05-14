@@ -829,6 +829,31 @@ PR 番号は GitHub マージ後に確定するため、本セクションは原
 - **次 PR への引き継ぎ**:
   - M5-PR6 で `IUserSettings` を View に直接 Inject(VContainer `[Inject]`)+ R3 Observable バインディング、`UserSettingsBinder` Pure C# 切り出しでテスタブル化(M5-PR6 着手時 JIT 確定 2026-05-14)
 
+#### M5-PR6 完成記録
+
+- **PR**:[#91](https://github.com/u-stem/drowsy-unity/pull/91)(M5-PR6 本体、squash merged → commit `f6f47ff`)+ [#92](https://github.com/u-stem/drowsy-unity/pull/92)(code-reviewer コメント反映漏れ修正、squash merged → commit `bd4740c`)、いずれも 2026-05-14
+- **スコープ達成**:
+  - `UserSettingsBinder` Pure C# クラス新設(`Slider` × 2 + `DropdownField` + `IUserSettings` を双方向バインド、UIDocument 非依存でテスタブル化、settings → UI は `Observable.Subscribe` + `SetValueWithoutNotify` で callback 抑止しループ防止、UI → settings は `RegisterValueChangedCallback`、`IDisposable` で対称解放 + 冪等)
+  - UXML 拡張(`settings-section`:`bgm-slider` / `se-slider` / `language-dropdown`)+ USS 拡張
+  - `DrowZzzGameView`:`[Inject] Construct(IUserSettings)` + `Start()` で `UserSettingsBinder` 生成 + `OnDestroy()` で Dispose(button.clicked は既存の `OnEnable`/`OnDisable` のまま、`[Inject]` 依存注入タイミングの都合で非対称)
+  - `UserSettingsBinderTests`(PRES-022〜029:ctor null 防御 4 + choices 設定 + settings→UI Subscribe 経路 + Dispose 冪等、`new Slider()` + `MockUserSettings` で UIDocument 非依存テスト)
+  - EARS `user-settings-binder.{md,feature}` 新設(PRES-022〜030、PRES-030 の UI→settings は `Slider.value` setter の `panel != null` 制約で EditMode 単体テスト不可のため `[Optional]` 手動 QA)
+  - `LanguageCodes` 設計変更(`refactor(domain)`):カバレッジレポートで唯一の未カバーだった `static readonly Supported`(暗黙の `.cctor`)を、`Supported` 式本体プロパティ化 + `IsSupported` const 比較化で static ctor ごと廃止。`.cctor` は AppDomain 内 1 回のみ実行で計測区間外実行時に永久未カバーになる構造的限界の根本回避
+- **検証結果**:
+  - `dotnet build drowsy-unity.slnx`:0 警告 / 0 エラー
+  - `bash scripts/check-traceability.sh`:仕様 ID 569 件 / Property ID 477 件 / 整合性 OK
+  - lefthook pre-commit 全フック緑(PR #91 は 3 commits:`719f46b` 完成記録 + `322f9f7` refactor + `eef6afc` 実装、PR #92 は `52880e3` コメント反映漏れ修正)
+  - Unity Test Runner / Play モード設定 UI 操作確認はオーナー側で実機実施
+- **JIT 確定事項**(M5-PR6 着手時 2026-05-14):
+  - `IUserSettings` を View に直接 `[Inject]`(ADR-0016 §11 初期推奨、Presenter の SRP を保つ)
+  - Language Dropdown は `LanguageCodes.Supported`(`"ja"` / `"en"`)をコード直接表示(表示名マッピングは Phase 3)
+  - バインディングは `UserSettingsBinder` Pure C# 切り出しで EditMode テスタブル化
+  - `LanguageCodes` の `.cctor` 未カバーは設計変更(static ctor 廃止)で根本回避
+- **運用上の学び**:`git commit -- <paths>`(ワークツリー内容を commit)と `git commit`(ファイル指定なし、ステージ済み内容を commit)の挙動差により、code-reviewer 反映 Edit 後の `git add -A` 忘れで W-2 / T-2 / T-5 のコメント 3 件が PR #91 から漏れ、PR #92 で追補。今後はレビュー反映 Edit 後に必ず `git add -A` してから commit する
+- **code-reviewer 指摘の反映**:W-2 / T-1 / T-2 / T-5 反映(W-1 は現状で慣用パターン通り、T-3 対応不要、T-4 は設定 UI 常時表示の Phase 3 改善候補として PR description に記録)
+- **次 PR への引き継ぎ**:
+  - M5-PR7 で `GameOutcome` の UI 反映(`outcome-label` 新設、`RenderOutcome` 本実装)+ Outcome 確定後の入力 disable(View ボタン disable + Presenter event 無視の多層防御)+ Auto-save Final(メイン path 上書き、`TryApplyAction` 内に Auto-save 判定を集約し M5-PR5 の bool 返却を void に戻す)、M5-PR7 着手時 JIT 確定 2026-05-14
+
 ### M5 完成後の Phase 進捗バナー更新案
 
 M5-PR8 完成時点で CLAUDE.md §11「Phase 進捗」を以下に書き換え:
