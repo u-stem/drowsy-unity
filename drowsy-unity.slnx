@@ -5,6 +5,8 @@
   <Project Path="Drowsy.Infrastructure.Tests.csproj" />
   <Project Path="Drowsy.Application.Tests.csproj" />
   <Project Path="Drowsy.Domain.Tests.csproj" />
+  <Project Path="Drowsy.Presentation.csproj" />
+  <Project Path="Drowsy.Presentation.Tests.csproj" />
   <Project Path="Drowsy.Bootstrap.csproj" />
   <Project Path="Drowsy.Infrastructure.Editor.csproj" />
 </Solution>

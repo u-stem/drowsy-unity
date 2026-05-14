@@ -1,0 +1,28 @@
+{
+  "name": "Drowsy.Presentation.Tests",
+  "rootNamespace": "Drowsy.Presentation.Tests",
+  "references": [
+    "Drowsy.Domain",
+    "Drowsy.Application",
+    "Drowsy.Application.Tests",
+    "Drowsy.Presentation",
+    "UniTask",
+    "VContainer",
+    "R3.Unity",
+    "UnityEngine.TestRunner",
+    "UnityEditor.TestRunner"
+  ],
+  "autoReferenced": false,
+  "noEngineReferences": false,
+  "allowUnsafeCode": false,
+  "overrideReferences": true,
+  "precompiledReferences": [
+    "nunit.framework.dll",
+    "R3.dll"
+  ],
+  "includePlatforms": ["Editor"],
+  "excludePlatforms": [],
+  "defineConstraints": ["UNITY_INCLUDE_TESTS"],
+  "versionDefines": [],
+  "optionalUnityReferences": []
+}

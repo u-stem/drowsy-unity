@@ -496,11 +496,23 @@ ADR-0005 §3 の namespace 階層化原則を踏襲(`*.Games.DrowZzz.*` で Drow
 ```
 Assets/_Project/Scripts/Tests/Presentation.Tests/
   Drowsy.Presentation.Tests.asmdef
-    references: Drowsy.Domain / Drowsy.Application / Drowsy.Presentation / VContainer / UniTask / R3.Unity / nunit.framework.dll
+    references: Drowsy.Domain / Drowsy.Application / Drowsy.Application.Tests /
+                Drowsy.Presentation / UniTask / VContainer / R3.Unity /
+                UnityEngine.TestRunner / UnityEditor.TestRunner
+    precompiledReferences: nunit.framework.dll
   Games/DrowZzz/
     DrowZzzGamePresenterTests.cs
     MockDrowZzzGameView.cs (IDrowZzzGameView の最小実装、event 発火制御用)
+    MockDrowZzzGameSessionSerializer.cs (LoadAsync の挙動制御で BootAsync の各分岐を駆動)
+    MockUserSettings.cs (IUserSettings の最小モック、M5-PR6 で粒度向上)
 ```
+
+**`Drowsy.Application.Tests` 参照の判断**(M5-PR2 着手時の JIT 確定 2026-05-14):
+Presenter ctor が具象 `StartGameUseCase` / `ApplyActionUseCase` を取るため、テストで両 UseCase を構築するには
+`IRandomSource` / `IGameConfig` / `DrowZzzRule` の stub instance が必要。`Drowsy.Application.Tests.Stubs`
+配下の `IdentityRandom` / `StubGameConfig` / `SessionFactory.NewRule` を再利用する目的で、
+`Drowsy.Presentation.Tests.asmdef` の references に `Drowsy.Application.Tests` を加える(test asmdef
+間の依存、本番 Build には混入しない)。代替案(stubs 多重実装)より DRY 性と保守性を優先。
 
 `includePlatforms: ["Editor"]` + `UNITY_INCLUDE_TESTS` constraint で本番 Build に混入しない(M4-PR1 / PR6 で確立済パターン継承)。
 
