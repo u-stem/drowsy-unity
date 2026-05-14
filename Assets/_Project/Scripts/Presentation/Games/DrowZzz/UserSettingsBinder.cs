@@ -101,6 +101,9 @@ namespace Drowsy.Presentation.Games.DrowZzz
                 return;
             }
             _disposed = true;
+            // 先に UI → settings の callback を外し、次に settings → UI の Subscribe を解放する。
+            // 順序はどちらでも機能的に安全(R3 CompositeDisposable.Dispose は Subscription を即時終了する)が、
+            // 「ユーザー操作の入口を先に塞ぐ」意図でこの順とする(code-reviewer M5-PR6 T-5)。
             _bgmSlider.UnregisterValueChangedCallback(OnBgmSliderChanged);
             _seSlider.UnregisterValueChangedCallback(OnSeSliderChanged);
             _languageDropdown.UnregisterValueChangedCallback(OnLanguageDropdownChanged);

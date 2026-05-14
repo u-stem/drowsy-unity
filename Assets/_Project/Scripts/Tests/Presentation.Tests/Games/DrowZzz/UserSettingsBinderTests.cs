@@ -89,6 +89,9 @@ namespace Drowsy.Presentation.Tests.Games.DrowZzz
 
         // ===== PRES-028: settings → UI(Subscribe 経路)=====
 
+        // BGM を代表ケースとして検証する。SE(_seSlider)/ Language(_languageDropdown)も UserSettingsBinder 内で
+        // 同一の「Observable.Subscribe + SetValueWithoutNotify」パターンを踏むため、BGM の疎通確認で
+        // Subscribe 経路全体の正しさを代表させる(user-settings-binder.md PRES-028、code-reviewer M5-PR6 T-2)。
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "PRES-028")]
         public void Given_bound_When_SetBgmVolume_Then_BgmSliderValueUpdated()
         {
