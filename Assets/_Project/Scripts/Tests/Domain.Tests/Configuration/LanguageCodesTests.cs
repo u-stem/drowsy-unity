@@ -30,7 +30,7 @@ namespace Drowsy.Domain.Tests.Configuration
             Assert.That(result, Is.EqualTo(expected));
         }
 
-        // null 経路のみ独立メソッドで検証(`LanguageCodes.IsSupported` の `if (code is null) return false` 経路)。
+        // null 経路のみ独立メソッドで検証(`LanguageCodes.IsSupported` の null セーフな const 比較経路)。
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "USR-005")]
         public void Given_LanguageCodeがnull_When_IsSupported_Then_false()
         {
@@ -39,6 +39,18 @@ namespace Drowsy.Domain.Tests.Configuration
 
             // Then
             Assert.That(result, Is.False);
+        }
+
+        // Supported は LanguageCodes.cs の式本体プロパティ(M5-PR6 で static readonly フィールドから変更、
+        // .cctor 計測限界を回避)。Drowsy.Domain.Tests から直接参照して計測区間内で getter を実行させる。
+        // USR-005「Supported language codes shall be "ja" and "en"」の検証。Is.EqualTo で順序まで保証する
+        // (USR-005 の記載順 "ja" → "en"、UserSettingsBinder が Dropdown choices に使うため表示順も確定、
+        // code-reviewer M5-PR6 T-1)。
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "USR-005")]
+        public void Given_Supported_When_参照_Then_jaとenがこの順で並ぶ()
+        {
+            // Given / When / Then
+            Assert.That(LanguageCodes.Supported, Is.EqualTo(new[] { LanguageCodes.Ja, LanguageCodes.En }));
         }
     }
 }
