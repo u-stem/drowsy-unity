@@ -5,6 +5,7 @@
     "Drowsy.Domain",
     "Drowsy.Application",
     "Drowsy.Infrastructure",
+    "UniTask",
     "UnityEngine.TestRunner",
     "UnityEditor.TestRunner"
   ],

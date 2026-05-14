@@ -140,3 +140,8 @@ lefthook-local.yml
 #                 (lib_burst_generated.cpp / .wasm、Build 毎に再生成、リポジトリ管理不要)
 /Builds/
 /Data/
+
+# Unity がセッションのクラッシュ / 強制終了からの復旧用に自動生成する一時シーン
+# (Editor が次回起動時の復旧候補として保持、Build 毎・セッション毎の使い捨てで VCS 管理対象外)
+/Assets/_Recovery/
+/Assets/_Recovery.meta

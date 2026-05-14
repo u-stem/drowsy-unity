@@ -1,7 +1,5 @@
 using System;
 using System.Linq;
-using System.Threading.Tasks;
-using Cysharp.Threading.Tasks;
 using NUnit.Framework;
 using Drowsy.Application.Games.DrowZzz;
 using Drowsy.Application.Tests.Stubs;
@@ -13,15 +11,16 @@ using static Drowsy.Application.Tests.Stubs.SessionFactory;
 namespace Drowsy.Presentation.Tests.Games.DrowZzz
 {
     /// <summary>
-    /// <see cref="DrowZzzGamePresenter"/> の単体テスト(M5-PR2 で骨格、M5-PR4 で Handler / 新規対戦経路を追加)。
+    /// <see cref="DrowZzzGamePresenter"/> の単体テスト(M5-PR2 で骨格、M5-PR4 で Handler / 新規対戦経路、M5-PR5 で Auto-save)。
     /// </summary>
     /// <remarks>
-    /// ADR-0016 §3.2 / §11 M5-PR2〜PR4 + §10.1 で確定したスコープ:
+    /// ADR-0016 §3.2 / §11 M5-PR2〜PR5 + §10.1 で確定したスコープ:
     /// <list type="bullet">
     /// <item>ctor null 防御 8 件(PRES-002〜007 + PRES-014 / PRES-015)+ savePath 空白防御 1 件(PRES-008)</item>
     /// <item>Start で View event 配線(PRES-009)/ Dispose で解除(PRES-010)/ Dispose 冪等(PRES-013)</item>
     /// <item>BootAsync 復元経路で Subject → View.Render(PRES-011)/ 新規対戦経路(PRES-012)</item>
     /// <item>Handler の正常 / 異常 / Boot 未完了パス(PRES-016 / PRES-017 / PRES-018)</item>
+    /// <item>Auto-save(EndTurn 成功時のみ、PRES-019 / PRES-020 / PRES-021)</item>
     /// </list>
     /// <para>
     /// <b>UseCase 構築</b>:Presenter ctor は具象 <see cref="StartGameUseCase"/> / <see cref="ApplyActionUseCase"/>
@@ -29,10 +28,15 @@ namespace Drowsy.Presentation.Tests.Games.DrowZzz
     /// `SessionFactory.NewRule`)を再利用して両 UseCase を構築する(ADR-0016 §10.1)。
     /// </para>
     /// <para>
-    /// <b>BootAsync 完了待ち</b>:<see cref="MockDrowZzzGameSessionSerializer"/>.<c>LoadAsync</c> は
-    /// <c>UniTask.FromResult</c> / 同期 throw で完了するが、<c>BootAsync</c>(<c>UniTaskVoid</c>)の継続を
-    /// 確実に進めるため、Boot を経由する各テスト(PRES-011 / 012 / 016 / 017 / 018)で
-    /// <c>await UniTask.Yield().ToUniTask()</c> を 1 回挟む(code-reviewer W-4 反映)。
+    /// <b>BootAsync / AutoSaveAsync の同期完了(本テストが void で書ける理由)</b>:
+    /// <see cref="MockDrowZzzGameSessionSerializer"/> の <c>LoadAsync</c> / <c>SaveAsync</c> は
+    /// <c>UniTask.FromResult</c> / <c>UniTask.CompletedTask</c> / 同期 throw で <b>同期完了</b> する。
+    /// <c>async UniTaskVoid</c> メソッド(<c>BootAsync</c> / <c>AutoSaveAsync</c>)は内部の全 <c>await</c> が
+    /// 同期完了する場合、呼び出し元のスタック内で完全に実行されるため、<c>Start()</c> / <c>Fire*Clicked()</c> から
+    /// 戻った時点で Boot / Auto-save は完了済み。よって本テストは <c>void</c> メソッドで書き、
+    /// <c>UniTask.Yield()</c> 等の完了待ちは不要かつ <b>使ってはならない</b>:<c>UniTask.Yield()</c> は次フレームの
+    /// 実行を Unity の PlayerLoop に依存するが、EditMode テストでは PlayerLoop が回らず次フレームが永久に来ないため
+    /// テストがハングする(M5-PR5 で `async Task` + `UniTask.Yield()` を全廃して本構成に修正)。
     /// </para>
     /// </remarks>
     [TestFixture]
@@ -261,9 +265,10 @@ namespace Drowsy.Presentation.Tests.Games.DrowZzz
         }
 
         // ===== PRES-011 / PRES-012: BootAsync 復元経路 / 新規対戦経路 =====
+        // MockSerializer は同期完了するため Start() 直後に BootAsync は完了済み(クラス xmldoc §「同期完了」参照)。
 
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "PRES-011")]
-        public async Task Given_started_When_BootAsyncCompletes_Then_ViewRenderInvokedWithLoadedSession()
+        public void Given_started_When_BootAsyncCompletes_Then_ViewRenderInvokedWithLoadedSession()
         {
             // Given
             var ctx = NewContext();
@@ -273,7 +278,6 @@ namespace Drowsy.Presentation.Tests.Games.DrowZzz
 
             // When
             ctx.Presenter.Start();
-            await UniTask.Yield().ToUniTask();
 
             // Then(MockView.Render が 1 回呼ばれ、引数は LoadAsync が返した session)
             Assert.That(ctx.View.RenderedSessions, Has.Count.EqualTo(1));
@@ -285,7 +289,7 @@ namespace Drowsy.Presentation.Tests.Games.DrowZzz
         }
 
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "PRES-012")]
-        public async Task Given_loadAsyncFileNotFound_When_Boot_Then_NewGameStartedAndRendered()
+        public void Given_loadAsyncFileNotFound_When_Boot_Then_NewGameStartedAndRendered()
         {
             // Given(セーブファイル不在 → 新規対戦経路)
             var ctx = NewContext();
@@ -293,7 +297,6 @@ namespace Drowsy.Presentation.Tests.Games.DrowZzz
 
             // When
             ctx.Presenter.Start();
-            await UniTask.Yield().ToUniTask();
 
             // Then(StartGameUseCase.Execute(players, initialDeck) で生成した session が 1 回 Render される)
             Assert.That(ctx.View.RenderedSessions, Has.Count.EqualTo(1));
@@ -327,14 +330,13 @@ namespace Drowsy.Presentation.Tests.Games.DrowZzz
         // Draw 後の session 内容の正しさ(PhaseState が WaitingForPlay に遷移する等)は ApplyActionUseCase /
         // DrowZzzRule の責務であり Application.Tests が担保する(code-reviewer S-4 反映、関心の分離)。
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "PRES-016")]
-        public async Task Given_bootCompleted_When_DrawClicked_Then_SessionUpdatedAndRendered()
+        public void Given_bootCompleted_When_DrawClicked_Then_SessionUpdatedAndRendered()
         {
             // Given(StartGameUseCase で本物の初期 session = WaitingForDraw を Boot で復元)
             var ctx = NewContext();
             var bootSession = ctx.StartGameUseCase.Execute(ValidPlayers(), ValidInitialDeck());
             ctx.Serializer.LoadAsyncReturnSession = bootSession;
             ctx.Presenter.Start();
-            await UniTask.Yield().ToUniTask();
             var renderCountAfterBoot = ctx.View.RenderedSessions.Count;
 
             // When(合法な Draw)
@@ -349,14 +351,13 @@ namespace Drowsy.Presentation.Tests.Games.DrowZzz
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "PRES-017")]
-        public async Task Given_bootCompleted_When_IllegalEndTurnClicked_Then_NoReaction()
+        public void Given_bootCompleted_When_IllegalEndTurnClicked_Then_NoReaction()
         {
             // Given(初期 session は WaitingForDraw、EndTurn は WaitingForEndTurn でのみ合法 → 不合法手)
             var ctx = NewContext();
             var bootSession = ctx.StartGameUseCase.Execute(ValidPlayers(), ValidInitialDeck());
             ctx.Serializer.LoadAsyncReturnSession = bootSession;
             ctx.Presenter.Start();
-            await UniTask.Yield().ToUniTask();
             var renderCountAfterBoot = ctx.View.RenderedSessions.Count;
 
             // When(不合法手:WaitingForDraw で EndTurn)
@@ -371,20 +372,86 @@ namespace Drowsy.Presentation.Tests.Games.DrowZzz
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "PRES-018")]
-        public async Task Given_bootIncomplete_When_DrawClicked_Then_NoExceptionAndNoRender()
+        public void Given_bootIncomplete_When_DrawClicked_Then_NoExceptionAndNoRender()
         {
             // Given(LoadAsync が OperationCanceledException → BootAsync が _current をセットできず Boot 未完了)
             var ctx = NewContext();
             ctx.Serializer.LoadAsyncBehavior =
                 MockDrowZzzGameSessionSerializer.LoadBehavior.ThrowOperationCanceled;
             ctx.Presenter.Start();
-            await UniTask.Yield().ToUniTask();
 
             // When(Boot 未完了で Handler 発火)
             ctx.View.FireDrawClicked();
 
             // Then(例外を投げず、Render も発火しない)
             Assert.That(ctx.View.RenderedSessions, Is.Empty);
+
+            // Cleanup
+            ctx.Presenter.Dispose();
+            ctx.UserSettings.Dispose();
+        }
+
+        // ===== PRES-019 / PRES-020 / PRES-021: Auto-save(EndTurn 後のみ)=====
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "PRES-019")]
+        public void Given_bootCompleted_When_LegalEndTurnClicked_Then_AutoSaveInvoked()
+        {
+            // Given(Draw → Play を経て WaitingForEndTurn にしてから EndTurn する)
+            var ctx = NewContext();
+            var bootSession = ctx.StartGameUseCase.Execute(ValidPlayers(), ValidInitialDeck());
+            ctx.Serializer.LoadAsyncReturnSession = bootSession;
+            ctx.Presenter.Start();
+            ctx.View.FireDrawClicked();
+            var afterDraw = ctx.View.RenderedSessions[ctx.View.RenderedSessions.Count - 1];
+            var currentPlayer = afterDraw.GameState.Players[afterDraw.GameState.Turn.CurrentPlayerIndex];
+            ctx.View.FirePlayClicked(currentPlayer.Hand.Cards[0]);
+            var saveCountBeforeEndTurn = ctx.Serializer.SaveAsyncCallCount;
+
+            // When(合法な EndTurn)
+            ctx.View.FireEndTurnClicked();
+
+            // Then(EndTurn 成功時のみ Auto-save、SaveAsync が 1 回呼ばれる)
+            Assert.That(ctx.Serializer.SaveAsyncCallCount, Is.EqualTo(saveCountBeforeEndTurn + 1));
+
+            // Cleanup
+            ctx.Presenter.Dispose();
+            ctx.UserSettings.Dispose();
+        }
+
+        [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "PRES-020")]
+        public void Given_bootCompleted_When_IllegalEndTurnClicked_Then_AutoSaveNotInvoked()
+        {
+            // Given(初期 session は WaitingForDraw、EndTurn は不合法手)
+            var ctx = NewContext();
+            var bootSession = ctx.StartGameUseCase.Execute(ValidPlayers(), ValidInitialDeck());
+            ctx.Serializer.LoadAsyncReturnSession = bootSession;
+            ctx.Presenter.Start();
+
+            // When(不合法な EndTurn)
+            ctx.View.FireEndTurnClicked();
+
+            // Then(TryApplyAction が false を返し Auto-save はトリガーされない)
+            Assert.That(ctx.Serializer.SaveAsyncCallCount, Is.EqualTo(0));
+
+            // Cleanup
+            ctx.Presenter.Dispose();
+            ctx.UserSettings.Dispose();
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "PRES-021")]
+        public void Given_bootCompleted_When_DrawClicked_Then_AutoSaveNotInvoked()
+        {
+            // Given(Auto-save は EndTurn 後のみ、Draw / Play では行わない:ADR-0016 §8)
+            var ctx = NewContext();
+            var bootSession = ctx.StartGameUseCase.Execute(ValidPlayers(), ValidInitialDeck());
+            ctx.Serializer.LoadAsyncReturnSession = bootSession;
+            ctx.Presenter.Start();
+
+            // When(合法な Draw — Auto-save 対象外)
+            ctx.View.FireDrawClicked();
+
+            // Then(Draw では Auto-save しない)
+            Assert.That(ctx.Serializer.SaveAsyncCallCount, Is.EqualTo(0));
 
             // Cleanup
             ctx.Presenter.Dispose();

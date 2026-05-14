@@ -39,6 +39,7 @@ ctor は 8 引数(`StartGameUseCase` / `ApplyActionUseCase` / `IDrowZzzGameView`
 
 - [PRES-017] If a Handler receives a click that is an illegal move (`ApplyActionUseCase.Execute` throws `InvalidOperationException`), then the Presenter shall swallow the exception, log a warning, and leave the session unchanged (no Render).
 - [PRES-018] If a Handler is invoked before boot completes (`Current` is null), then the Presenter shall log a warning and take no action (no exception, no Render).
+- [PRES-020] If `HandleEndTurnClicked` receives an illegal `EndTurnAction` (`TryApplyAction` returns `false`), then the Presenter shall NOT trigger an auto-save.(不合法入力への防御として Unwanted に分類。対して「Draw 成功時に Auto-save しない」PRES-021 は正常操作の副作用なしの表明のため Event-driven に分類、code-reviewer M5-PR5 T-5 反映)
 
 ## 事象駆動要件 (Event-driven)
 
@@ -48,6 +49,8 @@ ctor は 8 引数(`StartGameUseCase` / `ApplyActionUseCase` / `IDrowZzzGameView`
 - [PRES-012] When `BootAsync` encounters `LoadAsync` failing with `FileNotFoundException`, the Presenter shall start a new game via `StartGameUseCase.Execute(players, initialDeck)` and propagate the resulting session to the View via `Render`.
 - [PRES-013] When `Dispose()` is invoked twice, the Presenter shall be idempotent (the second call shall be a silent no-op).
 - [PRES-016] When a Handler receives a click after boot completes and the move is legal, the Presenter shall apply the corresponding `DrowZzzAction` via `ApplyActionUseCase` and propagate the updated session to the View via `Render`.
+- [PRES-019] When `HandleEndTurnClicked` applies `EndTurnAction` successfully, the Presenter shall trigger an auto-save via `SaveAsync` (ADR-0016 §8).
+- [PRES-021] When `HandleDrawClicked` applies `DrawCardAction` successfully, the Presenter shall NOT trigger an auto-save (auto-save is EndTurn-only, ADR-0016 §8).
 
 ## 関連
 
@@ -81,3 +84,6 @@ ctor は 8 引数(`StartGameUseCase` / `ApplyActionUseCase` / `IDrowZzzGameView`
 | PRES-016 | Given_bootCompleted_When_DrawClicked_Then_SessionUpdatedAndRendered | Normal(Draw 代表、TryApplyAction 共通経路) |
 | PRES-017 | Given_bootCompleted_When_IllegalEndTurnClicked_Then_NoReaction | Abnormal(不合法手) |
 | PRES-018 | Given_bootIncomplete_When_DrawClicked_Then_NoExceptionAndNoRender | Abnormal(Boot 未完了) |
+| PRES-019 | Given_bootCompleted_When_LegalEndTurnClicked_Then_AutoSaveInvoked | Normal(EndTurn 成功 → Auto-save) |
+| PRES-020 | Given_bootCompleted_When_IllegalEndTurnClicked_Then_AutoSaveNotInvoked | Abnormal(不合法 EndTurn → Auto-save なし) |
+| PRES-021 | Given_bootCompleted_When_DrawClicked_Then_AutoSaveNotInvoked | Normal(Draw は Auto-save 対象外) |

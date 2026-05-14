@@ -102,3 +102,23 @@
     前提 MockSerializer.LoadAsyncBehavior = ThrowOperationCanceled(BootAsync が _current をセットできない)
     もし MockView.FireDrawClicked() を呼ぶ
     ならば 例外を投げず、MockView.RenderedSessions は空のまま
+
+  # ===== M5-PR5: Auto-save(EndTurn 後のみ)=====
+
+  @PRES-019
+  シナリオ: 合法な EndTurn 成功時に Auto-save が走る (正常系・Small)
+    前提 Boot 完了後、Draw → Play を経て WaitingForEndTurn の session
+    もし MockView.FireEndTurnClicked() を呼ぶ
+    ならば EndTurn が適用され、MockSerializer.SaveAsyncCallCount が 1 増える
+
+  @PRES-020
+  シナリオ: 不合法な EndTurn では Auto-save が走らない (異常系・Small)
+    前提 Boot 完了後、WaitingForDraw の session(EndTurn は不合法)
+    もし MockView.FireEndTurnClicked() を呼ぶ
+    ならば TryApplyAction が false を返し、MockSerializer.SaveAsyncCallCount は 0 のまま
+
+  @PRES-021
+  シナリオ: Draw 成功時は Auto-save が走らない (正常系・Small)
+    前提 Boot 完了後、WaitingForDraw の session
+    もし MockView.FireDrawClicked() を呼ぶ
+    ならば DrawCardAction は適用されるが、Auto-save は EndTurn 後のみのため SaveAsyncCallCount は 0 のまま
