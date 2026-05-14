@@ -17,7 +17,7 @@ namespace Drowsy.Application.Tests.Stubs
     /// M2-PR4 で <see cref="IGameConfig.DdpPool"/> 追加に追随して 2 引数 ctor を新設(後方互換維持のため
     /// 既存 1 引数 ctor は DdpPool デフォルト使用、ADR-0009 §「DDP プールの構造」)。
     /// </remarks>
-    internal sealed class StubGameConfig : IGameConfig
+    public sealed class StubGameConfig : IGameConfig
     {
         // DrowZzz の本物 FdpPool (ADR-0006 §M1)
         private static readonly IReadOnlyList<int> DefaultFdpPool =

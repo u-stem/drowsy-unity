@@ -496,11 +496,23 @@ ADR-0005 §3 の namespace 階層化原則を踏襲(`*.Games.DrowZzz.*` で Drow
 ```
 Assets/_Project/Scripts/Tests/Presentation.Tests/
   Drowsy.Presentation.Tests.asmdef
-    references: Drowsy.Domain / Drowsy.Application / Drowsy.Presentation / VContainer / UniTask / R3.Unity / nunit.framework.dll
+    references: Drowsy.Domain / Drowsy.Application / Drowsy.Application.Tests /
+                Drowsy.Presentation / UniTask / VContainer / R3.Unity /
+                UnityEngine.TestRunner / UnityEditor.TestRunner
+    precompiledReferences: nunit.framework.dll
   Games/DrowZzz/
     DrowZzzGamePresenterTests.cs
     MockDrowZzzGameView.cs (IDrowZzzGameView の最小実装、event 発火制御用)
+    MockDrowZzzGameSessionSerializer.cs (LoadAsync の挙動制御で BootAsync の各分岐を駆動)
+    MockUserSettings.cs (IUserSettings の最小モック、M5-PR6 で粒度向上)
 ```
+
+**`Drowsy.Application.Tests` 参照の判断**(M5-PR2 着手時の JIT 確定 2026-05-14):
+Presenter ctor が具象 `StartGameUseCase` / `ApplyActionUseCase` を取るため、テストで両 UseCase を構築するには
+`IRandomSource` / `IGameConfig` / `DrowZzzRule` の stub instance が必要。`Drowsy.Application.Tests.Stubs`
+配下の `IdentityRandom` / `StubGameConfig` / `SessionFactory.NewRule` を再利用する目的で、
+`Drowsy.Presentation.Tests.asmdef` の references に `Drowsy.Application.Tests` を加える(test asmdef
+間の依存、本番 Build には混入しない)。代替案(stubs 多重実装)より DRY 性と保守性を優先。
 
 `includePlatforms: ["Editor"]` + `UNITY_INCLUDE_TESTS` constraint で本番 Build に混入しない(M4-PR1 / PR6 で確立済パターン継承)。
 
@@ -664,6 +676,38 @@ ADR-0007 / 0010 / 0011 / 0012 で確立した運用を本 ADR で継承:
 - **記録の Single Source of Truth**(ADR-0003 / CLAUDE.md §12):PR 別の完成記録は本 ADR §「M5-PR1〜PR8 完成記録」に逐次追記、CLAUDE.md にはミラーしない
 - **`docs/todo.md` への小規模 chore 切り出し**(ADR-0003):M5-PR1〜PR8 中に発生する後追い chore は本 ADR ではなく `docs/todo.md` で追跡(例:Presenter 単体テストの境界網羅、WebGL Build CI 整備)
 - **`dotnet build` pre-commit + Unity Editor Focus Auto-refresh**(M4-PR3 で確立):本 PR 群でも継続、新規 `.cs` 追加時に Editor Focus を取って `.csproj` 自動更新
+
+### M5-PR1〜PR8 完成記録
+
+M5 各 PR の完成記録を逐次追記する(本 ADR が Single Source of Truth、CLAUDE.md §11 にはミラーしない方針 — 「学びと運用継承の予定」§2 参照)。
+PR 番号は GitHub マージ後に確定するため、本セクションは原則として **後続 PR の最初の commit で前 PR の完成記録を追記する** 運用とする(M3 / M4 過去 PR と同パターン)。
+
+#### M5-PR1 完成記録
+
+- **PR**:[#86](https://github.com/u-stem/drowsy-unity/pull/86)、squash merged → commit `bbb8728`(2026-05-14)
+- **スコープ達成**:
+  - `IDrowZzzGameSessionSerializer` interface 抽出(`Drowsy.Application.Persistence` namespace)、同期 `Save` / `Load`(M4-PR5 既存 43 テスト互換維持)+ 非同期 `SaveAsync` / `LoadAsync`(UniTask + CancellationToken)
+  - Infrastructure `DrowZzzGameSessionSerializer` を interface 実装に変更、`SaveAsync` / `LoadAsync` は `UniTask.RunOnThreadPool` ラップ(本 ADR §5.2 初期推奨通り)
+  - Bootstrap `ProjectLifetimeScope` / `GameLifetimeScope` 骨格(`sealed`、Configure 空、M5-PR3 で実 Register 追加予定)
+  - `Drowsy.Application.Tests` に `UniTask` reference 追加 + `InMemoryDrowZzzGameSessionSerializer` fake + 契約テスト 13 件(APP-044〜APP-056)
+  - EARS `docs/specs/application/persistence/session-serializer-interface.md` + `.feature` 新設
+- **検証結果**:
+  - `dotnet build drowsy-unity.slnx`:0 警告 / 0 エラー / 5.70 秒
+  - `bash scripts/check-traceability.sh`:仕様 ID 534 件 / Property ID 445 件 / 整合性 OK
+  - lefthook pre-commit 全フック緑(test-categories / gitleaks / traceability / dotnet-build / dotnet-format / conventional)
+  - Unity Test Runner EditMode 緑確認はオーナー側で実機実施(`Given_savedSessionAsync_When_LoadAsync_Then_ReturnsSavedSession` の NullReferenceException は `.AsTask()` 変換で解消済)
+- **JIT 確定事項**:
+  - 同期 API は M4-PR5 既存 43 テスト互換のため維持(本 ADR §5.2 確定通り)
+  - `LoadAsync` 戻り値は non-null、ファイル不在は `FileNotFoundException`(本 ADR §5.2 + ADR-0015 NRT 不採用方針整合)
+  - 非同期 API 初期実装は `UniTask.RunOnThreadPool` ラップ(本 ADR §5.2 初期推奨通り、WebGL 最適化は M5-PR5 で再検討)
+  - 契約テスト粒度は fake 実装 + round-trip(本 PR で `InMemoryDrowZzzGameSessionSerializer` を `Drowsy.Application.Tests.Stubs` に追加、M5-PR2 以降の Presenter 単体テストでも再利用予定)
+- **本 ADR への訂正**:
+  - §8 表「`EndTurnAction` Apply 後」の `SaveAsync` 引数順を `path-first` 誤記から `session-first` に訂正(W-1 反映)
+  - §5.2 内コメント「M5-PR5 実装」を「M5-PR1 で同期ラップとして実装、M5-PR5 で WebGL 最適化検討」に訂正(T-3 反映)
+- **code-reviewer 指摘の反映**:W-1〜W-4 + T-2 / T-3 / T-5 / T-7 を本 PR 内で反映、T-1 / T-4 / T-6 は本 PR 範囲外と判断(再評価条件発生時に再起票)
+- **次 PR への引き継ぎ**:
+  - `IDrowZzzGameSessionSerializer` は M5-PR2 の Presenter ctor で 4 番目引数として注入される
+  - `InMemoryDrowZzzGameSessionSerializer` fake は `Drowsy.Application.Tests.Stubs` 配置のため、`Drowsy.Presentation.Tests`(M5-PR2 新設)からは参照できない(asmdef 境界)。Presenter 単体テストでは別の Mock 実装(`Drowsy.Presentation.Tests.Stubs` 配下)を新設するか、Fake を `Drowsy.Application` 本体に昇格させる判断を M5-PR2 で行う
 
 ### M5 完成後の Phase 進捗バナー更新案
 

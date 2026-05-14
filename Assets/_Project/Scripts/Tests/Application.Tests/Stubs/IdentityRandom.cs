@@ -12,7 +12,7 @@ namespace Drowsy.Application.Tests.Stubs
     /// 用途: <c>StartGameUseCase</c> のテストで「Players 順 / FDP 順 / カード配布順が予測通り」を検証する際、
     /// rng の影響を排除して構造的な不変量(交互配布、被りなし抽選 等)に焦点を絞る。
     /// </remarks>
-    internal sealed class IdentityRandom : IRandomSource
+    public sealed class IdentityRandom : IRandomSource
     {
         public int NextInt(int min, int maxExclusive) => maxExclusive - 1;
     }
