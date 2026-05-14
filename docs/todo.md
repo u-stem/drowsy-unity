@@ -145,6 +145,16 @@
   - **Related**: [ADR-0009 §6.5 / §「用語規約」](adr/0009-m2-m3-dp-and-victory-conditions.md)
   - **Notes**: 上記の `Clock.RoundNumber` → `TurnNumber` リネームと同 PR にまとめる方が効率的
 
+- [ ] **Presenter テストのターン進行セットアップを共通ヘルパーへ切り出す** `priority: low`
+  - **Why**: M5-PR4 / M5-PR5 で追加した `DrowZzzGamePresenterTests` の PRES-019(Auto-save)等は Given セクションで `StartGameUseCase.Execute` → `FireDrawClicked` → `FirePlayClicked(手札[0])` と複数操作を経て `WaitingForEndTurn` に到達している。これは Presenter の「Handler → AutoSave パイプライン」検証範囲を超えて Application 層の状態遷移知識(WaitingForDraw → Draw → WaitingForPlay → Play → WaitingForEndTurn)をテストが直接使っており、`IdentityRandom` の挙動や `StubGameConfig` の初期 handSize が変わると Given ステップ自体が壊れるリスクがある(M5-PR5 テストハング修正レビュー code-reviewer T-1)
+  - **Done when**:
+    - `Drowsy.Presentation.Tests` にターン進行ヘルパー(`TestHelper.AdvanceTurnToEndPhase(ctx)` 等)を切り出す、または `Drowsy.Application.Tests.Stubs.SessionFactory` に「特定 PhaseState の session を生成する」helper を追加
+    - PRES-019 等の Given セクションをヘルパー呼び出しに置換し、Application 層の状態遷移知識をテスト本体から除去
+    - 既存テスト全緑を維持
+    - 結果がリポジトリに反映済み(本 TODO を「完了済み」へ移動、`Related` に PR 番号追記)
+  - **Related**: M5-PR5 テストハング修正レビュー(code-reviewer T-1)、`Assets/_Project/Scripts/Tests/Presentation.Tests/Games/DrowZzz/DrowZzzGamePresenterTests.cs`(PRES-019)、[ADR-0016 §10](adr/0016-m5-bootstrap-presentation.md)
+  - **Notes**: Phase 3 で Presenter テストが増える時点で切り出すのが筋。M5 範囲(テスト緑確認済み)では即座の対応は不要、`priority: low`
+
 
 ## 進行中
 

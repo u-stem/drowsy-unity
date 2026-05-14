@@ -804,6 +804,31 @@ PR 番号は GitHub マージ後に確定するため、本セクションは原
   - `SaveAsync` / `LoadAsync` は M5-PR1 で `UniTask.RunOnThreadPool` ラップ実装済 → M5-PR5 では実装変更なし、Infrastructure.Tests の round-trip テスト追加 + Auto-save 統合に集中
   - M5-PR5 で `HandleEndTurnClicked` に Auto-save(`SaveAsync`)を統合(`TryApplyAction` を bool 返却化、M5-PR5 着手時 JIT 確定 2026-05-14)
 
+#### M5-PR5 完成記録
+
+- **PR**:[#90](https://github.com/u-stem/drowsy-unity/pull/90)、squash merged → commit `ea6fdf2`(2026-05-14)
+- **スコープ達成**:
+  - `DrowZzzGamePresenter`:Auto-save 統合(`TryApplyAction` を void → bool 返却化、`HandleEndTurnClicked` が EndTurn 成功時のみ `AutoSaveAsync(_cts.Token).Forget()`、`HandleDrawClicked` / `HandlePlayClicked` は bool を discard)
+  - `AutoSaveAsync`:`UniTaskVoid` + `Forget`、`_current` をローカルキャプチャ、`OperationCanceledException` 握りつぶし / それ以外は `Debug.LogError` でゲーム継続
+  - `Drowsy.Infrastructure.Tests.asmdef` に `UniTask` reference 追加 + `DrowZzzGameSessionSerializerAsyncTests` 新設(INF-083〜087:SaveAsync / LoadAsync round-trip + 引数防御 + ファイル不在)
+  - `DrowZzzGamePresenterTests` に Auto-save テスト 3 件追加(PRES-019/020/021)
+  - EARS `drowzzz-game-session-serializer.{md,feature}`(INF-083〜087)+ `presenter-skeleton.{md,feature}`(PRES-019〜021)
+- **追加修正(テストハング)**:M5-PR5 のテストが Unity Test Runner (EditMode) でハングする問題を同 PR 内で修正(commit `f9716bd`):`DrowZzzGamePresenterTests` の全 `async Task` テストを `void` 化 + `UniTask.Yield()` 全除去(MockSerializer は同期完了)、`DrowZzzGameSessionSerializerAsyncTests` の round-trip + INF-087 を `[UnityTest]` + `UniTask.ToCoroutine()` 化(実 Serializer の `RunOnThreadPool` が `async Task` + `.AsTask()` で EditMode デッドロックするため)。chore で Unity 自動生成の `Assets/_Recovery/` を `.gitignore` に追加(commit `b8ae408`)
+- **検証結果**:
+  - `dotnet build drowsy-unity.slnx`:0 警告 / 0 エラー
+  - `bash scripts/check-traceability.sh`:仕様 ID 560 件 / Property ID 470 件 / 整合性 OK
+  - lefthook pre-commit 全フック緑(4 commits 構成:`546b70b` ADR 完成記録 + `94df291` 実装本体 + `f9716bd` テストハング修正 + `b8ae408` chore)
+  - Unity Test Runner EditMode:全テスト緑(オーナー実機確認済み、テストハング修正後)
+- **JIT 確定事項**(M5-PR5 着手時 2026-05-14):
+  - `SaveAsync` / `LoadAsync` は M5-PR1 の `UniTask.RunOnThreadPool` ラップを維持(WebGL 最適化は M5-PR8 検証 → 必要なら Phase 3)
+  - Auto-save トリガーは `TryApplyAction` を bool 返却化
+  - Auto-save 失敗時は `Debug.LogError` のみ、ゲーム継続(リトライ / ユーザー通知は Phase 3)
+- **本 ADR への訂正**:§8 表の「アプリ起動時 … M5-PR5 で実装」を「M5-PR4 で実装済」に訂正(code-reviewer W-1)
+- **code-reviewer 指摘の反映**:本体レビューで W-1 / W-2 + T-1 / T-2 / T-4 / T-5、テストハング修正レビューで T-3 を反映。テストハング修正レビューの T-1(PRES-019 の Given が長い)は `docs/todo.md` に切り出し
+- **学び(memory 化済)**:Unity EditMode テストで UniTask を扱う 3 罠(`UniTask.Yield()` 使用不可 / `RunOnThreadPool` 実装は `[UnityTest]` + `ToCoroutine` / 同期 mock は `void` テスト)を `unity-editmode-unitask-test-patterns` として記録
+- **次 PR への引き継ぎ**:
+  - M5-PR6 で `IUserSettings` を View に直接 Inject(VContainer `[Inject]`)+ R3 Observable バインディング、`UserSettingsBinder` Pure C# 切り出しでテスタブル化(M5-PR6 着手時 JIT 確定 2026-05-14)
+
 ### M5 完成後の Phase 進捗バナー更新案
 
 M5-PR8 完成時点で CLAUDE.md §11「Phase 進捗」を以下に書き換え:
