@@ -177,6 +177,8 @@ public sealed class DrowZzzGamePresenter : IStartable, IDisposable
     private readonly IDrowZzzGameSessionSerializer _serializer;
     private readonly IUserSettings _userSettings;
     private readonly string _savePath;
+    private readonly IReadOnlyList<PlayerId> _players;   // M5-PR4 で追加(新規対戦の players)
+    private readonly Pile _initialDeck;                  // M5-PR4 で追加(新規対戦の initialDeck)
     private readonly Subject<DrowZzzGameSession> _sessionSubject = new();
     private readonly CompositeDisposable _disposables = new();
     private readonly CancellationTokenSource _cts = new();
@@ -189,22 +191,30 @@ public sealed class DrowZzzGamePresenter : IStartable, IDisposable
     public DrowZzzGameSession Current => _current;
     public bool IsReady => _current is not null;
 
+    // M5-PR4 で 6 引数 → 8 引数化(players / initialDeck 追加、ADR-0016 §3.2 line 238 の TBD 解消、
+    // M5-PR4 着手時 JIT 確定 2026-05-14)。
     public DrowZzzGamePresenter(
         StartGameUseCase startGameUseCase,
         ApplyActionUseCase applyActionUseCase,
         IDrowZzzGameView view,
         IDrowZzzGameSessionSerializer serializer,
         IUserSettings userSettings,
-        string savePath)
+        string savePath,
+        IReadOnlyList<PlayerId> players,
+        Pile initialDeck)
     {
         _startGameUseCase = startGameUseCase ?? throw new ArgumentNullException(nameof(startGameUseCase));
         _applyActionUseCase = applyActionUseCase ?? throw new ArgumentNullException(nameof(applyActionUseCase));
         _view = view ?? throw new ArgumentNullException(nameof(view));
         _serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
         _userSettings = userSettings ?? throw new ArgumentNullException(nameof(userSettings));
-        _savePath = string.IsNullOrWhiteSpace(savePath)
-            ? throw new ArgumentException("savePath は null・空・空白のみにできません", nameof(savePath))
-            : savePath;
+        // savePath は null と空白を分けて防御する(null → ArgumentNullException、空白のみ → ArgumentException)。
+        if (savePath is null) throw new ArgumentNullException(nameof(savePath));
+        if (string.IsNullOrWhiteSpace(savePath))
+            throw new ArgumentException("savePath は空・空白のみにできません", nameof(savePath));
+        _savePath = savePath;
+        _players = players ?? throw new ArgumentNullException(nameof(players));
+        _initialDeck = initialDeck ?? throw new ArgumentNullException(nameof(initialDeck));
     }
 
     // VContainer の IStartable.Start() は Container 構築後に 1 回のみ呼ばれる(VContainer 仕様)
@@ -235,8 +245,8 @@ public sealed class DrowZzzGamePresenter : IStartable, IDisposable
             }
             catch (FileNotFoundException)
             {
-                // 初回起動 or 永続化ファイル削除済 → 新規対戦
-                session = _startGameUseCase.Execute(/* TBD: players / initialDeck */);
+                // 初回起動 or 永続化ファイル削除済 → 新規対戦(M5-PR4 で本実装、ctor 注入の players / initialDeck を使用)
+                session = _startGameUseCase.Execute(_players, _initialDeck);
             }
             _current = session;
             _sessionSubject.OnNext(session);

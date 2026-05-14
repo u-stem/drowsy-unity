@@ -1,14 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  DrowZzz ゲーム画面の UI Toolkit レイアウト(M5-PR3 最小骨格)。
-  ADR-0016 §3「Presentation アーキテクチャ」+ §11 M5-PR3「UXML はラベル数個 + ボタン 3 個の最小骨格」で確定。
-  ラベル本文・ボタン活性状態の動的更新は M5-PR4(DrowZzzGameView.Render 本実装)で行う。
+  DrowZzz ゲーム画面の UI Toolkit レイアウト。
+  ADR-0016 §3「Presentation アーキテクチャ」+ §11 で確定。M5-PR3 で骨格(ラベル 3 + ボタン 3)を作り、
+  M5-PR4 で points-label / hand-label を追加し DrowZzzGameView.Render の表示先を拡充した。
+  name 属性は DrowZzzGameView の Q<T>() クエリ文字列と一致させること。
 -->
 <ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
     <ui:VisualElement name="root" class="drowzzz-root">
         <ui:Label name="status-label" text="DrowZzz" class="drowzzz-title" />
         <ui:Label name="turn-label" text="Turn: -" class="drowzzz-info" />
         <ui:Label name="phase-label" text="Phase: -" class="drowzzz-info" />
+        <ui:Label name="points-label" text="Points: -" class="drowzzz-info" />
+        <ui:Label name="hand-label" text="Hand: -" class="drowzzz-info" />
         <ui:VisualElement name="button-bar" class="drowzzz-button-bar">
             <ui:Button name="draw-button" text="Draw" class="drowzzz-button" />
             <ui:Button name="play-button" text="Play" class="drowzzz-button" />

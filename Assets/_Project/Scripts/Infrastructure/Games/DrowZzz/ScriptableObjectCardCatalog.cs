@@ -192,6 +192,32 @@ namespace Drowsy.Infrastructure.Games.DrowZzz
         }
 
         /// <summary>
+        /// 登録済(キャッシュ構築済)の全 <see cref="CardId"/> を返す。
+        /// </summary>
+        /// <remarks>
+        /// M5-PR4 で追加(ADR-0016 §3.2 / §11 M5-PR4)。Bootstrap(<c>ProjectLifetimeScope</c>)が
+        /// 新規対戦の <c>initialDeck</c> を組み立てるために本 catalog の登録カードを列挙する用途で利用する。
+        /// <see cref="ICardCatalog{TEffect}"/> interface(ADR-0007 で確定)には追加せず、 SO 具象クラス専用の
+        /// 拡張 API とする(interface の汎用性を保ち、列挙が必要な consumer は具象型に依存する設計)。
+        /// 戻り値は <see cref="RebuildCache"/> の重複「後勝ち」/ 不正 entry skip ロジック適用後のキー集合。
+        /// <para>
+        /// <c>_cache.Keys</c>(<c>Dictionary.KeyCollection</c>)を直接返すと <see cref="RebuildCache"/> による
+        /// <c>_cache</c> 差し替え(<c>OnEnable</c> / Asset reload)後に呼び出し側が古いライブビューを保持し続ける
+        /// 危険があるため、呼び出し時点の snapshot(配列)を返す(code-reviewer W-1 反映)。
+        /// </para>
+        /// </remarks>
+        public IReadOnlyCollection<CardId> RegisteredCardIds
+        {
+            get
+            {
+                EnsureCacheBuilt();
+                var snapshot = new CardId[_cache.Count];
+                _cache.Keys.CopyTo(snapshot, 0);
+                return snapshot;
+            }
+        }
+
+        /// <summary>
         /// 登録済 <paramref name="id"/> に対応する <see cref="CardData"/> を返す。
         /// 未登録の場合は <see cref="KeyNotFoundException"/>(<see cref="ICardCatalog{TEffect}.Get"/> 契約、INF-005)。
         /// </summary>

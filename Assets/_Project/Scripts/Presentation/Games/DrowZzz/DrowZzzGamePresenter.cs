@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using Cysharp.Threading.Tasks;
@@ -9,6 +10,7 @@ using Drowsy.Application.Games.DrowZzz;
 using Drowsy.Application.Persistence;
 using Drowsy.Domain.Cards;
 using Drowsy.Domain.Configuration;
+using Drowsy.Domain.Players;
 
 namespace Drowsy.Presentation.Games.DrowZzz
 {
@@ -16,14 +18,15 @@ namespace Drowsy.Presentation.Games.DrowZzz
     /// DrowZzz ゲームの Presenter(MVP の P、Pure C#)。
     /// </summary>
     /// <remarks>
-    /// ADR-0016 §3.2「Presenter」で確定。本 PR (M5-PR2) では:
+    /// ADR-0016 §3.2「Presenter」で確定。本 PR (M5-PR4) で:
     /// <list type="bullet">
-    /// <item><see cref="Start"/> / <see cref="Dispose"/> / <see cref="BootAsync"/> は本実装</item>
     /// <item>Handler 3 種(<see cref="HandleDrawClicked"/> / <see cref="HandlePlayClicked"/> /
-    /// <see cref="HandleEndTurnClicked"/>)は <see cref="NotImplementedException"/> stub(M5-PR4 で本実装)</item>
-    /// <item><see cref="BootAsync"/> 内の新規対戦経路(LoadAsync が <see cref="FileNotFoundException"/>)も
-    /// <see cref="NotImplementedException"/> stub(M5-PR4 で <c>StartGameUseCase.Execute(players, initialDeck)</c>
-    /// の引数生成を確定して本実装、ADR-0016 §3.2 line 238 の TBD と整合)</item>
+    /// <see cref="HandleEndTurnClicked"/>)を本実装(<see cref="ApplyActionUseCase"/> 経由で Action 適用)</item>
+    /// <item><see cref="BootAsync"/> の新規対戦経路(LoadAsync が <see cref="FileNotFoundException"/>)を
+    /// <see cref="StartGameUseCase"/>.<c>Execute(players, initialDeck)</c> で本実装(ADR-0016 §3.2 line 238 の
+    /// TBD を解消、ctor 注入された <c>players</c> / <c>initialDeck</c> を使用)</item>
+    /// <item>ctor を 6 引数 → 8 引数化(<c>IReadOnlyList&lt;PlayerId&gt; players</c> + <c>Pile initialDeck</c> を追加、
+    /// M5-PR4 着手時 JIT 確定 2026-05-14)</item>
     /// </list>
     /// <para>
     /// <b>VContainer 統合</b>:<see cref="IStartable"/>.<see cref="Start"/> は Container 構築後に
@@ -33,12 +36,13 @@ namespace Drowsy.Presentation.Games.DrowZzz
     /// <para>
     /// <b>状態公開</b>:<see cref="SessionStream"/> は <c>Subject&lt;DrowZzzGameSession&gt;</c> ベースで
     /// Boot 完了後のみ <c>OnNext</c> が発火する。<see cref="ReactiveProperty{T}"/> のような nullable 注釈を避け、
-    /// ADR-0015 NRT 不採用方針整合を保つ。Subscribe 後の最初の <c>OnNext</c> のみ発火、 Subscribe より前の発火は
-    /// 伝搬しない(M5 では Boot 完了 → View Subscribe 順が <see cref="Start"/> 内で確定するため初期描画は確実)。
+    /// ADR-0015 NRT 不採用方針整合を保つ。
     /// </para>
     /// <para>
-    /// <b>イベント配線</b>:<see cref="Start"/> で View の 3 event を購読、 <see cref="Dispose"/> で対称的に
-    /// 解除する(`event += / -=` 対称運用、Unity 文化整合、ADR-0016 §3.1)。
+    /// <b>不合法手の扱い</b>:<see cref="ApplyActionUseCase.Execute"/> は <c>IsLegalMove</c> false で
+    /// <see cref="InvalidOperationException"/> を投げる。M5 範囲では Handler 内で握りつぶし
+    /// <c>Debug.LogWarning</c> 記録のみ(無反応、M5-PR4 着手時 JIT 確定 2026-05-14)。ボタン disable /
+    /// トースト表示は Phase 3。
     /// </para>
     /// </remarks>
     public sealed class DrowZzzGamePresenter : IStartable, IDisposable
@@ -49,6 +53,8 @@ namespace Drowsy.Presentation.Games.DrowZzz
         private readonly IDrowZzzGameSessionSerializer _serializer;
         private readonly IUserSettings _userSettings;
         private readonly string _savePath;
+        private readonly IReadOnlyList<PlayerId> _players;
+        private readonly Pile _initialDeck;
 
         private readonly Subject<DrowZzzGameSession> _sessionSubject = new();
         private readonly CompositeDisposable _disposables = new();
@@ -64,8 +70,7 @@ namespace Drowsy.Presentation.Games.DrowZzz
         public Observable<DrowZzzGameSession> SessionStream => _sessionSubject;
 
         /// <summary>
-        /// 現セッション。Boot 完了前 / リプレイ復元失敗時 / <see cref="BootAsync"/> stub 経路(M5-PR2 の
-        /// 新規対戦経路)では null。
+        /// 現セッション。Boot 完了前 / リプレイ復元と新規対戦の両方が失敗したときのみ null。
         /// </summary>
         /// <remarks>
         /// <b>消費側の注意</b>:本プロパティを参照する前に <see cref="IsReady"/> が true であることを必ず確認すること。
@@ -81,13 +86,14 @@ namespace Drowsy.Presentation.Games.DrowZzz
         /// <summary>
         /// Presenter を生成する。ctor では依存の null 検査のみを行い、Boot 処理は <see cref="Start"/> で実行。
         /// </summary>
-        /// <param name="startGameUseCase">新規対戦開始(M5-PR4 で BootAsync 内から呼び出し)</param>
-        /// <param name="applyActionUseCase">Action 適用(M5-PR4 で Handler 内から呼び出し)</param>
+        /// <param name="startGameUseCase">新規対戦開始(<see cref="BootAsync"/> 内から呼び出し)</param>
+        /// <param name="applyActionUseCase">Action 適用(Handler 内から呼び出し)</param>
         /// <param name="view">View 抽象(MockDrowZzzGameView または DrowZzzGameView MonoBehaviour)</param>
         /// <param name="serializer">永続化 serializer(ADR-0016 §5.2)</param>
         /// <param name="userSettings">ユーザー設定(M5-PR6 で View バインディング)</param>
-        /// <param name="savePath">セーブパス(<c>DrowZzzGameSessionSerializer.DefaultSavePath()</c> 経由で Bootstrap が解決、
-        /// ADR-0016 §7.2 で Project Singleton として <c>RegisterInstance</c>)</param>
+        /// <param name="savePath">セーブパス(<c>DrowZzzGameSessionSerializer.DefaultSavePath()</c> 経由で Bootstrap が解決)</param>
+        /// <param name="players">新規対戦のプレイヤー Id 列(Bootstrap が構築、ADR-0016 §3.2 / M5-PR4 着手時 JIT 確定)</param>
+        /// <param name="initialDeck">新規対戦の初期山札(Bootstrap が catalog から構築、ADR-0016 §3.2 / M5-PR4 着手時 JIT 確定)</param>
         /// <exception cref="ArgumentNullException">いずれかの参照型引数が null</exception>
         /// <exception cref="ArgumentException"><paramref name="savePath"/> が空白のみ</exception>
         public DrowZzzGamePresenter(
@@ -96,7 +102,9 @@ namespace Drowsy.Presentation.Games.DrowZzz
             IDrowZzzGameView view,
             IDrowZzzGameSessionSerializer serializer,
             IUserSettings userSettings,
-            string savePath)
+            string savePath,
+            IReadOnlyList<PlayerId> players,
+            Pile initialDeck)
         {
             _startGameUseCase = startGameUseCase ?? throw new ArgumentNullException(nameof(startGameUseCase));
             _applyActionUseCase = applyActionUseCase ?? throw new ArgumentNullException(nameof(applyActionUseCase));
@@ -112,12 +120,15 @@ namespace Drowsy.Presentation.Games.DrowZzz
                 throw new ArgumentException("savePath は空・空白のみにできません", nameof(savePath));
             }
             _savePath = savePath;
+            // players の空 / 重複 / null 要素検査は StartGameUseCase.Execute に委譲(ctor では null のみ早期検出)。
+            _players = players ?? throw new ArgumentNullException(nameof(players));
+            _initialDeck = initialDeck ?? throw new ArgumentNullException(nameof(initialDeck));
         }
 
         /// <inheritdoc />
         public void Start()
         {
-            // View event 配線(Handler 3 種は M5-PR2 では NotImplementedException stub)
+            // View event 配線
             _view.OnDrawClicked += HandleDrawClicked;
             _view.OnPlayClicked += HandlePlayClicked;
             _view.OnEndTurnClicked += HandleEndTurnClicked;
@@ -133,12 +144,13 @@ namespace Drowsy.Presentation.Games.DrowZzz
         /// 起動シーケンス。セーブファイル存在判定 → 復元 / 新規対戦の分岐を行う。
         /// </summary>
         /// <remarks>
-        /// M5-PR2 では新規対戦経路は <see cref="NotImplementedException"/> stub(JIT 確定 2026-05-14、M5-PR4 で
-        /// <c>StartGameUseCase.Execute(players, initialDeck)</c> の引数生成を確定して本実装)。
-        /// LoadAsync 成功経路と cancellation 経路は本 PR で動作する。
+        /// M5-PR4 で新規対戦経路を本実装(ctor 注入された <see cref="_players"/> / <see cref="_initialDeck"/> を
+        /// <see cref="StartGameUseCase.Execute"/> に渡す、ADR-0016 §3.2 line 238 の TBD 解消)。
         /// </remarks>
         private async UniTaskVoid BootAsync(CancellationToken ct)
         {
+            // catch 順序は OperationCanceledException → Exception の順を変えない
+            // (OCE は Exception の派生、後の catch が前者を吸わない順序が必要)。
             try
             {
                 DrowZzzGameSession session;
@@ -148,25 +160,15 @@ namespace Drowsy.Presentation.Games.DrowZzz
                 }
                 catch (FileNotFoundException)
                 {
-                    // 初回起動 or 永続化ファイル削除済 → 新規対戦(M5-PR4 で本実装)
-                    throw new NotImplementedException(
-                        "BootAsync の新規対戦経路は M5-PR4 で実装する(StartGameUseCase.Execute の" +
-                        "players / initialDeck 引数生成戦略を JIT 確定後、ADR-0016 §3.2 line 238 の TBD を解消)。");
+                    // 初回起動 or 永続化ファイル削除済 → 新規対戦を開始する。
+                    session = _startGameUseCase.Execute(_players, _initialDeck);
                 }
                 _current = session;
                 _sessionSubject.OnNext(session);
             }
-            // catch 順序は OperationCanceledException → NotImplementedException → Exception の順を変えない
-            // (前者はいずれも Exception の派生、後で来る catch は前者を吸わない順序が必要、W-1 反映)。
             catch (OperationCanceledException)
             {
                 // Presenter Dispose 中、何もしない(意図された取り消し)
-            }
-            catch (NotImplementedException ex)
-            {
-                // M5-PR2 では新規対戦経路を呼ばないテスト構成のため、stub 例外は明示的に記録のみして握りつぶす
-                // (View に未初期化状態を見せない方が UX 上自然、M5-PR4 で削除される暫定処理)
-                Debug.LogWarning($"[DrowZzzGamePresenter] BootAsync stub: {ex.Message}");
             }
             catch (Exception ex)
             {
@@ -174,21 +176,45 @@ namespace Drowsy.Presentation.Games.DrowZzz
             }
         }
 
-        // 以下、Handler 3 種は M5-PR4 で本実装。M5-PR2 では View event 配線の確認のみが目的。
+        private void HandleDrawClicked() => TryApplyAction(new DrawCardAction());
 
-        private void HandleDrawClicked()
-        {
-            throw new NotImplementedException("HandleDrawClicked は M5-PR4 で実装する(ApplyActionUseCase.Execute 経由)");
-        }
+        private void HandlePlayClicked(CardId cardId) => TryApplyAction(new PlayCardAction(cardId));
 
-        private void HandlePlayClicked(CardId cardId)
-        {
-            throw new NotImplementedException("HandlePlayClicked は M5-PR4 で実装する(ApplyActionUseCase.Execute 経由)");
-        }
+        private void HandleEndTurnClicked() => TryApplyAction(new EndTurnAction());
 
-        private void HandleEndTurnClicked()
+        /// <summary>
+        /// <paramref name="action"/> を現セッションに適用し、成功時は <see cref="_current"/> 更新 + <c>OnNext</c> 発火する。
+        /// </summary>
+        /// <remarks>
+        /// <see cref="ApplyActionUseCase.Execute"/> は <c>IsLegalMove</c> false で
+        /// <see cref="InvalidOperationException"/> を投げる。さらに <c>DrowZzzRule.Apply</c> 内部でも
+        /// 山札枯渇(<c>Pile.Draw</c> の防御例外)等で <see cref="InvalidOperationException"/> が発生しうる。
+        /// M5 範囲ではいずれも握りつぶして <c>Debug.LogWarning</c> 記録のみとする(無反応、M5-PR4 着手時
+        /// JIT 確定 2026-05-14)。Boot 未完了(<see cref="_current"/> が null)も同様に無反応 + 警告ログ。
+        /// ボタン disable / トースト表示 / 例外種別ごとの区別は Phase 3。
+        /// </remarks>
+        private void TryApplyAction(DrowZzzAction action)
         {
-            throw new NotImplementedException("HandleEndTurnClicked は M5-PR4 で実装する(ApplyActionUseCase.Execute + Auto-save 経由)");
+            if (_current is null)
+            {
+                Debug.LogWarning(
+                    $"[DrowZzzGamePresenter] {action.GetType().Name}: Boot 未完了のため無視");
+                return;
+            }
+            try
+            {
+                var next = _applyActionUseCase.Execute(_current, action);
+                _current = next;
+                _sessionSubject.OnNext(next);
+            }
+            catch (InvalidOperationException ex)
+            {
+                // IsLegalMove false(不合法手)/ Apply 内部例外(山札枯渇等)の両方を同一扱いで握りつぶす。
+                // M5 では無反応 + 警告ログ(M5-PR4 着手時 JIT 確定 2026-05-14)。例外型は明示してデバッグ容易性を保つ。
+                Debug.LogWarning(
+                    $"[DrowZzzGamePresenter] {action.GetType().Name} を適用できません" +
+                    $"({ex.GetType().Name}: {ex.Message})");
+            }
         }
 
         /// <inheritdoc />
@@ -197,7 +223,7 @@ namespace Drowsy.Presentation.Games.DrowZzz
         /// <c>Start → Dispose</c> の順が保証されるが、 <see cref="Start"/> 未呼び出し状態で <see cref="Dispose"/>
         /// を呼んでも <c>event -=</c> は未購読ハンドラに対して no-op、 <c>_cts.Cancel/Dispose</c> /
         /// <c>_disposables.Dispose</c> / <c>_sessionSubject.Dispose</c> はいずれも初期構築済 instance に対する
-        /// 通常の Dispose 経路で安全に動作する(code-reviewer S-3 反映)。
+        /// 通常の Dispose 経路で安全に動作する。
         /// </remarks>
         public void Dispose()
         {

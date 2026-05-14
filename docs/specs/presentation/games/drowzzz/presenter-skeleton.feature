@@ -1,47 +1,59 @@
 # language: ja
-機能: DrowZzzGamePresenter (Presentation 層 Presenter 骨格) (M5-PR2)
+機能: DrowZzzGamePresenter (Presentation 層 Presenter) (M5-PR2 骨格 / M5-PR4 Handler 拡張)
 
   @PRES-002
   シナリオ: ctor で startGameUseCase = null は ArgumentNullException (異常系・Small)
-    前提 IDrowZzzGameView / IDrowZzzGameSessionSerializer / IUserSettings / ApplyActionUseCase / savePath 有効値
-    もし new DrowZzzGamePresenter(null, applyActionUseCase, view, serializer, userSettings, "path/a") を呼ぶ
+    前提 他の 7 引数すべて有効
+    もし new DrowZzzGamePresenter(null, applyActionUseCase, view, serializer, userSettings, "path/a", players, initialDeck) を呼ぶ
     ならば ArgumentNullException が発生する
 
   @PRES-003
   シナリオ: ctor で applyActionUseCase = null は ArgumentNullException (異常系・Small)
-    前提 他の引数すべて有効
-    もし new DrowZzzGamePresenter(startGameUseCase, null, view, serializer, userSettings, "path/a") を呼ぶ
+    前提 他の 7 引数すべて有効
+    もし new DrowZzzGamePresenter(startGameUseCase, null, view, serializer, userSettings, "path/a", players, initialDeck) を呼ぶ
     ならば ArgumentNullException が発生する
 
   @PRES-004
   シナリオ: ctor で view = null は ArgumentNullException (異常系・Small)
-    前提 他の引数すべて有効
-    もし new DrowZzzGamePresenter(startGameUseCase, applyActionUseCase, null, serializer, userSettings, "path/a") を呼ぶ
+    前提 他の 7 引数すべて有効
+    もし new DrowZzzGamePresenter(startGameUseCase, applyActionUseCase, null, serializer, userSettings, "path/a", players, initialDeck) を呼ぶ
     ならば ArgumentNullException が発生する
 
   @PRES-005
   シナリオ: ctor で serializer = null は ArgumentNullException (異常系・Small)
-    前提 他の引数すべて有効
-    もし new DrowZzzGamePresenter(startGameUseCase, applyActionUseCase, view, null, userSettings, "path/a") を呼ぶ
+    前提 他の 7 引数すべて有効
+    もし new DrowZzzGamePresenter(startGameUseCase, applyActionUseCase, view, null, userSettings, "path/a", players, initialDeck) を呼ぶ
     ならば ArgumentNullException が発生する
 
   @PRES-006
   シナリオ: ctor で userSettings = null は ArgumentNullException (異常系・Small)
-    前提 他の引数すべて有効
-    もし new DrowZzzGamePresenter(startGameUseCase, applyActionUseCase, view, serializer, null, "path/a") を呼ぶ
+    前提 他の 7 引数すべて有効
+    もし new DrowZzzGamePresenter(startGameUseCase, applyActionUseCase, view, serializer, null, "path/a", players, initialDeck) を呼ぶ
     ならば ArgumentNullException が発生する
 
   @PRES-007
   シナリオ: ctor で savePath = null は ArgumentNullException (異常系・Small)
-    前提 他の引数すべて有効
-    もし new DrowZzzGamePresenter(startGameUseCase, applyActionUseCase, view, serializer, userSettings, null) を呼ぶ
+    前提 他の 7 引数すべて有効
+    もし new DrowZzzGamePresenter(startGameUseCase, applyActionUseCase, view, serializer, userSettings, null, players, initialDeck) を呼ぶ
     ならば ArgumentNullException が発生する
 
   @PRES-008
   シナリオ: ctor で savePath が空・空白のみは ArgumentException (異常系・Small)
-    前提 他の引数すべて有効
-    もし new DrowZzzGamePresenter(...,  "") または new DrowZzzGamePresenter(..., "   ") を呼ぶ
+    前提 他の 7 引数すべて有効
+    もし savePath = "" または savePath = "   " で new DrowZzzGamePresenter(...) を呼ぶ
     ならば ArgumentException が発生する
+
+  @PRES-014
+  シナリオ: ctor で players = null は ArgumentNullException (異常系・Small)
+    前提 他の 7 引数すべて有効
+    もし new DrowZzzGamePresenter(startGameUseCase, applyActionUseCase, view, serializer, userSettings, "path/a", null, initialDeck) を呼ぶ
+    ならば ArgumentNullException が発生する
+
+  @PRES-015
+  シナリオ: ctor で initialDeck = null は ArgumentNullException (異常系・Small)
+    前提 他の 7 引数すべて有効
+    もし new DrowZzzGamePresenter(startGameUseCase, applyActionUseCase, view, serializer, userSettings, "path/a", players, null) を呼ぶ
+    ならば ArgumentNullException が発生する
 
   @PRES-009
   シナリオ: Start() 直後に View の 3 event が購読される (正常系・Small)
@@ -56,13 +68,37 @@
     ならば MockView.OnDrawClicked / OnPlayClicked / OnEndTurnClicked いずれも購読者数 = 0
 
   @PRES-011
-  シナリオ: BootAsync 完了で View.Render(session) が 1 回呼ばれる (正常系・Small)
+  シナリオ: BootAsync 復元経路で View.Render(session) が 1 回呼ばれる (正常系・Small)
     前提 MockSerializer.LoadAsyncBehavior = ReturnSession + LoadAsyncReturnSession = SessionFactory.NewSession()
     もし Start() を呼んだ後、UniTask の完了を待つ
     ならば MockView.RenderedSessions.Count == 1 && RenderedSessions[0] == 注入した session
+
+  @PRES-012
+  シナリオ: BootAsync 新規対戦経路で StartGameUseCase.Execute の session が Render される (正常系・Small)
+    前提 MockSerializer.LoadAsyncBehavior = ThrowFileNotFound
+    もし Start() を呼んだ後、UniTask の完了を待つ
+    ならば StartGameUseCase.Execute(players, initialDeck) で生成した session が MockView.Render に 1 回渡る
 
   @PRES-013
   シナリオ: Dispose() の二重呼び出しは silent no-op (正常系・Small)
     前提 Presenter 構築済 + Dispose() 1 回呼び済
     もし 2 回目の Dispose() を呼ぶ
     ならば 例外を投げず、副作用なし(冪等性)
+
+  @PRES-016
+  シナリオ: Boot 完了後の合法な Draw クリックで session が更新され Render される (正常系・Small)
+    前提 StartGameUseCase で生成した WaitingForDraw の session を Boot で復元済
+    もし MockView.FireDrawClicked() を呼ぶ
+    ならば DrawCardAction が適用され、MockView.RenderedSessions が 1 回増える
+
+  @PRES-017
+  シナリオ: 不合法手(WaitingForDraw で EndTurn)は無反応 (異常系・Small)
+    前提 StartGameUseCase で生成した WaitingForDraw の session を Boot で復元済
+    もし MockView.FireEndTurnClicked() を呼ぶ(EndTurn は WaitingForEndTurn でのみ合法)
+    ならば InvalidOperationException は Presenter 内で握りつぶされ、MockView.RenderedSessions は増えない
+
+  @PRES-018
+  シナリオ: Boot 未完了で Handler を発火しても例外を投げず Render もしない (異常系・Small)
+    前提 MockSerializer.LoadAsyncBehavior = ThrowOperationCanceled(BootAsync が _current をセットできない)
+    もし MockView.FireDrawClicked() を呼ぶ
+    ならば 例外を投げず、MockView.RenderedSessions は空のまま
