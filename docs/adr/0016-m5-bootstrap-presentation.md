@@ -472,7 +472,7 @@ public sealed class GameLifetimeScope : LifetimeScope
 
 | タイミング | 動作 | 備考 |
 | ---- | ---- | ---- |
-| アプリ起動時(Presenter `BootAsync`) | `DefaultSavePath()` のファイル存在なら `LoadAsync` で復元、なければ `StartGameUseCase.Execute(...)` で新規対戦 | M5-PR5 で実装 |
+| アプリ起動時(Presenter `BootAsync`) | `DefaultSavePath()` のファイル存在なら `LoadAsync` で復元、なければ `StartGameUseCase.Execute(...)` で新規対戦 | M5-PR4 で実装済(`BootAsync` 復元経路 + 新規対戦経路、code-reviewer M5-PR5 W-1 反映で訂正)|
 | `EndTurnAction` Apply 後 | `await _serializer.SaveAsync(session, _savePath, ct)` | M5-PR5、毎ターン後(引数順は §5.2 の interface 定義通り session-first) |
 | Game 終了時(`GameOutcome` 確定) | `await _serializer.SaveAsync` + 同期 backup(別 path で並行保存)| M5-PR7 で確定、初期推奨はメイン path 上書きのみ |
 | アプリ終了時(`OnApplicationQuit`) | `OnApplicationQuit` で Cancellation Token 発火 + 同期 `Save`(WebGL は不可、後述) | M5-PR5 で WebGL 制約を確認 |

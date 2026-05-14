@@ -29,10 +29,12 @@ namespace Drowsy.Presentation.Tests.Games.DrowZzz
     /// `SessionFactory.NewRule`)を再利用して両 UseCase を構築する(ADR-0016 §10.1)。
     /// </para>
     /// <para>
-    /// <b>BootAsync 完了待ち</b>:<see cref="MockDrowZzzGameSessionSerializer"/>.<c>LoadAsync</c> は
-    /// <c>UniTask.FromResult</c> / 同期 throw で完了するが、<c>BootAsync</c>(<c>UniTaskVoid</c>)の継続を
-    /// 確実に進めるため、Boot を経由する各テスト(PRES-011 / 012 / 016 / 017 / 018)で
-    /// <c>await UniTask.Yield().ToUniTask()</c> を 1 回挟む(code-reviewer W-4 反映)。
+    /// <b>BootAsync / AutoSaveAsync 完了待ち</b>:<see cref="MockDrowZzzGameSessionSerializer"/>.<c>LoadAsync</c> /
+    /// <c>SaveAsync</c> は <c>UniTask.FromResult</c> / <c>UniTask.CompletedTask</c> / 同期 throw で完了するが、
+    /// <c>BootAsync</c> / <c>AutoSaveAsync</c>(<c>UniTaskVoid</c>)の継続を確実に進めるため、Boot / Auto-save を
+    /// 経由する各テスト(PRES-011 / 012 / 016 / 017 / 018 / 019 / 020 / 021)で
+    /// <c>await UniTask.Yield().ToUniTask()</c> を 1 回挟む(他テストの完了待ちパターンと統一、
+    /// code-reviewer M5-PR4 W-4 + M5-PR5 T-1 反映)。
     /// </para>
     /// </remarks>
     [TestFixture]
@@ -385,6 +387,79 @@ namespace Drowsy.Presentation.Tests.Games.DrowZzz
 
             // Then(例外を投げず、Render も発火しない)
             Assert.That(ctx.View.RenderedSessions, Is.Empty);
+
+            // Cleanup
+            ctx.Presenter.Dispose();
+            ctx.UserSettings.Dispose();
+        }
+
+        // ===== PRES-019 / PRES-020 / PRES-021: Auto-save(EndTurn 後のみ)=====
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "PRES-019")]
+        public async Task Given_bootCompleted_When_LegalEndTurnClicked_Then_AutoSaveInvoked()
+        {
+            // Given(Draw → Play を経て WaitingForEndTurn にしてから EndTurn する)
+            var ctx = NewContext();
+            var bootSession = ctx.StartGameUseCase.Execute(ValidPlayers(), ValidInitialDeck());
+            ctx.Serializer.LoadAsyncReturnSession = bootSession;
+            ctx.Presenter.Start();
+            await UniTask.Yield().ToUniTask();
+            ctx.View.FireDrawClicked();
+            var afterDraw = ctx.View.RenderedSessions[ctx.View.RenderedSessions.Count - 1];
+            var currentPlayer = afterDraw.GameState.Players[afterDraw.GameState.Turn.CurrentPlayerIndex];
+            ctx.View.FirePlayClicked(currentPlayer.Hand.Cards[0]);
+            var saveCountBeforeEndTurn = ctx.Serializer.SaveAsyncCallCount;
+
+            // When(合法な EndTurn)
+            ctx.View.FireEndTurnClicked();
+            await UniTask.Yield().ToUniTask();
+
+            // Then(EndTurn 成功時のみ Auto-save、SaveAsync が 1 回呼ばれる)
+            Assert.That(ctx.Serializer.SaveAsyncCallCount, Is.EqualTo(saveCountBeforeEndTurn + 1));
+
+            // Cleanup
+            ctx.Presenter.Dispose();
+            ctx.UserSettings.Dispose();
+        }
+
+        [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "PRES-020")]
+        public async Task Given_bootCompleted_When_IllegalEndTurnClicked_Then_AutoSaveNotInvoked()
+        {
+            // Given(初期 session は WaitingForDraw、EndTurn は不合法手)
+            var ctx = NewContext();
+            var bootSession = ctx.StartGameUseCase.Execute(ValidPlayers(), ValidInitialDeck());
+            ctx.Serializer.LoadAsyncReturnSession = bootSession;
+            ctx.Presenter.Start();
+            await UniTask.Yield().ToUniTask();
+
+            // When(不合法な EndTurn)
+            ctx.View.FireEndTurnClicked();
+            await UniTask.Yield().ToUniTask();
+
+            // Then(TryApplyAction が false を返し Auto-save はトリガーされない)
+            Assert.That(ctx.Serializer.SaveAsyncCallCount, Is.EqualTo(0));
+
+            // Cleanup
+            ctx.Presenter.Dispose();
+            ctx.UserSettings.Dispose();
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "PRES-021")]
+        public async Task Given_bootCompleted_When_DrawClicked_Then_AutoSaveNotInvoked()
+        {
+            // Given(Auto-save は EndTurn 後のみ、Draw / Play では行わない:ADR-0016 §8)
+            var ctx = NewContext();
+            var bootSession = ctx.StartGameUseCase.Execute(ValidPlayers(), ValidInitialDeck());
+            ctx.Serializer.LoadAsyncReturnSession = bootSession;
+            ctx.Presenter.Start();
+            await UniTask.Yield().ToUniTask();
+
+            // When(合法な Draw — Auto-save 対象外)
+            ctx.View.FireDrawClicked();
+            await UniTask.Yield().ToUniTask();
+
+            // Then(Draw では Auto-save しない)
+            Assert.That(ctx.Serializer.SaveAsyncCallCount, Is.EqualTo(0));
 
             // Cleanup
             ctx.Presenter.Dispose();

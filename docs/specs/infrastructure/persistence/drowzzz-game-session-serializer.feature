@@ -133,3 +133,33 @@
   シナリオ: DefaultSavePath の fileName 空白 (異常系・Small)
     もし DefaultSavePath("  ") を呼ぶ
     ならば ArgumentException が発生する
+
+  # ===== M5-PR5: 非同期 API(SaveAsync / LoadAsync)=====
+
+  @INF-083
+  シナリオ: SaveAsync → LoadAsync の round-trip (正常系・Small)
+    前提 MinimalSession または FullSessionWithAllFeatures
+    もし SaveAsync(session, path) を await した後 LoadAsync(path) を await する
+    ならば 返却された DrowZzzGameSession は元 session と DrowZzzGameSession.Equals で等価
+
+  @INF-084
+  シナリオ: SaveAsync に session = null (異常系・Small)
+    もし SaveAsync(null, path) を呼ぶ
+    ならば ArgumentNullException が発生する(RunOnThreadPool 投入前の同期 throw)
+
+  @INF-085
+  シナリオ: SaveAsync に path = null・空・空白のみ (異常系・Small)
+    前提 有効な session
+    もし SaveAsync(session, null) または SaveAsync(session, "") または SaveAsync(session, "   ") を呼ぶ
+    ならば ArgumentException が発生する
+
+  @INF-086
+  シナリオ: LoadAsync に path = null・空・空白のみ (異常系・Small)
+    もし LoadAsync(null) または LoadAsync("") または LoadAsync("   ") を呼ぶ
+    ならば ArgumentException が発生する
+
+  @INF-087
+  シナリオ: LoadAsync に存在しない path (異常系・Small)
+    前提 path にファイルが存在しない
+    もし LoadAsync(path) を await する
+    ならば FileNotFoundException が発生する(Load 本体が ThreadPool 上で throw)

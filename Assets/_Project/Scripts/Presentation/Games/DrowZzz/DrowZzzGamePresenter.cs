@@ -18,15 +18,16 @@ namespace Drowsy.Presentation.Games.DrowZzz
     /// DrowZzz ゲームの Presenter(MVP の P、Pure C#)。
     /// </summary>
     /// <remarks>
-    /// ADR-0016 §3.2「Presenter」で確定。本 PR (M5-PR4) で:
+    /// ADR-0016 §3.2「Presenter」+ §8「Session 自動セーブ / 自動復元」で確定。M5-PR2 で骨格、M5-PR4 で
+    /// Handler / 新規対戦経路、M5-PR5 で Auto-save を実装した。
     /// <list type="bullet">
     /// <item>Handler 3 種(<see cref="HandleDrawClicked"/> / <see cref="HandlePlayClicked"/> /
-    /// <see cref="HandleEndTurnClicked"/>)を本実装(<see cref="ApplyActionUseCase"/> 経由で Action 適用)</item>
-    /// <item><see cref="BootAsync"/> の新規対戦経路(LoadAsync が <see cref="FileNotFoundException"/>)を
-    /// <see cref="StartGameUseCase"/>.<c>Execute(players, initialDeck)</c> で本実装(ADR-0016 §3.2 line 238 の
-    /// TBD を解消、ctor 注入された <c>players</c> / <c>initialDeck</c> を使用)</item>
-    /// <item>ctor を 6 引数 → 8 引数化(<c>IReadOnlyList&lt;PlayerId&gt; players</c> + <c>Pile initialDeck</c> を追加、
-    /// M5-PR4 着手時 JIT 確定 2026-05-14)</item>
+    /// <see cref="HandleEndTurnClicked"/>)は <see cref="TryApplyAction"/> 経由で <see cref="ApplyActionUseCase"/>
+    /// に Action を適用する</item>
+    /// <item><see cref="BootAsync"/> はセーブファイルがあれば <c>LoadAsync</c> で復元、なければ
+    /// <see cref="StartGameUseCase"/>.<c>Execute(players, initialDeck)</c> で新規対戦を開始する</item>
+    /// <item><see cref="HandleEndTurnClicked"/> は EndTurn 成功時のみ <see cref="AutoSaveAsync"/> で
+    /// 自動セーブする(ADR-0016 §8「Auto-save は EndTurn 後のみ」、M5-PR5 着手時 JIT 確定 2026-05-14)</item>
     /// </list>
     /// <para>
     /// <b>VContainer 統合</b>:<see cref="IStartable"/>.<see cref="Start"/> は Container 構築後に
@@ -41,8 +42,13 @@ namespace Drowsy.Presentation.Games.DrowZzz
     /// <para>
     /// <b>不合法手の扱い</b>:<see cref="ApplyActionUseCase.Execute"/> は <c>IsLegalMove</c> false で
     /// <see cref="InvalidOperationException"/> を投げる。M5 範囲では Handler 内で握りつぶし
-    /// <c>Debug.LogWarning</c> 記録のみ(無反応、M5-PR4 着手時 JIT 確定 2026-05-14)。ボタン disable /
-    /// トースト表示は Phase 3。
+    /// <c>Debug.LogWarning</c> 記録のみ(無反応、M5-PR4 着手時 JIT 確定 2026-05-14)。
+    /// </para>
+    /// <para>
+    /// <b>Auto-save の失敗</b>:<see cref="AutoSaveAsync"/> は <c>UniTaskVoid</c> + <c>Forget</c> の
+    /// fire-and-forget。<see cref="OperationCanceledException"/>(Dispose 中)は握りつぶし、それ以外の例外は
+    /// <c>Debug.LogError</c> 記録のみでゲームプレイは継続する(セーブ失敗時は次の EndTurn で再度 Save される、
+    /// M5-PR5 着手時 JIT 確定 2026-05-14)。リトライ / ユーザー通知は Phase 3。
     /// </para>
     /// </remarks>
     public sealed class DrowZzzGamePresenter : IStartable, IDisposable
@@ -176,36 +182,47 @@ namespace Drowsy.Presentation.Games.DrowZzz
             }
         }
 
-        private void HandleDrawClicked() => TryApplyAction(new DrawCardAction());
+        // Draw / Play は EndTurn と異なり Auto-save トリガーには使わないため、TryApplyAction の bool 戻り値を discard する。
+        private void HandleDrawClicked() => _ = TryApplyAction(new DrawCardAction());
 
-        private void HandlePlayClicked(CardId cardId) => TryApplyAction(new PlayCardAction(cardId));
+        private void HandlePlayClicked(CardId cardId) => _ = TryApplyAction(new PlayCardAction(cardId));
 
-        private void HandleEndTurnClicked() => TryApplyAction(new EndTurnAction());
+        private void HandleEndTurnClicked()
+        {
+            // EndTurn が合法に適用できた場合のみ Auto-save する(ADR-0016 §8「Auto-save は EndTurn 後のみ」)。
+            if (TryApplyAction(new EndTurnAction()))
+            {
+                AutoSaveAsync(_cts.Token).Forget();
+            }
+        }
 
         /// <summary>
         /// <paramref name="action"/> を現セッションに適用し、成功時は <see cref="_current"/> 更新 + <c>OnNext</c> 発火する。
         /// </summary>
+        /// <returns>適用に成功したら <c>true</c>、Boot 未完了 / 不合法手 / Apply 内部例外なら <c>false</c></returns>
         /// <remarks>
         /// <see cref="ApplyActionUseCase.Execute"/> は <c>IsLegalMove</c> false で
         /// <see cref="InvalidOperationException"/> を投げる。さらに <c>DrowZzzRule.Apply</c> 内部でも
         /// 山札枯渇(<c>Pile.Draw</c> の防御例外)等で <see cref="InvalidOperationException"/> が発生しうる。
         /// M5 範囲ではいずれも握りつぶして <c>Debug.LogWarning</c> 記録のみとする(無反応、M5-PR4 着手時
         /// JIT 確定 2026-05-14)。Boot 未完了(<see cref="_current"/> が null)も同様に無反応 + 警告ログ。
-        /// ボタン disable / トースト表示 / 例外種別ごとの区別は Phase 3。
+        /// 戻り値の <c>bool</c> は <see cref="HandleEndTurnClicked"/> の Auto-save トリガー判定に使う
+        /// (M5-PR5 着手時 JIT 確定 2026-05-14)。
         /// </remarks>
-        private void TryApplyAction(DrowZzzAction action)
+        private bool TryApplyAction(DrowZzzAction action)
         {
             if (_current is null)
             {
                 Debug.LogWarning(
                     $"[DrowZzzGamePresenter] {action.GetType().Name}: Boot 未完了のため無視");
-                return;
+                return false;
             }
             try
             {
                 var next = _applyActionUseCase.Execute(_current, action);
                 _current = next;
                 _sessionSubject.OnNext(next);
+                return true;
             }
             catch (InvalidOperationException ex)
             {
@@ -214,6 +231,35 @@ namespace Drowsy.Presentation.Games.DrowZzz
                 Debug.LogWarning(
                     $"[DrowZzzGamePresenter] {action.GetType().Name} を適用できません" +
                     $"({ex.GetType().Name}: {ex.Message})");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 現セッションを <see cref="_savePath"/> へ非同期に自動セーブする(EndTurn 成功後のみ呼ばれる)。
+        /// </summary>
+        /// <remarks>
+        /// ADR-0016 §8。<c>UniTaskVoid</c> + <c>Forget</c> の fire-and-forget で、<see cref="Dispose"/> 時に
+        /// <see cref="_cts"/> 経由でキャンセルされる。<see cref="OperationCanceledException"/> は握りつぶし、
+        /// それ以外の例外は <c>Debug.LogError</c> 記録のみでゲームプレイは継続する
+        /// (セーブ失敗時は次の EndTurn で再度 Save される、M5-PR5 着手時 JIT 確定 2026-05-14)。
+        /// </remarks>
+        private async UniTaskVoid AutoSaveAsync(CancellationToken ct)
+        {
+            // TryApplyAction 成功直後の _current をローカルにキャプチャする(EndTurn 後の最新 session を保存)。
+            // fire-and-forget 中に _current が次の Action で更新されても、保存対象はこの時点の session で確定する。
+            var sessionToSave = _current;
+            try
+            {
+                await _serializer.SaveAsync(sessionToSave, _savePath, ct);
+            }
+            catch (OperationCanceledException)
+            {
+                // Presenter Dispose 中、何もしない(意図された取り消し)
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[DrowZzzGamePresenter] Auto-save failed: {ex}");
             }
         }
 
@@ -223,7 +269,8 @@ namespace Drowsy.Presentation.Games.DrowZzz
         /// <c>Start → Dispose</c> の順が保証されるが、 <see cref="Start"/> 未呼び出し状態で <see cref="Dispose"/>
         /// を呼んでも <c>event -=</c> は未購読ハンドラに対して no-op、 <c>_cts.Cancel/Dispose</c> /
         /// <c>_disposables.Dispose</c> / <c>_sessionSubject.Dispose</c> はいずれも初期構築済 instance に対する
-        /// 通常の Dispose 経路で安全に動作する。
+        /// 通常の Dispose 経路で安全に動作する。 <c>_cts.Cancel()</c> は進行中の <see cref="BootAsync"/> /
+        /// <see cref="AutoSaveAsync"/> を中断する。
         /// </remarks>
         public void Dispose()
         {
@@ -238,7 +285,7 @@ namespace Drowsy.Presentation.Games.DrowZzz
             _view.OnPlayClicked -= HandlePlayClicked;
             _view.OnEndTurnClicked -= HandleEndTurnClicked;
 
-            // 進行中の BootAsync を中断
+            // 進行中の BootAsync / AutoSaveAsync を中断
             _cts.Cancel();
             _cts.Dispose();
 
