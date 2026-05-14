@@ -778,6 +778,32 @@ PR 番号は GitHub マージ後に確定するため、本セクションは原
   - `BootAsync` 新規対戦経路の `initialDeck` / `players` 生成は M5-PR4 着手時 JIT で確定(M5-PR4 で本 ADR §3.2 line 238 の TBD を解消)
   - オーナー側 Unity Editor 作業:`Main.unity` Scene 新規作成 + GameObject ツリー配置 + Inspector で SerializeField 割り当て(SO 2 種 + UXML Source Asset)
 
+#### M5-PR4 完成記録
+
+- **PR**:[#89](https://github.com/u-stem/drowsy-unity/pull/89)、squash merged → commit `0822e5d`(2026-05-14)
+- **スコープ達成**(「Play モードで Draw → Play → EndTurn の 1 ラウンドが動く」を達成):
+  - `ScriptableObjectCardCatalog` に `RegisteredCardIds` 列挙 API 追加(SO 具象専用拡張、`ICardCatalog<TEffect>` interface は不変、`_cache.Keys` の snapshot を返却)
+  - `ProjectLifetimeScope` に新規対戦の `players` / `initialDeck` 構築 + `RegisterInstance`(`BuildPlayers`:N=2 ホットシート固定 + player ID const 化 / `BuildInitialDeck`:catalog 登録カードを `CopiesPerCardForM5Deck`(20)枚ずつ、catalog 空チェック付き、本物 56 枚デッキは Phase 3)
+  - `DrowZzzGamePresenter` ctor 6 → 8 引数化(`IReadOnlyList<PlayerId> players` + `Pile initialDeck` 追加)+ Handler 3 種本実装(`TryApplyAction` 共通ヘルパー)+ `BootAsync` 新規対戦経路本実装(`StartGameUseCase.Execute(_players, _initialDeck)`、§3.2 line 238 の TBD 解消)
+  - `DrowZzzGameView.Render` 本実装(Round / 現プレイヤー / TurnPhase / 山札・場札・捨て札枚数 / FDP・DDP・SDP・Total / 現プレイヤー手札を Label に反映)+ UXML 拡張(`points-label` / `hand-label`)+ `RaisePlayClicked` を手札先頭カード発火に変更
+  - PresenterTests:8 引数化追従 + PRES-012 を Optional → 通常要件昇格 + PRES-014/015(ctor null 防御)/ PRES-016/017/018(Handler 正常・異常・Boot 未完了)追加(計 17 メソッド)
+  - EARS `presenter-skeleton.{md,feature}` 更新(PRES-012 昇格 + PRES-014〜018 採番)
+- **本 ADR §11 M5-PR4 行の主要成果物列の補足**(M5-PR4 code-reviewer S-6 反映):§11 表の M5-PR4「主要成果物」列には Presenter / View のみ記載されていたが、実態は Bootstrap 側にも `ProjectLifetimeScope.BuildPlayers` / `BuildInitialDeck` + `ScriptableObjectCardCatalog.RegisteredCardIds` の追加を含む(本完成記録を Single Source of Truth とする)。
+- **検証結果**:
+  - `dotnet build drowsy-unity.slnx`:0 警告 / 0 エラー / 2.27 秒
+  - `bash scripts/check-traceability.sh`:仕様 ID 552 件 / Property ID 462 件 / 整合性 OK
+  - lefthook pre-commit 全フック緑(2 commits 構成:`ba1679d` ADR 完成記録 + `90c0a69` 実装本体)
+  - Play モードでの 1 ラウンド動作確認(Main.unity Scene 配置)はオーナー側で実機実施
+- **JIT 確定事項**(M5-PR4 着手時 2026-05-14):
+  - `initialDeck` / `players` は Bootstrap で構築し Presenter ctor 8 引数化(`ScriptableObjectCardCatalog.RegisteredCardIds` 追加)
+  - `IsLegalMove` false 時は無反応 + `Debug.LogWarning`(`TryApplyAction` が `InvalidOperationException` を握りつぶす、ボタン disable / トーストは Phase 3)
+  - `PlayCardAction` の手札選択は「手札[0] 自動選択」(View 側 `RaisePlayClicked` が直近 Render の手札先頭を発火)
+- **本 ADR への訂正**:§3.2 の Presenter ctor スニペットを 8 引数化、`BootAsync` の `/* TBD: players / initialDeck */` を解消、`_savePath` 検査を統一パターンに(code-reviewer S-1)
+- **code-reviewer 指摘の反映**:W-1〜W-5 + S-1 / S-2 / S-3 / S-4 / S-5 を本 PR 内で反映、S-6(§11 備考欄補足)は本完成記録で反映
+- **次 PR への引き継ぎ**:
+  - `SaveAsync` / `LoadAsync` は M5-PR1 で `UniTask.RunOnThreadPool` ラップ実装済 → M5-PR5 では実装変更なし、Infrastructure.Tests の round-trip テスト追加 + Auto-save 統合に集中
+  - M5-PR5 で `HandleEndTurnClicked` に Auto-save(`SaveAsync`)を統合(`TryApplyAction` を bool 返却化、M5-PR5 着手時 JIT 確定 2026-05-14)
+
 ### M5 完成後の Phase 進捗バナー更新案
 
 M5-PR8 完成時点で CLAUDE.md §11「Phase 進捗」を以下に書き換え:
