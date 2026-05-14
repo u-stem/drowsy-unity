@@ -145,6 +145,8 @@ namespace Drowsy.Presentation.Games.DrowZzz
         {
             // UserSettingsBinder は [Inject] で注入された _userSettings を必要とするため、全 Awake / OnEnable /
             // [Inject](LifetimeScope.Awake 内)完了後に呼ばれる Start() で生成する(クラス xmldoc 参照)。
+            // _userSettings is null は VContainer 経由なら Construct の ?? throw で保証されるため通常到達しないが、
+            // VContainer 非経由でテスト等から直接生成された場合の安全網として残す(code-reviewer M5-PR6 W-2)。
             if (_uiDocument is null || _userSettings is null)
             {
                 Debug.LogError(
