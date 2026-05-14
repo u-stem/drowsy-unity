@@ -1,29 +1,37 @@
 using VContainer;
 using VContainer.Unity;
+using Drowsy.Application.Games.DrowZzz;
+using Drowsy.Presentation.Games.DrowZzz;
 
 namespace Drowsy.Bootstrap
 {
     /// <summary>
-    /// 1 対戦寿命の VContainer LifetimeScope(M5 骨格)。
+    /// 1 対戦寿命の VContainer LifetimeScope(M5-PR3 で Configure 実装)。
     /// </summary>
     /// <remarks>
     /// ADR-0016 §1「VContainer LifetimeScope 階層構造」+ §2「登録対象と寿命」で確定。
-    /// <see cref="ProjectLifetimeScope"/> の子スコープとして 1 対戦ごとに Create / Dispose する想定。
-    /// 本 PR (M5-PR1) では <b>骨格</b> のみを配置し、<see cref="Configure"/> 内では Register を行わない
-    /// (実 Register は M5-PR3 以降で順次追加)。
+    /// <see cref="ProjectLifetimeScope"/> の子スコープとして 1 対戦ごとに Create / Dispose する。
+    /// Project スコープの Singleton(<c>IRandomSource</c> / <c>IGameConfig</c> / <c>ICardCatalog&lt;IEffect&gt;</c> /
+    /// <c>IDrowZzzGameSessionSerializer</c> / <c>IUserSettings</c> / <c>DrowZzzRule</c> / セーブパス string)は
+    /// 子スコープから解決可能なため、本スコープでは Game 寿命の型のみを登録する。
     /// <para>
-    /// <b>後続 PR で追加される登録</b>:M5-PR3 で <c>StartGameUseCase</c> / <c>ApplyActionUseCase</c> /
-    /// <c>DrowZzzGamePresenter</c>(<c>AsImplementedInterfaces().AsSelf()</c>)/ <c>IDrowZzzGameView</c>
-    /// 実装(<c>RegisterComponentInHierarchy</c>)を Register。詳細は ADR-0016 §2 の登録対象表を参照。
+    /// <b>登録対象</b>(ADR-0016 §2 登録対象表):
+    /// <list type="bullet">
+    /// <item><see cref="StartGameUseCase"/> — Game Singleton、ADR-0014 で 2 引数 ctor 化済
+    /// (<c>IRandomSource</c> / <c>IGameConfig</c> は Project スコープから解決)</item>
+    /// <item><see cref="ApplyActionUseCase"/> — Game Singleton、ctor で <see cref="DrowZzzRule"/> を Project から解決</item>
+    /// <item><see cref="DrowZzzGamePresenter"/> — Game Singleton、<c>AsImplementedInterfaces()</c> で
+    /// <c>IStartable</c>(Boot 時 <c>Start()</c> 自動起動)/ <c>IDisposable</c>(スコープ Dispose 時解放)として登録、
+    /// <c>AsSelf()</c> で具象型 Resolve 経路も両立</item>
+    /// <item><see cref="DrowZzzGameView"/>(MonoBehaviour) — <c>RegisterComponentInHierarchy</c> で
+    /// シーン階層から検索し <c>AsImplementedInterfaces()</c> で <see cref="IDrowZzzGameView"/> として登録
+    /// (M5-PR3 着手時 JIT 確定 2026-05-14、<c>RegisterComponentInNewPrefab</c> は Phase 3 のリトライ UI で再評価)</item>
+    /// </list>
     /// </para>
     /// <para>
     /// <b>M5 範囲のスコープ生成タイミング</b>:アプリ起動直後 1 回限定(リスタート / リトライ UI なし)。
     /// Phase 3 で「新規対戦ボタン」を追加する際に <c>GameLifetimeScope.Create()</c> / <c>Dispose()</c>
     /// の繰り返し利用に拡張(ADR-0016 §1)。
-    /// </para>
-    /// <para>
-    /// <b>sealed 設計</b>:<see cref="ProjectLifetimeScope"/> 同様、Phase 3 まで継承不要のため <c>sealed</c>
-    /// で意図を明示(ADR-0016 §6)。
     /// </para>
     /// </remarks>
     public sealed class GameLifetimeScope : LifetimeScope
@@ -31,7 +39,16 @@ namespace Drowsy.Bootstrap
         /// <inheritdoc />
         protected override void Configure(IContainerBuilder builder)
         {
-            // M5-PR1 段階では空。M5-PR3 で UseCase / Presenter / View の Register 群を追加する。
+            // Application UseCase(Project スコープの IRandomSource / IGameConfig / DrowZzzRule を解決)
+            builder.Register<StartGameUseCase>(Lifetime.Singleton);
+            builder.Register<ApplyActionUseCase>(Lifetime.Singleton);
+
+            // Presentation
+            builder.Register<DrowZzzGamePresenter>(Lifetime.Singleton)
+                .AsImplementedInterfaces()
+                .AsSelf();
+            builder.RegisterComponentInHierarchy<DrowZzzGameView>()
+                .AsImplementedInterfaces();
         }
     }
 }

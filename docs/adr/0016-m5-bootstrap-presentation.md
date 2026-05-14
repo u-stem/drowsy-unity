@@ -112,11 +112,12 @@ ProjectLifetimeScope (DontDestroyOnLoad / Application 寿命)
 | `IUserSettings` | Project | Singleton (Disposable) | `Register<IUserSettings, PlayerPrefsUserSettings>(Lifetime.Singleton)` | `PlayerPrefsUserSettings.Dispose` は VContainer の `IObjectResolver.Dispose` で自動呼び出し(`IDisposable` 検出) |
 | `IDrowZzzGameSessionSerializer` | Project | Singleton | `Register<IDrowZzzGameSessionSerializer, DrowZzzGameSessionSerializer>(Lifetime.Singleton)` | M4-PR5 の `DrowZzzGameSessionSerializer` は stateless、interface 抽出が必要(本 ADR §5.2 で確定) |
 | `string`(セーブパス、Presenter ctor `string savePath` 引数として注入)| Project | Singleton | `RegisterInstance(DrowZzzGameSessionSerializer.DefaultSavePath())` | `DefaultSavePath` は `static` のため interface に含められず(W-1 / W-5 反映)、Project Singleton として string を登録。`Application.persistentDataPath` 呼び出しは Configure 内のメインスレッドで実行され、ワーカースレッドからの参照を回避。M5 範囲で string 登録は本 1 個のみ、型 `string` で衝突なく Resolve 可能。Phase 3 で「multi-slot save / log path 等」で複数 string 登録が必要になった時点で型別の wrapper(`SavePath` record 等)導入を再評価 |
-| `DrowZzzRule` | Project | Singleton | `Register<DrowZzzRule>(Lifetime.Singleton)` | stateless |
+| `EffectInterpreter` | Project | Singleton | `Register<EffectInterpreter>(Lifetime.Singleton)` | `DrowZzzRule` ctor の第 2 引数。VContainer は未登録の具象型を自動解決しないため明示登録が必要(M5-PR3 で実装、code-reviewer W-1 反映で本表に追記)|
+| `DrowZzzRule` | Project | Singleton | `Register<DrowZzzRule>(Lifetime.Singleton)` | stateless、ctor で `ICardCatalog<IEffect>` + `EffectInterpreter` を要求 |
 | `StartGameUseCase` | Game | Singleton | `Register<StartGameUseCase>(Lifetime.Singleton)` | ADR-0014 で 2 引数 ctor 化済、Game スコープに置くことで「対戦 1 回 1 instance」を担保 |
 | `ApplyActionUseCase` | Game | Singleton | `Register<ApplyActionUseCase>(Lifetime.Singleton)` | stateless、`DrowZzzRule` を constructor 注入 |
 | `DrowZzzGamePresenter` | Game | Singleton | `Register<DrowZzzGamePresenter>(Lifetime.Singleton).AsImplementedInterfaces().AsSelf()` | `IStartable` 実装で Boot 時に自動起動、`IDisposable` 実装で Game スコープ Dispose 時に CompositeDisposable / CTS / Subject 解放(本 ADR §3.2)。`AsSelf()` は単体テスト / View 参照で具象型 Resolve 経路を両立 |
-| `IDrowZzzGameView` 実装(View MonoBehaviour) | Game | Singleton | `RegisterComponentInHierarchy<DrowZzzGameView>().AsImplementedInterfaces()` | UIDocument を持つ MonoBehaviour、`[Inject]` で Presenter を受け取る |
+| `IDrowZzzGameView` 実装(View MonoBehaviour) | Game | Singleton | `RegisterComponentInHierarchy<DrowZzzGameView>().AsImplementedInterfaces()` | UIDocument を持つ MonoBehaviour。Presenter ctor の `IDrowZzzGameView` 引数として Container から解決される(依存方向は Presenter → View、View 側に `[Inject]` は不要、code-reviewer W-3 反映で訂正)|
 
 **`StartGameUseCase` を Singleton(Transient ではなく)で登録する理由**:M5 範囲では対戦 1 回限定で、ctor で受ける `IRandomSource` は Project Singleton(=各対戦で同一 instance を共有)。1 対戦内で `Execute()` は 1 回しか呼ばれないため Singleton と Transient で動作差なし、Singleton のほうがゲーム状態の単一情報源管理が明示的になる。Phase 3 で「新規対戦」を導入する場合は GameLifetimeScope ごと再生成するため、Singleton 寿命は GameLifetimeScope に従う形で自然にリセットされる。
 
@@ -418,12 +419,15 @@ public sealed class ProjectLifetimeScope : LifetimeScope
         // ワーカースレッドからの参照を回避、W-5 反映)
         builder.RegisterInstance(DrowZzzGameSessionSerializer.DefaultSavePath());
 
-        // Infrastructure
-        builder.Register<IRandomSource, XorShiftRandom>(Lifetime.Singleton);
+        // Infrastructure(XorShiftRandom は uint seed ctor のため Register<,> では解決不可、
+        // RegisterInstance で時刻ベース seed を渡す、code-reviewer W-2 反映)
+        builder.RegisterInstance<IRandomSource>(new XorShiftRandom(unchecked((uint)DateTime.UtcNow.Ticks)));
         builder.Register<IDrowZzzGameSessionSerializer, DrowZzzGameSessionSerializer>(Lifetime.Singleton);
         builder.Register<IUserSettings, PlayerPrefsUserSettings>(Lifetime.Singleton);
 
-        // Application
+        // Application(DrowZzzRule は ctor で ICardCatalog<IEffect> + EffectInterpreter を要求、
+        // EffectInterpreter は VContainer の自動解決対象外のため明示 Register、code-reviewer W-1 反映)
+        builder.Register<EffectInterpreter>(Lifetime.Singleton);
         builder.Register<DrowZzzRule>(Lifetime.Singleton);
     }
 }
