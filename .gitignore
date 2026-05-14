@@ -133,3 +133,10 @@ lefthook-local.yml
 # Designer ワークフロー / PR description 用のローカルスクリーンショット保管庫
 # (M4-PR7 で確立、PR には GitHub の Attach files 経由で添付し、リポジトリには含めない)
 /docs/screenshots/
+
+# Web / WebGL / IL2CPP の Build 成果物(M4-PR7 第 6 弾で確立、Phase 6 で CI 整備時に再整理)
+# - /Builds/    : `File > Build Profiles > Build` の出力先(WASM / index.html / TemplateData 等)
+# - /Data/      : Burst が IL2CPP 経路で生成するネイティブコードキャッシュ
+#                 (lib_burst_generated.cpp / .wasm、Build 毎に再生成、リポジトリ管理不要)
+/Builds/
+/Data/
