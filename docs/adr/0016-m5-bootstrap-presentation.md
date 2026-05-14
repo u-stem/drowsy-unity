@@ -368,12 +368,18 @@ Main.unity
 
 #### 7.1 配置先
 
+**訂正記録(M4-PR7 反映)**:本 ADR 起票時に「各 EffectAsset 派生を `<CardName>/<EffectName>.asset` として、CardEntryAsset を `<CardName>/<CardName>.asset` として独立 `.asset` 配置」と記述していたが、実態は **EffectAsset 派生型(12 種)と CardEntryAsset がいずれも `[Serializable] POCO`(ScriptableObject 非継承)**であり、`DrowZzzCardCatalog.asset` 1 個の中に `[SerializeReference]` で polymorphic にインライン編集される(ADR-0012 §3 案 (a) で確定済の事実、M4-PR1〜PR4 で実装済)。M4-PR7 で本 §7.1 を実態整合に訂正、§7.2 Bootstrap スニペットの `[SerializeField]` 注入対象も 2 SO のみで整合済。
+
 | Asset | 配置先 | 備考 |
 | ---- | ---- | ---- |
-| `DrowZzzGameConfigAsset` (ADR-0012 M4-PR1) | `Assets/_Project/Data/Configuration/DrowZzzGameConfig.asset` | 1 個固定 |
-| `ScriptableObjectCardCatalog` (M4-PR1〜PR3) | `Assets/_Project/Data/Catalogs/DrowZzzCardCatalog.asset` | 1 個固定 |
-| 各 `EffectAsset` 派生(M4-PR2 / PR3) | `Assets/_Project/Data/Cards/<CardName>/<EffectName>.asset` | M4-PR7 でカード単位フォルダ確立 |
-| `CardEntryAsset`(M4-PR3) | `Assets/_Project/Data/Cards/<CardName>/<CardName>.asset` | M4-PR7 で配置 |
+| `DrowZzzGameConfigAsset`(ScriptableObject、M4-PR7 で追加実装)| `Assets/_Project/Data/Configuration/DrowZzzGameConfig.asset` | 1 個固定、`[CreateAssetMenu(menuName = "Drowsy/DrowZzz/Game Config")]` |
+| `ScriptableObjectCardCatalog`(ScriptableObject、M4-PR1〜PR3 完成)| `Assets/_Project/Data/Catalogs/DrowZzzCardCatalog.asset` | 1 個固定、`[CreateAssetMenu(menuName = "Drowsy/DrowZzz/Card Catalog")]`、Entries / Effects は本 Asset 内にインライン編集 |
+| 各 `EffectAsset` 派生型(`[Serializable] POCO`、M4-PR2 / PR3 完成)| `DrowZzzCardCatalog.asset` の **`Entries[i].Effects[j]` インライン** | 独立 `.asset` ファイルにはならない、`[SerializeReference]` で polymorphic 編集 |
+| `CardEntryAsset`(`[Serializable] POCO`、M4-PR1 完成)| `DrowZzzCardCatalog.asset` の **`Entries[i]` インライン** | 独立 `.asset` ファイルにはならない、`SerializeField` で配列要素として保持 |
+
+Designer ワークフローの完全な手順は [`docs/architecture/designer-workflow.md`](../architecture/designer-workflow.md)(M4-PR7 で確立)を参照。
+
+**`[SerializeReference]` の polymorphic 編集 UX**(M4-PR7 第 4 弾で確立):Unity 6 標準 UI では `EffectAsset` 派生型の型選択ドロップダウンが安定して表示されないため、`Assets/_Project/Scripts/Infrastructure/Editor/EffectAssetReferenceDrawer.cs`(Editor only、`Drowsy.Infrastructure.Editor` asmdef)を導入し、`[CustomPropertyDrawer(typeof(EffectAsset), useForChildren: true)]` で全派生型のドロップダウン UI を提供する。M5-PR3 で UI Toolkit を採用する際の Inspector 操作にも影響なし(Drawer は Unity Inspector 内部のみで動作、Build には乗らない)。
 
 #### 7.2 Bootstrap への注入経路
 

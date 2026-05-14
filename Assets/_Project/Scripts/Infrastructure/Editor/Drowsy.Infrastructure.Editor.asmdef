@@ -1,0 +1,17 @@
+{
+  "name": "Drowsy.Infrastructure.Editor",
+  "rootNamespace": "Drowsy.Infrastructure.Editor",
+  "references": [
+    "Drowsy.Infrastructure"
+  ],
+  "autoReferenced": false,
+  "noEngineReferences": false,
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "includePlatforms": ["Editor"],
+  "excludePlatforms": [],
+  "defineConstraints": [],
+  "versionDefines": [],
+  "optionalUnityReferences": []
+}

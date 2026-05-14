@@ -45,7 +45,7 @@ namespace Drowsy.Application.Games.DrowZzz
         public const int DistinctValueCount = (MaxValue - MinValue) / Step + 1;
 
         /// <summary>
-        /// DDP プール初期総枚数(L2、<see cref="DistinctValueCount"/> × <see cref="CopiesPerValue"/> = 36)。
+        /// DDP プール初期総枚数(L2、<see cref="DistinctValueCount"/> × <see cref="CopiesPerValue"/> = 39)。
         /// </summary>
         public const int TotalPoolSize = DistinctValueCount * CopiesPerValue;
 

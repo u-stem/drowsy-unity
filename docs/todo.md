@@ -56,6 +56,27 @@
 
 ## 未着手
 
+- [ ] **`Window > Analysis` サブメニュー(Build Profiler / Build Report Inspector 等)の押下不能要因調査(Phase 6 候補)** `priority: low`
+  - **Why**: M4-PR7 第 6 弾(Web Desktop Development Build 初回成功、commit `5536a85` 2026-05-14)後、プロジェクトオーナーが `Window > Analysis` サブメニューを開こうとしたが、すべてのボタン(Build Profiler / Build Report Inspector / Frame Debugger 等)が **押せない状態** だったと報告。原因仮説:(1) Editor が Compile 中 / Domain Reload 中で一時無効化、(2) 必要な Profiling パッケージが `manifest.json` に未登録、(3) Unity 6 で Build Report の場所が更に変わっている(`Window > Analysis > Build Profiler` ではなく別パス)。M4-PR7 完成記録としては Build Report での型保持確認スクショなしで進める判断(オーナー確認済 2026-05-14)だが、Phase 6(CI 整備)で WebGL Build の自動検証を導入する前に再現性を確認したい
+  - **Done when**:
+    - `Window > Analysis` 押下不能の再現条件を特定(Compile 中 / Domain Reload 中 / パッケージ未登録 / 別パス 等)
+    - 必要なら `manifest.json` に `com.unity.profiling.core` 等を追加 or 別パス(`Window > Analysis > Build Profiler` Unity 6 改名後の場所)を `docs/architecture/webgl-il2cpp-verification.md` に反映
+    - Build Report 経由で `Drowsy.Domain` / `Drowsy.Application` / `Drowsy.Infrastructure` / `Newtonsoft.Json` の型保持を確認できた状態を Phase 6 CI で機械検証可能化
+    - 結果がリポジトリに反映済み(本 TODO を「完了済み」へ移動)
+  - **Related**: [ADR-0012 §M4-PR7 完成記録](adr/0012-m4-scriptableobject-and-persistence.md)、[`docs/architecture/webgl-il2cpp-verification.md`](architecture/webgl-il2cpp-verification.md) §「手順 3: 型保持の検証」、M4-PR7 第 6 弾 commit `5536a85`
+  - **Notes**: 本検証なしでも Build 自体が `Result: Succeeded`(Error 0)で完了したため、`link.xml` の効果は **間接的に担保**(型剥がしで Build エラーが出るなら Succeeded にならない)。Phase 6 CI で直接検証経路を確立するまでは「Build 通過 = link.xml 動作」を間接証拠として運用
+
+- [ ] **`DrowZzzGameConfigAsset.OnValidate` の ADR-0012 §4 検証 3 件追加実装(M5 以降)** `priority: low`
+  - **Why**: M4-PR7 第 1 弾(`DrowZzzGameConfigAsset` 実装)では ADR-0012 §4「Designer 検証(`OnValidate`、初期推奨)」3 件のうち **「null / 空」検出のみ**(INF-078 / INF-079)を実装し、残り 3 件は先送り(M4-PR7 code-reviewer W-3 反映)。理由:`_fdpPool.Length >= N` の N が SO 側ハードコードになり Phase 3 N>2 拡張で再修正必要 / `_fdpPool` 重複なしは `StartGameUseCase` 側で実行時 `ArgumentException` 担保済(Designer フィードバック即時性のみが論点)/ `_ddpPool` 合計値 0 は LogWarning のみで build を妨げず仕様の硬さも弱い。本番経路の fail-fast は確保済みのため `priority: low`
+  - **Done when**:
+    - `_fdpPool.Length >= プレイヤー数 N`(N=2 ハードコード or `IGameConfig` 経由動的化を判断)の検証を `OnValidate` に追加、INF-080 で採番、テスト追加
+    - `_fdpPool` 重複なし検証を `OnValidate` に追加(`Debug.LogError` + Asset リンク)、INF-081 で採番、テスト追加
+    - `_ddpPool` 合計値 0 検証を `OnValidate` に追加(`Debug.LogWarning` のみ、build を妨げない)、INF-082 で採番、テスト追加
+    - `docs/specs/infrastructure/game-config-asset.md` の「ADR-0012 §4 検証の縮退と先送り」セクションを「実装完了」に書き換え
+    - 結果がリポジトリに反映済み(本 TODO を「完了済み」へ移動、`Related` に PR 番号追記)
+  - **Related**: [ADR-0012 §4](adr/0012-m4-scriptableobject-and-persistence.md)、[`docs/specs/infrastructure/game-config-asset.md`](specs/infrastructure/game-config-asset.md)、`Assets/_Project/Scripts/Infrastructure/Configuration/DrowZzzGameConfigAsset.cs`(XML コメント `remarks` で先送り明記)、M4-PR7 code-reviewer W-3 反映
+  - **Notes**: 本番経路では `StartGameUseCase` が抽選時に `ArgumentException` を投げるため、本 OnValidate 強化は Designer の Inspector 編集中の即時フィードバック改善のみが対象(M5 / Phase 3 で UI 体験を煮詰める時点で再評価が筋)
+
 - [ ] **M4 範囲のカバレッジ 100% 未達箇所の特定 + 補完テスト追加(次 PR 候補:M4-PR7 完成 PR 同梱 or 別 chore PR)** `priority: medium`
   - **Why**: M4-PR6 完成後の Unity Test Runner + `com.unity.testtools.codecoverage` 計測でカバレッジ 100% 未達箇所がオーナー目視で確認された(2026-05-13、本 TODO 起票 PR #72 同梱の M4-PR6 完成記録セッション)。
     - **確認済の事実**: オーナーが Coverage Window 上で「100% に達していない箇所がある」と目視確認

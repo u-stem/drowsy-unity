@@ -1086,6 +1086,113 @@ CLAUDE.md §11「Phase 進捗」M4 行を以下に更新:
 - 旧: `**M4**(永続化 / SO 化 + ユーザー設定): **進行中** — ADR-0012 起票済、M4-PR1 〜 M4-PR5 完成 ... M4-PR6(`IUserSettings` + PlayerPrefs)着手予定`
 - 新: `**M4**(永続化 / SO 化 + ユーザー設定): **進行中** — ADR-0012 起票済、M4-PR1 〜 M4-PR5 完成 ... + M4-PR6(`IUserSettings` + `PlayerPrefsUserSettings`:Domain.asmdef に R3.dll precompiledReferences + ReactiveProperty<T> 経由の Observable 公開 + PlayerPrefs key prefix `drowsy.*` + ctor データ衛生 + 26 テスト追加)完成、M4 累計 112 テスト、M4-PR7(M4 完成 PR:統合確認 + Designer ワークフロー実証 + WebGL/IL2CPP 実機検証 + カバレッジ 100% 未達補完(`docs/todo.md` で追跡))着手予定`
 
+### M4-PR7 完成記録(2026-05-14、M4 完成 PR — Designer ワークフロー実証 + WebGL Build 検証 + DrowZzzGameConfigAsset SO 追加実装)
+
+**完成 PR**: PR #(本 PR、merge 後に番号確定)`chore/m4-pr7-designer-workflow-and-completion` ブランチに 7 commit 同梱:第 1 弾 `eb3b624`(`DrowZzzGameConfigAsset` SO + 8 テスト + 手順書 + ADR-0016 §7.1 訂正)/ 第 2 弾 `ede14f0`(`.meta` × 4 件 Auto-refresh 生成)/ 第 2.5 弾 `d72024c`(`.gitignore` に `.DS_Store` / `docs/screenshots/` 追加)/ 第 4 弾 `dedb271` + fix `3a44a2a`(`EffectAssetReferenceDrawer` Custom PropertyDrawer + Editor asmdef + `System.Reflection` using fix)/ 第 5 弾 `04ab770`(3 カード Effects を Drawer 経由で完全入力)/ 第 6 弾 `5536a85`(WebGL Build 初回成功 + Build Profile 保存 + URP / Web 設定整合 + `Builds/` / `Data/` を `.gitignore`)。本 ADR §3 で宣言されながら M4-PR1〜PR6 で見落とされていた `DrowZzzGameConfigAsset` SO 実装を本 PR で消化し、Designer ワークフロー実証 + WebGL/IL2CPP 実機検証 + ADR-0016 §7.1 実態整合訂正を 1 PR に集約。
+
+#### Definition of Done 達成項目(本 ADR §「M4-PR7 着手時の項目」 + ADR-0016 §「M5-PR1 着手前提条件」整合)
+
+| スコープ項目 | 達成状況 | 備考 |
+| ---- | ---- | ---- |
+| `DrowZzzGameConfigAsset` SO 実装 | ✓ | `Drowsy.Infrastructure.Configuration` namespace、`[CreateAssetMenu("Drowsy/DrowZzz/Game Config")]`、`Reset()` で ADR-0006 §M1 デフォルト + `DdpPoolConstants.BuildDefaultPool()` 39 要素投入、`OnValidate()` で空 / null に `Debug.LogError`、`internal SetPoolsForTest`、8 テスト(INF-072〜079)。M4-PR1〜PR6 で見落とされていた本 ADR §3 の宣言を消化 |
+| `Assets/_Project/Data/Configuration/DrowZzzGameConfig.asset` 実 .asset 配置 | ✓ | Designer が Inspector 経由で生成、`Reset()` で本物デフォルト値自動投入を実機確認(`docs/screenshots/2025_05_13_01.png`)|
+| `Assets/_Project/Data/Catalogs/DrowZzzCardCatalog.asset` 実 .asset 配置 + 3 カード Effects 完全入力 | ✓ | Custom Drawer 経由で 3 カード(No.00「夢」/ No.01「コップ一杯の脅威」/ No.02「緑の侵攻」)の全 Effects(`TimeOfDayBranchEffectAsset` / `ChoiceEffectAsset` / `KeywordedEffectAsset` / `EarlyWinTriggerEffectAsset` + Marker 3 種 + `AdjustSdpEffectAsset` / `DrawCardEffectAsset` / `ApplyInfluenceEffectAsset` / `RemoveInfluenceEffectAsset` / `PlayerInfluenceAsset` 中間型)を入力、M4-PR4 fixture と同等構造を実 `.asset` で表現 |
+| `EffectAssetReferenceDrawer` Custom PropertyDrawer | ✓ | Unity 6 標準 UI では `[SerializeReference] EffectAsset[]` の型選択ドロップダウンが安定しない問題を実機確認(第 3 弾)→ 第 4 弾で本 Drawer 導入、Editor only asmdef + `FormatterServices.GetUninitializedObject` + Undo 統合 + Domain Reload キャッシュ無効化 + 子要素手動 walk(無限再帰回避)で実装 |
+| `docs/architecture/designer-workflow.md` 新設 | ✓ | 3 カードの完全構造リファレンス + `[SerializeReference]` Drawer 経由の操作手順(§2-3 / §2-4)+ ワークフロー 3 段階(GameConfig / CardCatalog / Application 読み取り)|
+| `docs/architecture/webgl-il2cpp-verification.md` 新設 | ✓ | Unity 6 の `File > Build Profiles`(`Build Settings` から名称変更)+ `Web > Desktop - Development` Build Profile 経路 + 既知の制約(`OnApplicationQuit` 非発火 / Thread Pool 制限 / IndexedDB 同期 I/O 不可)|
+| WebGL/IL2CPP 実機 Build 検証 | ✓ | 第 6 弾で Web Desktop Development Build を実行、**59 秒で `Result: Succeeded`**、Error 0 / Warning 3(Bootstrap・Presentation 空 asmdef スキップ × 2 + Rendering Debugger Variants Stripping × 1、いずれも想定内)。`link.xml`(M4-PR5 導入)の効果は **Build 通過自体で間接担保**(型剥がしで Build エラーが出るなら Succeeded にならない)、直接の Build Report 型保持確認は `Window > Analysis` 押下不能の Phase 6 候補 TODO で追跡 |
+| ADR-0016 §7.1 訂正(EffectAsset / CardEntryAsset 配置経路) | ✓ | 起票時の「各 EffectAsset 派生を独立 .asset」記述を実態(POCO + `[SerializeReference]` インライン編集)に上書き訂正、訂正記録同梱 |
+| `DdpPoolConstants.cs:48` コメント誤記 fix | ✓ | `= 36` → `= 39`(13 種 × 3 枚 = 39 が正、ADR-0009 §3 訂正の取りこぼし)|
+| Unity Editor 言語 = English 確定 | ✓ | プロジェクトオーナー Unity Editor 言語を日本語 → 英語に切替、`SdpTarget` enum の機械翻訳「サブ除く」誤訳(CLAUDE.md §4 識別子英語規約と乖離)を解消、第 5 弾以降の Designer ワークフローで認識ズレなし |
+
+#### 仕様 ID / NUnit 増加
+
+- 仕様 ID 新規採番(INF-072〜079、8 件、`DrowZzzGameConfigAsset` 仕様):
+  - **INF-072 / INF-073**: `FdpPool` / `DdpPool` SerializeField 経由値読み取り(Ubiquitous)
+  - **INF-074 / INF-075**: `null` 時の `Array.Empty<int>()` graceful
+  - **INF-076 / INF-077**: `Reset()` で ADR-0006 §M1 デフォルト 10 要素 + `DdpPoolConstants.BuildDefaultPool()` 39 要素自動投入
+  - **INF-078 / INF-079**: `OnValidate()` 空 / null は `Debug.LogError`
+- NUnit Property unique: **+6 件 → 累計 431 件**(M4-PR6 累計 423 件 + M4 範囲カバレッジ補完 chore PR #75 で +2 件(`#A LanguageCodes 直接テスト` で USR-005 を `[Ubiquitous]` → 通常要件化 / `#B PlayerPrefsUserSettings.Dispose 冪等性` で USR-027 新規)= 425 件を出発点に、本 PR で +6 件、code-reviewer P-2 反映 2026-05-14)。テスト件数 +8:`DrowZzzGameConfigAssetTests` 8 メソッド、INF-072 / INF-073 は `[Ubiquitous]` テスト免除なしで Property 採番、INF-074 / 075 / 078 / 079 は Abnormal 分類
+
+#### 本 PR で確定した本 ADR §「M4-PR7 着手時の項目」3 件 + 追加 JIT 項目
+
+| 項目 | 確定内容 |
+| ---- | ---- |
+| M4 完成記録(全体)を本 ADR に追記 | ✓ 本 commit に `§M4 完成記録(全体)` として下記追加 |
+| CLAUDE.md §11 Phase 進捗 M4 行を「完結 → M5 が次の対象」に更新 | ✓ 本 commit 同梱(`進行中 → 完結`、M5 行を「着手前 → 着手可能」)|
+| Designer ワークフロー実証スクショ | ✓ `docs/screenshots/2025_05_{13,14}_{01..06}.png`(`.gitignore` でリポジトリ非含有、Designer 作業時の実機確認証跡として PR description 添付経路)|
+| **(追加)Asset 配置方式 + Designer 体験の進め方** | プロジェクトオーナー手動 Inspector 操作を採用(第 3 弾)、Editor 拡張スクリプト方式は不採用(Designer 体験の本質を検証する目的と乖離)|
+| **(追加)`[SerializeReference]` 型選択 UX 対応** | Custom PropertyDrawer 導入(`EffectAssetReferenceDrawer`、第 4 弾)、OSS パッケージ / Editor 言語切替の他 2 案は不採用 |
+| **(追加)Unity Editor 言語設定** | English 確定(機械翻訳「サブ除く」誤訳防止、CLAUDE.md §4 識別子英語規約整合)|
+| **(追加)Adaptive Performance / URP 自動マイグレーションの扱い** | Adaptive Performance は Revert(本プロジェクト WebGL 主体で不要)、URP 17.4.0 マイグレーション(`filter` プロパティ追加等)は受容(Unity 6.x 自動更新)|
+
+#### 本 PR で確立した運用パターン(M5 / Phase 3 以降で継承)
+
+1. **Designer ワークフロー手順書の段階分割**:`docs/architecture/designer-workflow.md` で「ワークフロー 1(GameConfig 単独 SO)→ ワークフロー 2(CardCatalog インライン編集)→ ワークフロー 3(Application 層読み取り、M5 で実装)」の 3 段階構造を確立。M5 Bootstrap 統合時に §「ワークフロー 3」を実装で埋める形で継承(本 §「ワークフロー 3」末尾の TODO 明記)
+2. **`[SerializeReference]` 編集 UX の Custom PropertyDrawer 補完**:Unity 6 標準 UI の不安定さを Custom Drawer + `FormatterServices.GetUninitializedObject` + Undo 統合で補完するパターン。M5-PR3 で UI Toolkit に切り替える際もこのパターンで Editor 拡張を増やす余地
+3. **Unity 6 名称変更への手順書追従**:`File > Build Settings` → `File > Build Profiles`、`WebGL` → `Web` 等の Unity 6 名称変更を `docs/architecture/webgl-il2cpp-verification.md` で記録、将来の Unity 7 等で再変更があった場合の参照経路を整備
+4. **PR 内 7 commit の段階分割運用**:第 1 弾(Claude 実装)/ 第 2 弾(Unity Auto-refresh 機械生成)/ 第 4 弾(Custom Drawer)/ 第 5 弾(Designer 手作業)/ 第 6 弾(WebGL Build 検証)の 5 段階 + 補助 2 commit。論理的に独立した変更を分離 commit にして PR 履歴可読性を確保、code-reviewer subagent でも各段階を独立にレビュー可能(W-1 〜 W-7 / P-1 〜 P-7 反映を各段階で実施)
+
+#### code-reviewer subagent 反映(第 1 弾 W4/P6 + 第 4 弾 W4/P5 + 第 6 弾 W0/P0、計 7 + 5 = 12 件中 11 件反映)
+
+詳細は各 commit message を参照。代表的反映:
+- 第 1 弾 W-1: `DdpPool 36 → 39` 表記全文書横断訂正 + `DdpPoolConstants.cs:48` 既存コメント誤記同梱 fix
+- 第 1 弾 W-2: reflection helper `Assume.That` + `TargetInvocationException` unwrap 防御
+- 第 1 弾 W-3: ADR-0012 §4 検証 3 件(N=2 長さ / 重複 / 合計値 0)の縮退を SO XML コメント + spec md + `docs/todo.md` の 3 箇所で明示
+- 第 4 弾 W-1: Drawer の `GetPropertyHeight` / `OnGUI` で `SerializedProperty.NextVisible` 経由の手動 walk に変更(循環再帰回避)
+- 第 4 弾 W-3: `OnGUI` 内の `ApplyModifiedProperties` 削除 → `Undo.RecordObject` 委譲
+- 第 4 弾 W-4: `[InitializeOnLoadMethod]` + `AssemblyReloadEvents.afterAssemblyReload` キャッシュ無効化
+
+### M4 完成記録(全体)(2026-05-14)
+
+**完成 PR**: M4-PR1(PR #60、`fb6b629`)/ M4-PR2(PR #62、`4b9e964` 前 commit)/ M4-PR3(PR #65、`37d5f1c`)/ M4-PR4(PR #67、`20bd853`)/ M4-PR5(PR #69、`b94eae7`)/ M4-PR6(PR #71、`fd94cfc`)/ **M4-PR7**(本 PR、merge 後に番号確定)。ADR-0012 §3 / §6 / §7 / §8 で確定した 4 つのメインスコープ + サブスコープを 7 PR に分割して順次達成、Phase 2 完了の最小定義(ADR-0005 §7)のうち「永続化が動く / ユーザー設定が動く / カードデータが SO で編集可能」の 3 軸を充足する。
+
+#### Definition of Done(本 ADR §1 / §6 で確定した M4 スコープ)達成総括
+
+| スコープ項目 | 達成 PR | 達成方法 |
+| ---- | ---- | ---- |
+| **メイン:`ScriptableObjectCardCatalog`** | M4-PR1 | SO 骨格 + `[CreateAssetMenu]` + `OnValidate` 重複検出、INF-001〜012 |
+| **メイン:`IGameConfig` SO 実装 `DrowZzzGameConfigAsset`** | M4-PR7 | SO 実装(`Drowsy.Infrastructure.Configuration`)+ `Reset()` 本物デフォルト + 8 テスト、INF-072〜079 |
+| **メイン:`IEffect` の SO 表現(全 12 派生型)** | M4-PR2(`AdjustSdpEffectAsset` 先行)+ M4-PR3(残り 11 派生型 + wrapper 再帰 + 中間型 `EffectBranchAsset` / `PlayerInfluenceAsset`)| `[Serializable] POCO + 変換層` 案 (a)、INF-013〜044 |
+| **メイン:既存 3 カード(No.00 / No.01 / No.02)の SO 移行** | M4-PR4(SO ↔ InMemory 同値性検証 fixture)+ M4-PR7(実 .asset 配置)| Infrastructure.Tests fixture でテスト内動的構築 → M4-PR7 で `DrowZzzCardCatalog.asset` に 3 Entry 完全入力、INF-045〜047 |
+| **サブ:`DrowZzzGameSession` JSON 永続化** | M4-PR5 | Newtonsoft.Json + カスタム `JsonConverter` `"type"` discriminator + `PersistedSessionV1` DTO + `link.xml` + `IsExternalInit` polyfill、INF-048〜068、43 テスト |
+| **サブ:`IUserSettings` + PlayerPrefs** | M4-PR6 | `Domain.Configuration` interface + `Infrastructure.Settings.PlayerPrefsUserSettings` + R3 `ReactiveProperty<T>` Observable 公開、USR-001〜027、26 テスト |
+| **検証:Designer ワークフロー実証** | M4-PR7 | Inspector 手作業で 2 .asset 配置 + 3 カード Effects 入力 + Custom PropertyDrawer 補完、`docs/architecture/designer-workflow.md` + スクショ 6 枚で証跡 |
+| **検証:WebGL/IL2CPP 実機 Build** | M4-PR7 | Web Desktop Development Build を `Result: Succeeded` 59 秒で完了、Error 0、`link.xml` 効果は Build 通過で間接担保、`docs/architecture/webgl-il2cpp-verification.md` + Build Profile 共有資産 `Assets/Settings/Build Profiles/web.desktop.development.asset` |
+| **検証:CLI 機械検知レイヤ整備** | PR #63(M4-PR2 後 chore) | `lefthook` pre-commit に `dotnet build` 追加で型解決エラー(CS0246 / CS1614 等)を Unity Editor 起動なしに約 4 秒で検出、`scripts/refresh-unity-assets.sh` / `scripts/run-unity-tests.sh` Unity CLI wrap |
+
+#### M4 累計成果物
+
+- **PR 数**:8 PR(M4-PR1〜PR7 + CLI 機械検知レイヤ整備 chore PR #63)
+- **コミット数**:M4-PR7 内 7 commit を含めて約 30+ commit(各 PR の完成記録 / fix 同梱含む)
+- **新規 EARS 件数**:INF-001〜079(**79 件**、`grep -rhoE "INF-[0-9]+" docs/specs/ | sort -u | wc -l` 実測)+ USR-001〜027(27 件)= **106 件**(本 ADR §「要件 ID prefix」整合、code-reviewer W-1 反映 2026-05-14)
+- **新規 NUnit Property unique**:M4 開始時 360 件 → M4 完成時 **431 件**(+71 件、テスト件数換算で +120 件相当)
+- **新規 ScriptableObject 数**:`ScriptableObjectCardCatalog` + `DrowZzzGameConfigAsset` の 2 SO 型 + `DrowZzzCardCatalog.asset` + `DrowZzzGameConfig.asset` の 2 実 .asset
+- **新規 `[Serializable] POCO` 数**:`EffectAsset` 基底 + 12 派生型 + `EffectBranchAsset` / `PlayerInfluenceAsset` 中間型 2 件 + `CardEntryAsset` + `AttributeEntry`、計 **17 型**
+- **新規 asmdef**:`Drowsy.Infrastructure.Tests`(M4-PR1)+ `Drowsy.Infrastructure.Editor`(M4-PR7 第 4 弾)、計 **2 asmdef**
+- **新規 link.xml**:`Assets/link.xml`(M4-PR5、IL2CPP AOT 保護、Newtonsoft.Json + Drowsy.* 全体 `preserve="all"`)
+- **Domain.asmdef に追加した precompiledReferences**:`R3.dll`(M4-PR6、ReactiveProperty を Domain で扱うため、CLAUDE.md §4 「R3 をコア lib として採用」整合)
+
+#### 残課題(`docs/todo.md` で追跡、M5 / Phase 3 / Phase 6 で順次消化)
+
+- **M4 範囲のカバレッジ 100% 未達箇所の特定 + 補完テスト追加**(`priority: medium`、M4-PR6 完成 PR #71 後の Unity Test Runner 計測でオーナー目視確認、`#A LanguageCodes 直接テスト` / `#B PlayerPrefsUserSettings.Dispose 冪等性` は本 M4-PR6 完成記録 PR で部分対応済、未到達残経路は Phase 6 CI で機械検証へ)
+- **`DrowZzzGameConfigAsset.OnValidate` の ADR-0012 §4 検証 3 件追加実装**(`priority: low`、N=2 長さ / 重複 / 合計値 0 の Designer フィードバック強化、本番経路は `StartGameUseCase` fail-fast で担保済、M5 以降で UI 体験煮詰める時点で再評価)
+- **`Window > Analysis` サブメニュー押下不能要因調査**(`priority: low`、M4-PR7 第 6 弾で Build Report 直接型保持確認が実施不能だった件、Phase 6 CI 整備時に再現条件特定 + 代替経路確立)
+
+#### Phase 2 完了の最小定義(ADR-0005 §7)に対する M4 充足軸
+
+ADR-0005 §7 で確定した 5 軸のうち、M4 完成で以下 **4 軸** が **動作確認済**(残るは「Play モード操作」のみ → M5、code-reviewer W-2 反映 2026-05-14。なお、本 M4 で「新たに達成した 3 要素」(永続化 / ユーザー設定 / Designer SO 編集)は ADR-0005 §7 5 軸の内訳ではなく M4 固有の達成軸であり、両者は区別される):
+
+| 軸 | 状態 | 達成 |
+| ---- | ---- | ---- |
+| N=2 で起動できる | M1 で達成、本 M4 で SO 経路でも継続動作 | ✓(M1-PR7 / M4-PR4) |
+| ルールメモの主要部分が動作する | M1 / M2 / M3 で達成 | ✓(M3-PR6) |
+| 勝敗判定が出る | M3 で達成 | ✓(M3-PR1) |
+| **永続化が動く** | **M4 で達成** | **✓(M4-PR5)** |
+| Unity Play モードで人間が操作できる | M5 で達成予定 | ⬜(ADR-0016、M5-PR1〜PR8) |
+
+加えて M4-PR6 でユーザー設定(BGM / SE / Language)永続化、M4-PR7 で Designer がカードデータを Inspector 編集できる経路、M4-PR7 第 6 弾で WebGL Build 経路が確立。**残るは M5(Bootstrap + Presentation 最小)のみ** で Phase 2 完結。
+
 ### M4 完成記録の追記タイミング
 
 本 ADR の M4-PR1〜PR7 完成記録は各 PR 単位で本 ADR §M4-PR-N 完成記録(2026-MM-DD)として追記する(ADR-0007 / ADR-0010 / ADR-0011 §「完成記録の追記タイミング」と同パターン)。M4 全体の完成時に §M4 完成記録(全体)を別途追加、Definition of Done 達成方法を集約する。
