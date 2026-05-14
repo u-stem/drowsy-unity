@@ -1,8 +1,11 @@
 using System;
 using System.IO;
 using System.Text;
+using System.Threading;
+using Cysharp.Threading.Tasks;
 using Newtonsoft.Json;
 using Drowsy.Application.Games.DrowZzz;
+using Drowsy.Application.Persistence;
 using Drowsy.Infrastructure.Persistence.Models;
 
 namespace Drowsy.Infrastructure.Persistence
@@ -34,8 +37,16 @@ namespace Drowsy.Infrastructure.Persistence
     /// (2026-05-13 ユーザー JIT 確定)。link.xml は <see cref="Drowsy.Domain"/> / <see cref="Drowsy.Application"/>
     /// 配下の serialize 対象型を <c>preserve="all"</c> で保持する。
     /// </para>
+    /// <para>
+    /// <b>M5-PR1 改修</b>: ADR-0016 §5.2 で確定した <see cref="IDrowZzzGameSessionSerializer"/> を実装し、
+    /// 非同期 API(<see cref="SaveAsync"/> / <see cref="LoadAsync"/>)を追加した。初期実装は ADR-0016 §5.2
+    /// の「初期推奨」通り同期版を <c>UniTask.RunOnThreadPool</c> ラップする(WebGL では Main Thread fallback、
+    /// 必要なら M5-PR5 で <c>UniTask.Yield</c> 挿入や <c>StreamReader.ReadToEndAsync</c> 再実装に切替)。
+    /// 同期 API(<see cref="Save"/> / <see cref="Load"/>)は M4-PR5 時点の 43 テストとの後方互換のため
+    /// シグネチャ・挙動を完全維持する。
+    /// </para>
     /// </remarks>
-    public sealed class DrowZzzGameSessionSerializer
+    public sealed class DrowZzzGameSessionSerializer : IDrowZzzGameSessionSerializer
     {
         private readonly JsonSerializerSettings _settings;
 
@@ -116,6 +127,53 @@ namespace Drowsy.Infrastructure.Persistence
             }
 
             return dto.ToDomain();
+        }
+
+        /// <summary>
+        /// <see cref="Save"/> を ThreadPool 上で非同期実行する。
+        /// </summary>
+        /// <param name="session">永続化対象の session</param>
+        /// <param name="path">保存先 path</param>
+        /// <param name="ct">キャンセル要求</param>
+        /// <remarks>
+        /// ADR-0016 §5.2「初期推奨は同期版を <c>UniTask.RunOnThreadPool</c> ラップ」確定通り。
+        /// WebGL は ThreadPool が Main Thread fallback になるため、I/O ブロックが UI フリーズを
+        /// 引き起こす場合は M5-PR5 で <c>UniTask.Yield</c> 挿入 / <c>StreamReader.ReadToEndAsync</c>
+        /// 再実装等への切替を検討する。引数 null / 空白の検査は同期チェックで先に行い、ThreadPool
+        /// 内では <see cref="Save"/> の検査と二重に走らないよう注意(検査結果は同じ例外型なので、外側で
+        /// 早期 throw して呼び出し側の <c>try/catch</c> を素直に書けるようにする)。
+        /// </remarks>
+        public UniTask SaveAsync(DrowZzzGameSession session, string path, CancellationToken ct = default)
+        {
+            if (session is null)
+            {
+                throw new ArgumentNullException(nameof(session));
+            }
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                throw new ArgumentException("path は null・空・空白のみにできません", nameof(path));
+            }
+            return UniTask.RunOnThreadPool(() => Save(session, path), cancellationToken: ct);
+        }
+
+        /// <summary>
+        /// <see cref="Load"/> を ThreadPool 上で非同期実行する。
+        /// </summary>
+        /// <param name="path">読み込み元 path</param>
+        /// <param name="ct">キャンセル要求</param>
+        /// <returns>復元された <see cref="DrowZzzGameSession"/>(non-null、ファイル不在は <see cref="FileNotFoundException"/>)</returns>
+        /// <remarks>
+        /// ADR-0016 §5.2 + ADR-0015 NRT 不採用方針により、戻り値は non-null。ファイル不在 / JSON 破損 /
+        /// schemaVersion 不一致は <see cref="Load"/> 同様の例外で表現する(同期版と非同期版で例外契約を
+        /// 完全一致させる方が、Presenter <c>try/catch</c> 経路で同期版と非同期版を入れ替えても等価)。
+        /// </remarks>
+        public UniTask<DrowZzzGameSession> LoadAsync(string path, CancellationToken ct = default)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                throw new ArgumentException("path は null・空・空白のみにできません", nameof(path));
+            }
+            return UniTask.RunOnThreadPool(() => Load(path), cancellationToken: ct);
         }
 
         /// <summary>

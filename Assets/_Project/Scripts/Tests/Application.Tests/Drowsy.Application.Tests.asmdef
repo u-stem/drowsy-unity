@@ -4,6 +4,7 @@
   "references": [
     "Drowsy.Application",
     "Drowsy.Domain",
+    "UniTask",
     "UnityEngine.TestRunner",
     "UnityEditor.TestRunner"
   ],
