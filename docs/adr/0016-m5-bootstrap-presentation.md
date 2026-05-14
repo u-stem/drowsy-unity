@@ -177,6 +177,8 @@ public sealed class DrowZzzGamePresenter : IStartable, IDisposable
     private readonly IDrowZzzGameSessionSerializer _serializer;
     private readonly IUserSettings _userSettings;
     private readonly string _savePath;
+    private readonly IReadOnlyList<PlayerId> _players;   // M5-PR4 で追加(新規対戦の players)
+    private readonly Pile _initialDeck;                  // M5-PR4 で追加(新規対戦の initialDeck)
     private readonly Subject<DrowZzzGameSession> _sessionSubject = new();
     private readonly CompositeDisposable _disposables = new();
     private readonly CancellationTokenSource _cts = new();
@@ -189,22 +191,30 @@ public sealed class DrowZzzGamePresenter : IStartable, IDisposable
     public DrowZzzGameSession Current => _current;
     public bool IsReady => _current is not null;
 
+    // M5-PR4 で 6 引数 → 8 引数化(players / initialDeck 追加、ADR-0016 §3.2 line 238 の TBD 解消、
+    // M5-PR4 着手時 JIT 確定 2026-05-14)。
     public DrowZzzGamePresenter(
         StartGameUseCase startGameUseCase,
         ApplyActionUseCase applyActionUseCase,
         IDrowZzzGameView view,
         IDrowZzzGameSessionSerializer serializer,
         IUserSettings userSettings,
-        string savePath)
+        string savePath,
+        IReadOnlyList<PlayerId> players,
+        Pile initialDeck)
     {
         _startGameUseCase = startGameUseCase ?? throw new ArgumentNullException(nameof(startGameUseCase));
         _applyActionUseCase = applyActionUseCase ?? throw new ArgumentNullException(nameof(applyActionUseCase));
         _view = view ?? throw new ArgumentNullException(nameof(view));
         _serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
         _userSettings = userSettings ?? throw new ArgumentNullException(nameof(userSettings));
-        _savePath = string.IsNullOrWhiteSpace(savePath)
-            ? throw new ArgumentException("savePath は null・空・空白のみにできません", nameof(savePath))
-            : savePath;
+        // savePath は null と空白を分けて防御する(null → ArgumentNullException、空白のみ → ArgumentException)。
+        if (savePath is null) throw new ArgumentNullException(nameof(savePath));
+        if (string.IsNullOrWhiteSpace(savePath))
+            throw new ArgumentException("savePath は空・空白のみにできません", nameof(savePath));
+        _savePath = savePath;
+        _players = players ?? throw new ArgumentNullException(nameof(players));
+        _initialDeck = initialDeck ?? throw new ArgumentNullException(nameof(initialDeck));
     }
 
     // VContainer の IStartable.Start() は Container 構築後に 1 回のみ呼ばれる(VContainer 仕様)
@@ -235,8 +245,8 @@ public sealed class DrowZzzGamePresenter : IStartable, IDisposable
             }
             catch (FileNotFoundException)
             {
-                // 初回起動 or 永続化ファイル削除済 → 新規対戦
-                session = _startGameUseCase.Execute(/* TBD: players / initialDeck */);
+                // 初回起動 or 永続化ファイル削除済 → 新規対戦(M5-PR4 で本実装、ctor 注入の players / initialDeck を使用)
+                session = _startGameUseCase.Execute(_players, _initialDeck);
             }
             _current = session;
             _sessionSubject.OnNext(session);
@@ -740,6 +750,33 @@ PR 番号は GitHub マージ後に確定するため、本セクションは原
   - M5-PR3 で `ProjectLifetimeScope` / `GameLifetimeScope` の `Configure` を実装し、Presenter / View / UseCase を Register
   - M5-PR3 の `DrowZzzGameView` MonoBehaviour が `IDrowZzzGameView` を実装、`RegisterComponentInHierarchy<DrowZzzGameView>()` で Game スコープに登録(M5-PR3 着手時 JIT 確定 2026-05-14)
   - `MockDrowZzzGameSessionSerializer` に `catch (Exception ex)` 経路(LogError)を駆動する `LoadBehavior` バリアントが未実装(code-reviewer S-2)、M5-PR4 以降で必要なら追加
+
+#### M5-PR3 完成記録
+
+- **PR**:[#88](https://github.com/u-stem/drowsy-unity/pull/88)、squash merged → commit `0a298cc`(2026-05-14)
+- **スコープ達成**:
+  - UI Toolkit UXML / USS skeleton(`Assets/_Project/UI/Games/DrowZzz/DrowZzzGame.uxml` / `.uss`、ラベル 3 + ボタン 3 の最小骨格)
+  - `DrowZzzGameView` MonoBehaviour 実装(`IDrowZzzGameView` 実装、`[RequireComponent(typeof(UIDocument))]`、OnEnable で VisualElement query + button.clicked 配線 / OnDisable で対称解除、`Q<Button>()` の null ガード、Render / RenderOutcome は Debug.Log のみ、Play ボタンはプレースホルダ CardId 発火)
+  - `ProjectLifetimeScope` の Configure 実装(`[SerializeField]` SO 2 種 + null チェック + RegisterInstance/Register 群:IGameConfig / ICardCatalog&lt;IEffect&gt; / セーブパス string / IRandomSource(時刻 seed XorShiftRandom)/ IDrowZzzGameSessionSerializer / IUserSettings / EffectInterpreter / DrowZzzRule)
+  - `GameLifetimeScope` の Configure 実装(StartGameUseCase / ApplyActionUseCase / DrowZzzGamePresenter(`AsImplementedInterfaces().AsSelf()`)/ DrowZzzGameView(`RegisterComponentInHierarchy().AsImplementedInterfaces()`))
+- **検証結果**:
+  - `dotnet build drowsy-unity.slnx`:0 警告 / 0 エラー / 3.05 秒
+  - `bash scripts/check-traceability.sh`:仕様 ID 547 件 / Property ID 456 件 / 整合性 OK
+  - lefthook pre-commit 全フック緑(2 commits 構成:`a777f84` ADR 完成記録 + `6331b17` 実装本体)
+  - Play モード動作確認(Main.unity Scene 作成 + GameObject 配置 + ボタン押下 → event 発火)はオーナー側で実機実施
+- **JIT 確定事項**:
+  - UXML / USS 配置先は `Assets/_Project/UI/Games/DrowZzz/`(`Data/` と並ぶトップレベル UI/ に集約、Phase 3 のローカライズ / テーマ拡張を見据える)
+  - `DrowZzzGameView` の Register は `RegisterComponentInHierarchy<DrowZzzGameView>()`(`RegisterComponentInNewPrefab` は Phase 3 のリトライ UI で再評価)
+  - EARS 追加なし:View は MonoBehaviour / Bootstrap 中心で単体テスト対象外(CLAUDE.md §6 / 本 ADR §10 / §13)
+- **本 ADR への訂正**(code-reviewer 指摘):
+  - §2 表に `EffectInterpreter` 行を追加(W-1、`DrowZzzRule` ctor の第 2 引数として明示登録が必要)
+  - §7.2 スニペットの `IRandomSource` を `Register<,>` から `RegisterInstance` 形式に訂正 + `EffectInterpreter` 登録追加(W-1 / W-2)
+  - §2 表の `IDrowZzzGameView` 備考「`[Inject]` で Presenter を受け取る」を「Presenter ctor 引数として解決、View 側に `[Inject]` 不要」に訂正(W-3、依存方向は Presenter → View)
+- **code-reviewer 指摘の反映**:W-1 / W-2 / W-3(ADR 訂正)+ W-4(`Q<Button>()` null ガード)+ T-2 / T-3 を本 PR 内で反映、T-1(`GetComponent` 統一)/ T-4(`.meta` 末尾改行)は本 PR 範囲外と判断
+- **次 PR への引き継ぎ**:
+  - M5-PR4 で Presenter Handler 3 種 + `BootAsync` 新規対戦経路を本実装、`DrowZzzGameView.Render` を本実装(山札残数 / 手札 / 場札 / SDP / FDP / DDP / Round 表示)
+  - `BootAsync` 新規対戦経路の `initialDeck` / `players` 生成は M5-PR4 着手時 JIT で確定(M5-PR4 で本 ADR §3.2 line 238 の TBD を解消)
+  - オーナー側 Unity Editor 作業:`Main.unity` Scene 新規作成 + GameObject ツリー配置 + Inspector で SerializeField 割り当て(SO 2 種 + UXML Source Asset)
 
 ### M5 完成後の Phase 進捗バナー更新案
 

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using VContainer;
 using VContainer.Unity;
@@ -6,7 +7,9 @@ using Drowsy.Application;
 using Drowsy.Application.Games.DrowZzz;
 using Drowsy.Application.Games.DrowZzz.Effects;
 using Drowsy.Application.Persistence;
+using Drowsy.Domain.Cards;
 using Drowsy.Domain.Configuration;
+using Drowsy.Domain.Players;
 using Drowsy.Domain.Random;
 using Drowsy.Infrastructure.Configuration;
 using Drowsy.Infrastructure.Games.DrowZzz;
@@ -16,7 +19,7 @@ using Drowsy.Infrastructure.Settings;
 namespace Drowsy.Bootstrap
 {
     /// <summary>
-    /// アプリ全体寿命の VContainer LifetimeScope(M5-PR3 で Configure 実装)。
+    /// アプリ全体寿命の VContainer LifetimeScope(M5-PR3 で Configure 実装、M5-PR4 で対戦初期値を追加)。
     /// </summary>
     /// <remarks>
     /// ADR-0016 §1「VContainer LifetimeScope 階層構造」+ §2「登録対象と寿命」+ §7.2「Bootstrap への注入経路」で確定。
@@ -36,6 +39,12 @@ namespace Drowsy.Bootstrap
     /// 第 2 引数として必要なため明示的に Register する(VContainer は未登録の具象型を自動解決しない)。
     /// </para>
     /// <para>
+    /// <b>対戦初期値(M5-PR4)</b>:新規対戦の <c>players</c> / <c>initialDeck</c> を本スコープで構築し
+    /// <c>RegisterInstance</c> する。<see cref="DrowZzzGamePresenter"/> ctor がこの 2 値を受け取り、
+    /// <see cref="DrowZzzGamePresenter"/> の <c>BootAsync</c> 新規対戦経路で <see cref="StartGameUseCase.Execute"/>
+    /// に渡す。<c>initialDeck</c> は catalog 登録カードを並べた M5 簡易デッキで、本物の 56 枚デッキ構成は Phase 3。
+    /// </para>
+    /// <para>
     /// <b>セーブパス</b>:<see cref="DrowZzzGameSessionSerializer.DefaultSavePath()"/> は <c>static</c> で
     /// <c>Application.persistentDataPath</c> を内部参照するため、<see cref="Configure"/> 内のメインスレッドで
     /// 評価し <c>string</c> を Project Singleton として <c>RegisterInstance</c> する(ADR-0016 §5.2 / §7.2、
@@ -44,6 +53,29 @@ namespace Drowsy.Bootstrap
     /// </remarks>
     public sealed class ProjectLifetimeScope : LifetimeScope
     {
+        /// <summary>
+        /// M5 動作確認用の簡易デッキで catalog 登録カード 1 種あたりに並べる枚数。
+        /// </summary>
+        /// <remarks>
+        /// catalog 登録カード(M4 時点で 3 種)を各 <see cref="CopiesPerCardForM5Deck"/> 枚並べて
+        /// <c>initialDeck</c> を組み立てる。N=2 × MaxRound 21 × 1 Draw = 42 + 初期配布 10 = 52 枚を賄える値。
+        /// 本物の 56 枚デッキ構成(<c>docs/specs/games/drowzzz/setup.md</c> §定数依存)は Phase 3 で
+        /// カードデータが揃った時点で別途実装する(M5-PR4 着手時 JIT 確定 2026-05-14)。
+        /// </remarks>
+        private const int CopiesPerCardForM5Deck = 20;
+
+        /// <summary>
+        /// M5 ホットシート対戦の先手プレイヤー Id 文字列。
+        /// </summary>
+        /// <remarks>
+        /// View の <c>Render</c> で <c>PlayerId.Value</c> がそのまま UI 表示されるため、表示名の単一情報源として
+        /// const 化する。Phase 3 でプレイヤー名入力 UI を導入する際に本 const は不要になる(M5-PR4 code-reviewer S-2 反映)。
+        /// </remarks>
+        private const string PlayerIdP1 = "p1";
+
+        /// <summary>M5 ホットシート対戦の後手プレイヤー Id 文字列(<see cref="PlayerIdP1"/> 参照)。</summary>
+        private const string PlayerIdP2 = "p2";
+
         /// <summary>ゲームバランス設定 SO(<c>DrowZzzGameConfig.asset</c>、ADR-0016 §7.1)。Inspector で割り当てる。</summary>
         [SerializeField] private DrowZzzGameConfigAsset _gameConfig;
 
@@ -84,6 +116,41 @@ namespace Drowsy.Bootstrap
             // Application(DrowZzzRule は ctor で ICardCatalog<IEffect> + EffectInterpreter を要求)
             builder.Register<EffectInterpreter>(Lifetime.Singleton);
             builder.Register<DrowZzzRule>(Lifetime.Singleton);
+
+            // 新規対戦の players / initialDeck(DrowZzzGamePresenter ctor が受け取り BootAsync 新規対戦経路で使用、M5-PR4)
+            builder.RegisterInstance<IReadOnlyList<PlayerId>>(BuildPlayers());
+            builder.RegisterInstance(BuildInitialDeck(_cardCatalog));
+        }
+
+        /// <summary>
+        /// 新規対戦のプレイヤー Id 列を構築する。M5 範囲は N=2 ホットシート固定(ADR-0016 §JIT 共有された方針)。
+        /// Phase 3 で N&gt;2 / プレイヤー名入力 UI に拡張する。
+        /// </summary>
+        private static IReadOnlyList<PlayerId> BuildPlayers()
+            => new[] { PlayerId.Of(PlayerIdP1), PlayerId.Of(PlayerIdP2) };
+
+        /// <summary>
+        /// catalog 登録カードを各 <see cref="CopiesPerCardForM5Deck"/> 枚並べた M5 簡易デッキを構築する。
+        /// </summary>
+        /// <exception cref="InvalidOperationException">catalog にカードが 1 枚も登録されていない</exception>
+        private static Pile BuildInitialDeck(ScriptableObjectCardCatalog catalog)
+        {
+            var registered = catalog.RegisteredCardIds;
+            if (registered.Count == 0)
+            {
+                throw new InvalidOperationException(
+                    "ScriptableObjectCardCatalog にカードが 1 枚も登録されていません。" +
+                    "DrowZzzCardCatalog.asset の Entries を確認してください。");
+            }
+            var cards = new List<CardId>(registered.Count * CopiesPerCardForM5Deck);
+            foreach (var id in registered)
+            {
+                for (int i = 0; i < CopiesPerCardForM5Deck; i++)
+                {
+                    cards.Add(id);
+                }
+            }
+            return new Pile(cards);
         }
     }
 }

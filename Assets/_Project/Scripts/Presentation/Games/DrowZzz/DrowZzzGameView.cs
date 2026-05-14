@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.UIElements;
 using Drowsy.Application.Games.DrowZzz;
@@ -8,28 +9,38 @@ using Drowsy.Domain.Game;
 namespace Drowsy.Presentation.Games.DrowZzz
 {
     /// <summary>
-    /// DrowZzz ゲームの View 実装(UI Toolkit ベース MonoBehaviour、M5-PR3 骨格)。
+    /// DrowZzz ゲームの View 実装(UI Toolkit ベース MonoBehaviour)。
     /// </summary>
     /// <remarks>
-    /// ADR-0016 §3.1「View interface」+ §6「シーン構成」+ §11 M5-PR3 で確定。
-    /// 本 PR (M5-PR3) では:
+    /// ADR-0016 §3.1「View interface」+ §6「シーン構成」+ §11 で確定。
+    /// M5-PR3 で骨格(VisualElement query + button.clicked 配線、Render は Debug.Log のみ)を作り、
+    /// 本 PR (M5-PR4) で:
     /// <list type="bullet">
-    /// <item>UXML(<c>DrowZzzGame.uxml</c>)の VisualElement を <see cref="OnEnable"/> で query し、
-    /// 3 ボタンの <c>clicked</c> を <see cref="IDrowZzzGameView"/> の event に橋渡しする</item>
-    /// <item><see cref="Render"/> / <see cref="RenderOutcome"/> は <c>Debug.Log</c> 出力のみ
-    /// (ADR-0016 §11 M5-PR3 備考「Render は Debug.Log 出力でひとまず動作確認」、本実装は Render が M5-PR4 /
-    /// RenderOutcome が M5-PR7)</item>
-    /// <item>Play ボタンは手札選択 UX 未実装のためプレースホルダ <see cref="CardId"/> を発火
-    /// (M5-PR4 で手札 UI に置き換え)</item>
+    /// <item><see cref="Render"/> を本実装(Round / 現プレイヤー / TurnPhase / 山札・場札・捨て札枚数 /
+    /// FDP・DDP・SDP・TotalPoints / 現プレイヤー手札を各 Label に反映、ADR-0016 §11 M5-PR4)</item>
+    /// <item>Play ボタン押下時に直近 <see cref="Render"/> で受け取った session の現プレイヤー手札先頭カードを
+    /// <see cref="OnPlayClicked"/> で発火(M5-PR4 着手時 JIT 確定 2026-05-14「手札[0] 自動選択」、
+    /// 手札一覧からのクリック選択 UI は Phase 3)</item>
     /// </list>
+    /// <para>
+    /// <b>Render の引数</b>:<see cref="IDrowZzzGameView.Render"/> 契約上 non-null 前提(ADR-0015 NRT 不採用、
+    /// Presenter は <c>Subject&lt;T&gt;</c> 経由で Boot 後の有効な状態のみ発火)。ただし Mock 経由のテストや
+    /// 将来の経路で null が来た場合に分かりにくい NRE になるのを避けるため、 <see cref="Render"/> 冒頭で
+    /// null ガード + <c>Debug.LogError</c> を行う(code-reviewer W-2 反映)。
+    /// </para>
+    /// <para>
+    /// <c>status-label</c>(UXML 上の固定タイトル "DrowZzz")は <see cref="Render"/> で更新しないため
+    /// View 側で query / 保持しない(code-reviewer W-3 反映、デッドフィールド回避)。
+    /// <see cref="RenderOutcome"/> は引き続き <c>Debug.Log</c> 出力のみ(本実装は M5-PR7)。
+    /// </para>
     /// <para>
     /// <b>イベント対称運用</b>:<see cref="OnEnable"/> で <c>button.clicked +=</c>、 <see cref="OnDisable"/> で
     /// <c>button.clicked -=</c> を行う(Unity 文化の <c>OnEnable/OnDisable</c> 対称運用、ADR-0016 §3.1)。
     /// </para>
     /// <para>
     /// <b>VContainer 注入</b>:本 MonoBehaviour は <c>RegisterComponentInHierarchy&lt;DrowZzzGameView&gt;()</c>
-    /// で Game スコープに登録される(M5-PR3 着手時 JIT 確定 2026-05-14、ADR-0016 §2 登録対象表 line 119)。
-    /// Presenter は <c>SessionStream</c> を Subscribe して本 View の <see cref="Render"/> を呼ぶ配線を持つ。
+    /// で Game スコープに登録される(ADR-0016 §2 登録対象表)。Presenter は <c>SessionStream</c> を Subscribe して
+    /// 本 View の <see cref="Render"/> を呼ぶ配線を持つ。
     /// </para>
     /// </remarks>
     [RequireComponent(typeof(UIDocument))]
@@ -42,10 +53,14 @@ namespace Drowsy.Presentation.Games.DrowZzz
         private Button _playButton;
         private Button _endTurnButton;
 
-        // 以下 3 Label は M5-PR4 の Render 本実装で使用する。M5-PR3 段階では OnEnable で query 代入のみ。
-        private Label _statusLabel;
+        // 以下 4 Label は M5-PR4 の Render 本実装で使用する。OnEnable で query 代入する。
         private Label _turnLabel;
         private Label _phaseLabel;
+        private Label _pointsLabel;
+        private Label _handLabel;
+
+        // 直近 Render で受け取った session。Play ボタン押下時の手札先頭カード選択に使う。
+        private DrowZzzGameSession _lastRendered;
 
         /// <inheritdoc />
         public event Action OnDrawClicked;
@@ -66,17 +81,18 @@ namespace Drowsy.Presentation.Games.DrowZzz
                 return;
             }
 
-            // VisualElement query(UXML の name 属性と一致させる)
+            // VisualElement query(UXML の name 属性と一致させる)。status-label は固定タイトルのため query しない。
             var root = _uiDocument.rootVisualElement;
-            _statusLabel = root.Q<Label>("status-label");
             _turnLabel = root.Q<Label>("turn-label");
             _phaseLabel = root.Q<Label>("phase-label");
+            _pointsLabel = root.Q<Label>("points-label");
+            _handLabel = root.Q<Label>("hand-label");
             _drawButton = root.Q<Button>("draw-button");
             _playButton = root.Q<Button>("play-button");
             _endTurnButton = root.Q<Button>("end-turn-button");
 
             // UIDocument が存在しても Source Asset(UXML)未割り当て / name 不一致だと Q<T>() は null を返す。
-            // null のまま clicked 配線に進むと NullReferenceException になるため早期検出する(code-reviewer W-4 反映)。
+            // null のまま clicked 配線に進むと NullReferenceException になるため早期検出する。
             if (_drawButton is null || _playButton is null || _endTurnButton is null)
             {
                 Debug.LogError(
@@ -113,9 +129,23 @@ namespace Drowsy.Presentation.Games.DrowZzz
 
         private void RaisePlayClicked()
         {
-            // M5-PR3: 手札選択 UX 未実装のためプレースホルダ CardId を発火する。
-            // M5-PR4 で手札一覧 UI からの選択値に置き換える(ADR-0016 §11 M5-PR4 行)。
-            OnPlayClicked?.Invoke(CardId.Of("__m5pr3_placeholder__"));
+            // M5-PR4: 手札選択 UX は「現プレイヤーの手札先頭カードを自動選択」(M5-PR4 着手時 JIT 確定 2026-05-14)。
+            // 手札一覧からのクリック選択 UI は Phase 3。
+            if (_lastRendered is null)
+            {
+                Debug.LogWarning("[DrowZzzGameView] Play: まだ Render されていないため手札を選択できません");
+                return;
+            }
+            // GameState の不変条件(コンストラクタで Players >= 1 / CurrentPlayerIndex が範囲内を保証)により
+            // Players[CurrentPlayerIndex] のインデックスアクセスは安全。
+            var gameState = _lastRendered.GameState;
+            var hand = gameState.Players[gameState.Turn.CurrentPlayerIndex].Hand;
+            if (hand.IsEmpty)
+            {
+                Debug.LogWarning("[DrowZzzGameView] Play: 現プレイヤーの手札が空のため発火しません");
+                return;
+            }
+            OnPlayClicked?.Invoke(hand.Cards[0]);
         }
 
         private void RaiseEndTurnClicked() => OnEndTurnClicked?.Invoke();
@@ -123,16 +153,42 @@ namespace Drowsy.Presentation.Games.DrowZzz
         /// <inheritdoc />
         public void Render(DrowZzzGameSession session)
         {
-            // M5-PR3: Debug.Log 出力でひとまず動作確認(ADR-0016 §11 M5-PR3 備考)。
-            // M5-PR4 で山札残数 / 手札 / 場札 / 現プレイヤー / TurnPhase / SDP / FDP / DDP / Round を
-            // 各 Label / VisualElement に反映する本実装に置き換える。
-            Debug.Log("[DrowZzzGameView] Render: session を受信(M5-PR4 で UI 反映を実装)");
+            if (session is null)
+            {
+                // IDrowZzzGameView.Render は non-null 契約(ADR-0015)。null が来たら描画せず明示的に記録する。
+                Debug.LogError("[DrowZzzGameView] Render: session が null です(non-null 契約違反)");
+                return;
+            }
+            _lastRendered = session;
+
+            // OnEnable が早期 return(UIDocument / ボタン未解決)した場合は Label も null なので描画をスキップ。
+            if (_turnLabel is null)
+            {
+                Debug.LogWarning("[DrowZzzGameView] Render: VisualElement 未解決のため描画をスキップします");
+                return;
+            }
+
+            var gameState = session.GameState;
+            var currentPlayer = gameState.Players[gameState.Turn.CurrentPlayerIndex];
+            var currentId = currentPlayer.Id;
+            var hand = currentPlayer.Hand;
+
+            _turnLabel.text =
+                $"Round {session.CurrentRound} / Player {currentId.Value} / {session.PhaseState}";
+            _phaseLabel.text =
+                $"Deck {gameState.Deck.Count} / Field {gameState.Field.Count} / Discard {gameState.Discard.Count}";
+            _pointsLabel.text =
+                $"FDP {session.FirstDrowsyPoints[currentId]} / DDP {session.DrawDrowsyPoints[currentId]} / " +
+                $"SDP {session.SecondDrowsyPoints[currentId]} / Total {session.TotalPoints(currentId)}";
+            _handLabel.text = hand.IsEmpty
+                ? "Hand: (empty)"
+                : $"Hand: {string.Join(", ", hand.Cards.Select(c => c.Value))}";
         }
 
         /// <inheritdoc />
         public void RenderOutcome(GameOutcome outcome)
         {
-            // M5-PR3: Debug.Log 出力のみ。M5-PR7 で Winner / Draw 表示の本実装に置き換える。
+            // M5-PR4 時点では Debug.Log 出力のみ。M5-PR7 で Winner / Draw 表示の本実装に置き換える。
             Debug.Log("[DrowZzzGameView] RenderOutcome: outcome を受信(M5-PR7 で UI 反映を実装)");
         }
     }

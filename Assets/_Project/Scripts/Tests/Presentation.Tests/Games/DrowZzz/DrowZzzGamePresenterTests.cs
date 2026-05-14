@@ -1,51 +1,74 @@
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
 using NUnit.Framework;
 using Drowsy.Application.Games.DrowZzz;
 using Drowsy.Application.Tests.Stubs;
+using Drowsy.Domain.Cards;
+using Drowsy.Domain.Players;
 using Drowsy.Presentation.Games.DrowZzz;
 using static Drowsy.Application.Tests.Stubs.SessionFactory;
 
 namespace Drowsy.Presentation.Tests.Games.DrowZzz
 {
     /// <summary>
-    /// <see cref="DrowZzzGamePresenter"/> の単体テスト(M5-PR2)。
+    /// <see cref="DrowZzzGamePresenter"/> の単体テスト(M5-PR2 で骨格、M5-PR4 で Handler / 新規対戦経路を追加)。
     /// </summary>
     /// <remarks>
-    /// ADR-0016 §3.2 / §11 M5-PR2 + §10.1 で確定したスコープ:
+    /// ADR-0016 §3.2 / §11 M5-PR2〜PR4 + §10.1 で確定したスコープ:
     /// <list type="bullet">
-    /// <item>ctor null 防御 6 件(PRES-002〜007)+ savePath 空白防御 1 件(PRES-008)</item>
-    /// <item>Start で View event 配線確認(PRES-009)</item>
-    /// <item>Dispose で View event 解除確認(PRES-010)</item>
-    /// <item>BootAsync 完了で Subject → View.Render パイプライン検証(PRES-011)</item>
-    /// <item>Dispose 冪等性(PRES-013)</item>
+    /// <item>ctor null 防御 8 件(PRES-002〜007 + PRES-014 / PRES-015)+ savePath 空白防御 1 件(PRES-008)</item>
+    /// <item>Start で View event 配線(PRES-009)/ Dispose で解除(PRES-010)/ Dispose 冪等(PRES-013)</item>
+    /// <item>BootAsync 復元経路で Subject → View.Render(PRES-011)/ 新規対戦経路(PRES-012)</item>
+    /// <item>Handler の正常 / 異常 / Boot 未完了パス(PRES-016 / PRES-017 / PRES-018)</item>
     /// </list>
     /// <para>
     /// <b>UseCase 構築</b>:Presenter ctor は具象 <see cref="StartGameUseCase"/> / <see cref="ApplyActionUseCase"/>
     /// を取るため、本テストでは <c>Drowsy.Application.Tests.Stubs</c>(`IdentityRandom` / `StubGameConfig` /
-    /// `SessionFactory.NewRule`)を再利用して両 UseCase を構築する(asmdef references で
-    /// <c>Drowsy.Application.Tests</c> を参照、ADR-0016 §10.1 訂正反映)。
+    /// `SessionFactory.NewRule`)を再利用して両 UseCase を構築する(ADR-0016 §10.1)。
+    /// </para>
+    /// <para>
+    /// <b>BootAsync 完了待ち</b>:<see cref="MockDrowZzzGameSessionSerializer"/>.<c>LoadAsync</c> は
+    /// <c>UniTask.FromResult</c> / 同期 throw で完了するが、<c>BootAsync</c>(<c>UniTaskVoid</c>)の継続を
+    /// 確実に進めるため、Boot を経由する各テスト(PRES-011 / 012 / 016 / 017 / 018)で
+    /// <c>await UniTask.Yield().ToUniTask()</c> を 1 回挟む(code-reviewer W-4 反映)。
     /// </para>
     /// </remarks>
     [TestFixture]
     public sealed class DrowZzzGamePresenterTests
     {
+        // ===== 共通ヘルパー =====
+
+        /// <summary>M5 範囲の N=2 ホットシート players。</summary>
+        private static PlayerId[] ValidPlayers() => new[] { PlayerId.Of("p1"), PlayerId.Of("p2") };
+
+        /// <summary>
+        /// 配布(5 × 2 = 10 枚)+ 数ターン分の Draw を賄える有効な initialDeck(30 枚)。
+        /// </summary>
+        /// <remarks>
+        /// 30 枚は <c>ProjectLifetimeScope.CopiesPerCardForM5Deck</c>(本番 Bootstrap の M5 簡易デッキ枚数)とは
+        /// 独立したテスト固有の値。本テストは Handler の Draw を数回行えれば十分なため、本番デッキ構成に追従させず
+        /// 固定 30 枚とする(code-reviewer S-3 反映)。
+        /// </remarks>
+        private static Pile ValidInitialDeck()
+            => NewDeck(Enumerable.Range(0, 30).Select(i => $"c{i}").ToArray());
+
         /// <summary>標準的な依存セットで <see cref="DrowZzzGamePresenter"/> を構築する。</summary>
+        /// <remarks>
+        /// MockUserSettings の寿命は呼び出し元テストメソッドが <c>ctx.UserSettings.Dispose()</c> で管理する
+        /// (本 helper 内で <c>using var</c> を使うと return 直後にスコープ外 Dispose される、code-reviewer T-1 反映)。
+        /// </remarks>
         private static PresenterContext NewContext(string savePath = "path/a")
         {
-            var rng = new IdentityRandom();
-            var config = new StubGameConfig();
-            var startGameUseCase = new StartGameUseCase(rng, config);
+            var startGameUseCase = new StartGameUseCase(new IdentityRandom(), new StubGameConfig());
             var applyActionUseCase = new ApplyActionUseCase(NewRule());
             var view = new MockDrowZzzGameView();
             var serializer = new MockDrowZzzGameSessionSerializer();
-            // MockUserSettings の寿命は呼び出し元テストメソッドの ctx.UserSettings.Dispose() で管理する。
-            // ここで using var を使うと return 直後にスコープ外 Dispose されて呼び出し側が Dispose 済み instance を
-            // 参照する(code-reviewer T-1 反映、M5-PR2、M5-PR6 で Observable Subscribe テスト追加時の時限バグ予防)。
             var userSettings = new MockUserSettings();
             var presenter = new DrowZzzGamePresenter(
-                startGameUseCase, applyActionUseCase, view, serializer, userSettings, savePath);
+                startGameUseCase, applyActionUseCase, view, serializer, userSettings, savePath,
+                ValidPlayers(), ValidInitialDeck());
             return new PresenterContext
             {
                 Presenter = presenter,
@@ -67,130 +90,135 @@ namespace Drowsy.Presentation.Tests.Games.DrowZzz
             public ApplyActionUseCase ApplyActionUseCase { get; set; }
         }
 
-        // ---- PRES-002: startGameUseCase = null ----
+        // ===== PRES-002〜007 / PRES-014 / PRES-015: ctor null 防御 =====
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "PRES-002")]
         public void Given_startGameUseCaseNull_When_Ctor_Then_ArgumentNullException()
         {
-            // Given
-            var view = new MockDrowZzzGameView();
-            var serializer = new MockDrowZzzGameSessionSerializer();
             using var userSettings = new MockUserSettings();
             var applyActionUseCase = new ApplyActionUseCase(NewRule());
 
-            // When / Then
             Assert.That(
-                () => new DrowZzzGamePresenter(null, applyActionUseCase, view, serializer, userSettings, "path/a"),
+                () => new DrowZzzGamePresenter(
+                    null, applyActionUseCase, new MockDrowZzzGameView(), new MockDrowZzzGameSessionSerializer(),
+                    userSettings, "path/a", ValidPlayers(), ValidInitialDeck()),
                 Throws.TypeOf<ArgumentNullException>());
         }
-
-        // ---- PRES-003: applyActionUseCase = null ----
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "PRES-003")]
         public void Given_applyActionUseCaseNull_When_Ctor_Then_ArgumentNullException()
         {
-            // Given
-            var view = new MockDrowZzzGameView();
-            var serializer = new MockDrowZzzGameSessionSerializer();
             using var userSettings = new MockUserSettings();
             var startGameUseCase = new StartGameUseCase(new IdentityRandom(), new StubGameConfig());
 
-            // When / Then
             Assert.That(
-                () => new DrowZzzGamePresenter(startGameUseCase, null, view, serializer, userSettings, "path/a"),
+                () => new DrowZzzGamePresenter(
+                    startGameUseCase, null, new MockDrowZzzGameView(), new MockDrowZzzGameSessionSerializer(),
+                    userSettings, "path/a", ValidPlayers(), ValidInitialDeck()),
                 Throws.TypeOf<ArgumentNullException>());
         }
-
-        // ---- PRES-004: view = null ----
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "PRES-004")]
         public void Given_viewNull_When_Ctor_Then_ArgumentNullException()
         {
-            // Given
-            var serializer = new MockDrowZzzGameSessionSerializer();
             using var userSettings = new MockUserSettings();
             var startGameUseCase = new StartGameUseCase(new IdentityRandom(), new StubGameConfig());
             var applyActionUseCase = new ApplyActionUseCase(NewRule());
 
-            // When / Then
             Assert.That(
-                () => new DrowZzzGamePresenter(startGameUseCase, applyActionUseCase, null, serializer, userSettings, "path/a"),
+                () => new DrowZzzGamePresenter(
+                    startGameUseCase, applyActionUseCase, null, new MockDrowZzzGameSessionSerializer(),
+                    userSettings, "path/a", ValidPlayers(), ValidInitialDeck()),
                 Throws.TypeOf<ArgumentNullException>());
         }
-
-        // ---- PRES-005: serializer = null ----
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "PRES-005")]
         public void Given_serializerNull_When_Ctor_Then_ArgumentNullException()
         {
-            // Given
-            var view = new MockDrowZzzGameView();
             using var userSettings = new MockUserSettings();
             var startGameUseCase = new StartGameUseCase(new IdentityRandom(), new StubGameConfig());
             var applyActionUseCase = new ApplyActionUseCase(NewRule());
 
-            // When / Then
             Assert.That(
-                () => new DrowZzzGamePresenter(startGameUseCase, applyActionUseCase, view, null, userSettings, "path/a"),
+                () => new DrowZzzGamePresenter(
+                    startGameUseCase, applyActionUseCase, new MockDrowZzzGameView(), null,
+                    userSettings, "path/a", ValidPlayers(), ValidInitialDeck()),
                 Throws.TypeOf<ArgumentNullException>());
         }
-
-        // ---- PRES-006: userSettings = null ----
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "PRES-006")]
         public void Given_userSettingsNull_When_Ctor_Then_ArgumentNullException()
         {
-            // Given
-            var view = new MockDrowZzzGameView();
-            var serializer = new MockDrowZzzGameSessionSerializer();
             var startGameUseCase = new StartGameUseCase(new IdentityRandom(), new StubGameConfig());
             var applyActionUseCase = new ApplyActionUseCase(NewRule());
 
-            // When / Then
             Assert.That(
-                () => new DrowZzzGamePresenter(startGameUseCase, applyActionUseCase, view, serializer, null, "path/a"),
+                () => new DrowZzzGamePresenter(
+                    startGameUseCase, applyActionUseCase, new MockDrowZzzGameView(),
+                    new MockDrowZzzGameSessionSerializer(), null, "path/a", ValidPlayers(), ValidInitialDeck()),
                 Throws.TypeOf<ArgumentNullException>());
         }
-
-        // ---- PRES-007: savePath = null ----
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "PRES-007")]
         public void Given_savePathNull_When_Ctor_Then_ArgumentNullException()
         {
-            // Given
-            var view = new MockDrowZzzGameView();
-            var serializer = new MockDrowZzzGameSessionSerializer();
             using var userSettings = new MockUserSettings();
             var startGameUseCase = new StartGameUseCase(new IdentityRandom(), new StubGameConfig());
             var applyActionUseCase = new ApplyActionUseCase(NewRule());
 
-            // When / Then
             Assert.That(
-                () => new DrowZzzGamePresenter(startGameUseCase, applyActionUseCase, view, serializer, userSettings, null),
+                () => new DrowZzzGamePresenter(
+                    startGameUseCase, applyActionUseCase, new MockDrowZzzGameView(),
+                    new MockDrowZzzGameSessionSerializer(), userSettings, null, ValidPlayers(), ValidInitialDeck()),
                 Throws.TypeOf<ArgumentNullException>());
         }
-
-        // ---- PRES-008: savePath = empty / whitespace ----
 
         [TestCase("")]
         [TestCase("   ")]
         [Category("Small"), Category("Abnormal"), Property("Requirement", "PRES-008")]
         public void Given_savePathInvalid_When_Ctor_Then_ArgumentException(string savePath)
         {
-            // Given
-            var view = new MockDrowZzzGameView();
-            var serializer = new MockDrowZzzGameSessionSerializer();
             using var userSettings = new MockUserSettings();
             var startGameUseCase = new StartGameUseCase(new IdentityRandom(), new StubGameConfig());
             var applyActionUseCase = new ApplyActionUseCase(NewRule());
 
-            // When / Then(ArgumentException 厳密一致、ArgumentNullException は savePath = null 経路のみ)
+            // ArgumentException 厳密一致(ArgumentNullException は savePath = null 経路のみ)
             Assert.That(
-                () => new DrowZzzGamePresenter(startGameUseCase, applyActionUseCase, view, serializer, userSettings, savePath),
+                () => new DrowZzzGamePresenter(
+                    startGameUseCase, applyActionUseCase, new MockDrowZzzGameView(),
+                    new MockDrowZzzGameSessionSerializer(), userSettings, savePath, ValidPlayers(), ValidInitialDeck()),
                 Throws.TypeOf<ArgumentException>());
         }
 
-        // ---- PRES-009: Start で View event 配線確認 ----
+        [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "PRES-014")]
+        public void Given_playersNull_When_Ctor_Then_ArgumentNullException()
+        {
+            using var userSettings = new MockUserSettings();
+            var startGameUseCase = new StartGameUseCase(new IdentityRandom(), new StubGameConfig());
+            var applyActionUseCase = new ApplyActionUseCase(NewRule());
+
+            Assert.That(
+                () => new DrowZzzGamePresenter(
+                    startGameUseCase, applyActionUseCase, new MockDrowZzzGameView(),
+                    new MockDrowZzzGameSessionSerializer(), userSettings, "path/a", null, ValidInitialDeck()),
+                Throws.TypeOf<ArgumentNullException>());
+        }
+
+        [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "PRES-015")]
+        public void Given_initialDeckNull_When_Ctor_Then_ArgumentNullException()
+        {
+            using var userSettings = new MockUserSettings();
+            var startGameUseCase = new StartGameUseCase(new IdentityRandom(), new StubGameConfig());
+            var applyActionUseCase = new ApplyActionUseCase(NewRule());
+
+            Assert.That(
+                () => new DrowZzzGamePresenter(
+                    startGameUseCase, applyActionUseCase, new MockDrowZzzGameView(),
+                    new MockDrowZzzGameSessionSerializer(), userSettings, "path/a", ValidPlayers(), null),
+                Throws.TypeOf<ArgumentNullException>());
+        }
+
+        // ===== PRES-009 / PRES-010: Start / Dispose の event 配線・解除 =====
 
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "PRES-009")]
         public void Given_constructed_When_Start_Then_ViewEventsHaveSubscribers()
@@ -212,8 +240,6 @@ namespace Drowsy.Presentation.Tests.Games.DrowZzz
             ctx.UserSettings.Dispose();
         }
 
-        // ---- PRES-010: Dispose で View event 解除確認 ----
-
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "PRES-010")]
         public void Given_started_When_Dispose_Then_ViewEventsHaveNoSubscribers()
         {
@@ -234,7 +260,7 @@ namespace Drowsy.Presentation.Tests.Games.DrowZzz
             ctx.UserSettings.Dispose();
         }
 
-        // ---- PRES-011: BootAsync 完了 → View.Render パイプライン ----
+        // ===== PRES-011 / PRES-012: BootAsync 復元経路 / 新規対戦経路 =====
 
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "PRES-011")]
         public async Task Given_started_When_BootAsyncCompletes_Then_ViewRenderInvokedWithLoadedSession()
@@ -247,8 +273,6 @@ namespace Drowsy.Presentation.Tests.Games.DrowZzz
 
             // When
             ctx.Presenter.Start();
-            // MockSerializer.LoadAsync は UniTask.FromResult で同期完了するが、
-            // UniTaskVoid の継続を確実に進めるため 1 frame だけ待つ
             await UniTask.Yield().ToUniTask();
 
             // Then(MockView.Render が 1 回呼ばれ、引数は LoadAsync が返した session)
@@ -260,7 +284,26 @@ namespace Drowsy.Presentation.Tests.Games.DrowZzz
             ctx.UserSettings.Dispose();
         }
 
-        // ---- PRES-013: Dispose 冪等性 ----
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "PRES-012")]
+        public async Task Given_loadAsyncFileNotFound_When_Boot_Then_NewGameStartedAndRendered()
+        {
+            // Given(セーブファイル不在 → 新規対戦経路)
+            var ctx = NewContext();
+            ctx.Serializer.LoadAsyncBehavior = MockDrowZzzGameSessionSerializer.LoadBehavior.ThrowFileNotFound;
+
+            // When
+            ctx.Presenter.Start();
+            await UniTask.Yield().ToUniTask();
+
+            // Then(StartGameUseCase.Execute(players, initialDeck) で生成した session が 1 回 Render される)
+            Assert.That(ctx.View.RenderedSessions, Has.Count.EqualTo(1));
+
+            // Cleanup
+            ctx.Presenter.Dispose();
+            ctx.UserSettings.Dispose();
+        }
+
+        // ===== PRES-013: Dispose 冪等性 =====
 
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "PRES-013")]
         public void Given_disposed_When_DisposeAgain_Then_NoException()
@@ -275,6 +318,76 @@ namespace Drowsy.Presentation.Tests.Games.DrowZzz
             Assert.That(() => ctx.Presenter.Dispose(), Throws.Nothing);
 
             // Cleanup
+            ctx.UserSettings.Dispose();
+        }
+
+        // ===== PRES-016 / PRES-017 / PRES-018: Handler の正常 / 異常 / Boot 未完了 =====
+
+        // 本テストは「Handler → ApplyActionUseCase → Subject → View.Render のパイプライン疎通」のみを確認する。
+        // Draw 後の session 内容の正しさ(PhaseState が WaitingForPlay に遷移する等)は ApplyActionUseCase /
+        // DrowZzzRule の責務であり Application.Tests が担保する(code-reviewer S-4 反映、関心の分離)。
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "PRES-016")]
+        public async Task Given_bootCompleted_When_DrawClicked_Then_SessionUpdatedAndRendered()
+        {
+            // Given(StartGameUseCase で本物の初期 session = WaitingForDraw を Boot で復元)
+            var ctx = NewContext();
+            var bootSession = ctx.StartGameUseCase.Execute(ValidPlayers(), ValidInitialDeck());
+            ctx.Serializer.LoadAsyncReturnSession = bootSession;
+            ctx.Presenter.Start();
+            await UniTask.Yield().ToUniTask();
+            var renderCountAfterBoot = ctx.View.RenderedSessions.Count;
+
+            // When(合法な Draw)
+            ctx.View.FireDrawClicked();
+
+            // Then(Draw が適用され OnNext が追加発火、Render が 1 回増える)
+            Assert.That(ctx.View.RenderedSessions.Count, Is.EqualTo(renderCountAfterBoot + 1));
+
+            // Cleanup
+            ctx.Presenter.Dispose();
+            ctx.UserSettings.Dispose();
+        }
+
+        [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "PRES-017")]
+        public async Task Given_bootCompleted_When_IllegalEndTurnClicked_Then_NoReaction()
+        {
+            // Given(初期 session は WaitingForDraw、EndTurn は WaitingForEndTurn でのみ合法 → 不合法手)
+            var ctx = NewContext();
+            var bootSession = ctx.StartGameUseCase.Execute(ValidPlayers(), ValidInitialDeck());
+            ctx.Serializer.LoadAsyncReturnSession = bootSession;
+            ctx.Presenter.Start();
+            await UniTask.Yield().ToUniTask();
+            var renderCountAfterBoot = ctx.View.RenderedSessions.Count;
+
+            // When(不合法手:WaitingForDraw で EndTurn)
+            ctx.View.FireEndTurnClicked();
+
+            // Then(無反応、Render は増えない)
+            Assert.That(ctx.View.RenderedSessions.Count, Is.EqualTo(renderCountAfterBoot));
+
+            // Cleanup
+            ctx.Presenter.Dispose();
+            ctx.UserSettings.Dispose();
+        }
+
+        [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "PRES-018")]
+        public async Task Given_bootIncomplete_When_DrawClicked_Then_NoExceptionAndNoRender()
+        {
+            // Given(LoadAsync が OperationCanceledException → BootAsync が _current をセットできず Boot 未完了)
+            var ctx = NewContext();
+            ctx.Serializer.LoadAsyncBehavior =
+                MockDrowZzzGameSessionSerializer.LoadBehavior.ThrowOperationCanceled;
+            ctx.Presenter.Start();
+            await UniTask.Yield().ToUniTask();
+
+            // When(Boot 未完了で Handler 発火)
+            ctx.View.FireDrawClicked();
+
+            // Then(例外を投げず、Render も発火しない)
+            Assert.That(ctx.View.RenderedSessions, Is.Empty);
+
+            // Cleanup
+            ctx.Presenter.Dispose();
             ctx.UserSettings.Dispose();
         }
     }
