@@ -1,13 +1,10 @@
 using System;
+using System.Collections;
 using System.IO;
-using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
 using NUnit.Framework;
+using UnityEngine.TestTools;
 using Drowsy.Infrastructure.Persistence;
-// 本ファイルは UnityEngine を import しないため、`Property` の type alias は不要
-// (NUnit / UnityEngine の PropertyAttribute 衝突は UnityEngine import 時のみ発生、
-// `csharp-nunit-unityengine-property-conflict` memory 参照)。`using NUnit.Framework` 経由で
-// [Property(...)] が NUnit.Framework.PropertyAttribute に解決される。
 
 namespace Drowsy.Infrastructure.Tests.Persistence
 {
@@ -19,12 +16,15 @@ namespace Drowsy.Infrastructure.Tests.Persistence
     /// 非同期 API は M5-PR1 で「同期 <c>Save</c> / <c>Load</c> を <c>UniTask.RunOnThreadPool</c> ラップ」として
     /// 実装済(ADR-0016 §5.2 初期推奨)。本テストはその round-trip と例外契約が同期版と等価であることを確認する。
     /// <para>
-    /// <b>NUnit + UniTask</b>:NUnit 3.x は <c>UniTask</c> 戻り値を直接認識できないため、<c>UniTask</c> は
-    /// <c>.AsTask()</c> で <c>System.Threading.Tasks.Task</c> に変換した上で <c>await</c> する(M5-PR1 で確立)。
-    /// 引数 null / 空白の検査は <c>SaveAsync</c> / <c>LoadAsync</c> が <c>RunOnThreadPool</c> 投入前に同期実行する
-    /// ため、引数防御テストは sync lambda の <see cref="Throws"/> で捕捉する(M5-PR1 契約テストと同パターン)。
-    /// ファイル不在の <see cref="FileNotFoundException"/> は <c>Load</c> 本体(ThreadPool 上)で投げられるため
-    /// <see cref="Assert.ThrowsAsync"/> で捕捉する。
+    /// <b>NUnit + UniTask の EditMode 実行(M5-PR5 で <c>[UnityTest]</c> へ修正)</b>:
+    /// 実 <see cref="DrowZzzGameSessionSerializer"/> の <c>SaveAsync</c> / <c>LoadAsync</c> は
+    /// <c>UniTask.RunOnThreadPool</c> で ThreadPool 上に処理を投げ、完了後にメインスレッドへ戻る。これを
+    /// <c>async Task</c> + <c>.AsTask()</c> で待つと、NUnit テストランナーがメインスレッドをブロックしたまま
+    /// ThreadPool タスクの継続がメインスレッドへ戻れず <b>デッドロック</b> する(Test Runner が終わらない)。
+    /// そのため round-trip / ファイル不在検証は <c>[UnityTest]</c> + <c>IEnumerator</c> + <c>UniTask.ToCoroutine()</c>
+    /// で書く(Unity Test Runner が coroutine として実行 → PlayerLoop が回り継続がメインスレッドへ戻れる)。
+    /// 引数 null / 空白の検査は <c>RunOnThreadPool</c> 投入前に同期 throw されるため、ThreadPool を経由せず
+    /// 通常の <c>[Test]</c> + sync lambda の <see cref="Throws"/> で捕捉できる。
     /// </para>
     /// <para>
     /// テスト path は <see cref="Path.GetTempPath"/> 起点の <see cref="Guid.NewGuid"/> ベースで隔離する
@@ -63,39 +63,43 @@ namespace Drowsy.Infrastructure.Tests.Persistence
 
         // ===== INF-083: SaveAsync → LoadAsync round-trip =====
 
-        [Test, Category("Small"), Category("Normal"), Property("Requirement", "INF-083")]
-        public async Task Given_MinimalSession_When_SaveAsyncしてLoadAsync_Then_元Sessionと等価()
-        {
-            // Given
-            var original = DrowZzzSessionTestFixtures.MinimalSession();
-            var path = TempPath();
+        [UnityTest]
+        [Category("Small"), Category("Normal"), NUnit.Framework.Property("Requirement", "INF-083")]
+        public IEnumerator Given_MinimalSession_When_SaveAsyncしてLoadAsync_Then_元Sessionと等価()
+            => UniTask.ToCoroutine(async () =>
+            {
+                // Given
+                var original = DrowZzzSessionTestFixtures.MinimalSession();
+                var path = TempPath();
 
-            // When
-            await _serializer.SaveAsync(original, path).AsTask();
-            var loaded = await _serializer.LoadAsync(path).AsTask();
+                // When
+                await _serializer.SaveAsync(original, path);
+                var loaded = await _serializer.LoadAsync(path);
 
-            // Then
-            Assert.That(loaded, Is.EqualTo(original));
-        }
+                // Then
+                Assert.That(loaded, Is.EqualTo(original));
+            });
 
-        [Test, Category("Small"), Category("Normal"), Property("Requirement", "INF-083")]
-        public async Task Given_全機能入りSession_When_SaveAsyncしてLoadAsync_Then_元Sessionと等価()
-        {
-            // Given
-            var original = DrowZzzSessionTestFixtures.FullSessionWithAllFeatures();
-            var path = TempPath();
+        [UnityTest]
+        [Category("Small"), Category("Normal"), NUnit.Framework.Property("Requirement", "INF-083")]
+        public IEnumerator Given_全機能入りSession_When_SaveAsyncしてLoadAsync_Then_元Sessionと等価()
+            => UniTask.ToCoroutine(async () =>
+            {
+                // Given
+                var original = DrowZzzSessionTestFixtures.FullSessionWithAllFeatures();
+                var path = TempPath();
 
-            // When
-            await _serializer.SaveAsync(original, path).AsTask();
-            var loaded = await _serializer.LoadAsync(path).AsTask();
+                // When
+                await _serializer.SaveAsync(original, path);
+                var loaded = await _serializer.LoadAsync(path);
 
-            // Then
-            Assert.That(loaded, Is.EqualTo(original));
-        }
+                // Then
+                Assert.That(loaded, Is.EqualTo(original));
+            });
 
         // ===== INF-084: SaveAsync session = null =====
 
-        [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "INF-084")]
+        [Test, Category("Small"), Category("Abnormal"), NUnit.Framework.Property("Requirement", "INF-084")]
         public void Given_sessionがnull_When_SaveAsync_Then_ArgumentNullException()
         {
             // SaveAsync は RunOnThreadPool 投入前に同期 throw するため sync lambda で捕捉できる。
@@ -109,7 +113,7 @@ namespace Drowsy.Infrastructure.Tests.Persistence
         [TestCase(null)]
         [TestCase("")]
         [TestCase("   ")]
-        [Category("Small"), Category("Abnormal"), Property("Requirement", "INF-085")]
+        [Category("Small"), Category("Abnormal"), NUnit.Framework.Property("Requirement", "INF-085")]
         public void Given_SaveAsync_path無効_When_呼ぶ_Then_ArgumentException(string path)
         {
             var session = DrowZzzSessionTestFixtures.MinimalSession();
@@ -124,7 +128,7 @@ namespace Drowsy.Infrastructure.Tests.Persistence
         [TestCase(null)]
         [TestCase("")]
         [TestCase("   ")]
-        [Category("Small"), Category("Abnormal"), Property("Requirement", "INF-086")]
+        [Category("Small"), Category("Abnormal"), NUnit.Framework.Property("Requirement", "INF-086")]
         public void Given_LoadAsync_path無効_When_呼ぶ_Then_ArgumentException(string path)
         {
             Assert.That(
@@ -134,13 +138,22 @@ namespace Drowsy.Infrastructure.Tests.Persistence
 
         // ===== INF-087: LoadAsync ファイル不在 =====
 
-        [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "INF-087")]
-        public void Given_存在しないpath_When_LoadAsync_Then_FileNotFoundException()
-        {
-            // ファイル不在の FileNotFoundException は Load 本体(ThreadPool 上)で投げられるため
-            // Assert.ThrowsAsync で捕捉する(.AsTask() で UniTask → Task 変換)。
-            Assert.ThrowsAsync<FileNotFoundException>(
-                async () => await _serializer.LoadAsync(TempPath("not-exist.json")).AsTask());
-        }
+        // ファイル不在の FileNotFoundException は Load 本体(ThreadPool 上)で投げられるため、
+        // [UnityTest] + UniTask.ToCoroutine で PlayerLoop を回し、try/catch で捕捉する。
+        [UnityTest]
+        [Category("Small"), Category("Abnormal"), NUnit.Framework.Property("Requirement", "INF-087")]
+        public IEnumerator Given_存在しないpath_When_LoadAsync_Then_FileNotFoundException()
+            => UniTask.ToCoroutine(async () =>
+            {
+                try
+                {
+                    await _serializer.LoadAsync(TempPath("not-exist.json"));
+                    Assert.Fail("FileNotFoundException が投げられるべきだった");
+                }
+                catch (FileNotFoundException)
+                {
+                    // 期待通り、テスト成功(FileNotFoundException 以外は ToCoroutine が再 throw → テスト失敗)
+                }
+            });
     }
 }
