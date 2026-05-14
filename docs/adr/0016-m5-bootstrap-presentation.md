@@ -318,7 +318,7 @@ public interface IDrowZzzGameSessionSerializer
     void Save(DrowZzzGameSession session, string path);
     DrowZzzGameSession Load(string path);  // ファイル不在は FileNotFoundException(既存仕様継承)
 
-    // 非同期 API は本 ADR で追加(M5-PR5 実装)
+    // 非同期 API は本 ADR で追加(M5-PR1 で同期ラップとして実装、M5-PR5 で WebGL 最適化検討)
     UniTask SaveAsync(DrowZzzGameSession session, string path, CancellationToken ct = default);
     UniTask<DrowZzzGameSession> LoadAsync(string path, CancellationToken ct = default);  // ファイル不在は FileNotFoundException(同期版と同じ仕様)
 }
@@ -459,7 +459,7 @@ public sealed class GameLifetimeScope : LifetimeScope
 | タイミング | 動作 | 備考 |
 | ---- | ---- | ---- |
 | アプリ起動時(Presenter `BootAsync`) | `DefaultSavePath()` のファイル存在なら `LoadAsync` で復元、なければ `StartGameUseCase.Execute(...)` で新規対戦 | M5-PR5 で実装 |
-| `EndTurnAction` Apply 後 | `await _serializer.SaveAsync(path, session)` | M5-PR5、毎ターン後 |
+| `EndTurnAction` Apply 後 | `await _serializer.SaveAsync(session, _savePath, ct)` | M5-PR5、毎ターン後(引数順は §5.2 の interface 定義通り session-first) |
 | Game 終了時(`GameOutcome` 確定) | `await _serializer.SaveAsync` + 同期 backup(別 path で並行保存)| M5-PR7 で確定、初期推奨はメイン path 上書きのみ |
 | アプリ終了時(`OnApplicationQuit`) | `OnApplicationQuit` で Cancellation Token 発火 + 同期 `Save`(WebGL は不可、後述) | M5-PR5 で WebGL 制約を確認 |
 
