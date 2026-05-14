@@ -2,7 +2,8 @@
 <!--
   DrowZzz ゲーム画面の UI Toolkit レイアウト。
   ADR-0016 §3「Presentation アーキテクチャ」+ §11 で確定。M5-PR3 で骨格(ラベル 3 + ボタン 3)を作り、
-  M5-PR4 で points-label / hand-label を追加し DrowZzzGameView.Render の表示先を拡充した。
+  M5-PR4 で points-label / hand-label を追加し DrowZzzGameView.Render の表示先を拡充、
+  M5-PR6 で settings-section(BGM/SE Slider + Language Dropdown)を追加し UserSettingsBinder の対象とした。
   name 属性は DrowZzzGameView の Q<T>() クエリ文字列と一致させること。
 -->
 <ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
@@ -16,6 +17,12 @@
             <ui:Button name="draw-button" text="Draw" class="drowzzz-button" />
             <ui:Button name="play-button" text="Play" class="drowzzz-button" />
             <ui:Button name="end-turn-button" text="End Turn" class="drowzzz-button" />
+        </ui:VisualElement>
+        <ui:VisualElement name="settings-section" class="drowzzz-settings">
+            <ui:Label text="Settings" class="drowzzz-section-title" />
+            <ui:Slider name="bgm-slider" label="BGM" low-value="0" high-value="1" class="drowzzz-slider" />
+            <ui:Slider name="se-slider" label="SE" low-value="0" high-value="1" class="drowzzz-slider" />
+            <ui:DropdownField name="language-dropdown" label="Language" class="drowzzz-dropdown" />
         </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>

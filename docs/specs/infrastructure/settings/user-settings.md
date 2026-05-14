@@ -88,7 +88,7 @@ CLAUDE.md §9「定数管理方針」階層別に分類:
 | USR-002 | (テスト免除: Ubiquitous) | key prefix は USR-006 / USR-014 / USR-017 で間接検証 |
 | USR-003 | (テスト免除: Ubiquitous) | default は USR-007 で検証 |
 | USR-004 | (テスト免除: Ubiquitous) | clamp range は USR-015 / USR-016 で検証 |
-| USR-005 | `Given_LanguageCode_When_IsSupported_Then_期待値を返す`(`[TestCase]` 6 ケース:`"ja"`/`"en"`/`"zh"`/`"JA"`/`"ja-JP"`/`""`)+ `Given_LanguageCodeがnull_When_IsSupported_Then_false` | `LanguageCodes.IsSupported` の直接機械検証、2026-05-13 カバレッジ補完 PR で Ubiquitous 解除 |
+| USR-005 | `Given_LanguageCode_When_IsSupported_Then_期待値を返す`(`[TestCase]` 6 ケース:`"ja"`/`"en"`/`"zh"`/`"JA"`/`"ja-JP"`/`""`)+ `Given_LanguageCodeがnull_When_IsSupported_Then_false` + `Given_Supported_When_参照_Then_jaとenがこの順で並ぶ` | `LanguageCodes.IsSupported` の直接機械検証(2026-05-13 カバレッジ補完 PR で Ubiquitous 解除)+ `LanguageCodes.Supported` の内容・順序検証(M5-PR6 で `Supported` を式本体プロパティ化し `.cctor` 計測限界を回避した際に追加)|
 | USR-006 | `Given_PlayerPrefs空_When_SetBgmVolume半端値_Then_BgmVolumeが反映される` / `Given_PlayerPrefs空_When_SetBgmVolume半端値_Then_PlayerPrefsBgmKeyが反映される` | 1 テスト 1 アサーション分割 |
 | USR-007 | `Given_PlayerPrefs空_When_インスタンス化_Then_BgmVolumeがdefault値を返す` / `Given_PlayerPrefs空_When_インスタンス化_Then_SeVolumeがdefault値を返す` / `Given_PlayerPrefs空_When_インスタンス化_Then_Languageがdefault値を返す` | 3 項目 = 3 テスト分割 |
 | USR-008 | `Given_PlayerPrefsに0_3_When_インスタンス化_Then_BgmVolumeは0_3を返す` | |

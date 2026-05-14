@@ -2,8 +2,10 @@ using System;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.UIElements;
+using VContainer;
 using Drowsy.Application.Games.DrowZzz;
 using Drowsy.Domain.Cards;
+using Drowsy.Domain.Configuration;
 using Drowsy.Domain.Game;
 
 namespace Drowsy.Presentation.Games.DrowZzz
@@ -13,34 +15,31 @@ namespace Drowsy.Presentation.Games.DrowZzz
     /// </summary>
     /// <remarks>
     /// ADR-0016 §3.1「View interface」+ §6「シーン構成」+ §11 で確定。
-    /// M5-PR3 で骨格(VisualElement query + button.clicked 配線、Render は Debug.Log のみ)を作り、
-    /// 本 PR (M5-PR4) で:
+    /// M5-PR3 で骨格、M5-PR4 で <see cref="Render"/> 本実装、M5-PR6 で <see cref="IUserSettings"/> の
+    /// 設定 UI バインディングを追加した。
     /// <list type="bullet">
-    /// <item><see cref="Render"/> を本実装(Round / 現プレイヤー / TurnPhase / 山札・場札・捨て札枚数 /
-    /// FDP・DDP・SDP・TotalPoints / 現プレイヤー手札を各 Label に反映、ADR-0016 §11 M5-PR4)</item>
-    /// <item>Play ボタン押下時に直近 <see cref="Render"/> で受け取った session の現プレイヤー手札先頭カードを
-    /// <see cref="OnPlayClicked"/> で発火(M5-PR4 着手時 JIT 確定 2026-05-14「手札[0] 自動選択」、
-    /// 手札一覧からのクリック選択 UI は Phase 3)</item>
+    /// <item><see cref="Render"/>:Round / 現プレイヤー / TurnPhase / 山札・場札・捨て札枚数 / FDP・DDP・SDP・Total /
+    /// 現プレイヤー手札を各 Label に反映(M5-PR4)</item>
+    /// <item>Play ボタン押下時に直近 <see cref="Render"/> の現プレイヤー手札先頭カードを <see cref="OnPlayClicked"/> で発火(M5-PR4)</item>
+    /// <item><see cref="IUserSettings"/> を VContainer <c>[Inject]</c> で直接注入し、<see cref="UserSettingsBinder"/> で
+    /// 設定 UI(BGM/SE Slider + Language Dropdown)と双方向バインド(M5-PR6、ADR-0016 §11「View に直接 Inject」)</item>
     /// </list>
     /// <para>
-    /// <b>Render の引数</b>:<see cref="IDrowZzzGameView.Render"/> 契約上 non-null 前提(ADR-0015 NRT 不採用、
-    /// Presenter は <c>Subject&lt;T&gt;</c> 経由で Boot 後の有効な状態のみ発火)。ただし Mock 経由のテストや
-    /// 将来の経路で null が来た場合に分かりにくい NRE になるのを避けるため、 <see cref="Render"/> 冒頭で
-    /// null ガード + <c>Debug.LogError</c> を行う(code-reviewer W-2 反映)。
-    /// </para>
-    /// <para>
-    /// <c>status-label</c>(UXML 上の固定タイトル "DrowZzz")は <see cref="Render"/> で更新しないため
-    /// View 側で query / 保持しない(code-reviewer W-3 反映、デッドフィールド回避)。
     /// <see cref="RenderOutcome"/> は引き続き <c>Debug.Log</c> 出力のみ(本実装は M5-PR7)。
     /// </para>
     /// <para>
-    /// <b>イベント対称運用</b>:<see cref="OnEnable"/> で <c>button.clicked +=</c>、 <see cref="OnDisable"/> で
-    /// <c>button.clicked -=</c> を行う(Unity 文化の <c>OnEnable/OnDisable</c> 対称運用、ADR-0016 §3.1)。
+    /// <b>イベント / バインダのライフサイクル</b>:button.clicked の配線・解除は <see cref="OnEnable"/> /
+    /// <see cref="OnDisable"/> の対称運用(UIDocument の <c>rootVisualElement</c> はこの時点で利用可能)。一方
+    /// <see cref="UserSettingsBinder"/> は <c>[Inject]</c> 注入された <see cref="IUserSettings"/> を必要とするため、
+    /// 全 <c>Awake</c> / <c>OnEnable</c> / <c>[Inject]</c>(VContainer の <c>LifetimeScope.Awake</c> 内)完了後に
+    /// 呼ばれる <see cref="Start"/> で生成し、<see cref="OnDestroy"/> で Dispose する(button.clicked の
+    /// <c>OnEnable</c> 配線とは非対称だが、依存注入タイミングの都合、M5-PR6)。
     /// </para>
     /// <para>
     /// <b>VContainer 注入</b>:本 MonoBehaviour は <c>RegisterComponentInHierarchy&lt;DrowZzzGameView&gt;()</c>
-    /// で Game スコープに登録される(ADR-0016 §2 登録対象表)。Presenter は <c>SessionStream</c> を Subscribe して
-    /// 本 View の <see cref="Render"/> を呼ぶ配線を持つ。
+    /// で Game スコープに登録される(ADR-0016 §2)。Presenter は <c>SessionStream</c> を Subscribe して
+    /// 本 View の <see cref="Render"/> を呼ぶ。<see cref="IUserSettings"/> は <c>[Inject]</c> メソッド
+    /// <see cref="Construct"/> で受け取る(ADR-0016 §11 M5-PR6「View に直接 Inject」)。
     /// </para>
     /// </remarks>
     [RequireComponent(typeof(UIDocument))]
@@ -53,7 +52,7 @@ namespace Drowsy.Presentation.Games.DrowZzz
         private Button _playButton;
         private Button _endTurnButton;
 
-        // 以下 4 Label は M5-PR4 の Render 本実装で使用する。OnEnable で query 代入する。
+        // 以下 4 Label は Render 本実装で使用する。OnEnable で query 代入する。
         private Label _turnLabel;
         private Label _phaseLabel;
         private Label _pointsLabel;
@@ -61,6 +60,12 @@ namespace Drowsy.Presentation.Games.DrowZzz
 
         // 直近 Render で受け取った session。Play ボタン押下時の手札先頭カード選択に使う。
         private DrowZzzGameSession _lastRendered;
+
+        // VContainer [Inject] で注入されるユーザー設定(M5-PR6)。
+        private IUserSettings _userSettings;
+
+        // 設定 UI(Slider / Dropdown)と _userSettings の双方向バインダ。Start() で生成、OnDestroy() で Dispose。
+        private UserSettingsBinder _settingsBinder;
 
         /// <inheritdoc />
         public event Action OnDrawClicked;
@@ -70,6 +75,17 @@ namespace Drowsy.Presentation.Games.DrowZzz
 
         /// <inheritdoc />
         public event Action OnEndTurnClicked;
+
+        /// <summary>
+        /// VContainer の <c>[Inject]</c> メソッド注入で <see cref="IUserSettings"/> を受け取る(M5-PR6)。
+        /// </summary>
+        /// <exception cref="ArgumentNullException"><paramref name="userSettings"/> が null
+        /// (Bootstrap の <c>IUserSettings</c> 登録漏れを Boot 時点で検出)</exception>
+        [Inject]
+        public void Construct(IUserSettings userSettings)
+        {
+            _userSettings = userSettings ?? throw new ArgumentNullException(nameof(userSettings));
+        }
 
         private void OnEnable()
         {
@@ -123,6 +139,39 @@ namespace Drowsy.Presentation.Games.DrowZzz
             {
                 _endTurnButton.clicked -= RaiseEndTurnClicked;
             }
+        }
+
+        private void Start()
+        {
+            // UserSettingsBinder は [Inject] で注入された _userSettings を必要とするため、全 Awake / OnEnable /
+            // [Inject](LifetimeScope.Awake 内)完了後に呼ばれる Start() で生成する(クラス xmldoc 参照)。
+            if (_uiDocument is null || _userSettings is null)
+            {
+                Debug.LogError(
+                    "[DrowZzzGameView] Start: UIDocument または IUserSettings が未準備です。" +
+                    "UIDocument の Inspector 割り当て、または ProjectLifetimeScope の IUserSettings 登録を確認してください。");
+                return;
+            }
+
+            var root = _uiDocument.rootVisualElement;
+            var bgmSlider = root.Q<Slider>("bgm-slider");
+            var seSlider = root.Q<Slider>("se-slider");
+            var languageDropdown = root.Q<DropdownField>("language-dropdown");
+            if (bgmSlider is null || seSlider is null || languageDropdown is null)
+            {
+                Debug.LogError(
+                    "[DrowZzzGameView] Start: 設定 UI 要素が UXML から見つかりません。" +
+                    "name 属性(bgm-slider / se-slider / language-dropdown)が一致しているか確認してください。");
+                return;
+            }
+
+            _settingsBinder = new UserSettingsBinder(bgmSlider, seSlider, languageDropdown, _userSettings);
+        }
+
+        private void OnDestroy()
+        {
+            // Start() で生成した UserSettingsBinder を解放(Subscribe + RegisterValueChangedCallback の対称解除)。
+            _settingsBinder?.Dispose();
         }
 
         private void RaiseDrawClicked() => OnDrawClicked?.Invoke();
@@ -188,7 +237,7 @@ namespace Drowsy.Presentation.Games.DrowZzz
         /// <inheritdoc />
         public void RenderOutcome(GameOutcome outcome)
         {
-            // M5-PR4 時点では Debug.Log 出力のみ。M5-PR7 で Winner / Draw 表示の本実装に置き換える。
+            // M5-PR6 時点では Debug.Log 出力のみ。M5-PR7 で Winner / Draw 表示の本実装に置き換える。
             Debug.Log("[DrowZzzGameView] RenderOutcome: outcome を受信(M5-PR7 で UI 反映を実装)");
         }
     }
