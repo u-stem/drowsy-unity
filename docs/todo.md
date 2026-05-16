@@ -56,6 +56,13 @@
 
 ## 未着手
 
+- [ ] **CLAUDE.md §11「Phase 進捗」の M2 ステータスを「進行中」→「完結」に清算** `priority: low`
+  - **Why**:M5-PR8 着手 commit の code-reviewer W-3 指摘。CLAUDE.md §11 で M2 は「進行中(M2-PR6 以降は後続効果カードを JIT 共有で逐次追加)」と書かれているが、M3 / M4 / M5 が「完結」表記されている時系列上は M2 も実質完結扱いが自然(M3 で No.00 「夢」カード追加、ADR-0007 サブセット先行スコープも M2-PR5 で達成)。Phase 2 完結処理を最終整合させるため、M5-PR8 完結 commit と同 PR で M2 ステータスを清算するか、M5-PR8 マージ後の別軽量 PR で対応する
+  - **Done when**:
+    - CLAUDE.md §11 M2 行を「完結」表記に更新(M2-PR1〜PR5 完成 + ADR-0007 サブセット先行スコープ達成 + 残効果カードは M3 で No.00 追加済 = 実質完結 を明示)
+    - 関連 ADR(ADR-0007 / ADR-0009 / ADR-0011)に「M2 サブセット先行スコープは M2-PR5 で達成、Phase 2 完結時点で M2 ステータスを完結扱い」を Note で追記検討
+  - **Related**: [ADR-0007](adr/0007-m2-detail-card-effects.md)、[ADR-0009](adr/0009-m2-m3-dp-and-victory-conditions.md)、[ADR-0011](adr/0011-m3-dream-card-and-game-mechanics-expansion.md)、本 ADR-0016 M5-PR8 着手 commit code-reviewer W-3
+
 - [ ] **`CardIdJsonConverter` の負値 instance / 不正 schema 経路に Persistence テストを追加** `priority: low`
   - **Why**: ADR-0018 / code-reviewer 提案 6 反映。現状 `int.TryParse(instancePart)` が成功して `CardId.Of(typeId, -5)` が `ArgumentOutOfRangeException` を投げた場合、`catch (ArgumentException)` で `JsonSerializationException` に wrap されるが、本経路のテストが存在しない(実行時にのみ確認可能)。schema 違反系テスト(`"#0"` / `"dream"`(`#` なし)/ `"dream#-5"` / `"dream#abc"` 等)を Infrastructure.Tests/Persistence に追加して、診断性とリグレッション防止を担保したい
   - **Done when**:
