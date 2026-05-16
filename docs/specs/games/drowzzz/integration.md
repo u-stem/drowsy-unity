@@ -4,7 +4,7 @@
 
 ## 概要
 
-ADR-0006 §M1-PR7 の決定に基づく。M1-PR1〜PR6 で実装した部品(`StartGameUseCase` / `DrowZzzRule` / `ApplyActionUseCase` / `DrowZzzAction` 4 種 / `DrowZzzGameSession` / `DrowZzzPhaseState`)が組み合わさってターン進行ループを成立させることを確認する。各部品の単体テストは M1-PR1〜PR6 で完備済のため、本 PR では「組み合わせの正しさ」と「数ラウンド累積の正しさ」に焦点を絞る。
+ADR-0006 §M1-PR7 の決定に基づく。M1-PR1〜PR6 で実装した部品(`StartGameUseCase` / `DrowZzzRule` / `ApplyActionUseCase` / `DrowZzzAction` 4 種 / `DrowZzzGameSession` / `DrowZzzPhaseState`)が組み合わさってターン進行ループを成立させることを確認する。各部品の単体テストは M1-PR1〜PR6 で完備済のため、本 PR では「組み合わせの正しさ」と「数ターン累積の正しさ」に焦点を絞る。
 
 本 PR では以下を検証範囲外とする(ADR-0006 §6 通り):
 
@@ -39,7 +39,7 @@ ADR-0006 §M1-PR7 の決定に基づく。M1-PR1〜PR6 で実装した部品(`St
 ## Implementation Notes
 
 - **`IdentityRandom` 採用**: 統合テストでは結果を予測可能化するため `IdentityRandom`(Tests/Stubs、M1-PR3 で導入)を主に使用。`StartGameUseCase` の Players Shuffle / FdpPool Shuffle が no-op 化され、Players 順 / FDP 割当が入力順のままになる。Deterministic Replay テスト (DZ-081) のみ `XorShiftRandom(seed)` を使う。
-- **山札サイズ**: テストで 30 枚程度のダミー山札 (`CardId.Of("c1")〜("c30")`) を使う。3 ラウンド × 2 フェーズ = 6 ドロー + 5×2 = 10 初期配布 = 計 16 枚消費。30 枚あれば余裕あり。
+- **山札サイズ**: テストで 30 枚程度のダミー山札 (`CardId.Of("c1")〜("c30")`) を使う。3 ターン × 2 フェーズ = 6 ドロー + 5×2 = 10 初期配布 = 計 16 枚消費。30 枚あれば余裕あり。
 - **Hand 削減 / Field 累積の検証**: PlayCardAction で「現プレイヤー Hand から 1 枚」を `Field` に出すため、`Hand.Count` は Draw 1 回 + Play 1 回 = ±0 で 5 維持(各フェーズ後)。`Field` は累積で増える。
 - **共通ヘルパーの新設**: 統合テストで `PlayOnePhase(useCase, session)` ヘルパー(手札 Top カードを自動使用、ADR-0009 用語規約に従い旧 `PlayOneSubturn` から改名)と `PlayPhases(useCase, session, count)` ヘルパーを使ってループを簡潔化。
 
@@ -60,6 +60,6 @@ ADR-0006 §M1-PR7 の決定に基づく。M1-PR1〜PR6 で実装した部品(`St
 | ---- | ---- | ---- |
 | DZ-077 | 1 ID 4 テスト分割: `Then_PhaseStateがWaitingForDraw` / `Then_TurnNumberが1` / `Then_CurrentPlayerIndexが0` / `Then_各プレイヤーHandが5枚`(全て `Given_有効な引数_When_StartGameUseCase_Execute_Then_...`) | StartGameUseCase 直後の 4 不変条件を統合的視点で検証(各単体は M1-PR3 でカバー済) |
 | DZ-078 | 1 フェーズ完走の状態遷移を 4 アサーションに分離: `Then_Draw後にWaitingForPlay` / `Then_Play後にWaitingForEndTurn` / `Then_EndTurn後にWaitingForDraw` / `Then_TurnNumberが1増える` | 各 PhaseState 遷移を独立に検証 |
-| DZ-079 | 1 ラウンド完走 (N=2 フェーズ) の状態を 2 アサーションに分離: `Then_TurnNumberが+2` / `Then_CurrentPlayerIndexがプレイヤー0に戻る` | |
-| DZ-080 | 3 ラウンド完走の状態を 3 アサーションに分離: `Then_TurnNumberが+6` / `Then_FieldCountが6` / `Then_HandCountが5維持` | |
+| DZ-079 | 1 ターン完走 (N=2 フェーズ) の状態を 2 アサーションに分離: `Then_TurnNumberが+2` / `Then_CurrentPlayerIndexがプレイヤー0に戻る` | |
+| DZ-080 | 3 ターン完走の状態を 3 アサーションに分離: `Then_TurnNumberが+6` / `Then_FieldCountが6` / `Then_HandCountが5維持` | |
 | DZ-081 | `Given_同一引数と同一seed_When_M1完走を2回実行_Then_最終セッションが等価` | Deterministic Replay |

@@ -47,7 +47,7 @@ CLAUDE.md §9「マジックナンバー禁止」/「L1/L2 は `<Module>Constant
 | 1 フェーズあたりの分数 = 30 | L2 | `DrowZzzClockConstants.MinutesPerPhase = 30`(1 ターン = 30 分の Minute 桁) |
 | 24 時間制 mod 24 | L1 | `DrowZzzClockConstants.HoursPerDay = 24`(時間表記の数学的不変量) |
 | 夜の範囲下限 1 | L2 | `DrowZzzClockConstants.NightStartRound = 1`(21:00 = Round 1) |
-| 夜の範囲上限 16 | L2 | `DrowZzzClockConstants.NightEndRound = 16`(ADR-0009 §「Clock 仕様の境界訂正」、21:00〜04:30 を表現するラウンド境界) |
+| 夜の範囲上限 16 | L2 | `DrowZzzClockConstants.NightEndRound = 16`(ADR-0009 §「Clock 仕様の境界訂正」、21:00〜04:30 を表現するターン境界) |
 | 朝の範囲下限 17 | L2 | `DrowZzzClockConstants.MorningStartRound = 17`(ADR-0009 §「Clock 仕様の境界訂正」、05:00) |
 | 朝の範囲上限 21 | L2 | `DrowZzzClockConstants.MorningEndRound = 21`(ADR-0009 §「Clock 仕様の境界訂正」、07:00 は最終プレイ可能ターン) |
 
@@ -56,7 +56,7 @@ CLAUDE.md §9「マジックナンバー禁止」/「L1/L2 は `<Module>Constant
 ## 関連
 
 - ADR: [`docs/adr/0008-m2-drowzzz-clock-and-night-morning.md`](../../../adr/0008-m2-drowzzz-clock-and-night-morning.md) — 本機能の核心 ADR、§1 で `DrowZzzClock` の実装案を確定、§2 で session への computed プロパティ組み込みを確定、§5 で `RoundNumber > 21` の挙動を確定
-- ADR: [`docs/adr/0009-m2-m3-dp-and-victory-conditions.md`](../../../adr/0009-m2-m3-dp-and-victory-conditions.md) — Clock 21 ラウンド化の境界訂正 / 用語規約 / 早期勝利の論理式(`session.Clock.IsNight && ...`)で本機能の `IsNight` / `IsMorning` を参照する想定
+- ADR: [`docs/adr/0009-m2-m3-dp-and-victory-conditions.md`](../../../adr/0009-m2-m3-dp-and-victory-conditions.md) — Clock 21 ターン化の境界訂正 / 用語規約 / 早期勝利の論理式(`session.Clock.IsNight && ...`)で本機能の `IsNight` / `IsMorning` を参照する想定
 - ADR: [`docs/adr/0006-m1-detail-application-interfaces.md`](../../../adr/0006-m1-detail-application-interfaces.md) §2.2 / §M1-PR2 — `DrowZzzGameSession.CurrentRound` の式 `(TurnNumber + 1) / 2` と N=2 専用性、本機能の `Clock.RoundNumber` が同義となる土台
 - 実装 (本 PR):
   - `Assets/_Project/Scripts/Application/Games/DrowZzz/DrowZzzClock.cs`
