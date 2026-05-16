@@ -466,6 +466,16 @@ namespace Drowsy.Application.Games.DrowZzz
                     $"AssociateAction.Card ({action.Card.Value}) は連想可能カードではありません " +
                     "(効果列に AssociatableMarkerEffect が含まれていない、ADR-0011 §1)");
             }
+            // C-1 post-Phase2 レビュー反映:既に Hand に含まれている CardId を再連想すると
+            // 後段 Hand.Add で生 ArgumentException が露出する。IsLegalAssociate と同じ防御を
+            // ApplyAssociate にも対称的に入れて InvalidOperationException で統一する(Apply 経路は
+            // ADR-0006 §3 の「IsLegalMove を呼ばず各 ApplyXxx 内で冗長検証」設計に従う)。
+            if (currentPlayer.Hand.Contains(action.Card))
+            {
+                throw new InvalidOperationException(
+                    $"AssociateAction.Card ({action.Card.Value}) は既に Hand に含まれています " +
+                    "(同一 CardId の重複連想は不可、HAND-005 / ADR-0018)");
+            }
 
             // (1) 現プレイヤーの Hand に action.Card を追加(catalog 経由の直接生成、初期山札 / Pile を一切変更しない)
             var updatedPlayer = currentPlayer with { Hand = currentPlayer.Hand.Add(action.Card) };
