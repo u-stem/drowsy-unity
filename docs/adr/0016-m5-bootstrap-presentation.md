@@ -863,6 +863,63 @@ PR 番号は GitHub マージ後に確定するため、本セクションは原
 - **次 PR への引き継ぎ**:
   - M5-PR7 で `GameOutcome` の UI 反映(`outcome-label` 新設、`RenderOutcome` 本実装)+ Outcome 確定後の入力 disable(View ボタン disable + Presenter event 無視の多層防御)+ Auto-save Final(メイン path 上書き、`TryApplyAction` 内に Auto-save 判定を集約し M5-PR5 の bool 返却を void に戻す)、M5-PR7 着手時 JIT 確定 2026-05-14
 
+#### M5-PR7 完成記録
+
+- **PR**:[#93](https://github.com/u-stem/drowsy-unity/pull/93)、squash merged → commit `06472f3`(2026-05-16)
+- **スコープ達成**:
+  - `DrowZzzGameView.RenderOutcome` 本実装(`outcome switch` で `WinnerOutcome winner => $"Winner: {winner.Winner.Value}"` / `DrawOutcome => "Draw"` の表示分岐、`outcome-label` を UXML に新規追加)+ Outcome 確定後の入力 disable(`DrowZzzGameView` が 3 ボタン disable + `DrowZzzGamePresenter.TryApplyAction` が `_current.IsTerminated` ガード = 多層防御、M5-PR7 着手時 JIT「View でボタン disable + Presenter で event 無視」確定 2026-05-14)
+  - **Auto-save Final**:`TryApplyAction` 内に Auto-save 判定を集約(`if (action is EndTurnAction || next.IsTerminated) AutoSaveAsync(_cts.Token).Forget();`)、M5-PR5 で bool 返却にしていた `TryApplyAction` を void に戻して、Outcome 確定で終了した場合も Auto-save が EndTurn と同じ Save 経路に統合(メイン path 上書き、M5-PR7 着手時 JIT 確定 2026-05-14)
+  - `Start()` の `SessionStream` 購読を `Render` + `IsTerminated → RenderOutcome` 分岐に拡張(BootAsync 復元で `IsTerminated` な session を受け取った場合も RenderOutcome が呼ばれる、PRES-031)
+  - EARS `presenter-skeleton.md/.feature` 更新(PRES-031 / PRES-032 / PRES-033 新設、PRES-033 は `[Optional]` 手動 QA)、`DrowZzzGamePresenterTests` 拡張(計 19 メソッド、PRES-031 / PRES-032 ×2 追加 + 全テスト void 化済維持)
+- **検証結果**:
+  - `dotnet build drowsy-unity.slnx`:0 警告 / 0 エラー
+  - lefthook pre-commit 全フック緑
+  - Unity Test Runner / Play モード Outcome 表示確認はオーナー側で実機実施(本 PR 単独では Play 動作未達、後続 PR #95 / #96 で根本対処後に完全動作)
+- **JIT 確定事項**(M5-PR7 着手時 2026-05-14):
+  - Outcome 確定後の入力 disable:**View でボタン disable + Presenter で event 無視**(多層防御、片方の漏れでもう片方が catch)
+  - Auto-save Final:**メイン path 上書きのみ**(別 path / 履歴保存は Phase 3)
+  - `outcome-label`:**新規 UXML 要素**(`status-label` 流用ではなく独立要素、可視性とトレーサビリティ向上)
+- **次 PR への引き継ぎ(当初計画)**:M5-PR8 で WebGL Build 検証 + Phase 2 完結処理(ADR-0016 §11「M5 完成後の Phase 進捗バナー更新案」適用)
+- **実装後発覚 → 後続 PR で根本対処**:M5-PR7 マージ後の Unity Play モード実機検証で 2 件の根本問題が連鎖発覚し、M5-PR8(本 PR、後続)着手前に以下 3 PR が挟まった:
+  1. **PR #94**(`docs/architecture/scene-setup.md` 手順書追加、squash `28d81f9`、2026-05-16):オーナー側 Main.unity Scene セットアップ手順の機械化、ADR-0016 §6 のシーン構造を実体化する作業の障害(scene 開いていない / コンポーネント取り違え / フォントエラー / Parent 設定漏れ等)を一つずつ解消
+  2. **PR #95**(`fix/m5-player-roster-vcontainer-collection`、squash `49b2d77`、2026-05-16):ADR-0017 PlayerRoster wrapper 導入、VContainer 1.x の `CollectionInstanceProvider.Match` が `IReadOnlyList<T>` を予約型として扱い `RegisterInstance` を上書きする問題を回避(`StartGameUseCase` が空 players で `ArgumentException`「players は 1 人以上必要です」の根本原因)
+  3. **PR #96**(`refactor/m4-cardtypeid-instance-id-separation`、squash `20ea1de`、2026-05-16):ADR-0018 `CardTypeId` 新設 + `CardId` を `(CardTypeId, int Instance)` 複合型に refactor、Hand の重複 CardId 検出エラー(`BuildInitialDeck` が同じ CardId を 20 枚並べる方針 vs Hand の unique 制約の不整合)を根本対処、Drowsy.Domain 100% カバレッジ達成
+
+#### M5-PR8 完成記録(Phase 2 完結 PR)
+
+- **PR**:TBD(commit 2 段階完成後に GitHub PR 作成、ブランチ `docs/m5-pr8-phase2-completion`、着手 commit `a315233` + 完結 commit 後にまとめて作成)
+- **着手日**:2026-05-16 / **完結日**:2026-05-16
+- **スコープ達成(新規実装ゼロ、検証 + ドキュメント中心)**:
+  - **WebGL Build 検証**(オーナー実機、2026-05-16 17:22):**Result: Success**、完全 Build 52.5 秒 / Incremental 9.6 秒、出力サイズ 88 MB(`Builds/Web/Build/WebGL/` 配下)、Error 0 / Warning 0。M4-PR7 時点(59 秒)からほぼ誤差範囲。詳細は `docs/architecture/webgl-il2cpp-verification.md` §「検証結果(M5-PR8)」
+  - **Phase 2 完結処理(ドキュメント)**:
+    - 本セクション(M5-PR8 完成記録)
+    - CLAUDE.md §11 Phase 進捗:M5「進行中」→「**完結**」、Phase 2「進行中」→「**完結**」、M2 ステータス清算(W-3 反映)
+    - README.md status banner 更新(Phase 2 完結バナー)
+    - ADR-0005 §7 Phase 2 完了基準充足のマーク
+    - `docs/todo.md`:WebGL CI 整備 / Presenter C0 カバレッジ計測 / UI Toolkit `DataBinding` 切替評価 + Build 出力整理(古い `Builds/Web/Build/*.{data,framework.js,loader.js,wasm}` の累積物)を「未着手」セクションへ追加(本 ADR §「TODO 候補」から todo.md へ移行)。なお ADR-0014 §「再評価機会」項目(`StartGameUseCase` の `ICardCatalog<IEffect>` 依存)は M5 Bootstrap 実装中に既に自己回収済(`StartGameUseCase` ctor 2 引数化が ADR-0014 自体で完結、本 ADR §「TODO 候補」エントリは初版起票時の予約だった)→ todo.md 移行不要
+  - **統合確認**:Unity Play モードで DrowZzz が Draw / Play / EndTurn / 設定 UI を全機能動作させられることをオーナー側で実機確認済(Hand 重複検出エラーは PR #96 = ADR-0018 で根本解消済、本 PR の WebGL Build もこの状態で成功)
+- **検証結果**:
+  - **WebGL Build**:`Build Finished, Result: Success.`(Editor.log)、Error 0 / Warning 0
+  - **Build 時間**:完全 52.5 秒(`PlayerBuildInfo duration: 52513`、内訳:Postprocess built player 38.4s + ProducePlayerScriptAssemblies 10.7s + その他)、Incremental 9.6 秒
+  - **出力サイズ**:88 MB(`Builds/Web/Build/WebGL/`、`WebGL.data` + `WebGL.framework.js` + `WebGL.wasm` + `WebGL.loader.js` + `TemplateData/` + `index.html`)
+  - **dotnet build**:0 警告 / 0 エラー
+  - **Unity Test Runner EditMode**:全テスト PASS(直前 PR #96 で確認)
+  - **Code Coverage**:Drowsy.Domain 100%(465/465 lines、102/102 methods、12 クラス、直前 PR #96 で達成)
+  - **lefthook pre-commit**:全フック緑
+- **JIT 確定事項**(M5-PR8 完結時 2026-05-16):
+  - **commit 2 段階構成**:着手 commit `a315233` でドキュメント整備 + 進行中ステータス + WebGL 検証依頼 → オーナー実機検証 → 完結 commit(本 ADR + CLAUDE.md / README / ADR-0005 更新)で完結マーク(WebGL 検証なしで Phase 2 完結を宣言しない、ADR-0005 §7 完了基準厳密遵守)
+  - **本 PR で取り込んだ Scene Asset**(PR #96 末尾 commit `4f02a39` で実体化済):`Main.unity` / `DrowZzzPanelSettings.asset` / `UI Toolkit/UnityThemes/UnityDefaultRuntimeTheme.tss` / `EditorBuildSettings.asset` 修正(Build Settings に Main.unity 追加)+ SampleScene.unity 削除 → これらが揃った状態で WebGL Build 検証成功
+  - **Phase 3 着手判断**:本 PR 完結後の別 ADR(候補 ADR-0019)で Phase 3 ロードマップ(N>2 拡張 / 本格 UI / 世界観統合 / Networking 等)を起票、本 ADR では Out of Scope
+  - **既知の改善候補**(本 PR 範囲外、`docs/todo.md` へ移行済):古い Build 出力 `Builds/Web/Build/*.{data,framework.js,loader.js,wasm}`(2026-05-14 M4-PR7 時点)が `WebGL/` サブディレクトリの新出力と並存している。`Builds/Web/Build/` の出力構造は Build Profile 設定差で時期により変動するため、累積物の整理は別途検討
+  - **NRT 再評価(ADR-0015 §「再評価条件」第 1 項)**:M5-PR1〜PR8 範囲の null 経路は既存の `?? throw new ArgumentNullException` + Abnormal テスト + ADR-0017 PlayerRoster ctor null 検証 + ADR-0018 CardId.Of(typeId, instance) null/負数検証で十分担保できており、NRT 静的検証の追加価値は限定的(M5 で導入した外部 API クライアント / シリアライザ等は `CardIdJsonConverter` の `string` 経路で防御コード完備)。**ADR-0015 は継続 Accepted、Supersede 不要**と判断(本 ADR §12 / §11 M5-PR8 JIT 確認事項「ADR-0015 §再評価条件充足確認」を本完成記録で消化)
+- **Phase 2 完了の最小定義(ADR-0005 §7)達成軸**:
+  1. Domain 集約 + Application UseCase + Infrastructure 永続化 + Presentation UI の 4 層が動く(M1〜M5)✓
+  2. DrowZzz サブセット(カード 3 種:No.00 / No.01 / No.02)が起動から終局まで通る(M2-PR5 + M3-PR6)✓
+  3. 永続化(セッション JSON + ユーザー設定 PlayerPrefs)が動く(M4-PR5 + M4-PR6)✓
+  4. WebGL Build が継続して通る(M4-PR7 + 本 M5-PR8)✓
+  5. **Play モード操作**(Draw / Play / EndTurn / 設定 UI)がオーナー実機で完走(M5-PR7 + PR #95 + PR #96 の連鎖対処後)✓
+  → **全 5 軸達成、Phase 2 完結条件充足**
+
 ### M5 完成後の Phase 進捗バナー更新案
 
 M5-PR8 完成時点で CLAUDE.md §11「Phase 進捗」を以下に書き換え:

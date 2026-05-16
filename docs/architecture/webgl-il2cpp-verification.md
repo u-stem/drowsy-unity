@@ -71,6 +71,36 @@ M4-PR7 範囲では実 Play できる UI がないため、本ステップは **
 - [ ] 本ドキュメントの「既知の制約」を M5-PR5 / M5-PR8 への申し送り項目として PR description に明記
 - [ ] スクリーンショット 1 枚(Build Report or Build 成功 Console)を PR description に添付
 
+## 検証結果(M5-PR8 = Phase 2 完結 PR、2026-05-16)
+
+M5-PR1〜PR7(VContainer / UI Toolkit / R3 / UniTask 統合)+ PR #94(scene-setup 手順書)+ PR #95(ADR-0017 PlayerRoster wrapper)+ PR #96(ADR-0018 CardTypeId 分離)完了後の WebGL Build 検証結果。**M5 完成定義「Play モード操作」充足の前提として、WebGL Build が引き続き成功することを確認**。
+
+### Build サマリ(オーナー実機、2026-05-16 17:22)
+
+| 項目 | 値 |
+| ---- | ---- |
+| Result | **Success**(Editor.log: `Build Finished, Result: Success.`) |
+| 完全 Build 時間 | **52.5 秒**(PlayerBuildInfo `duration: 52513`、内訳:Postprocess built player 38.4s + ProducePlayerScriptAssemblies 10.7s + Writing asset files 1.6s + Creating compressed player package 0.8s + Building scenes 0.4s + その他) |
+| Incremental Build 時間 | **9.6 秒**(2 回目以降の差分 Build) |
+| 出力先 | `Builds/Web/Build/WebGL/`(Build Profile による出力、M4-PR7 時点の `Builds/Web/Build/` 直下出力から場所が変わったのは Build Profile 設定差) |
+| 出力サイズ合計 | **88 MB**(`Builds/Web/Build/WebGL/` 配下、`WebGL.data` + `WebGL.framework.js` + `WebGL.wasm` + `WebGL.loader.js` + `TemplateData/` + `index.html`) |
+| Error 数 | 0 |
+| Warning 数 | 0(本 PR スコープ内、`Stripping Runtime Debug Shader Variants` 注記は info レベル) |
+
+### M4-PR7 検証(2026-05-14)との差分
+
+| 項目 | M4-PR7(空 Scene + 最小実装) | M5-PR8(本格 Scene + UI + Persistence + VContainer + R3 + UniTask) | 差分評価 |
+| ---- | ---- | ---- | ---- |
+| Build 時間 | 59 秒 | 52.5 秒 | ほぼ誤差範囲(scene が小さくて差が出にくい / M5 で増えた asset は SO 2 種 + UXML 2 種 + UI Toolkit 1 theme 程度) |
+| 出力サイズ | 確認なし(空 Scene 想定で type 保持確認が主目的) | 88 MB | M5 範囲で実用的サイズ |
+| Result | Success | Success | 一貫 |
+
+M5-PR1〜PR7 + PR #94 / #95 / #96 の追加実装(VContainer 1.17.0 / UniTask 2.5.10 / R3 1.3.0 / UI Toolkit / Newtonsoft.Json 永続化 / 全 Domain refactor)が **WebGL IL2CPP Build に影響なし** であることを確認。
+
+### Phase 2 完了基準(ADR-0005 §7)との関係
+
+本検証により ADR-0005 §7 Phase 2 完了の最小定義のうち「WebGL Build が継続して通る」要件を達成。残る軸(Play モード操作)はオーナー側で M5-PR7 / PR #96 マージ後の実機検証で達成済(Hand 重複検出エラーの根本対処後)。Phase 2 完結条件充足。
+
 ## 関連
 
 - ADR: [ADR-0012 §「M4-PR5 完成記録」](../adr/0012-m4-scriptableobject-and-persistence.md) — `link.xml` 導入 + WebGL 検証を M4-PR7 へ持ち越し

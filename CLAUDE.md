@@ -306,12 +306,14 @@ PR 別の完成記録 / 進行中マイルストーンの詳細は **各 ADR の
 ### Phase 進捗
 
 - **Phase 1**(Domain 拡張): **完結**(ADR-0002、Domain 9 クラス C0 100%、NUnit 205 件)
-- **Phase 2**(DrowZzz 本命実装): **進行中**(ADR-0005、M1〜M5)
+- **Phase 2**(DrowZzz 本命実装): **完結**(ADR-0005、M1〜M5 完成、Phase 2 完了の最小定義 5 軸全達成、M5-PR8 = 2026-05-16)
   - **M1**(ターン進行 + カードプレイ最小骨格): 完成(ADR-0006、PR #22〜#28)
-  - **M2**(カード効果): **進行中** — M2-PR1(効果インフラ)/ M2-PR2(Clock)/ M2-PR3(SDP + カード No.01)/ M2-PR4(DDP + 自動抽選)/ M2-PR5(継続影響 + カード No.02)完成、M2-PR6 以降は後続効果カードを JIT 共有で逐次追加
+  - **M2**(カード効果): **完結** — M2-PR1(効果インフラ)/ M2-PR2(Clock)/ M2-PR3(SDP + カード No.01)/ M2-PR4(DDP + 自動抽選)/ M2-PR5(継続影響 + カード No.02)で ADR-0007 サブセット先行スコープ達成。M2-PR6 以降に予定していた後続効果カードの一部は M3-PR6 で No.00「夢」が追加され、Phase 2 完結時点で M2 サブセットスコープ完結扱い(M5-PR8 で清算、ADR-0007 / ADR-0009 / ADR-0011 のサブセット先行方針と整合)
   - **M3**(勝利条件 / 終了処理 + ゲームメカニクス拡張): **完結**(ADR-0010 + ADR-0011、7 PR で完成:M3-PR1 終了判定 / PR2 ベッド破損 / PR3 放棄 / PR4 連想 / PR5a〜c キーワード基盤 + Counter + 反撃の反撃 / PR6 カード No.00「夢」+ Marker 2 種 + 連想後使用制限機構、NUnit Property 352 件、Session ctor 10 引数化、Marker effect 方式 + 再帰 walk vs 最上位 scan + 2 役兼用パターン確立)
   - **M4**(永続化 / SO 化 + ユーザー設定): **完結**(ADR-0012、M4-PR1〜PR7 + CLI 機械検知レイヤ整備 PR #63 で完成。M4-PR1(SO catalog 骨格)/ M4-PR2(EffectAsset + AdjustSdp)/ M4-PR3(残り 11 派生型 + wrapper 再帰 + 中間型 2 件)/ M4-PR4(既存 3 カード SO ↔ InMemory 同値性検証)/ M4-PR5(`DrowZzzGameSession` JSON 永続化:Newtonsoft.Json + JsonConverter "type" discriminator + PersistedSessionV1 DTO + link.xml + IsExternalInit polyfill)/ M4-PR6(`IUserSettings` + `PlayerPrefsUserSettings`:Domain.asmdef に R3.dll precompiledReferences + ReactiveProperty<T> Observable 公開)/ M4-PR7(M4 完成 PR:`DrowZzzGameConfigAsset` SO 追加実装 + Designer ワークフロー実証(`docs/architecture/designer-workflow.md` + Custom PropertyDrawer `EffectAssetReferenceDrawer`)+ WebGL Build `Result: Succeeded` 59 秒で確認(`docs/architecture/webgl-il2cpp-verification.md`)+ Build Profile 共有資産化 + ADR-0016 §7.1 実態整合訂正)。M4 累計 NUnit Property unique 431 件、EARS 94 件(INF-001〜079 + USR-001〜027)、SO 型 2 + 実 .asset 2 + Serializable POCO 17、新 asmdef 2(`Drowsy.Infrastructure.Tests` / `Drowsy.Infrastructure.Editor`)、Phase 2 完了の最小定義 5 軸中 4 軸を充足(残るは「Play モード操作」のみ → M5))
-  - **M5**(Bootstrap / Presentation): **着手可能**(ADR-0016 起票済 + M4-PR7 完了で前提条件充足、VContainer 2 階層 LifetimeScope + MVP(Pure C# Presenter)+ UI Toolkit + R3 `Subject<T>` + UniTask 永続化、M5-PR1〜PR8 の 8 PR 分割計画確定)
+  - **M5**(Bootstrap / Presentation): **完結**(ADR-0016、M5-PR1〜PR8 + PR #94 / #95 / #96 で完成。VContainer 2 階層 LifetimeScope + MVP Pure C# Presenter + UI Toolkit + R3 `Subject<T>` + UniTask 永続化 + Auto-save Final + GameOutcome の UI 反映)。M5-PR7 後の Unity Play モード実機検証で連鎖発覚した根本問題 2 件は PR #95 ADR-0017(PlayerRoster wrapper、VContainer `IReadOnlyList<T>` 予約型回避)+ PR #96 ADR-0018(CardTypeId 新設 + CardId 複合型 refactor、Hand 重複検出根本対処、Drowsy.Domain 100% カバレッジ)で根本対処、M5-PR8 で WebGL Build `Result: Success` 52.5 秒(M4-PR7 59 秒からほぼ誤差範囲)+ Play モード全機能動作確認 + Phase 2 完結処理を完了
+
+- **Phase 3**(N>2 拡張 / 本格 UI / 世界観統合 / Networking 等): **未着手**(着手判断は別 ADR(候補 ADR-0019)で Phase 3 ロードマップ起票後に再評価)
 
 ## 12. TODO 追跡
 
