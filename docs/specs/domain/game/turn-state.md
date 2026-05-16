@@ -37,6 +37,7 @@
 - [TURN-010] If `new TurnState(..., currentPlayerIndex)` is called with `currentPlayerIndex < 0`, then the constructor shall throw `ArgumentOutOfRangeException`.
 - [TURN-011] If `TurnState.Initial(playerIndex)` is called with `playerIndex < 0`, then it shall throw `ArgumentOutOfRangeException`.
 - [TURN-012] If `Next(playerCount)` is called with `playerCount <= 0`, then it shall throw `ArgumentOutOfRangeException`.
+- [TURN-013] If `Next(playerCount)` would overflow `TurnNumber` past `int.MaxValue`, then it shall throw `OverflowException` (`checked` 算術)。実運用では DrowZzzClockConstants が 21 ターンで終了するため到達しないが、Domain 単体で `int.MaxValue` が渡された際のサイレントオーバーフローを防ぐ。
 
 ## 実装メモ
 
@@ -81,5 +82,6 @@
 | TURN-010 | `Given_currentPlayerIndex負_When_コンストラクタ_Then_ArgumentOutOfRangeException` | |
 | TURN-011 | `Given_playerIndex負_When_Initial_Then_ArgumentOutOfRangeException` | |
 | TURN-012 | `Given_playerCount0_When_Next_Then_ArgumentOutOfRangeException` / `Given_playerCount負_When_Next_Then_ArgumentOutOfRangeException` | 0 と負の両ケース |
+| TURN-013 | `Given_TurnNumberがint最大値_When_Next_Then_OverflowException` | checked 算術でサイレントオーバーフローを防止 |
 
 ID 規約全体は [`docs/testing-strategy.md`](../../../testing-strategy.md) を参照。

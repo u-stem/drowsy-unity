@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Drowsy.Domain.Random;
 
 namespace Drowsy.Domain.Cards
@@ -38,13 +37,27 @@ namespace Drowsy.Domain.Cards
 
         /// <summary>カード列から Pile を生成する。</summary>
         /// <exception cref="ArgumentNullException">cards が null</exception>
+        /// <exception cref="ArgumentException">cards に null 要素が含まれる</exception>
         public Pile(IEnumerable<CardId> cards)
         {
             if (cards is null)
             {
                 throw new ArgumentNullException(nameof(cards));
             }
-            _cards = cards.ToArray();
+            // null 要素は混入箇所と例外箇所が乖離してデバッグ困難になるため、構築時に検出する
+            // (Hand と同じパターン、Domain 集合型の null 防御を Hand / Pile 間で対称化する)。
+            var buffer = new List<CardId>();
+            foreach (var card in cards)
+            {
+                if (card is null)
+                {
+                    throw new ArgumentException(
+                        "Pile の cards に null CardId を含めることはできません",
+                        nameof(cards));
+                }
+                buffer.Add(card);
+            }
+            _cards = buffer.ToArray();
         }
 
         // 内部用: 既に所有権を持つ配列を直接ラップする(防御コピーを省略)

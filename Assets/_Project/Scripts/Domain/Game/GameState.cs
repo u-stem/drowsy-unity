@@ -19,6 +19,15 @@ namespace Drowsy.Domain.Game
     /// <c>Equals(GameState)</c> を呼ぶため自動的に正しく動く。
     /// <see cref="Turn"/> は PR-5 で追加され、<see cref="TurnState.CurrentPlayerIndex"/> が
     /// <see cref="Players"/> の範囲内(<c>0 &lt;= index &lt; Count</c>)であることをコンストラクタで検証する(GS-022)。
+    /// <para>
+    /// <b>呼び出し規約 — `with` 同時更新の禁止</b>:
+    /// <c>Players</c> と <c>Turn</c> の init setter は、それぞれ「現在のもう片方の値」を読んで GS-022(範囲整合)
+    /// を検証する。C# の <c>with</c> 式が複数 init setter を呼ぶ順序はコンパイラ依存で保証されないため、
+    /// <c>with { Players = newPlayers, Turn = newTurn }</c> のような **同時更新は使わない**。
+    /// 順序依存で「旧 Turn × 新 Players」または「旧 Players × 新 Turn」で検証が走り、本来弾くべき不整合を
+    /// 通過させる可能性がある。代わりに 2 段 <c>with</c>(<c>state with { Players = ... } with { Turn = ... }</c>)
+    /// またはコンストラクタ経由(<c>new GameState(...)</c>)で、Players → Turn の順に確定する。
+    /// </para>
     /// </remarks>
     public sealed record GameState
     {
