@@ -83,6 +83,33 @@
     - 切替判断(採用 / 不採用 / 部分採用)を ADR で記録
   - **Related**: [ADR-0016](adr/0016-m5-bootstrap-presentation.md) §3 / §「TODO 候補」
 
+- [ ] **Unity Code Coverage の境界条件バグ追跡 + 代替手段(coverlet + dotnet test)PoC** `priority: medium`
+  - **Why**: B-5 第 1 弾(PR #101 merged)で追加した 4 fixture(`HandJsonConverterTests` / `PileJsonConverterTests` / `PlayerIdJsonConverterTests` / `PersistedSessionV1Tests`)が、TestResults.xml で 45 件 Passed にもかかわらず **Code Coverage 上 0% で記録される**。Library 全削除 + Editor 再起動でも改善せず、Unity Code Coverage v1.3.0 の本質的バグ確定。さらに `EffectJsonConverter` 既存 fixture も 25.5% に留まる(M4-PR5 で 12 派生型 round-trip テスト追加済にもかかわらず)= **Coverage 計測の信頼性自体が崩壊**
+  - **検証経緯(2026-05-16)**:
+    - 試行 1:Editor Auto-refresh 後 Test Runner Run All → 4 クラス 0%
+    - 試行 2:CodeCoverage/ + Library/ScriptAssemblies/ 削除 + Editor 再起動 + Run All → 4 クラス 0%(変化なし)
+    - 試行 3:Library/ 完全削除(3.8GB)+ Editor 再起動 + Run All → 4 クラス 0%(変化なし)= instrumentation cache 問題ではない
+    - 共通点解析:同じ asmdef / namespace / 基底型(`JsonConverter<T>`)で `CardId` / `DdpPool` Converter は 86% 記録、`Hand` / `Pile` / `PlayerId` Converter は 0%。再現条件不明
+    - 仮説:Unity Code Coverage が **特定の generic T 型** に対して instrumentation injection を失敗する境界条件バグ。v1.2.7 で別 generic bug(case COV-17)は修正済だが、本症状は別バグ
+  - **Done when**:
+    - Unity-Technologies/com.unity.testtools.codecoverage の Issue tracker で同種報告を検索(なければ issue report 起票)
+    - **代替手段 PoC**: `coverlet` + `dotnet test` を Unity 非依存テスト(`HandJsonConverter` / `PileJsonConverter` / `PlayerIdJsonConverter` 等の Pure C# fixture)で動作確認。Unity 生成 csproj は `UnityEngine` / `UnityEditor` 依存があるため、新規 csproj 切り出し or define シンボル調整が必要
+    - 動作確認できれば `scripts/run-coverlet.sh` 等で再現可能な計測経路を確立し、`docs/testing-strategy.md` に追記
+    - 動作不可なら別案(AltCover / dotCover / 手動チェックリスト)を ADR で判断記録
+  - **Related**: 起点 PR #101(B-5 第 1 弾)、`CodeCoverage/Report/Summary.xml`(検証時の数値証跡)、[Unity Discussions: Code coverage doesn't work with generics](https://discussions.unity.com/t/code-coverage-doesnt-work-with-generics/913956)、本検証セッション(2026-05-16)
+  - **Notes**: バグ確定済のため「テストを書く」ことと「Coverage 数値を上げる」ことは別問題として分離。テスト追加は B-5 第 2 弾(別 TODO 候補)で進めて良いが、Coverage 数値上の改善は本 TODO 解決後に再評価
+
+- [ ] **B-5 第 2 弾 — EffectJsonConverter / GameOutcomeJsonConverter / Serializer / PendingCounteredEffect / SO 系 Validation の補完テスト追加** `priority: low`
+  - **Why**: B-5 第 1 弾(PR #101)で 0% クラス 6 件を補完したが、部分未達クラスが残る(`EffectJsonConverter` 25.5% / `GameOutcomeJsonConverter` 40.6% / `DrowZzzGameSessionSerializer` 39.6% / `PendingCounteredEffect` 37.5% / SO 系 `*EffectAsset` 50-95%)。オーナー「Infrastructure 100% まで」方針
+  - **Done when**:
+    - `EffectJsonConverter` 12 派生型の round-trip カバレッジを精査、未到達 case を補完(95%+)
+    - `GameOutcomeJsonConverter` の異常系経路を補完(95%+)
+    - `DrowZzzGameSessionSerializer` の Save / Load 例外系 / Async 経路を補完(80%+)
+    - `PendingCounteredEffect`(Application 内)の単体テスト追加 or `CounterCounterTests` 拡張(80%+)
+    - SO 系各 `*EffectAsset` の Validation 経路追加(90%+)
+  - **Related**: 起点 PR #101(B-5 第 1 弾、merged)、`CodeCoverage/Report/Summary.xml`(2026-05-16 計測)、上記「Unity Code Coverage バグ追跡 TODO」
+  - **Notes**: Unity Code Coverage バグの影響で、新規 fixture 追加が **Coverage 数値に反映されない可能性** あり。代替手段(coverlet + dotnet test)PoC を先に進める方が筋。本 TODO は Coverage 計測経路が確立してから着手するのが効率的
+
 - [ ] **EARS / Gherkin の英語表記「Round X」概念用語を「ターン X」に統一(第 2 弾)** `priority: low`
   - **Why**: 2026-05-16 chore PR `chore/todo-batch-cleanup` で日本語カナ「ラウンド」→「ターン」の機械的置換は完了したが、`.md` / `.feature` 内の英語表記 `Round 21` / `Round 22` / `Round 1〜16` / `夜の Round` / `朝の Round` 等(概念用語)が複数ファイルに残存。テストメソッド名(`Given_Round21最終フェーズで...` / `Given_夜のRound_When_...` 等)と連動する箇所は実装側のテストファイル名と一緒に書き換える必要があるため、本 PR スコープ外として残置
   - **Done when**:
