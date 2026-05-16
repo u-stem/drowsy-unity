@@ -16,30 +16,28 @@ namespace Drowsy.Presentation.Games.DrowZzz
     /// <remarks>
     /// ADR-0016 §3.1「View interface」+ §6「シーン構成」+ §11 で確定。
     /// M5-PR3 で骨格、M5-PR4 で <see cref="Render"/> 本実装、M5-PR6 で <see cref="IUserSettings"/> の
-    /// 設定 UI バインディングを追加した。
+    /// 設定 UI バインディング、M5-PR7 で <see cref="RenderOutcome"/> 本実装 + Outcome 確定後の入力 disable を追加。
     /// <list type="bullet">
     /// <item><see cref="Render"/>:Round / 現プレイヤー / TurnPhase / 山札・場札・捨て札枚数 / FDP・DDP・SDP・Total /
     /// 現プレイヤー手札を各 Label に反映(M5-PR4)</item>
     /// <item>Play ボタン押下時に直近 <see cref="Render"/> の現プレイヤー手札先頭カードを <see cref="OnPlayClicked"/> で発火(M5-PR4)</item>
     /// <item><see cref="IUserSettings"/> を VContainer <c>[Inject]</c> で直接注入し、<see cref="UserSettingsBinder"/> で
-    /// 設定 UI(BGM/SE Slider + Language Dropdown)と双方向バインド(M5-PR6、ADR-0016 §11「View に直接 Inject」)</item>
+    /// 設定 UI(BGM/SE Slider + Language Dropdown)と双方向バインド(M5-PR6)</item>
+    /// <item><see cref="RenderOutcome"/>:ゲーム終了結果(Winner / Draw)を <c>outcome-label</c> に表示し、
+    /// Draw / Play / EndTurn の 3 ボタンを <c>SetEnabled(false)</c> で disable(M5-PR7、ADR-0016 §11 M5-PR7、
+    /// JIT 確定「View ボタン disable + Presenter event 無視」の多層防御の View 側)</item>
     /// </list>
     /// <para>
-    /// <see cref="RenderOutcome"/> は引き続き <c>Debug.Log</c> 出力のみ(本実装は M5-PR7)。
-    /// </para>
-    /// <para>
     /// <b>イベント / バインダのライフサイクル</b>:button.clicked の配線・解除は <see cref="OnEnable"/> /
-    /// <see cref="OnDisable"/> の対称運用(UIDocument の <c>rootVisualElement</c> はこの時点で利用可能)。一方
-    /// <see cref="UserSettingsBinder"/> は <c>[Inject]</c> 注入された <see cref="IUserSettings"/> を必要とするため、
-    /// 全 <c>Awake</c> / <c>OnEnable</c> / <c>[Inject]</c>(VContainer の <c>LifetimeScope.Awake</c> 内)完了後に
-    /// 呼ばれる <see cref="Start"/> で生成し、<see cref="OnDestroy"/> で Dispose する(button.clicked の
-    /// <c>OnEnable</c> 配線とは非対称だが、依存注入タイミングの都合、M5-PR6)。
+    /// <see cref="OnDisable"/> の対称運用。<see cref="UserSettingsBinder"/> は <c>[Inject]</c> 注入された
+    /// <see cref="IUserSettings"/> を必要とするため <see cref="Start"/> で生成し <see cref="OnDestroy"/> で Dispose する
+    /// (button.clicked の <c>OnEnable</c> 配線とは非対称だが、依存注入タイミングの都合、M5-PR6)。
     /// </para>
     /// <para>
     /// <b>VContainer 注入</b>:本 MonoBehaviour は <c>RegisterComponentInHierarchy&lt;DrowZzzGameView&gt;()</c>
     /// で Game スコープに登録される(ADR-0016 §2)。Presenter は <c>SessionStream</c> を Subscribe して
-    /// 本 View の <see cref="Render"/> を呼ぶ。<see cref="IUserSettings"/> は <c>[Inject]</c> メソッド
-    /// <see cref="Construct"/> で受け取る(ADR-0016 §11 M5-PR6「View に直接 Inject」)。
+    /// 本 View の <see cref="Render"/> / <see cref="RenderOutcome"/> を呼ぶ。<see cref="IUserSettings"/> は
+    /// <c>[Inject]</c> メソッド <see cref="Construct"/> で受け取る。
     /// </para>
     /// </remarks>
     [RequireComponent(typeof(UIDocument))]
@@ -52,11 +50,12 @@ namespace Drowsy.Presentation.Games.DrowZzz
         private Button _playButton;
         private Button _endTurnButton;
 
-        // 以下 4 Label は Render 本実装で使用する。OnEnable で query 代入する。
+        // 以下 5 Label は Render / RenderOutcome 本実装で使用する。OnEnable で query 代入する。
         private Label _turnLabel;
         private Label _phaseLabel;
         private Label _pointsLabel;
         private Label _handLabel;
+        private Label _outcomeLabel;
 
         // 直近 Render で受け取った session。Play ボタン押下時の手札先頭カード選択に使う。
         private DrowZzzGameSession _lastRendered;
@@ -99,6 +98,7 @@ namespace Drowsy.Presentation.Games.DrowZzz
 
             // VisualElement query(UXML の name 属性と一致させる)。status-label は固定タイトルのため query しない。
             var root = _uiDocument.rootVisualElement;
+            _outcomeLabel = root.Q<Label>("outcome-label");
             _turnLabel = root.Q<Label>("turn-label");
             _phaseLabel = root.Q<Label>("phase-label");
             _pointsLabel = root.Q<Label>("points-label");
@@ -239,8 +239,36 @@ namespace Drowsy.Presentation.Games.DrowZzz
         /// <inheritdoc />
         public void RenderOutcome(GameOutcome outcome)
         {
-            // M5-PR6 時点では Debug.Log 出力のみ。M5-PR7 で Winner / Draw 表示の本実装に置き換える。
-            Debug.Log("[DrowZzzGameView] RenderOutcome: outcome を受信(M5-PR7 で UI 反映を実装)");
+            if (outcome is null)
+            {
+                // IDrowZzzGameView.RenderOutcome は non-null 契約(ADR-0015)。null は描画せず明示的に記録する。
+                Debug.LogError("[DrowZzzGameView] RenderOutcome: outcome が null です(non-null 契約違反)");
+                return;
+            }
+
+            // OnEnable が早期 return した場合(UIDocument 未設定 / ボタン未解決)、または UXML から
+            // outcome-label が削除された場合は _outcomeLabel が null になる。Render の _turnLabel ガードと
+            // 同様に、未解決時は描画をスキップする(両ガードとも「OnEnable で query した代表 Label の null 検査」)。
+            if (_outcomeLabel is null)
+            {
+                Debug.LogWarning("[DrowZzzGameView] RenderOutcome: VisualElement 未解決のため描画をスキップします");
+                return;
+            }
+
+            // GameOutcome は abstract record(WinnerOutcome / DrawOutcome の 2 派生、ADR-0010 §3 / §4)。
+            // 将来の派生追加に備えて switch の _ ケースを残す。
+            _outcomeLabel.text = outcome switch
+            {
+                WinnerOutcome winner => $"Winner: {winner.Winner.Value}",
+                DrawOutcome => "Draw",
+                _ => $"Outcome: {outcome.GetType().Name}",
+            };
+
+            // Outcome 確定後は入力を受け付けない(M5-PR7、JIT 確定:View ボタン disable + Presenter event 無視の
+            // 多層防御の View 側)。リトライボタンは Phase 3。
+            _drawButton?.SetEnabled(false);
+            _playButton?.SetEnabled(false);
+            _endTurnButton?.SetEnabled(false);
         }
     }
 }

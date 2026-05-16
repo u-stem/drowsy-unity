@@ -22,6 +22,14 @@
     margin-bottom: 4px;
 }
 
+/* M5-PR7: ゲーム終了結果(Winner / Draw)表示。初期は空文字、RenderOutcome で設定 */
+.drowzzz-outcome {
+    font-size: 22px;
+    -unity-font-style: bold;
+    color: rgb(255, 220, 120);
+    margin-bottom: 8px;
+}
+
 .drowzzz-button-bar {
     flex-direction: row;
     margin-top: 16px;
