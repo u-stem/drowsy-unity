@@ -215,6 +215,47 @@
     - **2026-05-16 第 2 弾(本 TODO 進行、chore/todo-batch-cleanup PR)**: `EarlyWinTriggerEffectTests` / `AdjustSdpEffectTests` の 2 fixture を統合。`SessionFactory.NewSession` に `fdp` / `sdp` パラメータ + `Dp(p1, p2)` builder を新設し、`fdp: Dp(p1: 100)` / `sdp: Dp(p1: 5)` のような明示渡しで FDP / SDP 制御を可能化。dotnet build 0 警告 / 0 エラー確認済(Unity Test Runner 緑確認はオーナー側)
     - **残対象**: `CounterActionTests` / `AssociateActionTests`(`NewSession` + `NewSessionWithBedDamage` の 2 件)/ `AbandonActionTests` / `CupOfThreatCardTests`(`NewSessionWithCardInHand`)/ `GreenInvasionCardTests`(`NewSessionWithCardInHand`)/ `DreamCardTests`(`NewSessionWithDreamInHand` + `NewSessionWithoutDream`)/ `CounterCounterTests`(`NewSessionAfterCounter`)/ Effects 配下の残 9 件(`ApplyInfluenceEffect` / `AssociatableMarkerEffect` / `ChoiceEffect` / `DamageBedEffect` / `DrawCardEffect` / `KeywordedEffect` / `RemoveInfluenceEffect` / `RequiresMinimumTotalPointsMarkerEffect` / `TimeOfDayBranchEffect` / `UsageRestrictionMarkerEffect`)。これらは各 fixture 固有の引数(Hand に特定カード / 特定 phase / 特定 BedDamage 等)を持つため、 SessionFactory.NewSession の引数拡張または fixture 個別の事後セットアップ helper として段階的に対応
 
+- [ ] **DrowZzzRule の複合 `with { Players, Deck/Field/Discard }` の Unchecked factory 拡張** `priority: low`
+  - **Why**: post-Phase2 アルゴリズム最適化レビュー Top-2(C 軸 Immutability + with allocation、2026-05-16)で Players 単独更新の `ApplyAssociate L489` のみ `GameState.WithPlayersUnchecked` に置換した。残る複合更新箇所 5-6 箇所(`ApplyDrawCard` L654-656 / `ApplyPlayCard` L707-709 / `ApplyAbandon` L578-583 / `ApplyCounter` L972-974 / `ApplyCounterAsCounter` L1042-1044 等)も `Players` + 別フィールド同時更新のため `ValidateAndCopyPlayers` 二重コピー問題が残っている
+  - **Done when**:
+    - ⬜ `WithPlayersAndDeckUnchecked(PlayerState[] players, Pile deck)` 等の複合 API を `GameState` に追加(必要な組み合わせのみ追加、API 肥大化を避ける)
+    - ⬜ DrowZzzRule の該当 5-6 箇所を新 API に置換
+    - ⬜ trade-off(GameState alloc +1 vs Players 検証 -2)が実際に net 利益になることを確認(可能なら BenchmarkDotNet 等で micro bench、Unity Profiler GC.Alloc トレース等)
+  - **Related**: post-Phase2 アルゴリズム最適化レビュー(Top-2 残り部分)、PR #(本 PR 番号)、`DrowZzzRule.cs:578-583, 654-660, 707-714, 972-990, 1042-1053`、`GameState.cs:WithPlayersUnchecked`
+  - **Notes**: 単独の N=2 ホットシートでは effect 小さい可能性あり。Phase 3 N>2 拡張前にまとめて評価する方がコスト効率良いかもしれない
+
+- [ ] **`Dictionary<PlayerId, int>` × 4 を 2 要素固定配列(ValueTuple)化(Phase 3 N>2 拡張と同時)** `priority: low(Phase 3)`
+  - **Why**: post-Phase2 アルゴリズム最適化レビュー B 軸(2026-05-16)で `DrowZzzGameSession` の FDP / DDP / SDP / BedDamages 4 種が `Dictionary<PlayerId, int>` で保持されており、N=2 固定なら配列 + index アクセスの方が高速・低 alloc。`GetHashCode` の `foreach` × 4 + `EnsureKeysMatchPlayers` の foreach も配列化で短絡可能
+  - **Done when**:
+    - ⬜ `(PlayerId Id, int Value)[]` の 2 要素配列 or `ValueTuple` 化を Phase 3 N>2 拡張と同時に判断
+    - ⬜ Presenter / Serializer 側の `IReadOnlyDictionary<PlayerId, int>` 公開を維持するか、内部表現変更で済むかを検証
+  - **Related**: post-Phase2 アルゴリズム最適化レビュー B-1、`DrowZzzGameSession.cs:54-67, 360-378, 641-667`、Phase 3 ロードマップ ADR(候補 ADR-0019)
+  - **Notes**: 単独 PR では breaking change が広い(Newtonsoft シリアライズ仕様変更 + PersistedSessionV1 のスキーマ移行が必要)ため Phase 3 N>2 拡張の機会にまとめる
+
+- [ ] **WebGL `UniTask.RunOnThreadPool` を完全非同期 IO API へ切替(IndexedDB / FileSystem Access API)** `priority: low(Phase 3)`
+  - **Why**: post-Phase2 アルゴリズム最適化レビュー C-5 / D 軸(2026-05-16、ADR-0016 §5.2 も既知記録)。WebGL では ThreadPool が main thread fallback で `File.WriteAllText`(同期 I/O)がフレームスパイクを起こす可能性。セーブデータ肥大化(カード枚数増加)で顕在化しうる
+  - **Done when**:
+    - ⬜ `DrowZzzGameSessionSerializer.SaveAsync / LoadAsync` を `StreamReader.ReadToEndAsync` / `StreamWriter.WriteAsync` ベースに切替(WebGL では完全非同期 API のみ安全)
+    - ⬜ または WebGL 特化で IndexedDB / FileSystem Access API ラッパーを介する経路を実装(`#if UNITY_WEBGL` 分岐)
+    - ⬜ 切替後の Build success + 1MB セーブデータでフリーズしないことを実機確認
+  - **Related**: post-Phase2 レビュー C-5 / D-WebGL、ADR-0016 §5.2、`DrowZzzGameSessionSerializer.cs:156, 176`
+
+- [ ] **`link.xml` の存在 + Newtonsoft.Json reflection 経路の preserve 粒度確認** `priority: low`
+  - **Why**: post-Phase2 アルゴリズム最適化レビュー D-WebGL(2026-05-16)で「link.xml の場所が Assets/ 直下 / Assets/_Project/ ともに不在」と指摘。実際は `Assets/_Project/Scripts/Infrastructure/link.xml` に存在するが、`Drowsy.Domain` / `Drowsy.Application` 配下の serialize 対象型(`PlayerId` / `PlayerInfluence` / `IEffect` 12 派生型等)の preserve 範囲を精査する必要がある
+  - **Done when**:
+    - ⬜ `link.xml` の `preserve` 範囲が Newtonsoft.Json 経路で必要な全型を網羅しているか確認(IL2CPP stripping で reflection 型が落ちないか)
+    - ⬜ Build サイズ削減の観点で粒度を粗→細に詰める(現状 4 アセンブリ `preserve="all"`、特に Newtonsoft.Json 全保護は二重保護の可能性)
+  - **Related**: post-Phase2 レビュー D-WebGL / Infra W-6、ADR-0012、`Assets/_Project/Scripts/Infrastructure/link.xml`
+
+- [ ] **`Properties/AssemblyInfo.cs` への `[assembly: InternalsVisibleTo]` 分離(衛生的整理)** `priority: low`
+  - **Why**: post-Phase2 アルゴリズム最適化レビュー Top-2 着手(2026-05-16)で `Drowsy.Domain` に `InternalsVisibleTo` を追加する際、Unity Editor の Auto-refresh で `Assets/_Project/Scripts/Domain/AssemblyInfo.cs` を csproj に取り込ませる時間を待たず、`GameState.cs` 冒頭に直接 `[assembly: InternalsVisibleTo(...)]` を書く暫定措置を採用。衛生的には `Properties/AssemblyInfo.cs` に分離するのが理想
+  - **Done when**:
+    - ⬜ `Assets/_Project/Scripts/Domain/Properties/AssemblyInfo.cs` を新規作成し `[assembly: InternalsVisibleTo(...)]` を移動
+    - ⬜ Unity Editor で Asset Auto-refresh を発火させて csproj に反映
+    - ⬜ `GameState.cs` 冒頭の assembly attribute を削除
+    - ⬜ dotnet build 0 警告 / 0 エラー確認
+  - **Related**: post-Phase2 レビュー Top-2 着手 PR、`GameState.cs:5-13`、Unity Editor Auto-refresh 制約(memory「Unity Auto-refresh requires Editor focus」)
+
 - [ ] **`ArgumentNullException` の `ParamName` 検証強化(init setter 例外メッセージ品質と連動)** `priority: low`
   - **Why**: post-Phase2 全体レビュー(2026-05-16)の Tests W-1 で「80 件超の `ArgumentNullException` テストが `ParamName` を検証していない → コンストラクタ引数順を入れ替えてもテストが通る」と指摘。ただし `DrowZzzGameSession` 等が init setter 経由で例外を投げる設計で `ParamName` が常に `"value"` 固定のため、`ParamName` assert を追加しても識別力が出ない。Domain W-5(`init => _x = value ?? throw new ArgumentNullException(nameof(value))` → `nameof(X)` に修正)を先行させてから Tests 側を強化する必要がある
   - **Done when**:
