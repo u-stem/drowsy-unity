@@ -481,22 +481,63 @@ namespace Drowsy.Application.Games.DrowZzz
         // 任意のキー集合と GameState.Players の PlayerId 集合の一致検証
         // paramName は呼び出し元 init setter の `nameof(value)` を受け取る
         // keysetName はエラーメッセージで FDP / DDP / SDP / Influences を区別するため
+        //
+        // post-Phase2 アルゴリズム最適化レビュー Top-1 反映:旧実装は毎呼び出しで
+        // `Select().ToHashSet()` + `keys.ToHashSet()` の 2 HashSet alloc + LINQ Enumerator を
+        // 発生させていた。`session with { ... }` 1 回ごとに DP 4 種 + Influences + BedDamages の
+        // 計 5 系統で連鎖し、1 Apply あたり最大 10 個の HashSet alloc になっていた。
+        //
+        // 修正後は呼び出し元 `Dictionary<TKey, TValue>.KeyCollection` が `ICollection<T>` 実装で
+        // O(1) Count を持つことを利用して、Count 比較 + 各 key の Players 線形探索に置換。
+        // N=2 ホットシートでは最悪 2×2 = 4 ループで完了し、HashSet 構築 + SetEquals より速く alloc ゼロ。
+        // 不一致時のみ HashSet + LINQ を使って詳細エラーメッセージを構築する(cold path、別関数に分離)。
         private static void EnsureKeysMatchPlayers(
-            IEnumerable<PlayerId> keys,
+            ICollection<PlayerId> keys,
             GameState gameState,
             string paramName,
             string keysetName)
         {
-            var playerIds = gameState.Players.Select(p => p.Id).ToHashSet();
-            var keySet = keys.ToHashSet();
-            if (!playerIds.SetEquals(keySet))
+            var players = gameState.Players;
+            if (keys.Count != players.Count)
             {
-                throw new ArgumentException(
-                    $"{keysetName} のキー集合が GameState.Players の PlayerId 集合と一致しません " +
-                    $"(Players: [{string.Join(", ", playerIds.Select(id => id.Value))}], " +
-                    $"{keysetName} keys: [{string.Join(", ", keySet.Select(id => id.Value))}])",
-                    paramName);
+                ThrowKeysetMismatch(keys, players, paramName, keysetName);
             }
+            foreach (var key in keys)
+            {
+                if (!ContainsPlayer(players, key))
+                {
+                    ThrowKeysetMismatch(keys, players, paramName, keysetName);
+                }
+            }
+        }
+
+        private static bool ContainsPlayer(IReadOnlyList<PlayerState> players, PlayerId target)
+        {
+            for (int i = 0; i < players.Count; i++)
+            {
+                if (players[i].Id.Equals(target))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // 例外メッセージ構築は cold path のため、ここだけ LINQ + HashSet を使って詳細な集合差分を出す。
+        // throws helper に分離することで JIT が EnsureKeysMatchPlayers をインライン化する余地を残す。
+        private static void ThrowKeysetMismatch(
+            ICollection<PlayerId> keys,
+            IReadOnlyList<PlayerState> players,
+            string paramName,
+            string keysetName)
+        {
+            var playerIds = players.Select(p => p.Id).ToHashSet();
+            var keySet = keys.ToHashSet();
+            throw new ArgumentException(
+                $"{keysetName} のキー集合が GameState.Players の PlayerId 集合と一致しません " +
+                $"(Players: [{string.Join(", ", playerIds.Select(id => id.Value))}], " +
+                $"{keysetName} keys: [{string.Join(", ", keySet.Select(id => id.Value))}])",
+                paramName);
         }
 
         /// <summary>
