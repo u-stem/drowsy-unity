@@ -56,13 +56,24 @@
 
 ## 未着手
 
-- [ ] **WebGL Build を CI で自動化(GameCI 経由)** `priority: medium`
-  - **Why**: M5-PR8 で WebGL Build `Result: Success` を確認したが、現状はオーナー実機作業。Phase 3 以降の継続的検証のため、CI(GitHub Actions / GameCI)で push / PR ごとに自動 Build したい。ADR-0016 §「TODO 候補」から本 todo.md に移行
-  - **Done when**:
-    - `.github/workflows/webgl-build.yml`(or 相当)を新設、GameCI Action で WebGL Build を実行
-    - PR ごとに Build artifact をアップロード(オプション:GitHub Releases へ公開)
-    - Build 時間 / サイズの変化を可視化(`docs/architecture/webgl-il2cpp-verification.md` への自動追記検討)
-  - **Related**: [ADR-0016](adr/0016-m5-bootstrap-presentation.md) §「TODO 候補」、[`docs/architecture/webgl-il2cpp-verification.md`](architecture/webgl-il2cpp-verification.md)
+- [ ] **WebGL Build を CI で自動化(blocked: Unity 6 Hub-managed License 制約)** `priority: low`
+  - **Why**: M5-PR8 で WebGL Build `Result: Success` を確認したが、現状はオーナー実機作業。Phase 3 以降の継続的検証のため、CI で push / PR ごとに自動 Build したい
+  - **2026-05-16 検証結果(PR #99 close)**:GameCI 経由の無料 Personal License 利用は **現状不可能** と判明、本 TODO を「未着手」に戻して priority を `medium` → `low` に格下げ
+    - **試行 1**:`.github/workflows/webgl-build.yml`(GameCI `unity-builder@v4`)新設 → `Branch is dirty` → `versioning: None` 追加で解消(PR #99 commit `edd4559`)
+    - **試行 2**:`Missing Unity License File` → `UNITY_LICENSE` secret 未登録
+    - **試行 3**:`game-ci/unity-request-activation-file@v2` で `.alf` 取得 workflow 追加 → **action が deprecated**(2026-05-16 走行で `This action is no longer supported` エラー)
+    - **試行 4**:ローカル `.ulf` 直接コピペを試行 → **Unity 6 Hub-managed License では `.ulf` が生成されない**(`~/Library/Unity/licenses/UnityEntitlementLicense.xml` のみ)
+    - **試行 5**:Unity Editor `-createManualActivationFile` で `.alf` 強制生成 → 成功 → Unity License サイトで `.alf` → `.ulf` 変換を試す → **「Plus または Pro ライセンスを有効化するにはシリアル番号を入力」** と表示、**Personal License の Manual Activation 経路は Unity 6 で完全廃止** と確定
+  - **再検討条件 / 代替案**:
+    - **Self-hosted runner**(オーナー Mac、Hub-managed license のまま使える)→ Mac 常時起動 + セットアップ 30 分の課題、Phase 3 で再検討
+    - **Unity Pro 切替**(月額 $185)→ 個人開発で割に合わない、収益化以降に再検討
+    - **Unity Cloud Build**(無料枠あり)→ GitHub Actions ではない別 CI 設計が必要、別 ADR で検討
+    - **Unity 公式の Personal License 仕様変更**(Manual Activation 復活 or `.ulf` 取得経路の追加)→ 監視待ち
+  - **Done when**(再検討時の判断材料):
+    - 上記いずれかの代替案で WebGL Build CI が走行できる経路を確立
+    - PR ごとに Build artifact upload + Build 時間 / サイズの変化可視化(`docs/architecture/webgl-il2cpp-verification.md` 反映)
+  - **Related**: [ADR-0016](adr/0016-m5-bootstrap-presentation.md) §「TODO 候補」、[`docs/architecture/webgl-il2cpp-verification.md`](architecture/webgl-il2cpp-verification.md)、[GameCI Personal License 廃止 issue #469](https://github.com/game-ci/documentation/issues/469)、closed PR #99(`ci/webgl-build-gameci`、ブランチ削除済)、関連 closed PR #102 / merged PR #103(activation.yml 一時取り込み + 削除)
+  - **Notes**: 本検証で git 履歴に残った `webgl-build.yml`(closed PR #99 内、ブランチ削除済だが PR diff から復元可能)は将来の再着手時に reference 可能。`versioning: None` 設定や cache 戦略は再利用価値あり
 
 - [ ] **Presenter 単体テストの C0 カバレッジ計測対象を「計測対象外」→「Presenter のみ計測対象」に格上げ** `priority: low`
   - **Why**: 現状 `docs/testing-strategy.md` で Presentation 層は「計測対象外」だが、M5-PR2〜PR7 で `DrowZzzGamePresenter`(Pure C#)に多数のテストを書いており、計測可能。`Drowsy.Presentation` のうち MonoBehaviour(`DrowZzzGameView`)を除外し、Presenter / Binder などの Pure C# クラスのみ計測対象にすれば、追加価値が出る
