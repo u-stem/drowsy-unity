@@ -118,6 +118,8 @@ ProjectLifetimeScope (DontDestroyOnLoad / Application 寿命)
 | `ApplyActionUseCase` | Game | Singleton | `Register<ApplyActionUseCase>(Lifetime.Singleton)` | stateless、`DrowZzzRule` を constructor 注入 |
 | `DrowZzzGamePresenter` | Game | Singleton | `Register<DrowZzzGamePresenter>(Lifetime.Singleton).AsImplementedInterfaces().AsSelf()` | `IStartable` 実装で Boot 時に自動起動、`IDisposable` 実装で Game スコープ Dispose 時に CompositeDisposable / CTS / Subject 解放(本 ADR §3.2)。`AsSelf()` は単体テスト / View 参照で具象型 Resolve 経路を両立 |
 | `IDrowZzzGameView` 実装(View MonoBehaviour) | Game | Singleton | `RegisterComponentInHierarchy<DrowZzzGameView>().AsImplementedInterfaces()` | UIDocument を持つ MonoBehaviour。Presenter ctor の `IDrowZzzGameView` 引数として Container から解決される(依存方向は Presenter → View、View 側に `[Inject]` は不要、code-reviewer W-3 反映で訂正)|
+| `PlayerRoster` (新規対戦のプレイヤー roster) | Project | Singleton | `RegisterInstance(new PlayerRoster(BuildPlayers()))` | **ADR-0017**:M5-PR4 当初は `RegisterInstance<IReadOnlyList<PlayerId>>(BuildPlayers())` だったが、VContainer 1.x の `CollectionInstanceProvider.Match` が `IReadOnlyList<T>` を予約型として扱い `RegisterInstance` を上書きするため、wrapper record (`PlayerRoster`) を Application 層に新設して回避。Presenter ctor の 7 番目の引数も `PlayerRoster roster` に変更 |
+| `Pile` (新規対戦の initialDeck) | Project | Singleton | `RegisterInstance(BuildInitialDeck(_cardCatalog))` | M5-PR4 で追加。Presenter ctor の 8 番目の引数。Domain 型 `Pile` は VContainer の予約型ではないため `RegisterInstance` で直接登録可(`PlayerRoster` のような wrapper 不要)|
 
 **`StartGameUseCase` を Singleton(Transient ではなく)で登録する理由**:M5 範囲では対戦 1 回限定で、ctor で受ける `IRandomSource` は Project Singleton(=各対戦で同一 instance を共有)。1 対戦内で `Execute()` は 1 回しか呼ばれないため Singleton と Transient で動作差なし、Singleton のほうがゲーム状態の単一情報源管理が明示的になる。Phase 3 で「新規対戦」を導入する場合は GameLifetimeScope ごと再生成するため、Singleton 寿命は GameLifetimeScope に従う形で自然にリセットされる。
 
@@ -177,7 +179,10 @@ public sealed class DrowZzzGamePresenter : IStartable, IDisposable
     private readonly IDrowZzzGameSessionSerializer _serializer;
     private readonly IUserSettings _userSettings;
     private readonly string _savePath;
-    private readonly IReadOnlyList<PlayerId> _players;   // M5-PR4 で追加(新規対戦の players)
+    // _players の型は IReadOnlyList<PlayerId> のまま(内部表現)。ctor 引数だけ PlayerRoster wrapper に
+    // 差し替え(ADR-0017、VContainer 1.x の CollectionInstanceProvider が IReadOnlyList<T> を予約型として
+    // 扱う問題への対処)。
+    private readonly IReadOnlyList<PlayerId> _players;   // M5-PR4 で追加(新規対戦の players、ADR-0017 で ctor 経路変更)
     private readonly Pile _initialDeck;                  // M5-PR4 で追加(新規対戦の initialDeck)
     private readonly Subject<DrowZzzGameSession> _sessionSubject = new();
     private readonly CompositeDisposable _disposables = new();
@@ -192,7 +197,8 @@ public sealed class DrowZzzGamePresenter : IStartable, IDisposable
     public bool IsReady => _current is not null;
 
     // M5-PR4 で 6 引数 → 8 引数化(players / initialDeck 追加、ADR-0016 §3.2 line 238 の TBD 解消、
-    // M5-PR4 着手時 JIT 確定 2026-05-14)。
+    // M5-PR4 着手時 JIT 確定 2026-05-14)。ADR-0017 で 7 番目の引数を IReadOnlyList<PlayerId> →
+    // PlayerRoster に差し替え(VContainer 1.x の予約型回避)。
     public DrowZzzGamePresenter(
         StartGameUseCase startGameUseCase,
         ApplyActionUseCase applyActionUseCase,
@@ -200,7 +206,7 @@ public sealed class DrowZzzGamePresenter : IStartable, IDisposable
         IDrowZzzGameSessionSerializer serializer,
         IUserSettings userSettings,
         string savePath,
-        IReadOnlyList<PlayerId> players,
+        PlayerRoster roster,
         Pile initialDeck)
     {
         _startGameUseCase = startGameUseCase ?? throw new ArgumentNullException(nameof(startGameUseCase));
@@ -213,7 +219,9 @@ public sealed class DrowZzzGamePresenter : IStartable, IDisposable
         if (string.IsNullOrWhiteSpace(savePath))
             throw new ArgumentException("savePath は空・空白のみにできません", nameof(savePath));
         _savePath = savePath;
-        _players = players ?? throw new ArgumentNullException(nameof(players));
+        // PlayerRoster ctor で null + 空配列検証済(ROSTER-002 / ROSTER-003、ADR-0017)。
+        if (roster is null) throw new ArgumentNullException(nameof(roster));
+        _players = roster.Players;
         _initialDeck = initialDeck ?? throw new ArgumentNullException(nameof(initialDeck));
     }
 
@@ -799,6 +807,7 @@ PR 番号は GitHub マージ後に確定するため、本セクションは原
   - `IsLegalMove` false 時は無反応 + `Debug.LogWarning`(`TryApplyAction` が `InvalidOperationException` を握りつぶす、ボタン disable / トーストは Phase 3)
   - `PlayCardAction` の手札選択は「手札[0] 自動選択」(View 側 `RaisePlayClicked` が直近 Render の手札先頭を発火)
 - **本 ADR への訂正**:§3.2 の Presenter ctor スニペットを 8 引数化、`BootAsync` の `/* TBD: players / initialDeck */` を解消、`_savePath` 検査を統一パターンに(code-reviewer S-1)
+- **実装後発覚 → ADR-0017 で修正**(2026-05-16):本 M5-PR4 で導入した `RegisterInstance<IReadOnlyList<PlayerId>>(BuildPlayers())` は VContainer 1.x の `CollectionInstanceProvider.Match` が `IReadOnlyList<T>` を予約型として扱う仕様により実質的に空配列に上書きされていたことが Unity Play モードでの M5 UI 実機検証で発覚。`PlayerRoster` wrapper record を Application 層に新設して回避(ADR-0017)。Presenter ctor の 7 番目引数も `IReadOnlyList<PlayerId> players` → `PlayerRoster roster` に変更。M5-PR4 の Status は Accepted のまま、後続 fix を Related で接続する(設計判断は維持、wrapper 経由で実装のみ差し替え)
 - **code-reviewer 指摘の反映**:W-1〜W-5 + S-1 / S-2 / S-3 / S-4 / S-5 を本 PR 内で反映、S-6(§11 備考欄補足)は本完成記録で反映
 - **次 PR への引き継ぎ**:
   - `SaveAsync` / `LoadAsync` は M5-PR1 で `UniTask.RunOnThreadPool` ラップ実装済 → M5-PR5 では実装変更なし、Infrastructure.Tests の round-trip テスト追加 + Auto-save 統合に集中

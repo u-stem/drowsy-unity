@@ -45,8 +45,18 @@ namespace Drowsy.Presentation.Tests.Games.DrowZzz
     {
         // ===== 共通ヘルパー =====
 
-        /// <summary>M5 範囲の N=2 ホットシート players。</summary>
+        /// <summary>
+        /// M5 範囲の N=2 ホットシート players(<see cref="StartGameUseCase.Execute"/> 用、
+        /// <see cref="IReadOnlyList{PlayerId}"/> を要求する API へ直接渡す)。
+        /// </summary>
         private static PlayerId[] ValidPlayers() => new[] { PlayerId.Of("p1"), PlayerId.Of("p2") };
+
+        /// <summary>
+        /// M5 範囲の N=2 ホットシート roster(<see cref="PlayerRoster"/> wrapper、ADR-0017)。
+        /// <see cref="DrowZzzGamePresenter"/> ctor 用。<see cref="StartGameUseCase.Execute"/> へは
+        /// <see cref="ValidPlayers"/> を使う(API が <see cref="IReadOnlyList{PlayerId}"/> を要求するため)。
+        /// </summary>
+        private static PlayerRoster ValidRoster() => new PlayerRoster(ValidPlayers());
 
         /// <summary>
         /// 配布(5 × 2 = 10 枚)+ 数ターン分の Draw を賄える有効な initialDeck(30 枚)。
@@ -73,7 +83,7 @@ namespace Drowsy.Presentation.Tests.Games.DrowZzz
             var userSettings = new MockUserSettings();
             var presenter = new DrowZzzGamePresenter(
                 startGameUseCase, applyActionUseCase, view, serializer, userSettings, savePath,
-                ValidPlayers(), ValidInitialDeck());
+                ValidRoster(), ValidInitialDeck());
             return new PresenterContext
             {
                 Presenter = presenter,
@@ -106,7 +116,7 @@ namespace Drowsy.Presentation.Tests.Games.DrowZzz
             Assert.That(
                 () => new DrowZzzGamePresenter(
                     null, applyActionUseCase, new MockDrowZzzGameView(), new MockDrowZzzGameSessionSerializer(),
-                    userSettings, "path/a", ValidPlayers(), ValidInitialDeck()),
+                    userSettings, "path/a", ValidRoster(), ValidInitialDeck()),
                 Throws.TypeOf<ArgumentNullException>());
         }
 
@@ -119,7 +129,7 @@ namespace Drowsy.Presentation.Tests.Games.DrowZzz
             Assert.That(
                 () => new DrowZzzGamePresenter(
                     startGameUseCase, null, new MockDrowZzzGameView(), new MockDrowZzzGameSessionSerializer(),
-                    userSettings, "path/a", ValidPlayers(), ValidInitialDeck()),
+                    userSettings, "path/a", ValidRoster(), ValidInitialDeck()),
                 Throws.TypeOf<ArgumentNullException>());
         }
 
@@ -133,7 +143,7 @@ namespace Drowsy.Presentation.Tests.Games.DrowZzz
             Assert.That(
                 () => new DrowZzzGamePresenter(
                     startGameUseCase, applyActionUseCase, null, new MockDrowZzzGameSessionSerializer(),
-                    userSettings, "path/a", ValidPlayers(), ValidInitialDeck()),
+                    userSettings, "path/a", ValidRoster(), ValidInitialDeck()),
                 Throws.TypeOf<ArgumentNullException>());
         }
 
@@ -147,7 +157,7 @@ namespace Drowsy.Presentation.Tests.Games.DrowZzz
             Assert.That(
                 () => new DrowZzzGamePresenter(
                     startGameUseCase, applyActionUseCase, new MockDrowZzzGameView(), null,
-                    userSettings, "path/a", ValidPlayers(), ValidInitialDeck()),
+                    userSettings, "path/a", ValidRoster(), ValidInitialDeck()),
                 Throws.TypeOf<ArgumentNullException>());
         }
 
@@ -160,7 +170,7 @@ namespace Drowsy.Presentation.Tests.Games.DrowZzz
             Assert.That(
                 () => new DrowZzzGamePresenter(
                     startGameUseCase, applyActionUseCase, new MockDrowZzzGameView(),
-                    new MockDrowZzzGameSessionSerializer(), null, "path/a", ValidPlayers(), ValidInitialDeck()),
+                    new MockDrowZzzGameSessionSerializer(), null, "path/a", ValidRoster(), ValidInitialDeck()),
                 Throws.TypeOf<ArgumentNullException>());
         }
 
@@ -174,7 +184,7 @@ namespace Drowsy.Presentation.Tests.Games.DrowZzz
             Assert.That(
                 () => new DrowZzzGamePresenter(
                     startGameUseCase, applyActionUseCase, new MockDrowZzzGameView(),
-                    new MockDrowZzzGameSessionSerializer(), userSettings, null, ValidPlayers(), ValidInitialDeck()),
+                    new MockDrowZzzGameSessionSerializer(), userSettings, null, ValidRoster(), ValidInitialDeck()),
                 Throws.TypeOf<ArgumentNullException>());
         }
 
@@ -191,12 +201,12 @@ namespace Drowsy.Presentation.Tests.Games.DrowZzz
             Assert.That(
                 () => new DrowZzzGamePresenter(
                     startGameUseCase, applyActionUseCase, new MockDrowZzzGameView(),
-                    new MockDrowZzzGameSessionSerializer(), userSettings, savePath, ValidPlayers(), ValidInitialDeck()),
+                    new MockDrowZzzGameSessionSerializer(), userSettings, savePath, ValidRoster(), ValidInitialDeck()),
                 Throws.TypeOf<ArgumentException>());
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "PRES-014")]
-        public void Given_playersNull_When_Ctor_Then_ArgumentNullException()
+        public void Given_rosterNull_When_Ctor_Then_ArgumentNullException()
         {
             using var userSettings = new MockUserSettings();
             var startGameUseCase = new StartGameUseCase(new IdentityRandom(), new StubGameConfig());
@@ -219,7 +229,7 @@ namespace Drowsy.Presentation.Tests.Games.DrowZzz
             Assert.That(
                 () => new DrowZzzGamePresenter(
                     startGameUseCase, applyActionUseCase, new MockDrowZzzGameView(),
-                    new MockDrowZzzGameSessionSerializer(), userSettings, "path/a", ValidPlayers(), null),
+                    new MockDrowZzzGameSessionSerializer(), userSettings, "path/a", ValidRoster(), null),
                 Throws.TypeOf<ArgumentNullException>());
         }
 
