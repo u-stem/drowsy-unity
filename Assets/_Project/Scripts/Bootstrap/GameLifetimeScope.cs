@@ -47,6 +47,10 @@ namespace Drowsy.Bootstrap
             builder.Register<DrowZzzGamePresenter>(Lifetime.Singleton)
                 .AsImplementedInterfaces()
                 .AsSelf();
+            // Pres W-2 post-Phase2 レビュー反映:View は MonoBehaviour で `Construct([Inject])` 経由のみ
+            // 依存注入されるため、`AsImplementedInterfaces` のみで `AsSelf()` を付けない設計。
+            // 将来テストや別 Resolver から `DrowZzzGameView` concrete 型を直接 Resolve したい場合は
+            // `AsSelf()` を追加すること(現状は不要なため意図的に省略)。
             builder.RegisterComponentInHierarchy<DrowZzzGameView>()
                 .AsImplementedInterfaces();
         }
