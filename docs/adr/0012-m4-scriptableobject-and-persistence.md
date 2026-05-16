@@ -1,5 +1,7 @@
 # ADR-0012: M4 詳細 — ScriptableObject 化 + 永続化 + ユーザー設定
 
+> **Note(ADR-0018 関連、2026-05-16)**:本 ADR で確定した `ScriptableObjectCardCatalog` の lookup key と、`PersistedSessionV1` DTO の `CardId` シリアライゼーション schema は [ADR-0018](0018-cardtypeid-cardid-instance-separation.md) で変更された。catalog lookup key は `CardId` → `CardTypeId`、`CardIdJsonConverter` は単純 string から `"<typeId>#<instance>"` 形式へ。`RegisteredCardIds` プロパティは `RegisteredCardTypeIds` に rename。M4-PR5 既存セーブデータ(新 schema 非互換)は ADR-0018 §8 で migration 不要扱い。
+
 ## Status
 
 Accepted

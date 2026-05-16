@@ -22,7 +22,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_既存PlayCardAction_When_with_Cardにnull_Then_ArgumentNullExceptionを投げる()
         {
             // Given
-            var action = new PlayCardAction(CardId.Of("c1"));
+            var action = new PlayCardAction(CardId.Of(CardTypeId.Of("c1"), 0));
             // When / Then
             Assert.Throws<ArgumentNullException>(() => _ = action with { Card = null });
         }

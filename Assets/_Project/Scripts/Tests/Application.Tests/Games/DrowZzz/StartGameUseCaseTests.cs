@@ -27,7 +27,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var cards = new CardId[count];
             for (int i = 0; i < count; i++)
             {
-                cards[i] = CardId.Of($"c{i + 1}");
+                cards[i] = CardId.Of(CardTypeId.Of($"c{i + 1}"), 0);
             }
             return new Pile(cards);
         }

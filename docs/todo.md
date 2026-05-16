@@ -56,6 +56,14 @@
 
 ## 未着手
 
+- [ ] **`CardIdJsonConverter` の負値 instance / 不正 schema 経路に Persistence テストを追加** `priority: low`
+  - **Why**: ADR-0018 / code-reviewer 提案 6 反映。現状 `int.TryParse(instancePart)` が成功して `CardId.Of(typeId, -5)` が `ArgumentOutOfRangeException` を投げた場合、`catch (ArgumentException)` で `JsonSerializationException` に wrap されるが、本経路のテストが存在しない(実行時にのみ確認可能)。schema 違反系テスト(`"#0"` / `"dream"`(`#` なし)/ `"dream#-5"` / `"dream#abc"` 等)を Infrastructure.Tests/Persistence に追加して、診断性とリグレッション防止を担保したい
+  - **Done when**:
+    - `Infrastructure.Tests/Persistence/CardIdJsonConverterTests.cs` 新設(または既存 fixture に追加)
+    - `JsonSerializationException` を厳密に検証する Abnormal テスト(空文字列 / `#` 欠如 / 負 instance / non-int instance / `typeIdPart` 空文字列)を網羅
+    - 関連 EARS(INF-XXX または新規 PERSIST-XXX)に要件追加検討
+  - **Related**: [ADR-0018](adr/0018-cardtypeid-cardid-instance-separation.md) §8、`Assets/_Project/Scripts/Infrastructure/Persistence/Converters/CardIdJsonConverter.cs`
+
 - [ ] **`Window > Analysis` サブメニュー(Build Profiler / Build Report Inspector 等)の押下不能要因調査(Phase 6 候補)** `priority: low`
   - **Why**: M4-PR7 第 6 弾(Web Desktop Development Build 初回成功、commit `5536a85` 2026-05-14)後、プロジェクトオーナーが `Window > Analysis` サブメニューを開こうとしたが、すべてのボタン(Build Profiler / Build Report Inspector / Frame Debugger 等)が **押せない状態** だったと報告。原因仮説:(1) Editor が Compile 中 / Domain Reload 中で一時無効化、(2) 必要な Profiling パッケージが `manifest.json` に未登録、(3) Unity 6 で Build Report の場所が更に変わっている(`Window > Analysis > Build Profiler` ではなく別パス)。M4-PR7 完成記録としては Build Report での型保持確認スクショなしで進める判断(オーナー確認済 2026-05-14)だが、Phase 6(CI 整備)で WebGL Build の自動検証を導入する前に再現性を確認したい
   - **Done when**:

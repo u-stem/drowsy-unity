@@ -24,7 +24,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
 
         private static DrowZzzRule NewRule() =>
             new DrowZzzRule(
-                new InMemoryCardCatalog(new KeyValuePair<CardId, CardData>[0]),
+                new InMemoryCardCatalog(new KeyValuePair<CardTypeId, CardData>[0]),
                 new EffectInterpreter());
 
         // 現プレイヤー p1 が手札 2 枚(c1, c2)を持つ WaitingForPlay セッション
@@ -37,7 +37,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var p1HandCards = new CardId[handCount];
             for (int i = 0; i < handCount; i++)
             {
-                p1HandCards[i] = CardId.Of($"c{i + 1}");
+                p1HandCards[i] = CardId.Of(CardTypeId.Of($"c{i + 1}"), 0);
             }
             var players = new[]
             {
@@ -142,7 +142,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var rule = NewRule();
             var session = NewSession(handCount: 2);
             var next = rule.Apply(session, new AbandonAction(AbandonChoice.GainSdp, CardIndex: 0));
-            Assert.That(next.GameState.Discard.Cards[0], Is.EqualTo(CardId.Of("c1")));
+            Assert.That(next.GameState.Discard.Cards[0], Is.EqualTo(CardId.Of(CardTypeId.Of("c1"), 0)));
         }
 
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-201")]
@@ -152,7 +152,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var rule = NewRule();
             var session = NewSession(handCount: 2);
             var next = rule.Apply(session, new AbandonAction(AbandonChoice.GainSdp, CardIndex: 1));
-            Assert.That(next.GameState.Discard.Cards[0], Is.EqualTo(CardId.Of("c2")));
+            Assert.That(next.GameState.Discard.Cards[0], Is.EqualTo(CardId.Of(CardTypeId.Of("c2"), 0)));
         }
 
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-201")]
@@ -233,13 +233,13 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         {
             var entries = new[]
             {
-                new KeyValuePair<CardId, CardData>(CardId.Of("c1"), new CardData("instinct card", new Dictionary<string, int>())),
-                new KeyValuePair<CardId, CardData>(CardId.Of("c2"), new CardData("normal card", new Dictionary<string, int>())),
+                new KeyValuePair<CardTypeId, CardData>(CardTypeId.Of("c1"), new CardData("instinct card", new Dictionary<string, int>())),
+                new KeyValuePair<CardTypeId, CardData>(CardTypeId.Of("c2"), new CardData("normal card", new Dictionary<string, int>())),
             };
             var effects = new[]
             {
-                new KeyValuePair<CardId, IReadOnlyList<IEffect>>(
-                    CardId.Of("c1"),
+                new KeyValuePair<CardTypeId, IReadOnlyList<IEffect>>(
+                    CardTypeId.Of("c1"),
                     new IEffect[]
                     {
                         new KeywordedEffect(
@@ -284,13 +284,13 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             // (HasInstinctKeyword の再帰 walk で ChoiceEffect 経路を網羅)
             var entries = new[]
             {
-                new KeyValuePair<CardId, CardData>(CardId.Of("c1"), new CardData("choice with instinct branch", new Dictionary<string, int>())),
-                new KeyValuePair<CardId, CardData>(CardId.Of("c2"), new CardData("normal", new Dictionary<string, int>())),
+                new KeyValuePair<CardTypeId, CardData>(CardTypeId.Of("c1"), new CardData("choice with instinct branch", new Dictionary<string, int>())),
+                new KeyValuePair<CardTypeId, CardData>(CardTypeId.Of("c2"), new CardData("normal", new Dictionary<string, int>())),
             };
             var effects = new[]
             {
-                new KeyValuePair<CardId, IReadOnlyList<IEffect>>(
-                    CardId.Of("c1"),
+                new KeyValuePair<CardTypeId, IReadOnlyList<IEffect>>(
+                    CardTypeId.Of("c1"),
                     new IEffect[]
                     {
                         new ChoiceEffect(new IReadOnlyList<IEffect>[]
@@ -317,13 +317,13 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             // (ADR-0011 §6「夢」カードの想定パターン、再帰 walk で検出される)
             var entries = new[]
             {
-                new KeyValuePair<CardId, CardData>(CardId.Of("c1"), new CardData("nested instinct", new Dictionary<string, int>())),
-                new KeyValuePair<CardId, CardData>(CardId.Of("c2"), new CardData("normal", new Dictionary<string, int>())),
+                new KeyValuePair<CardTypeId, CardData>(CardTypeId.Of("c1"), new CardData("nested instinct", new Dictionary<string, int>())),
+                new KeyValuePair<CardTypeId, CardData>(CardTypeId.Of("c2"), new CardData("normal", new Dictionary<string, int>())),
             };
             var effects = new[]
             {
-                new KeyValuePair<CardId, IReadOnlyList<IEffect>>(
-                    CardId.Of("c1"),
+                new KeyValuePair<CardTypeId, IReadOnlyList<IEffect>>(
+                    CardTypeId.Of("c1"),
                     new IEffect[]
                     {
                         new TimeOfDayBranchEffect(

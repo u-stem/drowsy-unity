@@ -10,7 +10,7 @@ namespace Drowsy.Domain.Tests.Cards
     public class PileTests
     {
         // テストヘルパー: 短い記法で CardId を作る
-        private static CardId Card(string value) => CardId.Of(value);
+        private static CardId Card(string value) => CardId.Of(CardTypeId.Of(value), 0);
 
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "PILE-005")]
         public void Given_空でない山札_When_AddTop_Then_先頭に挿入された新Pileを返す()

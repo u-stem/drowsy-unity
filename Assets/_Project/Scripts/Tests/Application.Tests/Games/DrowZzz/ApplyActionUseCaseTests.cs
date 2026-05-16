@@ -42,9 +42,9 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             // Given
             var rule = NewRule();
             var useCase = new ApplyActionUseCase(rule);
-            var p0Hand = new Hand(new[] { CardId.Of("c1") });
+            var p0Hand = new Hand(new[] { CardId.Of(CardTypeId.Of("c1"), 0) });
             var session = NewSession(phase: DrowZzzPhaseState.WaitingForPlay, p0Hand: p0Hand);
-            var action = new PlayCardAction(CardId.Of("c1"));
+            var action = new PlayCardAction(CardId.Of(CardTypeId.Of("c1"), 0));
             // When
             var direct = rule.Apply(session, action);
             var viaUseCase = useCase.Execute(session, action);

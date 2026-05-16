@@ -33,12 +33,12 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var dream = new CardData("夢", new Dictionary<string, int>());
             var entries = new[]
             {
-                new KeyValuePair<CardId, CardData>(CardId.Of("00"), dream),
+                new KeyValuePair<CardTypeId, CardData>(CardTypeId.Of("00"), dream),
             };
             var effects = new[]
             {
-                new KeyValuePair<CardId, IReadOnlyList<IEffect>>(
-                    CardId.Of("00"),
+                new KeyValuePair<CardTypeId, IReadOnlyList<IEffect>>(
+                    CardTypeId.Of("00"),
                     new IEffect[]
                     {
                         new AssociatableMarkerEffect(),
@@ -68,7 +68,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             DrowZzzPhaseState phase,
             bool hasUsageRestrictionInfluence)
         {
-            var p1Hand = new Hand(new[] { CardId.Of("00") });
+            var p1Hand = new Hand(new[] { CardId.Of(CardTypeId.Of("00"), 0) });
             var players = new[]
             {
                 new PlayerState(PlayerId.Of("p1"), p1Hand),
@@ -189,9 +189,9 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var rule = new DrowZzzRule(catalog, new EffectInterpreter());
             var session = NewSessionWithoutDream(totalPoints: 80, phase: DrowZzzPhaseState.WaitingForDraw);
             // When
-            var next = rule.Apply(session, new AssociateAction(CardId.Of("00")));
+            var next = rule.Apply(session, new AssociateAction(CardId.Of(CardTypeId.Of("00"), 0)));
             // Then(p1 の手札末尾に「夢」)
-            Assert.That(next.GameState.Players[0].Hand.Contains(CardId.Of("00")), Is.True);
+            Assert.That(next.GameState.Players[0].Hand.Contains(CardId.Of(CardTypeId.Of("00"), 0)), Is.True);
         }
 
         [Test, Category("Medium"), Category("Normal"), Property("Requirement", "DZ-230")]
@@ -202,7 +202,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var rule = new DrowZzzRule(catalog, new EffectInterpreter());
             var session = NewSessionWithoutDream(totalPoints: 80, phase: DrowZzzPhaseState.WaitingForDraw);
             // When
-            var next = rule.Apply(session, new AssociateAction(CardId.Of("00")));
+            var next = rule.Apply(session, new AssociateAction(CardId.Of(CardTypeId.Of("00"), 0)));
             // Then(p1 の Influences が 1 件追加されている。中身の検証は別テストで分割、1 テスト 1 アサーション維持)
             Assert.That(next.Influences[PlayerId.Of("p1")].Count, Is.EqualTo(1));
         }
@@ -215,7 +215,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var rule = new DrowZzzRule(catalog, new EffectInterpreter());
             var session = NewSessionWithoutDream(totalPoints: 80, phase: DrowZzzPhaseState.WaitingForDraw);
             // When
-            var next = rule.Apply(session, new AssociateAction(CardId.Of("00")));
+            var next = rule.Apply(session, new AssociateAction(CardId.Of(CardTypeId.Of("00"), 0)));
             // Then(TickEffect の型を確認、誤って別 Influence 種別を付与していないことを検出する防御)
             Assert.That(next.Influences[PlayerId.Of("p1")][0].TickEffect, Is.InstanceOf<UsageRestrictionMarkerEffect>());
         }
@@ -228,7 +228,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var rule = new DrowZzzRule(catalog, new EffectInterpreter());
             var session = NewSessionWithoutDream(totalPoints: 80, phase: DrowZzzPhaseState.WaitingForDraw);
             // When
-            var next = rule.Apply(session, new AssociateAction(CardId.Of("00")));
+            var next = rule.Apply(session, new AssociateAction(CardId.Of(CardTypeId.Of("00"), 0)));
             // Then(N=2 想定で「次の自分のフェーズ」= 相手 1 フェーズ経由分の 1 を期待、ADR-0011 §6 JIT 確定)
             Assert.That(next.Influences[PlayerId.Of("p1")][0].RemainingCount, Is.EqualTo(1));
         }
@@ -241,7 +241,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var rule = new DrowZzzRule(catalog, new EffectInterpreter());
             var session = NewSessionWithoutDream(totalPoints: 80, phase: DrowZzzPhaseState.WaitingForDraw);
             // When
-            var next = rule.Apply(session, new AssociateAction(CardId.Of("00")));
+            var next = rule.Apply(session, new AssociateAction(CardId.Of(CardTypeId.Of("00"), 0)));
             // Then(自フェーズ開始時 Tick で除去される設計のため OwnPhaseStart 必須)
             Assert.That(next.Influences[PlayerId.Of("p1")][0].Trigger, Is.EqualTo(InfluenceTrigger.OwnPhaseStart));
         }
@@ -254,7 +254,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var rule = new DrowZzzRule(catalog, new EffectInterpreter());
             var session = NewSessionWithoutDream(totalPoints: 80, phase: DrowZzzPhaseState.WaitingForDraw);
             // When
-            var next = rule.Apply(session, new AssociateAction(CardId.Of("00")));
+            var next = rule.Apply(session, new AssociateAction(CardId.Of(CardTypeId.Of("00"), 0)));
             // Then(連想は割り込み式、PhaseState 不変)
             Assert.That(next.PhaseState, Is.EqualTo(DrowZzzPhaseState.WaitingForDraw));
         }
@@ -273,7 +273,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 phase: DrowZzzPhaseState.WaitingForPlay,
                 hasUsageRestrictionInfluence: true);
             // When
-            var legal = rule.IsLegalMove(session, new PlayCardAction(CardId.Of("00")));
+            var legal = rule.IsLegalMove(session, new PlayCardAction(CardId.Of(CardTypeId.Of("00"), 0)));
             // Then(Influence 存在で illegal)
             Assert.That(legal, Is.False);
         }
@@ -296,7 +296,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 phase: DrowZzzPhaseState.WaitingForPlay,
                 hasUsageRestrictionInfluence: false);  // Tick 後を直接構築:Influence なし状態
             // When
-            var legal = rule.IsLegalMove(session, new PlayCardAction(CardId.Of("00")));
+            var legal = rule.IsLegalMove(session, new PlayCardAction(CardId.Of(CardTypeId.Of("00"), 0)));
             // Then(Influence なし + FDS 100 で合法)
             Assert.That(legal, Is.True);
         }
@@ -315,7 +315,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 phase: DrowZzzPhaseState.WaitingForPlay,
                 hasUsageRestrictionInfluence: false);
             // When
-            var legal = rule.IsLegalMove(session, new PlayCardAction(CardId.Of("00")));
+            var legal = rule.IsLegalMove(session, new PlayCardAction(CardId.Of(CardTypeId.Of("00"), 0)));
             // Then(閾値未満で illegal)
             Assert.That(legal, Is.False);
         }
@@ -332,7 +332,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 phase: DrowZzzPhaseState.WaitingForPlay,
                 hasUsageRestrictionInfluence: false);
             // When
-            var legal = rule.IsLegalMove(session, new PlayCardAction(CardId.Of("00")));
+            var legal = rule.IsLegalMove(session, new PlayCardAction(CardId.Of(CardTypeId.Of("00"), 0)));
             // Then(inclusive 境界、≥ 100 で合法)
             Assert.That(legal, Is.True);
         }
@@ -351,7 +351,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 phase: DrowZzzPhaseState.WaitingForPlay,
                 hasUsageRestrictionInfluence: false);
             // When
-            var next = rule.Apply(session, new PlayCardAction(CardId.Of("00")));
+            var next = rule.Apply(session, new PlayCardAction(CardId.Of(CardTypeId.Of("00"), 0)));
             // Then(WinnerOutcome(p1))
             Assert.That(next.Outcome, Is.EqualTo(new WinnerOutcome(PlayerId.Of("p1"))));
         }
@@ -370,7 +370,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 phase: DrowZzzPhaseState.WaitingForPlay,
                 hasUsageRestrictionInfluence: false);
             // When
-            var next = rule.Apply(session, new PlayCardAction(CardId.Of("00")));
+            var next = rule.Apply(session, new PlayCardAction(CardId.Of(CardTypeId.Of("00"), 0)));
             // Then(朝効果 AdjustSdpEffect(Self, -80))
             Assert.That(next.SecondDrowsyPoints[PlayerId.Of("p1")], Is.EqualTo(-80));
         }
@@ -387,7 +387,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 phase: DrowZzzPhaseState.WaitingForPlay,
                 hasUsageRestrictionInfluence: false);
             // When
-            var next = rule.Apply(session, new PlayCardAction(CardId.Of("00")));
+            var next = rule.Apply(session, new PlayCardAction(CardId.Of(CardTypeId.Of("00"), 0)));
             // Then
             Assert.That(next.Outcome, Is.Null);
         }
@@ -403,13 +403,13 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var counterCard = new CardData("c_counter", new Dictionary<string, int>());
             var entries = new[]
             {
-                new KeyValuePair<CardId, CardData>(CardId.Of("00"), dream),
-                new KeyValuePair<CardId, CardData>(CardId.Of("c_counter"), counterCard),
+                new KeyValuePair<CardTypeId, CardData>(CardTypeId.Of("00"), dream),
+                new KeyValuePair<CardTypeId, CardData>(CardTypeId.Of("c_counter"), counterCard),
             };
             var effects = new[]
             {
-                new KeyValuePair<CardId, IReadOnlyList<IEffect>>(
-                    CardId.Of("00"),
+                new KeyValuePair<CardTypeId, IReadOnlyList<IEffect>>(
+                    CardTypeId.Of("00"),
                     new IEffect[]
                     {
                         new AssociatableMarkerEffect(),
@@ -427,8 +427,8 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                                 new AdjustSdpEffect(SdpTarget.Self, -80),
                             }),
                     }),
-                new KeyValuePair<CardId, IReadOnlyList<IEffect>>(
-                    CardId.Of("c_counter"),
+                new KeyValuePair<CardTypeId, IReadOnlyList<IEffect>>(
+                    CardTypeId.Of("c_counter"),
                     new IEffect[]
                     {
                         // Counter キーワードを持つカードであることを表す最低限の効果列。Inner は IsLegalCounter で
@@ -444,12 +444,12 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
 
             // Field に「夢」、p2 (current) が手札に c_counter、WaitingForCounterResponse
             var p1 = new PlayerState(PlayerId.Of("p1"), Hand.Empty);
-            var p2 = new PlayerState(PlayerId.Of("p2"), new Hand(new[] { CardId.Of("c_counter") }));
+            var p2 = new PlayerState(PlayerId.Of("p2"), new Hand(new[] { CardId.Of(CardTypeId.Of("c_counter"), 0) }));
             var gs = new GameState(
                 new[] { p1, p2 },
                 Pile.Empty,
                 Pile.Empty,
-                new Pile(new[] { CardId.Of("00") }),  // Field に「夢」
+                new Pile(new[] { CardId.Of(CardTypeId.Of("00"), 0) }),  // Field に「夢」
                 new TurnState(2, 0));  // turnNumber=2 → p2 が current
             var emptyDp = new Dictionary<PlayerId, int>
             {
@@ -476,7 +476,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             // When
             var legal = rule.IsLegalMove(
                 session,
-                new CounterAction(CardId.Of("c_counter"), CardId.Of("00")));
+                new CounterAction(CardId.Of(CardTypeId.Of("c_counter"), 0), CardId.Of(CardTypeId.Of("00"), 0)));
             // Then(夢は Frenzy 持ち → 反撃を受けない、illegal)
             Assert.That(legal, Is.False);
         }

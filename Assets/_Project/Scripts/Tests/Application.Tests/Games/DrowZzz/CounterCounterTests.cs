@@ -23,11 +23,11 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
     {
         // ===== ヘルパー =====
 
-        private static readonly CardId CardAId = CardId.Of("a"); // 元カード A、効果列に AdjustSdpEffect(Self, +10) を持つ
-        private static readonly CardId CardBId = CardId.Of("b"); // 反撃カード B、Counter キーワード持ち
-        private static readonly CardId CardCId = CardId.Of("c"); // 反撃の反撃カード C、Counter キーワード持ち
-        private static readonly CardId FrenzyBId = CardId.Of("frenzyB"); // Frenzy + Counter 持ち(target で Frenzy 検出)
-        private static readonly CardId PlainId = CardId.Of("plain"); // Counter なし
+        private static readonly CardId CardAId = CardId.Of(CardTypeId.Of("a"), 0); // 元カード A、効果列に AdjustSdpEffect(Self, +10) を持つ
+        private static readonly CardId CardBId = CardId.Of(CardTypeId.Of("b"), 0); // 反撃カード B、Counter キーワード持ち
+        private static readonly CardId CardCId = CardId.Of(CardTypeId.Of("c"), 0); // 反撃の反撃カード C、Counter キーワード持ち
+        private static readonly CardId FrenzyBId = CardId.Of(CardTypeId.Of("frenzyB"), 0); // Frenzy + Counter 持ち(target で Frenzy 検出)
+        private static readonly CardId PlainId = CardId.Of(CardTypeId.Of("plain"), 0); // Counter なし
 
         // 主要 effects:
         //   A: [AdjustSdpEffect(Self, +10)] — 遡及発動で SDP[currentPlayer] が +10 される
@@ -38,25 +38,25 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         {
             var entries = new[]
             {
-                new KeyValuePair<CardId, CardData>(CardAId, new CardData("a", new Dictionary<string, int>())),
-                new KeyValuePair<CardId, CardData>(CardBId, new CardData("b", new Dictionary<string, int>())),
-                new KeyValuePair<CardId, CardData>(CardCId, new CardData("c", new Dictionary<string, int>())),
-                new KeyValuePair<CardId, CardData>(FrenzyBId, new CardData("frenzyB", new Dictionary<string, int>())),
-                new KeyValuePair<CardId, CardData>(PlainId, new CardData("plain", new Dictionary<string, int>())),
+                new KeyValuePair<CardTypeId, CardData>(CardAId.TypeId, new CardData("a", new Dictionary<string, int>())),
+                new KeyValuePair<CardTypeId, CardData>(CardBId.TypeId, new CardData("b", new Dictionary<string, int>())),
+                new KeyValuePair<CardTypeId, CardData>(CardCId.TypeId, new CardData("c", new Dictionary<string, int>())),
+                new KeyValuePair<CardTypeId, CardData>(FrenzyBId.TypeId, new CardData("frenzyB", new Dictionary<string, int>())),
+                new KeyValuePair<CardTypeId, CardData>(PlainId.TypeId, new CardData("plain", new Dictionary<string, int>())),
             };
             var effects = new[]
             {
-                new KeyValuePair<CardId, IReadOnlyList<IEffect>>(
-                    CardAId,
+                new KeyValuePair<CardTypeId, IReadOnlyList<IEffect>>(
+                    CardAId.TypeId,
                     new IEffect[] { new AdjustSdpEffect(SdpTarget.Self, 10) }),
-                new KeyValuePair<CardId, IReadOnlyList<IEffect>>(
-                    CardBId,
+                new KeyValuePair<CardTypeId, IReadOnlyList<IEffect>>(
+                    CardBId.TypeId,
                     new IEffect[] { new KeywordedEffect(new[] { Keyword.Counter }, new AssociatableMarkerEffect()) }),
-                new KeyValuePair<CardId, IReadOnlyList<IEffect>>(
-                    CardCId,
+                new KeyValuePair<CardTypeId, IReadOnlyList<IEffect>>(
+                    CardCId.TypeId,
                     new IEffect[] { new KeywordedEffect(new[] { Keyword.Counter }, new AssociatableMarkerEffect()) }),
-                new KeyValuePair<CardId, IReadOnlyList<IEffect>>(
-                    FrenzyBId,
+                new KeyValuePair<CardTypeId, IReadOnlyList<IEffect>>(
+                    FrenzyBId.TypeId,
                     new IEffect[]
                     {
                         new KeywordedEffect(new[] { Keyword.Frenzy }, new AssociatableMarkerEffect()),

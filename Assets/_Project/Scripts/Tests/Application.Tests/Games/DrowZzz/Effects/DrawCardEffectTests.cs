@@ -62,7 +62,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz.Effects
             var cards = new CardId[cardIds.Length];
             for (int i = 0; i < cardIds.Length; i++)
             {
-                cards[i] = CardId.Of(cardIds[i]);
+                cards[i] = CardId.Of(CardTypeId.Of(cardIds[i]), 0);
             }
             return new Pile(cards);
         }
@@ -78,7 +78,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz.Effects
             // When
             var next = interpreter.Apply(session, new DrawCardEffect(SdpTarget.Self, 1));
             // Then
-            Assert.That(next.GameState.Players[0].Hand.Contains(CardId.Of("c1")), Is.True);
+            Assert.That(next.GameState.Players[0].Hand.Contains(CardId.Of(CardTypeId.Of("c1"), 0)), Is.True);
         }
 
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-115")]
@@ -118,7 +118,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz.Effects
             // Then(top 3 枚 = c1, c2, c3 が手札に全て含まれる、code-reviewer P-4 反映)
             var hand = next.GameState.Players[0].Hand;
             Assert.That(
-                hand.Contains(CardId.Of("c1")) && hand.Contains(CardId.Of("c2")) && hand.Contains(CardId.Of("c3")),
+                hand.Contains(CardId.Of(CardTypeId.Of("c1"), 0)) && hand.Contains(CardId.Of(CardTypeId.Of("c2"), 0)) && hand.Contains(CardId.Of(CardTypeId.Of("c3"), 0)),
                 Is.True);
         }
 

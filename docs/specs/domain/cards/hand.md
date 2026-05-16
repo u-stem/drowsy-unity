@@ -2,6 +2,8 @@
 
 プレイヤーの手札を表す不変値オブジェクト。順序付きユニーク `CardId` 集合で、追加順を保つ。
 
+> **Note(ADR-0018 関連、2026-05-16)**:本 spec の `unique CardId 集合` 制約(HAND-003 / 005)は、[ADR-0018](../../../adr/0018-cardtypeid-cardid-instance-separation.md) で `CardId` が `(CardTypeId, int Instance)` 複合型に refactor されたことで意味が正当化された(catalog 種別の重複は `CardTypeId` 側で許容し、Hand 内では同種カードでも instance が異なれば共存可能)。EARS 文言の変更は不要。
+
 ## 概要
 
 `Hand` は `CardId` を順序付きで保持する不変集合。同じ `CardId` の重複を許容しない(`CardId` は一意識別子)。`Add` / `Remove` 操作は新 `Hand` を返す純関数。`Equals` / `GetHashCode` / `operator==` / `operator!=` を順序付きシーケンス同値で override する(設計判断は ADR-0002 / 値同値性については本 PR で確定)。

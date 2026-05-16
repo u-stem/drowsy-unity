@@ -26,6 +26,12 @@ namespace Drowsy.Infrastructure.Games.DrowZzz
     /// </list>
     /// </para>
     /// <para>
+    /// <b>引数型(ADR-0018)</b>:本 catalog の lookup key は <see cref="CardTypeId"/> である。<see cref="CardEntryAsset.CardIdValue"/>
+    /// が SerializeField の string を保持し、本 catalog の <see cref="RebuildCache"/> で <see cref="CardTypeId.Of"/> を
+    /// 通して構築する。<see cref="CardEntryAsset.CardIdValue"/> プロパティ名は SerializeField の互換性維持のため
+    /// 旧名を残しているが、保持される文字列の意味は「種別 ID(<see cref="CardTypeId.Value"/>)」である。
+    /// </para>
+    /// <para>
     /// Asset 配置: <c>Assets/_Project/Data/Cards/</c> 配下を初期推奨(Resources フォルダ非採用で Build サイズ膨張回避、
     /// JIT 確定 2026-05-14)。本番経路の <c>AssetReference</c> / <c>Addressables</c> は M5 Bootstrap で確定。
     /// </para>
@@ -43,11 +49,12 @@ namespace Drowsy.Infrastructure.Games.DrowZzz
 
         [SerializeField] private CardEntryAsset[] _entries;
 
-        // 構築済キャッシュ(同じ id を複数回 Get したときに毎回 ToCardData / ToDomain を呼ばないため)
-        private Dictionary<CardId, CardData> _cache;
-        // M4-PR2 で追加:CardId → IEffect[] の効果列キャッシュ(INF-017)。EffectAsset[].ToDomain() を
+        // 構築済キャッシュ(同じ typeId を複数回 Get したときに毎回 ToCardData / ToDomain を呼ばないため)
+        // ADR-0018 で lookup key を CardId → CardTypeId に変更(catalog の責務「種別 → CardData」を型で明示)。
+        private Dictionary<CardTypeId, CardData> _cache;
+        // M4-PR2 で追加:CardTypeId → IEffect[] の効果列キャッシュ(INF-017)。EffectAsset[].ToDomain() を
         // RebuildCache 時に集計、GetEffects は本キャッシュから取得して返す。
-        private Dictionary<CardId, IReadOnlyList<IEffect>> _effectsCache;
+        private Dictionary<CardTypeId, IReadOnlyList<IEffect>> _effectsCache;
 
         /// <summary>
         /// Asset がロードされた時 / <see cref="ScriptableObject.CreateInstance{T}"/> で生成された時に呼ばれる。
@@ -71,8 +78,8 @@ namespace Drowsy.Infrastructure.Games.DrowZzz
         // M4-PR2: EffectAsset[].ToDomain() で _effectsCache も同時構築(INF-017〜019)。
         private void RebuildCache()
         {
-            _cache = new Dictionary<CardId, CardData>();
-            _effectsCache = new Dictionary<CardId, IReadOnlyList<IEffect>>();
+            _cache = new Dictionary<CardTypeId, CardData>();
+            _effectsCache = new Dictionary<CardTypeId, IReadOnlyList<IEffect>>();
             if (_entries is null)
             {
                 return;
@@ -84,16 +91,16 @@ namespace Drowsy.Infrastructure.Games.DrowZzz
                 {
                     continue;
                 }
-                CardId id;
+                CardTypeId typeId;
                 CardData data;
                 try
                 {
-                    id = CardId.Of(entry.CardIdValue);
+                    typeId = CardTypeId.Of(entry.CardIdValue);
                     data = entry.ToCardData();
                 }
                 catch (ArgumentException ex)
                 {
-                    // CardId.Of / CardData ctor / ToCardData が投げる ArgumentException(派生 ArgumentNullException 含む)を catch。
+                    // CardTypeId.Of / CardData ctor / ToCardData が投げる ArgumentException(派生 ArgumentNullException 含む)を catch。
                     // それ以外の例外(OutOfMemoryException 等)は伝播させる(M4-PR1 code-reviewer P-2 反映 2026-05-14)。
                     // 注:Designer 編集中の即時通知として Debug.LogError(Asset リンク付き)を使う(M4-PR1 JIT 確定 2026-05-14)。
                     // EditMode テスト(INF-012 `Given_不正attributes_When_Get正常id_Then_他entryは影響なし`)では
@@ -104,8 +111,8 @@ namespace Drowsy.Infrastructure.Games.DrowZzz
                         this);
                     continue;
                 }
-                _cache[id] = data;  // 後勝ち(重複は OnValidate 側で別途警告)
-                _effectsCache[id] = BuildEffectsFromAssets(entry.Effects, i);
+                _cache[typeId] = data;  // 後勝ち(重複は OnValidate 側で別途警告)
+                _effectsCache[typeId] = BuildEffectsFromAssets(entry.Effects, i);
             }
         }
 
@@ -192,11 +199,11 @@ namespace Drowsy.Infrastructure.Games.DrowZzz
         }
 
         /// <summary>
-        /// 登録済(キャッシュ構築済)の全 <see cref="CardId"/> を返す。
+        /// 登録済(キャッシュ構築済)の全 <see cref="CardTypeId"/> を返す(ADR-0018 で <c>CardId</c> → <c>CardTypeId</c> に変更)。
         /// </summary>
         /// <remarks>
         /// M5-PR4 で追加(ADR-0016 §3.2 / §11 M5-PR4)。Bootstrap(<c>ProjectLifetimeScope</c>)が
-        /// 新規対戦の <c>initialDeck</c> を組み立てるために本 catalog の登録カードを列挙する用途で利用する。
+        /// 新規対戦の <c>initialDeck</c> を組み立てるために本 catalog の登録カード種別を列挙する用途で利用する。
         /// <see cref="ICardCatalog{TEffect}"/> interface(ADR-0007 で確定)には追加せず、 SO 具象クラス専用の
         /// 拡張 API とする(interface の汎用性を保ち、列挙が必要な consumer は具象型に依存する設計)。
         /// 戻り値は <see cref="RebuildCache"/> の重複「後勝ち」/ 不正 entry skip ロジック適用後のキー集合。
@@ -206,49 +213,49 @@ namespace Drowsy.Infrastructure.Games.DrowZzz
         /// 危険があるため、呼び出し時点の snapshot(配列)を返す(code-reviewer W-1 反映)。
         /// </para>
         /// </remarks>
-        public IReadOnlyCollection<CardId> RegisteredCardIds
+        public IReadOnlyCollection<CardTypeId> RegisteredCardTypeIds
         {
             get
             {
                 EnsureCacheBuilt();
-                var snapshot = new CardId[_cache.Count];
+                var snapshot = new CardTypeId[_cache.Count];
                 _cache.Keys.CopyTo(snapshot, 0);
                 return snapshot;
             }
         }
 
         /// <summary>
-        /// 登録済 <paramref name="id"/> に対応する <see cref="CardData"/> を返す。
+        /// 登録済 <paramref name="typeId"/> に対応する <see cref="CardData"/> を返す。
         /// 未登録の場合は <see cref="KeyNotFoundException"/>(<see cref="ICardCatalog{TEffect}.Get"/> 契約、INF-005)。
         /// </summary>
-        /// <exception cref="KeyNotFoundException"><paramref name="id"/> が未登録</exception>
-        public CardData Get(CardId id)
+        /// <exception cref="KeyNotFoundException"><paramref name="typeId"/> が未登録</exception>
+        public CardData Get(CardTypeId typeId)
         {
             EnsureCacheBuilt();
-            if (_cache.TryGetValue(id, out var data))
+            if (_cache.TryGetValue(typeId, out var data))
             {
                 return data;
             }
             throw new KeyNotFoundException(
-                $"ScriptableObjectCardCatalog に登録されていない CardId: {id?.Value ?? "<null>"}");
+                $"ScriptableObjectCardCatalog に登録されていない CardTypeId: {typeId?.Value ?? "<null>"}");
         }
 
         /// <summary>
-        /// 登録済 <paramref name="id"/> なら <c>true</c> を返し <paramref name="data"/> に <see cref="CardData"/> を設定する。
+        /// 登録済 <paramref name="typeId"/> なら <c>true</c> を返し <paramref name="data"/> に <see cref="CardData"/> を設定する。
         /// 未登録なら <c>false</c> を返し <paramref name="data"/> には <c>null</c> を設定する(INF-007)。
         /// </summary>
-        public bool TryGet(CardId id, out CardData data)
+        public bool TryGet(CardTypeId typeId, out CardData data)
         {
             EnsureCacheBuilt();
-            return _cache.TryGetValue(id, out data);
+            return _cache.TryGetValue(typeId, out data);
         }
 
         /// <summary>
-        /// 登録済 <paramref name="id"/> に対応する効果列を返す(INF-017)。M4-PR2 で本格化:
+        /// 登録済 <paramref name="typeId"/> に対応する効果列を返す(INF-017)。M4-PR2 で本格化:
         /// <see cref="CardEntryAsset.Effects"/> に格納された <see cref="EffectAsset"/> を
         /// <see cref="EffectAsset.ToDomain"/> 経由で <see cref="IEffect"/> に変換した結果を
         /// <see cref="_effectsCache"/> から返す(<see cref="RebuildCache"/> 時に集計済)。
-        /// 未登録 id / null id / 効果なしカードは空配列を返す(graceful)。
+        /// 未登録 typeId / null typeId / 効果なしカードは空配列を返す(graceful)。
         /// </summary>
         /// <remarks>
         /// M4-PR1 では <c>InMemoryCardCatalog.GetEffects</c> と同様、空配列固定の骨格実装だった(INF-008 Optional)。
@@ -256,14 +263,14 @@ namespace Drowsy.Infrastructure.Games.DrowZzz
         /// 導入し、本メソッドが SO ベースで効果列を返却する経路に拡張(ADR-0012 §3 案 (a))。
         /// 残り 11 派生型は M4-PR3 で順次対応。
         /// </remarks>
-        public IReadOnlyList<IEffect> GetEffects(CardId id)
+        public IReadOnlyList<IEffect> GetEffects(CardTypeId typeId)
         {
             EnsureCacheBuilt();
-            if (id is null)
+            if (typeId is null)
             {
                 return EmptyEffects;
             }
-            return _effectsCache.TryGetValue(id, out var effects) ? effects : EmptyEffects;
+            return _effectsCache.TryGetValue(typeId, out var effects) ? effects : EmptyEffects;
         }
 
         /// <summary>

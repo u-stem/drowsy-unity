@@ -135,11 +135,11 @@ namespace Drowsy.Application.Games.DrowZzz
                 return false;
             }
             // (3) action.Card が catalog に登録 + 効果列に AssociatableMarkerEffect を含む
-            if (!_catalog.TryGet(action.Card, out _))
+            if (!_catalog.TryGet(action.Card.TypeId, out _))
             {
                 return false;
             }
-            var effects = _catalog.GetEffects(action.Card);
+            var effects = _catalog.GetEffects(action.Card.TypeId);
             foreach (var e in effects)
             {
                 if (e is AssociatableMarkerEffect)
@@ -186,7 +186,7 @@ namespace Drowsy.Application.Games.DrowZzz
             //  - ChoiceEffect: 全 branch を walk
             //  - KeywordedEffect (Instinct なし): Inner も walk(nested KeywordedEffect 対応)
             var targetCard = currentHand.Cards[action.CardIndex];
-            var effects = _catalog.GetEffects(targetCard);
+            var effects = _catalog.GetEffects(targetCard.TypeId);
             if (HasKeywordInEffects(effects, Keyword.Instinct))
             {
                 return false;
@@ -310,7 +310,7 @@ namespace Drowsy.Application.Games.DrowZzz
             // RequiresMinimumTotalPointsMarkerEffect 閾値チェック + UsageRestrictionMarkerEffect 存在判定を同時に行う)。
             // M3-PR6 JIT 確定 2026-05-14:walk スコープは「最上位のみ」(wrapper effect の inner には walk しない、
             // 将来 nested 配置が必要なカードが出てきた時点で再帰化、ADR-0011 §6 / `HasKeywordInEffect` と同方針)。
-            var effects = _catalog.GetEffects(action.Card);
+            var effects = _catalog.GetEffects(action.Card.TypeId);
             bool hasUsageRestrictionMarker = false;
             foreach (var e in effects)
             {
@@ -430,7 +430,7 @@ namespace Drowsy.Application.Games.DrowZzz
                     $"AssociateAction は TotalPoints >= {DrowZzzAssociationConstants.AssociationThreshold} でのみ合法です " +
                     $"(現在: {session.TotalPoints(currentPlayer.Id)}、ADR-0011 §1 JIT 確定 2026-05-13)");
             }
-            if (!_catalog.TryGet(action.Card, out _))
+            if (!_catalog.TryGet(action.Card.TypeId, out _))
             {
                 throw new InvalidOperationException(
                     $"AssociateAction.Card ({action.Card.Value}) は catalog に登録されていません");
@@ -439,7 +439,7 @@ namespace Drowsy.Application.Games.DrowZzz
             // (M3-PR4 では AssociatableMarker のみだったため単独 scan で十分だったが、本 PR で UsageRestriction を追加した
             // 際、検出ロジックを 1 ループに合流させてマーカー追加時の誤用パターン(両 scan の片方だけ更新する等)を防ぐ。
             // M3-PR6 code-reviewer W-3 反映 2026-05-14)
-            var effects = _catalog.GetEffects(action.Card);
+            var effects = _catalog.GetEffects(action.Card.TypeId);
             bool hasAssociatableMarker = false;
             bool hasUsageRestrictionMarker = false;
             foreach (var e in effects)
@@ -540,7 +540,7 @@ namespace Drowsy.Application.Games.DrowZzz
             }
             // M3-PR5a: Instinct を含むカードを捨て対象として指定した場合は illegal(ADR-0011 §4.2)
             var instinctTarget = currentPlayer.Hand.Cards[action.CardIndex];
-            if (HasKeywordInEffects(_catalog.GetEffects(instinctTarget), Keyword.Instinct))
+            if (HasKeywordInEffects(_catalog.GetEffects(instinctTarget.TypeId), Keyword.Instinct))
             {
                 throw new InvalidOperationException(
                     $"AbandonAction の CardIndex ({action.CardIndex}) は Instinct キーワードを含むカード ({instinctTarget.Value}) を指しています。" +
@@ -703,7 +703,7 @@ namespace Drowsy.Application.Games.DrowZzz
             // M2-PR1: プレイされたカードの効果列を catalog から取得し、左から順に Interpreter で逐次評価。
             // M2-PR5: ChoiceEffect は unwrap して action.Choice の branch のみ評価(interpreter には届かない)。
             //         EffectContext(InfluenceRemovalIndex) を interpreter に thread し、RemoveInfluenceEffect に届ける。
-            var rawEffects = _catalog.GetEffects(action.Card);
+            var rawEffects = _catalog.GetEffects(action.Card.TypeId);
             var context = new EffectContext(action.InfluenceRemovalIndex);
             var currentSession = afterPlay;
             foreach (var effect in rawEffects)
@@ -757,7 +757,7 @@ namespace Drowsy.Application.Games.DrowZzz
         {
             for (int i = 0; i < hand.Count; i++)
             {
-                var effects = _catalog.GetEffects(hand.Cards[i]);
+                var effects = _catalog.GetEffects(hand.Cards[i].TypeId);
                 if (HasKeywordInEffects(effects, Keyword.Counter))
                 {
                     return true;
@@ -811,7 +811,7 @@ namespace Drowsy.Application.Games.DrowZzz
                 return false;
             }
             // (3) Counter カードに Counter キーワードあり
-            var counterEffects = _catalog.GetEffects(action.Counter);
+            var counterEffects = _catalog.GetEffects(action.Counter.TypeId);
             if (!HasKeywordInEffects(counterEffects, Keyword.Counter))
             {
                 return false;
@@ -823,7 +823,7 @@ namespace Drowsy.Application.Games.DrowZzz
                 return false;
             }
             // (5) Target の効果列に Frenzy を含まない(Frenzy は反撃を受けない、ADR-0011 §4.5)
-            var targetEffects = _catalog.GetEffects(action.Target);
+            var targetEffects = _catalog.GetEffects(action.Target.TypeId);
             if (HasKeywordInEffects(targetEffects, Keyword.Frenzy))
             {
                 return false;
@@ -855,13 +855,13 @@ namespace Drowsy.Application.Games.DrowZzz
                 return false;
             }
             // (4) action.Counter の効果列に Counter キーワードを含む
-            var counterEffects = _catalog.GetEffects(action.Counter);
+            var counterEffects = _catalog.GetEffects(action.Counter.TypeId);
             if (!HasKeywordInEffects(counterEffects, Keyword.Counter))
             {
                 return false;
             }
             // (5) action.Target(= B)の効果列に Frenzy を含まない(対称設計、B が Frenzy 持ちなら反撃の反撃も不可)
-            var targetEffects = _catalog.GetEffects(action.Target);
+            var targetEffects = _catalog.GetEffects(action.Target.TypeId);
             if (HasKeywordInEffects(targetEffects, Keyword.Frenzy))
             {
                 return false;
@@ -912,7 +912,7 @@ namespace Drowsy.Application.Games.DrowZzz
                 throw new InvalidOperationException(
                     $"CounterAction の Counter ({action.Counter.Value}) は反撃側プレイヤーの手札に含まれません");
             }
-            if (!HasKeywordInEffects(_catalog.GetEffects(action.Counter), Keyword.Counter))
+            if (!HasKeywordInEffects(_catalog.GetEffects(action.Counter.TypeId), Keyword.Counter))
             {
                 throw new InvalidOperationException(
                     $"CounterAction の Counter ({action.Counter.Value}) は Counter キーワード持ち効果列を含みません");
@@ -925,7 +925,7 @@ namespace Drowsy.Application.Games.DrowZzz
             }
             // 遡及発動用に A の効果列を catalog から取得し、Frenzy 検証で兼用しつつ Pending 登録用の Snapshot として保持する
             // (P-1 反映 2026-05-12:変数 originalEffects は Frenzy 判定にも使う、効果列を 2 回取得しない設計)。
-            var originalEffects = _catalog.GetEffects(action.Target);
+            var originalEffects = _catalog.GetEffects(action.Target.TypeId);
             if (HasKeywordInEffects(originalEffects, Keyword.Frenzy))
             {
                 throw new InvalidOperationException(
@@ -993,12 +993,12 @@ namespace Drowsy.Application.Games.DrowZzz
                 throw new InvalidOperationException(
                     $"CounterAction の Counter ({action.Counter.Value}) は現プレイヤー(= 元 A プレイヤー)の手札に含まれません");
             }
-            if (!HasKeywordInEffects(_catalog.GetEffects(action.Counter), Keyword.Counter))
+            if (!HasKeywordInEffects(_catalog.GetEffects(action.Counter.TypeId), Keyword.Counter))
             {
                 throw new InvalidOperationException(
                     $"CounterAction の Counter ({action.Counter.Value}) は Counter キーワード持ち効果列を含みません");
             }
-            if (HasKeywordInEffects(_catalog.GetEffects(action.Target), Keyword.Frenzy))
+            if (HasKeywordInEffects(_catalog.GetEffects(action.Target.TypeId), Keyword.Frenzy))
             {
                 throw new InvalidOperationException(
                     $"CounterAction の Target ({action.Target.Value}, = B) は Frenzy キーワード持ち効果列を含むため反撃の反撃不可です(ADR-0011 §4.5)");

@@ -31,7 +31,7 @@ namespace Drowsy.Application.Tests.Integration
             var cards = new CardId[count];
             for (int i = 0; i < count; i++)
             {
-                cards[i] = CardId.Of($"c{i + 1}");
+                cards[i] = CardId.Of(CardTypeId.Of($"c{i + 1}"), 0);
             }
             return new Pile(cards);
         }
@@ -42,7 +42,7 @@ namespace Drowsy.Application.Tests.Integration
         private static (StartGameUseCase start, ApplyActionUseCase apply) NewUseCases(IRandomSource rng = null)
         {
             rng ??= new IdentityRandom();
-            var catalog = new InMemoryCardCatalog(new KeyValuePair<CardId, CardData>[0]);
+            var catalog = new InMemoryCardCatalog(new KeyValuePair<CardTypeId, CardData>[0]);
             var interpreter = new EffectInterpreter();
             var rule = new DrowZzzRule(catalog, interpreter);
             var config = new StubGameConfig();
