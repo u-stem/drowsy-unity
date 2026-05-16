@@ -56,14 +56,6 @@
 
 ## 未着手
 
-- [ ] **WebGL Build を CI で自動化(GameCI 経由)** `priority: medium`
-  - **Why**: M5-PR8 で WebGL Build `Result: Success` を確認したが、現状はオーナー実機作業。Phase 3 以降の継続的検証のため、CI(GitHub Actions / GameCI)で push / PR ごとに自動 Build したい。ADR-0016 §「TODO 候補」から本 todo.md に移行
-  - **Done when**:
-    - `.github/workflows/webgl-build.yml`(or 相当)を新設、GameCI Action で WebGL Build を実行
-    - PR ごとに Build artifact をアップロード(オプション:GitHub Releases へ公開)
-    - Build 時間 / サイズの変化を可視化(`docs/architecture/webgl-il2cpp-verification.md` への自動追記検討)
-  - **Related**: [ADR-0016](adr/0016-m5-bootstrap-presentation.md) §「TODO 候補」、[`docs/architecture/webgl-il2cpp-verification.md`](architecture/webgl-il2cpp-verification.md)
-
 - [ ] **Presenter 単体テストの C0 カバレッジ計測対象を「計測対象外」→「Presenter のみ計測対象」に格上げ** `priority: low`
   - **Why**: 現状 `docs/testing-strategy.md` で Presentation 層は「計測対象外」だが、M5-PR2〜PR7 で `DrowZzzGamePresenter`(Pure C#)に多数のテストを書いており、計測可能。`Drowsy.Presentation` のうち MonoBehaviour(`DrowZzzGameView`)を除外し、Presenter / Binder などの Pure C# クラスのみ計測対象にすれば、追加価値が出る
   - **Done when**:
@@ -236,6 +228,21 @@
       - `RCS1213`(未使用 private メンバー):`OnEnable` / `OnValidate` / `Awake` / `Start` / `Update` 等の **Unity ライフサイクルメソッド**を Roslynator が認識せず false positive(`ScriptableObjectCardCatalog.cs:56,63` の 2 件で検証済)。Unity ライフサイクルメソッド名単位の suppression(`[UsedImplicitly]` 属性付与 / 個別 `#pragma warning disable` / EditorConfig section override 等)を別 PR で評価する
 
 ## 完了済み
+
+- [x] **WebGL Build を CI で自動化(GameCI 経由)** `priority: medium`
+  - **Why**: M5-PR8 で WebGL Build `Result: Success` を確認したが、現状はオーナー実機作業。Phase 3 以降の継続的検証のため、CI(GitHub Actions / GameCI)で push / PR ごとに自動 Build したい
+  - **Done when** (本 PR 範囲):
+    - ✓ `.github/workflows/webgl-build.yml` 新設、GameCI `unity-builder@v4` で WebGL Build を実行(push to main / PR to main / workflow_dispatch)
+    - ✓ `actions/upload-artifact@v4` で `build/WebGL` を 90 日保管、`if-no-files-found: error` で空 artifact を CI 失敗扱い
+    - ✓ `actions/cache@v4` で Library/ を `Assets/**` / `Packages/**` / `ProjectSettings/**` の hash key + restore-keys フォールバックでキャッシュ
+    - ✓ `docs/architecture/webgl-il2cpp-verification.md` に「Phase 6 CI 経路」セクションを追記(secret 設定手順 / cache 戦略 / Status check 活用 / Pro License 切替)
+    - ✓ Personal License 前提(Pro License 切替コメント付)、code-reviewer 4 件反映(timeout 30→90 / concurrency main 保護 / lfs false / buildsPath 明示 / fetch-depth 1)
+  - **オーナー側の残作業(本 PR マージ後)**:
+    - ⬜ Unity Personal License の `.ulf` を `game-ci/unity-request-activation-file` で取得し GitHub Secrets(`UNITY_LICENSE` / `UNITY_EMAIL` / `UNITY_PASSWORD`)に登録(`webgl-build.yml` 末尾コメント手順)
+    - ⬜ 初回 Build 走行確認(40〜60 分想定)+ 2 回目以降のキャッシュヒット確認(10〜15 分想定)
+    - ⬜ Status check として `Build WebGL (Unity 6000.4.6f1)` を branch protection の Required status checks に追加(CLAUDE.md §8 Phase 6 該当、CI 整備の主役)
+    - ⬜ Build artifact サイズ / 時間の変化を `docs/architecture/webgl-il2cpp-verification.md` に追記(自動化は後続 TODO、本 PR は CI 経路確立まで)
+  - **Related**: [ADR-0016](adr/0016-m5-bootstrap-presentation.md) §「TODO 候補」、[`docs/architecture/webgl-il2cpp-verification.md`](architecture/webgl-il2cpp-verification.md) §「Phase 6 CI 経路」、本完了 PR(ci/webgl-build-gameci、2026-05-16)、code-reviewer W-1〜W-3 + S-4〜S-6 反映
 
 - [x] **ADR-0007 / ADR-0009 / ADR-0011 に「M2 サブセット先行スコープは M2-PR5 で達成、Phase 2 完結時点で M2 ステータスを完結扱い」Note 追記** `priority: low`
   - **Why**: M5-PR8 で CLAUDE.md §11 M2 ステータスを「進行中」→「完結」に清算したが、関連 ADR 側からの逆リンク注記は M5-PR8 スコープ外として残した(影響範囲を絞るため)。Phase 3 着手前に整合性を取りたい

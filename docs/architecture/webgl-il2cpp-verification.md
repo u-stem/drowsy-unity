@@ -101,6 +101,36 @@ M5-PR1〜PR7 + PR #94 / #95 / #96 の追加実装(VContainer 1.17.0 / UniTask 2.
 
 本検証により ADR-0005 §7 Phase 2 完了の最小定義のうち「WebGL Build が継続して通る」要件を達成。残る軸(Play モード操作)はオーナー側で M5-PR7 / PR #96 マージ後の実機検証で達成済(Hand 重複検出エラーの根本対処後)。Phase 2 完結条件充足。
 
+## Phase 6 CI 経路(GameCI 自動化、2026-05-16 追加)
+
+オーナー実機での WebGL Build 確認(本ドキュメント §「検証結果」)を、GitHub Actions + GameCI で自動再現する経路を `.github/workflows/webgl-build.yml` に新設した(`chore/todo-batch-cleanup` 後続 PR `ci/webgl-build-gameci`)。
+
+### 経路
+
+| トリガー | 動作 |
+| ---- | ---- |
+| push to `main` | WebGL Build 自動実行 + artifact upload(`drowzzz-webgl-<sha>`、90 日保管)|
+| PR to `main` | 同上、PR ごとに Build 成否を Status check として可視化 |
+| `workflow_dispatch` | オーナーが任意のタイミングで手動再ビルド可能 |
+
+### 初回 secret 設定(オーナー実機作業)
+
+Personal License の `.ulf` ファイルを GitHub Secrets に登録する。`.github/workflows/webgl-build.yml` 末尾の手順コメントを参照(`game-ci/unity-request-activation-file` で `.alf` 生成 → Unity ID で `.ulf` ダウンロード → 3 つの secret 登録)。
+
+### キャッシュ戦略
+
+`Library/` を `actions/cache@v4` で `Assets/**` / `Packages/**` / `ProjectSettings/**` の hash key でキャッシュ。初回 Build は IL2CPP フル生成 + Library 構築で **40〜60 分**(GameCI 報告事例)、キャッシュヒット後は **10〜15 分** が目安(オーナー実機 52.5 秒 × CI 環境差)。`timeout-minutes: 90` で初回も収まる設定。
+
+`hashFiles('ProjectSettings/**')` は EditorBuildSettings / EditorUserSettings 等の変更でもキャッシュキーが変わるため、Scene 構成変更時に Library が再構築される(過剰無効化の余地はあるが、安全側に倒した設計、code-reviewer S-5)。
+
+### Status check の活用
+
+`.github/workflows/webgl-build.yml` が main マージ後 1 回成功した時点で、branch protection rule に「Required status checks」として `Build WebGL (Unity 6000.4.6f1)` を追加することを推奨(CLAUDE.md §8「Phase 別の強制レベル」Phase 6 該当)。これにより WebGL Build が失敗する PR は main にマージできなくなる。
+
+### Pro License 切替
+
+Pro License を使う場合は yml の env を `UNITY_LICENSE` / `UNITY_EMAIL` / `UNITY_PASSWORD` から `UNITY_EMAIL` / `UNITY_PASSWORD` / `UNITY_SERIAL` に差し替える(末尾コメント参照)。drowsy-unity は Personal License 前提で設計。
+
 ## 関連
 
 - ADR: [ADR-0012 §「M4-PR5 完成記録」](../adr/0012-m4-scriptableobject-and-persistence.md) — `link.xml` 導入 + WebGL 検証を M4-PR7 へ持ち越し

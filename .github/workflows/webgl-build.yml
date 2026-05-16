@@ -1,0 +1,89 @@
+# drowsy-unity WebGL Build CI(GameCI v4 経由)
+#
+# 目的:M5-PR8 で確認した WebGL Build `Result: Success`(オーナー実機 52.5 秒)を
+#       push / PR ごとに GitHub Actions で自動再現し、Build 後退を機械検知する。
+#
+# 前提:Unity Personal License の `.ulf` ファイルを GitHub Secrets に登録(初回手動取得、後述)。
+#       Pro License を使う場合は env を `UNITY_SERIAL` に切り替える(末尾コメント参照)。
+#
+# 参考:
+#   - GameCI 公式: https://game.ci/docs/github/builder
+#   - CLAUDE.md §7「GitHub Actions / GameCI」レイヤー
+#   - docs/architecture/webgl-il2cpp-verification.md §「Phase 6 CI 経路」
+
+name: WebGL Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:  # 手動トリガー(オーナーが任意のタイミングで再ビルド可能)
+
+# 同一ブランチへの新規 push で前 run をキャンセル(無駄な CI 時間を削減)。
+# main では cancel しない:リリース確認用 Build が後続 push で消えると artifact が残らないため(code-reviewer W-2)。
+concurrency:
+  group: webgl-build-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  build:
+    name: Build WebGL (Unity 6000.4.6f1)
+    runs-on: ubuntu-latest
+    # 初回 IL2CPP フル生成 + Library 構築は CI 環境で 40〜60 分が標準的(GameCI 報告事例)。
+    # キャッシュヒット後の Build は 10〜15 分が目安(オーナー実機 52.5 秒 × CI 環境差)。
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1  # Build は git 履歴を参照しないので浅いクローンで十分
+          lfs: false  # 現状 LFS 未使用(`.gitattributes` に LFS パターン定義はあるが実 LFS オブジェクトなし、追加時に有効化)
+
+      # Library/ キャッシュ(初回 Build は IL2CPP 含めて数十分かかるが、2 回目以降は数分)
+      - name: Cache Library
+        uses: actions/cache@v4
+        with:
+          path: Library
+          key: Library-WebGL-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
+          restore-keys: |
+            Library-WebGL-
+            Library-
+
+      # WebGL Build(unityVersion は ProjectSettings/ProjectVersion.txt から自動検出)
+      - name: Build WebGL
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          targetPlatform: WebGL
+          buildName: drowzzz-webgl
+          buildsPath: build  # "build/<targetPlatform>/" 配下に出力(明示指定で将来の挙動変更に追随、code-reviewer S-6)
+
+      # Build artifact をアップロード(GitHub Actions UI からダウンロード可能、90 日保管)
+      - name: Upload Build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: drowzzz-webgl-${{ github.sha }}
+          path: build/WebGL
+          retention-days: 90
+          if-no-files-found: error  # build/WebGL が空なら CI を失敗扱いに(Build 失敗の早期検知)
+
+# ─────────────────────────────────────────────────────
+# Pro License を使う場合の env 差し替え:
+#   env:
+#     UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+#     UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+#     UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+# ─────────────────────────────────────────────────────
+# 初回 secret 設定手順(Personal License、オーナー実機作業):
+#   1. https://github.com/game-ci/unity-request-activation-file?tab=readme-ov-file
+#      の手順で `.alf` を生成し、Unity ID にログインして `.ulf` をダウンロード
+#   2. GitHub > Settings > Secrets and variables > Actions で 3 つの secret を登録:
+#      - UNITY_LICENSE: .ulf ファイルの全内容(XML)を貼り付け
+#      - UNITY_EMAIL: Unity ID のメールアドレス
+#      - UNITY_PASSWORD: Unity ID のパスワード
+#   3. 本ファイルが main にマージされた後、次回 push / PR / workflow_dispatch で自動 Build 走行
+# ─────────────────────────────────────────────────────
