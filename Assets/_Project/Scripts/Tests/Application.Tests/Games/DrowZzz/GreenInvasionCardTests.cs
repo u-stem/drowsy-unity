@@ -59,12 +59,12 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var card02 = new CardData("緑の侵攻", new Dictionary<string, int>());
             var entries = new[]
             {
-                new KeyValuePair<CardId, CardData>(CardId.Of("02"), card02),
+                new KeyValuePair<CardTypeId, CardData>(CardTypeId.Of("02"), card02),
             };
             var effects = new[]
             {
-                new KeyValuePair<CardId, IReadOnlyList<IEffect>>(
-                    CardId.Of("02"),
+                new KeyValuePair<CardTypeId, IReadOnlyList<IEffect>>(
+                    CardTypeId.Of("02"),
                     new IEffect[] { GreenInvasionEffect() }),
             };
             return new InMemoryCardCatalog(entries, effects);
@@ -75,7 +75,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             IReadOnlyList<PlayerInfluence> p1Influences = null,
             IReadOnlyList<PlayerInfluence> p2Influences = null)
         {
-            var p1Hand = new Hand(new[] { CardId.Of("02") });
+            var p1Hand = new Hand(new[] { CardId.Of(CardTypeId.Of("02"), 0) });
             var players = new[]
             {
                 new PlayerState(PlayerId.Of("p1"), p1Hand),
@@ -108,7 +108,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var rule = NewRule(catalog);
             var session = NewSessionWithCardInHand();
             // When
-            var next = rule.Apply(session, new PlayCardAction(CardId.Of("02"), Choice: 0));
+            var next = rule.Apply(session, new PlayCardAction(CardId.Of(CardTypeId.Of("02"), 0), Choice: 0));
             // Then
             Assert.That(next.SecondDrowsyPoints[PlayerId.Of("p1")], Is.EqualTo(-6));
         }
@@ -122,7 +122,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var rule = NewRule(NewCatalogWithCardTwo());
             var session = NewSessionWithCardInHand();
             // When
-            var next = rule.Apply(session, new PlayCardAction(CardId.Of("02"), Choice: 0));
+            var next = rule.Apply(session, new PlayCardAction(CardId.Of(CardTypeId.Of("02"), 0), Choice: 0));
             // Then
             Assert.That(next.Influences[PlayerId.Of("p2")].Count, Is.EqualTo(1));
         }
@@ -137,7 +137,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var existing = new PlayerInfluence(InfluenceTrigger.OwnPhaseStart, new AdjustSdpEffect(SdpTarget.Self, -3), 2);
             var session = NewSessionWithCardInHand(p2Influences: new[] { existing });
             // When
-            var next = rule.Apply(session, new PlayCardAction(CardId.Of("02"), Choice: 0, InfluenceRemovalIndex: 0));
+            var next = rule.Apply(session, new PlayCardAction(CardId.Of(CardTypeId.Of("02"), 0), Choice: 0, InfluenceRemovalIndex: 0));
             // Then(既存削除 → 新規追加で 1 件)
             Assert.That(next.Influences[PlayerId.Of("p2")].Count, Is.EqualTo(1));
         }
@@ -150,7 +150,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var existing = new PlayerInfluence(InfluenceTrigger.OwnPhaseStart, new AdjustSdpEffect(SdpTarget.Self, -3), 2);
             var session = NewSessionWithCardInHand(p2Influences: new[] { existing });
             // When
-            var next = rule.Apply(session, new PlayCardAction(CardId.Of("02"), Choice: 0, InfluenceRemovalIndex: 0));
+            var next = rule.Apply(session, new PlayCardAction(CardId.Of(CardTypeId.Of("02"), 0), Choice: 0, InfluenceRemovalIndex: 0));
             // Then(残った 1 件は新規付与の GreenInvasionInfluence)
             Assert.That(next.Influences[PlayerId.Of("p2")][0], Is.EqualTo(GreenInvasionInfluence()));
         }
@@ -164,7 +164,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var rule = NewRule(NewCatalogWithCardTwo());
             var session = NewSessionWithCardInHand();
             // When
-            var next = rule.Apply(session, new PlayCardAction(CardId.Of("02"), Choice: 1));
+            var next = rule.Apply(session, new PlayCardAction(CardId.Of(CardTypeId.Of("02"), 0), Choice: 1));
             // Then
             Assert.That(next.SecondDrowsyPoints[PlayerId.Of("p2")], Is.EqualTo(6));
         }
@@ -178,7 +178,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var rule = NewRule(NewCatalogWithCardTwo());
             var session = NewSessionWithCardInHand();
             // When
-            var next = rule.Apply(session, new PlayCardAction(CardId.Of("02"), Choice: 1));
+            var next = rule.Apply(session, new PlayCardAction(CardId.Of(CardTypeId.Of("02"), 0), Choice: 1));
             // Then
             Assert.That(next.Influences[PlayerId.Of("p1")].Count, Is.EqualTo(1));
         }
@@ -192,7 +192,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var rule = NewRule(NewCatalogWithCardTwo());
             var session = NewSessionWithCardInHand();
             // When / Then(Choice=2 は範囲外 [0, 1] のため illegal)
-            Assert.That(rule.IsLegalMove(session, new PlayCardAction(CardId.Of("02"), Choice: 2)), Is.False);
+            Assert.That(rule.IsLegalMove(session, new PlayCardAction(CardId.Of(CardTypeId.Of("02"), 0), Choice: 2)), Is.False);
         }
 
         // ===== DZ-176: フェーズ進行で自分の影響が Tick =====

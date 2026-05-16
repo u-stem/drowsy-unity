@@ -77,9 +77,9 @@ namespace Drowsy.Infrastructure.Tests.Persistence
         /// </summary>
         public static DrowZzzGameSession FullSessionWithAllFeatures()
         {
-            var card01 = CardId.Of("01");
-            var card02 = CardId.Of("02");
-            var card03 = CardId.Of("03");
+            var card01 = CardId.Of(CardTypeId.Of("01"), 0);
+            var card02 = CardId.Of(CardTypeId.Of("02"), 0);
+            var card03 = CardId.Of(CardTypeId.Of("03"), 0);
 
             var handA = new Hand(new[] { card01 });
             var handB = new Hand(new[] { card02 });

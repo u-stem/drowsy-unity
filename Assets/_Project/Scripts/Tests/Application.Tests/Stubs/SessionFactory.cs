@@ -27,19 +27,26 @@ namespace Drowsy.Application.Tests.Stubs
         /// </summary>
         public static DrowZzzRule NewRule() =>
             new DrowZzzRule(
-                new InMemoryCardCatalog(new KeyValuePair<CardId, CardData>[0]),
+                new InMemoryCardCatalog(new KeyValuePair<CardTypeId, CardData>[0]),
                 new EffectInterpreter());
 
         /// <summary>
         /// `params string[]` から `Pile` を組み立てるショートカット(`NewDeck("c1", "c2")` で
-        /// 2 枚の Pile を生成、先頭順序保持)。`CardId.Of` を内部で呼ぶ。
+        /// 2 枚の Pile を生成、先頭順序保持)。`CardId.Of(CardTypeId.Of(typeId), 0)` を内部で呼ぶ。
         /// </summary>
+        /// <remarks>
+        /// <b>注意(ADR-0018 / code-reviewer 提案 5)</b>:本 helper は <c>instance=0 固定</c> で `CardId` を生成するため、
+        /// 同じ string を複数渡すと <c>(typeId, 0)</c> が重複し、<c>StartGameUseCase</c> が Hand 配布時に
+        /// `Hand.Add` の unique 制約で <see cref="ArgumentException"/> を投げる。
+        /// 「同種カードを複数枚配布」をテストしたい場合は本 helper を使わず、
+        /// <c>CardId.Of(CardTypeId.Of(id), i)</c> を直接呼んで instance を変えて並べること。
+        /// </remarks>
         public static Pile NewDeck(params string[] cardIds)
         {
             var cards = new CardId[cardIds.Length];
             for (int i = 0; i < cardIds.Length; i++)
             {
-                cards[i] = CardId.Of(cardIds[i]);
+                cards[i] = CardId.Of(CardTypeId.Of(cardIds[i]), 0);
             }
             return new Pile(cards);
         }

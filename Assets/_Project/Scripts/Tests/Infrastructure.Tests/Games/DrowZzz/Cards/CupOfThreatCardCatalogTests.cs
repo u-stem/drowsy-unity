@@ -69,12 +69,12 @@ namespace Drowsy.Infrastructure.Tests.Games.DrowZzz.Cards
             var card01 = new CardData("コップ一杯の脅威", new Dictionary<string, int>());
             var entries = new[]
             {
-                new KeyValuePair<CardId, CardData>(CardId.Of("01"), card01),
+                new KeyValuePair<CardTypeId, CardData>(CardTypeId.Of("01"), card01),
             };
             var effects = new[]
             {
-                new KeyValuePair<CardId, IReadOnlyList<IEffect>>(
-                    CardId.Of("01"),
+                new KeyValuePair<CardTypeId, IReadOnlyList<IEffect>>(
+                    CardTypeId.Of("01"),
                     new IEffect[]
                     {
                         new TimeOfDayBranchEffect(
@@ -103,8 +103,8 @@ namespace Drowsy.Infrastructure.Tests.Games.DrowZzz.Cards
             var so = NewSoCatalogWithCardOne();
             var inMemory = NewInMemoryCatalogWithCardOne();
             // When
-            var soName = so.Get(CardId.Of("01")).Name;
-            var inMemoryName = inMemory.Get(CardId.Of("01")).Name;
+            var soName = so.Get(CardTypeId.Of("01")).Name;
+            var inMemoryName = inMemory.Get(CardTypeId.Of("01")).Name;
             // Then
             Assert.That(soName, Is.EqualTo(inMemoryName));
         }
@@ -116,8 +116,8 @@ namespace Drowsy.Infrastructure.Tests.Games.DrowZzz.Cards
             var so = NewSoCatalogWithCardOne();
             var inMemory = NewInMemoryCatalogWithCardOne();
             // When
-            var soEffects = so.GetEffects(CardId.Of("01"));
-            var inMemoryEffects = inMemory.GetEffects(CardId.Of("01"));
+            var soEffects = so.GetEffects(CardTypeId.Of("01"));
+            var inMemoryEffects = inMemory.GetEffects(CardTypeId.Of("01"));
             // Then(`TimeOfDayBranchEffect` は内部 IReadOnlyList<IEffect> を持つため override Equals で
             //       順序保持シーケンス同値、内側 `AdjustSdpEffect` / `DrawCardEffect` は record auto-equals)
             Assert.That(soEffects, Is.EqualTo(inMemoryEffects));

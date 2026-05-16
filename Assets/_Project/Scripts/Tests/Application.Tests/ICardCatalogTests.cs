@@ -13,21 +13,22 @@ namespace Drowsy.Application.Tests
         // TEffect = IEffect を採用 (DrowZzz 専用)。
         private sealed class DummyCatalog : ICardCatalog<IEffect>
         {
-            private readonly Dictionary<CardId, CardData> _store = new Dictionary<CardId, CardData>();
-            private readonly Dictionary<CardId, IReadOnlyList<IEffect>> _effects =
-                new Dictionary<CardId, IReadOnlyList<IEffect>>();
+            // ADR-0018:catalog の lookup key は CardTypeId(catalog の責務「種別 → CardData」を型で明示)。
+            private readonly Dictionary<CardTypeId, CardData> _store = new Dictionary<CardTypeId, CardData>();
+            private readonly Dictionary<CardTypeId, IReadOnlyList<IEffect>> _effects =
+                new Dictionary<CardTypeId, IReadOnlyList<IEffect>>();
 
-            public void Register(CardId id, CardData data) => _store[id] = data;
+            public void Register(CardTypeId typeId, CardData data) => _store[typeId] = data;
 
-            public void RegisterEffects(CardId id, IReadOnlyList<IEffect> effects) =>
-                _effects[id] = effects;
+            public void RegisterEffects(CardTypeId typeId, IReadOnlyList<IEffect> effects) =>
+                _effects[typeId] = effects;
 
-            public CardData Get(CardId id) => _store[id];
+            public CardData Get(CardTypeId typeId) => _store[typeId];
 
-            public bool TryGet(CardId id, out CardData data) => _store.TryGetValue(id, out data);
+            public bool TryGet(CardTypeId typeId, out CardData data) => _store.TryGetValue(typeId, out data);
 
-            public IReadOnlyList<IEffect> GetEffects(CardId id) =>
-                _effects.TryGetValue(id, out var list) ? list : System.Array.Empty<IEffect>();
+            public IReadOnlyList<IEffect> GetEffects(CardTypeId typeId) =>
+                _effects.TryGetValue(typeId, out var list) ? list : System.Array.Empty<IEffect>();
         }
 
         private static CardData NewData(string name) =>
@@ -38,11 +39,11 @@ namespace Drowsy.Application.Tests
         {
             // Given
             var catalog = new DummyCatalog();
-            var id = CardId.Of("X");
+            var id = CardId.Of(CardTypeId.Of("X"), 0);
             var data = NewData("X-card");
-            catalog.Register(id, data);
+            catalog.Register(id.TypeId, data);
             // When
-            var got = catalog.Get(id);
+            var got = catalog.Get(id.TypeId);
             // Then
             Assert.That(got, Is.SameAs(data));
         }
@@ -52,10 +53,10 @@ namespace Drowsy.Application.Tests
         {
             // Given
             var catalog = new DummyCatalog();
-            var id = CardId.Of("X");
-            catalog.Register(id, NewData("X-card"));
+            var id = CardId.Of(CardTypeId.Of("X"), 0);
+            catalog.Register(id.TypeId, NewData("X-card"));
             // When
-            var ok = catalog.TryGet(id, out _);
+            var ok = catalog.TryGet(id.TypeId, out _);
             // Then
             Assert.That(ok, Is.True);
         }
@@ -65,11 +66,11 @@ namespace Drowsy.Application.Tests
         {
             // Given
             var catalog = new DummyCatalog();
-            var id = CardId.Of("X");
+            var id = CardId.Of(CardTypeId.Of("X"), 0);
             var data = NewData("X-card");
-            catalog.Register(id, data);
+            catalog.Register(id.TypeId, data);
             // When
-            catalog.TryGet(id, out var got);
+            catalog.TryGet(id.TypeId, out var got);
             // Then
             Assert.That(got, Is.SameAs(data));
         }
@@ -80,7 +81,7 @@ namespace Drowsy.Application.Tests
             // Given
             var catalog = new DummyCatalog();
             // When
-            var ok = catalog.TryGet(CardId.Of("Y"), out _);
+            var ok = catalog.TryGet(CardTypeId.Of("Y"), out _);
             // Then
             Assert.That(ok, Is.False);
         }
@@ -91,7 +92,7 @@ namespace Drowsy.Application.Tests
             // Given
             var catalog = new DummyCatalog();
             // When
-            catalog.TryGet(CardId.Of("Y"), out var got);
+            catalog.TryGet(CardTypeId.Of("Y"), out var got);
             // Then
             Assert.That(got, Is.Null);
         }
@@ -102,7 +103,7 @@ namespace Drowsy.Application.Tests
             // Given
             var catalog = new DummyCatalog();
             // When / Then
-            Assert.Throws<KeyNotFoundException>(() => catalog.Get(CardId.Of("Y")));
+            Assert.Throws<KeyNotFoundException>(() => catalog.Get(CardTypeId.Of("Y")));
         }
     }
 }

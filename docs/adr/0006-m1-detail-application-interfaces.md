@@ -1,5 +1,7 @@
 # ADR-0006: M1 詳細 — 汎用 Application 層 interface と DrowZzz 最小実装の設計
 
+> **Note(ADR-0018 関連、2026-05-16)**:本 ADR で確定した `ICardCatalog<TEffect>.Get(CardId)` / `TryGet(CardId, out CardData)` / `GetEffects(CardId)` の引数型は [ADR-0018](0018-cardtypeid-cardid-instance-separation.md) で `CardTypeId` に変更された(catalog の責務「種別 → CardData / 効果列」を型で明示するため)。本 ADR の Status は `Accepted` のまま、API 引数型変更を Related で接続。
+
 | 項目 | 値 |
 | ---- | ---- |
 | Status | Accepted |

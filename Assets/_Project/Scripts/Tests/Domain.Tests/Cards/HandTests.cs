@@ -15,8 +15,8 @@ namespace Drowsy.Domain.Tests.Cards
         public void Given_有効なcards_When_コンストラクタ_Then_Cardsが入力と同じ順序で保持される()
         {
             // Given
-            var a = CardId.Of("a");
-            var b = CardId.Of("b");
+            var a = CardId.Of(CardTypeId.Of("a"), 0);
+            var b = CardId.Of(CardTypeId.Of("b"), 0);
             // When
             var hand = new Hand(new[] { a, b });
             // Then
@@ -43,8 +43,8 @@ namespace Drowsy.Domain.Tests.Cards
         public void Given_既存にないCardId_When_Add_Then_末尾に追加された新Handが返る()
         {
             // Given
-            var a = CardId.Of("a");
-            var b = CardId.Of("b");
+            var a = CardId.Of(CardTypeId.Of("a"), 0);
+            var b = CardId.Of(CardTypeId.Of("b"), 0);
             var hand = new Hand(new[] { a });
             // When
             var next = hand.Add(b);
@@ -58,9 +58,9 @@ namespace Drowsy.Domain.Tests.Cards
         public void Given_存在するCardId_When_Remove_Then_除去された新Handが返り残りの順序が保たれる()
         {
             // Given: 中間要素を Remove(両 Array.Copy が動作)
-            var a = CardId.Of("a");
-            var b = CardId.Of("b");
-            var c = CardId.Of("c");
+            var a = CardId.Of(CardTypeId.Of("a"), 0);
+            var b = CardId.Of(CardTypeId.Of("b"), 0);
+            var c = CardId.Of(CardTypeId.Of("c"), 0);
             var hand = new Hand(new[] { a, b, c });
             // When
             var next = hand.Remove(b);
@@ -72,9 +72,9 @@ namespace Drowsy.Domain.Tests.Cards
         public void Given_先頭のCardId_When_Remove_Then_先頭が除去された新Handが返る()
         {
             // Given: 先頭 (index=0) Remove は前半 Array.Copy が長さ 0 の境界
-            var a = CardId.Of("a");
-            var b = CardId.Of("b");
-            var c = CardId.Of("c");
+            var a = CardId.Of(CardTypeId.Of("a"), 0);
+            var b = CardId.Of(CardTypeId.Of("b"), 0);
+            var c = CardId.Of(CardTypeId.Of("c"), 0);
             var hand = new Hand(new[] { a, b, c });
             // When
             var next = hand.Remove(a);
@@ -86,9 +86,9 @@ namespace Drowsy.Domain.Tests.Cards
         public void Given_末尾のCardId_When_Remove_Then_末尾が除去された新Handが返る()
         {
             // Given: 末尾 (index=len-1) Remove は後半 Array.Copy が長さ 0 の境界
-            var a = CardId.Of("a");
-            var b = CardId.Of("b");
-            var c = CardId.Of("c");
+            var a = CardId.Of(CardTypeId.Of("a"), 0);
+            var b = CardId.Of(CardTypeId.Of("b"), 0);
+            var c = CardId.Of(CardTypeId.Of("c"), 0);
             var hand = new Hand(new[] { a, b, c });
             // When
             var next = hand.Remove(c);
@@ -102,7 +102,7 @@ namespace Drowsy.Domain.Tests.Cards
         public void Given_存在するCardId_When_Contains_Then_true()
         {
             // Given
-            var a = CardId.Of("a");
+            var a = CardId.Of(CardTypeId.Of("a"), 0);
             var hand = new Hand(new[] { a });
             // When
             var result = hand.Contains(a);
@@ -114,9 +114,9 @@ namespace Drowsy.Domain.Tests.Cards
         public void Given_存在しないCardId_When_Contains_Then_false()
         {
             // Given
-            var hand = new Hand(new[] { CardId.Of("a") });
+            var hand = new Hand(new[] { CardId.Of(CardTypeId.Of("a"), 0) });
             // When
-            var result = hand.Contains(CardId.Of("z"));
+            var result = hand.Contains(CardId.Of(CardTypeId.Of("z"), 0));
             // Then
             Assert.That(result, Is.False);
         }
@@ -126,7 +126,7 @@ namespace Drowsy.Domain.Tests.Cards
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "HAND-009")]
         public void Given_2枚のHand_When_Count_Then_2()
         {
-            var hand = new Hand(new[] { CardId.Of("a"), CardId.Of("b") });
+            var hand = new Hand(new[] { CardId.Of(CardTypeId.Of("a"), 0), CardId.Of(CardTypeId.Of("b"), 0) });
             Assert.That(hand.Count, Is.EqualTo(2));
         }
 
@@ -142,7 +142,7 @@ namespace Drowsy.Domain.Tests.Cards
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "HAND-010")]
         public void Given_1枚以上のHand_When_IsEmpty_Then_false()
         {
-            var hand = new Hand(new[] { CardId.Of("a") });
+            var hand = new Hand(new[] { CardId.Of(CardTypeId.Of("a"), 0) });
             Assert.That(hand.IsEmpty, Is.False);
         }
 
@@ -151,8 +151,8 @@ namespace Drowsy.Domain.Tests.Cards
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "HAND-011")]
         public void Given_同順序同要素のHand_When_Equals_Then_等価()
         {
-            var a = CardId.Of("a");
-            var b = CardId.Of("b");
+            var a = CardId.Of(CardTypeId.Of("a"), 0);
+            var b = CardId.Of(CardTypeId.Of("b"), 0);
             var x = new Hand(new[] { a, b });
             var y = new Hand(new[] { a, b });
             Assert.That(x, Is.EqualTo(y));
@@ -161,8 +161,8 @@ namespace Drowsy.Domain.Tests.Cards
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "HAND-011")]
         public void Given_同枚数で異なる順序_When_Equals_Then_非等価()
         {
-            var a = CardId.Of("a");
-            var b = CardId.Of("b");
+            var a = CardId.Of(CardTypeId.Of("a"), 0);
+            var b = CardId.Of(CardTypeId.Of("b"), 0);
             var x = new Hand(new[] { a, b });
             var y = new Hand(new[] { b, a });
             Assert.That(x, Is.Not.EqualTo(y));
@@ -171,23 +171,23 @@ namespace Drowsy.Domain.Tests.Cards
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "HAND-011")]
         public void Given_同枚数で異なるカード_When_Equals_Then_非等価()
         {
-            var x = new Hand(new[] { CardId.Of("a"), CardId.Of("b") });
-            var y = new Hand(new[] { CardId.Of("a"), CardId.Of("c") });
+            var x = new Hand(new[] { CardId.Of(CardTypeId.Of("a"), 0), CardId.Of(CardTypeId.Of("b"), 0) });
+            var y = new Hand(new[] { CardId.Of(CardTypeId.Of("a"), 0), CardId.Of(CardTypeId.Of("c"), 0) });
             Assert.That(x, Is.Not.EqualTo(y));
         }
 
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "HAND-011")]
         public void Given_異なる枚数_When_Equals_Then_非等価()
         {
-            var x = new Hand(new[] { CardId.Of("a") });
-            var y = new Hand(new[] { CardId.Of("a"), CardId.Of("b") });
+            var x = new Hand(new[] { CardId.Of(CardTypeId.Of("a"), 0) });
+            var y = new Hand(new[] { CardId.Of(CardTypeId.Of("a"), 0), CardId.Of(CardTypeId.Of("b"), 0) });
             Assert.That(x, Is.Not.EqualTo(y));
         }
 
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "HAND-011")]
         public void Given_同一インスタンス_When_Equals_Then_等価()
         {
-            var hand = new Hand(new[] { CardId.Of("a") });
+            var hand = new Hand(new[] { CardId.Of(CardTypeId.Of("a"), 0) });
             Assert.That(hand.Equals(hand), Is.True);
         }
 
@@ -202,7 +202,7 @@ namespace Drowsy.Domain.Tests.Cards
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "HAND-011")]
         public void Given_null_When_EqualsHand_Then_false()
         {
-            var hand = new Hand(new[] { CardId.Of("a") });
+            var hand = new Hand(new[] { CardId.Of(CardTypeId.Of("a"), 0) });
             Hand other = null;
             Assert.That(hand.Equals(other), Is.False);
         }
@@ -212,8 +212,8 @@ namespace Drowsy.Domain.Tests.Cards
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "HAND-012")]
         public void Given_等価な2つのHand_When_GetHashCode_Then_同じ値を返す()
         {
-            var a = CardId.Of("a");
-            var b = CardId.Of("b");
+            var a = CardId.Of(CardTypeId.Of("a"), 0);
+            var b = CardId.Of(CardTypeId.Of("b"), 0);
             var x = new Hand(new[] { a, b });
             var y = new Hand(new[] { a, b });
             Assert.That(x.GetHashCode(), Is.EqualTo(y.GetHashCode()));
@@ -234,24 +234,24 @@ namespace Drowsy.Domain.Tests.Cards
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "HAND-013")]
         public void Given_等価な2つのHand_When_operator_等価_Then_true()
         {
-            var x = new Hand(new[] { CardId.Of("a") });
-            var y = new Hand(new[] { CardId.Of("a") });
+            var x = new Hand(new[] { CardId.Of(CardTypeId.Of("a"), 0) });
+            var y = new Hand(new[] { CardId.Of(CardTypeId.Of("a"), 0) });
             Assert.That(x == y, Is.True);
         }
 
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "HAND-013")]
         public void Given_非等価な2つのHand_When_operator_等価_Then_false()
         {
-            var x = new Hand(new[] { CardId.Of("a") });
-            var y = new Hand(new[] { CardId.Of("b") });
+            var x = new Hand(new[] { CardId.Of(CardTypeId.Of("a"), 0) });
+            var y = new Hand(new[] { CardId.Of(CardTypeId.Of("b"), 0) });
             Assert.That(x == y, Is.False);
         }
 
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "HAND-013")]
         public void Given_非等価な2つのHand_When_operator_非等価_Then_true()
         {
-            var x = new Hand(new[] { CardId.Of("a") });
-            var y = new Hand(new[] { CardId.Of("b") });
+            var x = new Hand(new[] { CardId.Of(CardTypeId.Of("a"), 0) });
+            var y = new Hand(new[] { CardId.Of(CardTypeId.Of("b"), 0) });
             Assert.That(x != y, Is.True);
         }
 
@@ -308,13 +308,13 @@ namespace Drowsy.Domain.Tests.Cards
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "HAND-016")]
         public void Given_nullCardIdを含むcards_When_コンストラクタ_Then_ArgumentException()
         {
-            Assert.Throws<ArgumentException>(() => new Hand(new[] { CardId.Of("a"), null }));
+            Assert.Throws<ArgumentException>(() => new Hand(new[] { CardId.Of(CardTypeId.Of("a"), 0), null }));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "HAND-017")]
         public void Given_重複CardIdを含むcards_When_コンストラクタ_Then_ArgumentException()
         {
-            var a = CardId.Of("a");
+            var a = CardId.Of(CardTypeId.Of("a"), 0);
             Assert.Throws<ArgumentException>(() => new Hand(new[] { a, a }));
         }
 
@@ -328,7 +328,7 @@ namespace Drowsy.Domain.Tests.Cards
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "HAND-019")]
         public void Given_既存CardId_When_Add_Then_ArgumentException()
         {
-            var a = CardId.Of("a");
+            var a = CardId.Of(CardTypeId.Of("a"), 0);
             var hand = new Hand(new[] { a });
             Assert.Throws<ArgumentException>(() => hand.Add(a));
         }
@@ -343,15 +343,15 @@ namespace Drowsy.Domain.Tests.Cards
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "HAND-021")]
         public void Given_不在CardId_When_Remove_Then_ArgumentException()
         {
-            var hand = new Hand(new[] { CardId.Of("a") });
-            Assert.Throws<ArgumentException>(() => hand.Remove(CardId.Of("z")));
+            var hand = new Hand(new[] { CardId.Of(CardTypeId.Of("a"), 0) });
+            Assert.Throws<ArgumentException>(() => hand.Remove(CardId.Of(CardTypeId.Of("z"), 0)));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "HAND-022")]
         public void Given_null_When_Contains_Then_ArgumentNullException()
         {
             // Given: Add/Remove 経由ではなく Contains を直接呼ぶケース
-            var hand = new Hand(new[] { CardId.Of("a") });
+            var hand = new Hand(new[] { CardId.Of(CardTypeId.Of("a"), 0) });
             // When / Then
             Assert.Throws<ArgumentNullException>(() => hand.Contains(null));
         }

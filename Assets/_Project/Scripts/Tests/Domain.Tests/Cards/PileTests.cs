@@ -10,7 +10,7 @@ namespace Drowsy.Domain.Tests.Cards
     public class PileTests
     {
         // テストヘルパー: 短い記法で CardId を作る
-        private static CardId Card(string value) => CardId.Of(value);
+        private static CardId Card(string value) => CardId.Of(CardTypeId.Of(value), 0);
 
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "PILE-005")]
         public void Given_空でない山札_When_AddTop_Then_先頭に挿入された新Pileを返す()
@@ -20,7 +20,7 @@ namespace Drowsy.Domain.Tests.Cards
             // When
             var added = pile.AddTop(Card("A"));
             // Then
-            Assert.That(added.Cards.Select(c => c.Value), Is.EqualTo(new[] { "A", "B", "C" }));
+            Assert.That(added.Cards.Select(c => c.TypeId.Value), Is.EqualTo(new[] { "A", "B", "C" }));
         }
 
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "PILE-001")]
@@ -28,7 +28,7 @@ namespace Drowsy.Domain.Tests.Cards
         {
             var pile = new Pile(new[] { Card("B"), Card("C") });
             _ = pile.AddTop(Card("A"));
-            Assert.That(pile.Cards.Select(c => c.Value), Is.EqualTo(new[] { "B", "C" }));
+            Assert.That(pile.Cards.Select(c => c.TypeId.Value), Is.EqualTo(new[] { "B", "C" }));
         }
 
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "PILE-006")]
@@ -36,7 +36,7 @@ namespace Drowsy.Domain.Tests.Cards
         {
             var pile = new Pile(new[] { Card("A"), Card("B") });
             var added = pile.AddBottom(Card("C"));
-            Assert.That(added.Cards.Select(c => c.Value), Is.EqualTo(new[] { "A", "B", "C" }));
+            Assert.That(added.Cards.Select(c => c.TypeId.Value), Is.EqualTo(new[] { "A", "B", "C" }));
         }
 
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "PILE-007")]
@@ -48,7 +48,7 @@ namespace Drowsy.Domain.Tests.Cards
             var (drawn, remaining) = pile.Draw();
             // Then
             Assert.That(drawn, Is.EqualTo(Card("A")));
-            Assert.That(remaining.Cards.Select(c => c.Value), Is.EqualTo(new[] { "B", "C" }));
+            Assert.That(remaining.Cards.Select(c => c.TypeId.Value), Is.EqualTo(new[] { "B", "C" }));
         }
 
         [Test, Category("Small"), Category("SemiNormal"), Property("Requirement", "PILE-007")]

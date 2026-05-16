@@ -1,5 +1,7 @@
 # ADR-0002: Phase 1 Domain 拡張の集約境界と概念モデル
 
+> **Note(ADR-0018 関連、2026-05-16)**:本 ADR で導入した `CardId`(単純文字列型、catalog key と Hand instance unique を兼ねる)は [ADR-0018](0018-cardtypeid-cardid-instance-separation.md) で `(CardTypeId TypeId, int Instance)` 複合型に refactor された。catalog key 用途は新設 `CardTypeId` が担い、`CardId` は instance unique 識別子に専念する(Hand の unique 制約は instance unique で正当化)。
+
 | 項目 | 値 |
 | ---- | ---- |
 | Status | Accepted |

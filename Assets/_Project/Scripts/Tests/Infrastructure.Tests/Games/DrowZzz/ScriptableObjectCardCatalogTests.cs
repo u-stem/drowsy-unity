@@ -59,7 +59,7 @@ namespace Drowsy.Infrastructure.Tests.Games.DrowZzz
             // Given(CardId "00" を「夢」名で登録)
             var catalog = CreateCatalog(NewEntry("00", "夢"));
             // When
-            var data = catalog.Get(CardId.Of("00"));
+            var data = catalog.Get(CardTypeId.Of("00"));
             // Then(CardData.Name が一致)
             Assert.That(data.Name, Is.EqualTo("夢"));
         }
@@ -73,7 +73,7 @@ namespace Drowsy.Infrastructure.Tests.Games.DrowZzz
             var catalog = CreateCatalog();
             // When/Then
             Assert.That(
-                () => catalog.Get(CardId.Of("99")),
+                () => catalog.Get(CardTypeId.Of("99")),
                 Throws.TypeOf<KeyNotFoundException>());
         }
 
@@ -85,7 +85,7 @@ namespace Drowsy.Infrastructure.Tests.Games.DrowZzz
             // Given
             var catalog = CreateCatalog(NewEntry("00", "夢"));
             // When
-            var found = catalog.TryGet(CardId.Of("00"), out _);
+            var found = catalog.TryGet(CardTypeId.Of("00"), out _);
             // Then(true)
             Assert.That(found, Is.True);
         }
@@ -96,7 +96,7 @@ namespace Drowsy.Infrastructure.Tests.Games.DrowZzz
             // Given
             var catalog = CreateCatalog(NewEntry("00", "夢"));
             // When
-            catalog.TryGet(CardId.Of("00"), out var data);
+            catalog.TryGet(CardTypeId.Of("00"), out var data);
             // Then(CardData.Name 一致)
             Assert.That(data.Name, Is.EqualTo("夢"));
         }
@@ -109,7 +109,7 @@ namespace Drowsy.Infrastructure.Tests.Games.DrowZzz
             // Given
             var catalog = CreateCatalog();
             // When
-            var found = catalog.TryGet(CardId.Of("99"), out _);
+            var found = catalog.TryGet(CardTypeId.Of("99"), out _);
             // Then(false)
             Assert.That(found, Is.False);
         }
@@ -120,7 +120,7 @@ namespace Drowsy.Infrastructure.Tests.Games.DrowZzz
             // Given
             var catalog = CreateCatalog();
             // When
-            catalog.TryGet(CardId.Of("99"), out var data);
+            catalog.TryGet(CardTypeId.Of("99"), out var data);
             // Then(data null)
             Assert.That(data, Is.Null);
         }
@@ -151,7 +151,7 @@ namespace Drowsy.Infrastructure.Tests.Games.DrowZzz
             catalog.SetEntriesForTest(null);
             // When/Then(空 catalog として Get は KeyNotFoundException)
             Assert.That(
-                () => catalog.Get(CardId.Of("00")),
+                () => catalog.Get(CardTypeId.Of("00")),
                 Throws.TypeOf<KeyNotFoundException>());
         }
 
@@ -162,7 +162,7 @@ namespace Drowsy.Infrastructure.Tests.Games.DrowZzz
             var catalog = ScriptableObject.CreateInstance<ScriptableObjectCardCatalog>();
             catalog.SetEntriesForTest(null);
             // When
-            var found = catalog.TryGet(CardId.Of("00"), out var data);
+            var found = catalog.TryGet(CardTypeId.Of("00"), out var data);
             // Then
             Assert.That(!found && data is null, Is.True);
         }
@@ -174,7 +174,7 @@ namespace Drowsy.Infrastructure.Tests.Games.DrowZzz
             var catalog = ScriptableObject.CreateInstance<ScriptableObjectCardCatalog>();
             catalog.SetEntriesForTest(null);
             // When
-            var effects = catalog.GetEffects(CardId.Of("00"));
+            var effects = catalog.GetEffects(CardTypeId.Of("00"));
             // Then(空配列、本 PR 範囲では常に空)
             Assert.That(effects.Count, Is.EqualTo(0));
         }
@@ -189,7 +189,7 @@ namespace Drowsy.Infrastructure.Tests.Games.DrowZzz
                 NewEntry("  ", "blank-name"),  // 空白 CardIdValue:skip 対象
                 NewEntry("00", "夢"));
             // When
-            var data = catalog.Get(CardId.Of("00"));
+            var data = catalog.Get(CardTypeId.Of("00"));
             // Then(正常 entry は影響なく Get できる)
             Assert.That(data.Name, Is.EqualTo("夢"));
         }
@@ -205,7 +205,7 @@ namespace Drowsy.Infrastructure.Tests.Games.DrowZzz
                 new AdjustSdpEffectAsset(SdpTarget.Self, -5),
                 new AdjustSdpEffectAsset(SdpTarget.Opponent, 10)));
             // When
-            var effects = catalog.GetEffects(CardId.Of("00"));
+            var effects = catalog.GetEffects(CardTypeId.Of("00"));
             // Then(順序保持 + 値同値、INF-016 の ToDomain 値伝達を catalog 経由で検証)
             var expected = new IEffect[]
             {
@@ -231,7 +231,7 @@ namespace Drowsy.Infrastructure.Tests.Games.DrowZzz
                 new KeywordedEffectAsset(new[] { Keyword.Frenzy }, null),  // Inner null → ToDomain で ArgumentNullException
                 new AdjustSdpEffectAsset(SdpTarget.Self, -5)));
             // When
-            var effects = catalog.GetEffects(CardId.Of("00"));
+            var effects = catalog.GetEffects(CardTypeId.Of("00"));
             // Then(KeywordedEffectAsset は skip、残り 1 件)
             Assert.That(effects.Count, Is.EqualTo(1));
         }
@@ -254,7 +254,7 @@ namespace Drowsy.Infrastructure.Tests.Games.DrowZzz
                 null,  // SerializeReference の missing reference を模した null 要素
                 new AdjustSdpEffectAsset(SdpTarget.Self, -5)));
             // When
-            var effects = catalog.GetEffects(CardId.Of("00"));
+            var effects = catalog.GetEffects(CardTypeId.Of("00"));
             // Then(null は skip、valid 1 件が残る)
             Assert.That(effects.Count, Is.EqualTo(1));
         }
@@ -273,7 +273,7 @@ namespace Drowsy.Infrastructure.Tests.Games.DrowZzz
                 new CardEntryAsset("01", "", System.Array.Empty<AttributeEntry>()),  // 空 Name → 構築失敗
                 NewEntry("00", "夢"));
             // When
-            var data = catalog.Get(CardId.Of("00"));
+            var data = catalog.Get(CardTypeId.Of("00"));
             // Then(正常 entry は影響なく Get できる)
             Assert.That(data.Name, Is.EqualTo("夢"));
         }

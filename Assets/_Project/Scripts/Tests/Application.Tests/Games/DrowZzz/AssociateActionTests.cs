@@ -21,19 +21,19 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         // ===== ヘルパー =====
 
         // 連想用カードの CardId(本テストで catalog に登録する)
-        private static readonly CardId DreamCardId = CardId.Of("dream");
+        private static readonly CardId DreamCardId = CardId.Of(CardTypeId.Of("dream"), 0);
 
         // 連想可能カード(AssociatableMarkerEffect を効果列に持つ)を含む rule
         private static DrowZzzRule NewRuleWithAssociatable()
         {
             var entries = new[]
             {
-                new KeyValuePair<CardId, CardData>(DreamCardId, new CardData("夢", new Dictionary<string, int>())),
+                new KeyValuePair<CardTypeId, CardData>(DreamCardId.TypeId, new CardData("夢", new Dictionary<string, int>())),
             };
             var effects = new[]
             {
-                new KeyValuePair<CardId, IReadOnlyList<IEffect>>(
-                    DreamCardId,
+                new KeyValuePair<CardTypeId, IReadOnlyList<IEffect>>(
+                    DreamCardId.TypeId,
                     new IEffect[] { new AssociatableMarkerEffect() }),
             };
             return new DrowZzzRule(new InMemoryCardCatalog(entries, effects), new EffectInterpreter());
@@ -44,7 +44,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         {
             var entries = new[]
             {
-                new KeyValuePair<CardId, CardData>(DreamCardId, new CardData("非連想カード", new Dictionary<string, int>())),
+                new KeyValuePair<CardTypeId, CardData>(DreamCardId.TypeId, new CardData("非連想カード", new Dictionary<string, int>())),
             };
             return new DrowZzzRule(new InMemoryCardCatalog(entries), new EffectInterpreter());
         }
@@ -53,7 +53,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         private static DrowZzzRule NewRuleWithEmptyCatalog()
         {
             return new DrowZzzRule(
-                new InMemoryCardCatalog(new KeyValuePair<CardId, CardData>[0]),
+                new InMemoryCardCatalog(new KeyValuePair<CardTypeId, CardData>[0]),
                 new EffectInterpreter());
         }
 
@@ -67,7 +67,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var p1HandCards = new CardId[initialHand];
             for (int i = 0; i < initialHand; i++)
             {
-                p1HandCards[i] = CardId.Of($"existing{i + 1}");
+                p1HandCards[i] = CardId.Of(CardTypeId.Of($"existing{i + 1}"), 0);
             }
             var players = new[]
             {
@@ -259,7 +259,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         {
             var players = new[]
             {
-                new PlayerState(PlayerId.Of("p1"), new Hand(new[] { CardId.Of("existing1") })),
+                new PlayerState(PlayerId.Of("p1"), new Hand(new[] { CardId.Of(CardTypeId.Of("existing1"), 0) })),
                 new PlayerState(PlayerId.Of("p2"), Hand.Empty),
             };
             var gs = new GameState(

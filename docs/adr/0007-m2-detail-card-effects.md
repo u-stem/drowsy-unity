@@ -1,5 +1,7 @@
 # ADR-0007: M2 詳細 — カード効果メカニズム(`IEffect` + `EffectInterpreter`)とサブセット先行スコープ
 
+> **Note(ADR-0018 関連、2026-05-16)**:本 ADR §2 で確定した `ICardCatalog<TEffect>` ジェネリック化は維持されているが、引数型 `CardId` は [ADR-0018](0018-cardtypeid-cardid-instance-separation.md) で `CardTypeId` に変更された。`GetEffects(CardTypeId)` 経由で効果列を引く設計は不変、catalog key の意味だけ明示化された。
+
 | 項目 | 値 |
 | ---- | ---- |
 | Status | Accepted |

@@ -133,12 +133,17 @@ namespace Drowsy.Bootstrap
             => new[] { PlayerId.Of(PlayerIdP1), PlayerId.Of(PlayerIdP2) };
 
         /// <summary>
-        /// catalog 登録カードを各 <see cref="CopiesPerCardForM5Deck"/> 枚並べた M5 簡易デッキを構築する。
+        /// catalog 登録カード種別を各 <see cref="CopiesPerCardForM5Deck"/> 枚並べた M5 簡易デッキを構築する。
         /// </summary>
+        /// <remarks>
+        /// ADR-0018 で <see cref="CardId"/> = instance unique ID として再定義したため、本 deck の各 entry は
+        /// `(CardTypeId, Instance=0..N-1)` の組として unique 化される。これにより Hand 配布時の
+        /// 「同じ CardId を 2 枚以上 Add」エラーを構造的に回避する。
+        /// </remarks>
         /// <exception cref="InvalidOperationException">catalog にカードが 1 枚も登録されていない</exception>
         private static Pile BuildInitialDeck(ScriptableObjectCardCatalog catalog)
         {
-            var registered = catalog.RegisteredCardIds;
+            var registered = catalog.RegisteredCardTypeIds;
             if (registered.Count == 0)
             {
                 throw new InvalidOperationException(
@@ -146,11 +151,11 @@ namespace Drowsy.Bootstrap
                     "DrowZzzCardCatalog.asset の Entries を確認してください。");
             }
             var cards = new List<CardId>(registered.Count * CopiesPerCardForM5Deck);
-            foreach (var id in registered)
+            foreach (var typeId in registered)
             {
                 for (int i = 0; i < CopiesPerCardForM5Deck; i++)
                 {
-                    cards.Add(id);
+                    cards.Add(CardId.Of(typeId, i));
                 }
             }
             return new Pile(cards);

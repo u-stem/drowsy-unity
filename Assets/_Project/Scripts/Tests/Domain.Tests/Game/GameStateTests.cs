@@ -20,7 +20,7 @@ namespace Drowsy.Domain.Tests.Game
             var hand = Hand.Empty;
             foreach (var c in cards)
             {
-                hand = hand.Add(CardId.Of(c));
+                hand = hand.Add(CardId.Of(CardTypeId.Of(c), 0));
             }
             return new PlayerState(PlayerId.Of(id), hand);
         }
@@ -59,7 +59,7 @@ namespace Drowsy.Domain.Tests.Game
         public void Given_有効な5引数_When_コンストラクタ_Then_Deckが入力と同じ()
         {
             // Given
-            var deck = new Pile(new[] { CardId.Of("a") });
+            var deck = new Pile(new[] { CardId.Of(CardTypeId.Of("a"), 0) });
             // When
             var state = new GameState(new[] { Player("p1") }, deck, Pile.Empty, Pile.Empty, TurnState.Initial(0));
             // Then
@@ -70,7 +70,7 @@ namespace Drowsy.Domain.Tests.Game
         public void Given_有効な5引数_When_コンストラクタ_Then_Discardが入力と同じ()
         {
             // Given
-            var discard = new Pile(new[] { CardId.Of("b") });
+            var discard = new Pile(new[] { CardId.Of(CardTypeId.Of("b"), 0) });
             // When
             var state = new GameState(new[] { Player("p1") }, Pile.Empty, discard, Pile.Empty, TurnState.Initial(0));
             // Then
@@ -81,7 +81,7 @@ namespace Drowsy.Domain.Tests.Game
         public void Given_有効な5引数_When_コンストラクタ_Then_Fieldが入力と同じ()
         {
             // Given
-            var field = new Pile(new[] { CardId.Of("c") });
+            var field = new Pile(new[] { CardId.Of(CardTypeId.Of("c"), 0) });
             // When
             var state = new GameState(new[] { Player("p1") }, Pile.Empty, Pile.Empty, field, TurnState.Initial(0));
             // Then
@@ -137,15 +137,15 @@ namespace Drowsy.Domain.Tests.Game
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "GS-004")]
         public void Given_Deck異_When_Equals_Then_非等価()
         {
-            var x = NewState(deck: new Pile(new[] { CardId.Of("a") }));
-            var y = NewState(deck: new Pile(new[] { CardId.Of("b") }));
+            var x = NewState(deck: new Pile(new[] { CardId.Of(CardTypeId.Of("a"), 0) }));
+            var y = NewState(deck: new Pile(new[] { CardId.Of(CardTypeId.Of("b"), 0) }));
             Assert.That(x, Is.Not.EqualTo(y));
         }
 
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "GS-004")]
         public void Given_Discard異_When_Equals_Then_非等価()
         {
-            var x = NewState(discard: new Pile(new[] { CardId.Of("a") }));
+            var x = NewState(discard: new Pile(new[] { CardId.Of(CardTypeId.Of("a"), 0) }));
             var y = NewState(discard: Pile.Empty);
             Assert.That(x, Is.Not.EqualTo(y));
         }
@@ -153,7 +153,7 @@ namespace Drowsy.Domain.Tests.Game
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "GS-004")]
         public void Given_Field異_When_Equals_Then_非等価()
         {
-            var x = NewState(field: new Pile(new[] { CardId.Of("a") }));
+            var x = NewState(field: new Pile(new[] { CardId.Of(CardTypeId.Of("a"), 0) }));
             var y = NewState(field: Pile.Empty);
             Assert.That(x, Is.Not.EqualTo(y));
         }
@@ -205,7 +205,7 @@ namespace Drowsy.Domain.Tests.Game
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "GS-006")]
         public void Given_非等価な2つのGameState_When_operator_等価_Then_false()
         {
-            var x = NewState(deck: new Pile(new[] { CardId.Of("a") }));
+            var x = NewState(deck: new Pile(new[] { CardId.Of(CardTypeId.Of("a"), 0) }));
             var y = NewState();
             Assert.That(x == y, Is.False);
         }
@@ -213,7 +213,7 @@ namespace Drowsy.Domain.Tests.Game
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "GS-006")]
         public void Given_非等価な2つのGameState_When_operator_非等価_Then_true()
         {
-            var x = NewState(deck: new Pile(new[] { CardId.Of("a") }));
+            var x = NewState(deck: new Pile(new[] { CardId.Of(CardTypeId.Of("a"), 0) }));
             var y = NewState();
             Assert.That(x != y, Is.True);
         }
@@ -264,7 +264,7 @@ namespace Drowsy.Domain.Tests.Game
         public void Given_GameState_When_with式でDeckを差し替え_Then_新インスタンスのDeckが新値()
         {
             var original = NewState();
-            var newDeck = new Pile(new[] { CardId.Of("a") });
+            var newDeck = new Pile(new[] { CardId.Of(CardTypeId.Of("a"), 0) });
             var updated = original with { Deck = newDeck };
             Assert.That(updated.Deck, Is.EqualTo(newDeck));
         }
@@ -275,7 +275,7 @@ namespace Drowsy.Domain.Tests.Game
             // Given: Deck 差し替え時に Players が元と同じであることを確認
             var original = NewState(players: new[] { Player("p1") });
             // When
-            var updated = original with { Deck = new Pile(new[] { CardId.Of("a") }) };
+            var updated = original with { Deck = new Pile(new[] { CardId.Of(CardTypeId.Of("a"), 0) }) };
             // Then
             Assert.That(updated.Players, Is.EqualTo(original.Players));
         }
@@ -284,9 +284,9 @@ namespace Drowsy.Domain.Tests.Game
         public void Given_GameState_When_with式でDeckを差し替え_Then_Discardは不変()
         {
             // Given: Deck 差し替え時に Discard が元と同じであることを確認
-            var original = NewState(discard: new Pile(new[] { CardId.Of("d") }));
+            var original = NewState(discard: new Pile(new[] { CardId.Of(CardTypeId.Of("d"), 0) }));
             // When
-            var updated = original with { Deck = new Pile(new[] { CardId.Of("a") }) };
+            var updated = original with { Deck = new Pile(new[] { CardId.Of(CardTypeId.Of("a"), 0) }) };
             // Then
             Assert.That(updated.Discard, Is.EqualTo(original.Discard));
         }
@@ -295,9 +295,9 @@ namespace Drowsy.Domain.Tests.Game
         public void Given_GameState_When_with式でDeckを差し替え_Then_Fieldは不変()
         {
             // Given: Deck 差し替え時に Field が元と同じであることを確認
-            var original = NewState(field: new Pile(new[] { CardId.Of("f") }));
+            var original = NewState(field: new Pile(new[] { CardId.Of(CardTypeId.Of("f"), 0) }));
             // When
-            var updated = original with { Deck = new Pile(new[] { CardId.Of("a") }) };
+            var updated = original with { Deck = new Pile(new[] { CardId.Of(CardTypeId.Of("a"), 0) }) };
             // Then
             Assert.That(updated.Field, Is.EqualTo(original.Field));
         }
@@ -306,7 +306,7 @@ namespace Drowsy.Domain.Tests.Game
         public void Given_GameState_When_with式でDeckを差し替え_Then_元インスタンスは不変()
         {
             var original = NewState();
-            _ = original with { Deck = new Pile(new[] { CardId.Of("a") }) };
+            _ = original with { Deck = new Pile(new[] { CardId.Of(CardTypeId.Of("a"), 0) }) };
             Assert.That(original.Deck, Is.EqualTo(Pile.Empty));
         }
 

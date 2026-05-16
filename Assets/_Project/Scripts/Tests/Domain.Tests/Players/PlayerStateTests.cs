@@ -27,7 +27,7 @@ namespace Drowsy.Domain.Tests.Players
         public void Given_有効なIdとHand_When_コンストラクタ_Then_Handが入力と同じ()
         {
             // Given: Hand.Equals(Hand) で値同値比較される
-            var hand = new Hand(new[] { CardId.Of("a") });
+            var hand = new Hand(new[] { CardId.Of(CardTypeId.Of("a"), 0) });
             // When
             var state = new PlayerState(PlayerId.Of("p1"), hand);
             // Then
@@ -57,7 +57,7 @@ namespace Drowsy.Domain.Tests.Players
         {
             var id = PlayerId.Of("p1");
             var x = new PlayerState(id, Hand.Empty);
-            var y = new PlayerState(id, new Hand(new[] { CardId.Of("a") }));
+            var y = new PlayerState(id, new Hand(new[] { CardId.Of(CardTypeId.Of("a"), 0) }));
             Assert.That(x, Is.Not.EqualTo(y));
         }
 
@@ -89,7 +89,7 @@ namespace Drowsy.Domain.Tests.Players
             // Given
             var original = new PlayerState(PlayerId.Of("p1"), Hand.Empty);
             // When
-            var updated = original with { Hand = new Hand(new[] { CardId.Of("a") }) };
+            var updated = original with { Hand = new Hand(new[] { CardId.Of(CardTypeId.Of("a"), 0) }) };
             // Then
             Assert.That(updated.Id, Is.EqualTo(original.Id));
         }
@@ -99,7 +99,7 @@ namespace Drowsy.Domain.Tests.Players
         {
             // Given
             var original = new PlayerState(PlayerId.Of("p1"), Hand.Empty);
-            var newHand = new Hand(new[] { CardId.Of("a") });
+            var newHand = new Hand(new[] { CardId.Of(CardTypeId.Of("a"), 0) });
             // When
             var updated = original with { Hand = newHand };
             // Then
@@ -112,7 +112,7 @@ namespace Drowsy.Domain.Tests.Players
             // Given
             var original = new PlayerState(PlayerId.Of("p1"), Hand.Empty);
             // When
-            _ = original with { Hand = new Hand(new[] { CardId.Of("a") }) };
+            _ = original with { Hand = new Hand(new[] { CardId.Of(CardTypeId.Of("a"), 0) }) };
             // Then
             Assert.That(original.Hand, Is.EqualTo(Hand.Empty));
         }

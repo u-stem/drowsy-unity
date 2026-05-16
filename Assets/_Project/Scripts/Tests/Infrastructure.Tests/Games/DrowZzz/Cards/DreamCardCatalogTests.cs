@@ -70,12 +70,12 @@ namespace Drowsy.Infrastructure.Tests.Games.DrowZzz.Cards
             var dream = new CardData("夢", new Dictionary<string, int>());
             var entries = new[]
             {
-                new KeyValuePair<CardId, CardData>(CardId.Of("00"), dream),
+                new KeyValuePair<CardTypeId, CardData>(CardTypeId.Of("00"), dream),
             };
             var effects = new[]
             {
-                new KeyValuePair<CardId, IReadOnlyList<IEffect>>(
-                    CardId.Of("00"),
+                new KeyValuePair<CardTypeId, IReadOnlyList<IEffect>>(
+                    CardTypeId.Of("00"),
                     new IEffect[]
                     {
                         new AssociatableMarkerEffect(),
@@ -106,8 +106,8 @@ namespace Drowsy.Infrastructure.Tests.Games.DrowZzz.Cards
             var so = NewSoCatalogWithDream();
             var inMemory = NewInMemoryCatalogWithDream();
             // When(M4-PR4 code-reviewer W-1 反映 2026-05-13:AAA Given/When/Then を CupOfThreat fixture に揃える)
-            var soName = so.Get(CardId.Of("00")).Name;
-            var inMemoryName = inMemory.Get(CardId.Of("00")).Name;
+            var soName = so.Get(CardTypeId.Of("00")).Name;
+            var inMemoryName = inMemory.Get(CardTypeId.Of("00")).Name;
             // Then
             Assert.That(soName, Is.EqualTo(inMemoryName));
         }
@@ -120,8 +120,8 @@ namespace Drowsy.Infrastructure.Tests.Games.DrowZzz.Cards
             var so = NewSoCatalogWithDream();
             var inMemory = NewInMemoryCatalogWithDream();
             // When
-            var soEffects = so.GetEffects(CardId.Of("00"));
-            var inMemoryEffects = inMemory.GetEffects(CardId.Of("00"));
+            var soEffects = so.GetEffects(CardTypeId.Of("00"));
+            var inMemoryEffects = inMemory.GetEffects(CardTypeId.Of("00"));
             // Then(再帰 ToDomain で構築された IEffect[] と InMemory 直接渡しが record 値同値)
             Assert.That(soEffects, Is.EqualTo(inMemoryEffects));
         }

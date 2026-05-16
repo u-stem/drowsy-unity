@@ -21,31 +21,31 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
     {
         // ===== ヘルパー =====
 
-        private static readonly CardId TargetId = CardId.Of("target");
-        private static readonly CardId CounterId = CardId.Of("counter");
-        private static readonly CardId FrenzyTargetId = CardId.Of("frenzyTarget");
-        private static readonly CardId PlainId = CardId.Of("plain");
+        private static readonly CardId TargetId = CardId.Of(CardTypeId.Of("target"), 0);
+        private static readonly CardId CounterId = CardId.Of(CardTypeId.Of("counter"), 0);
+        private static readonly CardId FrenzyTargetId = CardId.Of(CardTypeId.Of("frenzyTarget"), 0);
+        private static readonly CardId PlainId = CardId.Of(CardTypeId.Of("plain"), 0);
 
         // Counter キーワード持ちカード(counter)と Frenzy target カード(frenzyTarget)を含む catalog
         private static DrowZzzRule NewRuleWithCounterAndFrenzy()
         {
             var entries = new[]
             {
-                new KeyValuePair<CardId, CardData>(TargetId, new CardData("target", new Dictionary<string, int>())),
-                new KeyValuePair<CardId, CardData>(CounterId, new CardData("counter", new Dictionary<string, int>())),
-                new KeyValuePair<CardId, CardData>(FrenzyTargetId, new CardData("frenzyTarget", new Dictionary<string, int>())),
-                new KeyValuePair<CardId, CardData>(PlainId, new CardData("plain", new Dictionary<string, int>())),
+                new KeyValuePair<CardTypeId, CardData>(TargetId.TypeId, new CardData("target", new Dictionary<string, int>())),
+                new KeyValuePair<CardTypeId, CardData>(CounterId.TypeId, new CardData("counter", new Dictionary<string, int>())),
+                new KeyValuePair<CardTypeId, CardData>(FrenzyTargetId.TypeId, new CardData("frenzyTarget", new Dictionary<string, int>())),
+                new KeyValuePair<CardTypeId, CardData>(PlainId.TypeId, new CardData("plain", new Dictionary<string, int>())),
             };
             var effects = new[]
             {
-                new KeyValuePair<CardId, IReadOnlyList<IEffect>>(
-                    CounterId,
+                new KeyValuePair<CardTypeId, IReadOnlyList<IEffect>>(
+                    CounterId.TypeId,
                     new IEffect[]
                     {
                         new KeywordedEffect(new[] { Keyword.Counter }, new AssociatableMarkerEffect()),
                     }),
-                new KeyValuePair<CardId, IReadOnlyList<IEffect>>(
-                    FrenzyTargetId,
+                new KeyValuePair<CardTypeId, IReadOnlyList<IEffect>>(
+                    FrenzyTargetId.TypeId,
                     new IEffect[]
                     {
                         new KeywordedEffect(new[] { Keyword.Frenzy }, new AssociatableMarkerEffect()),
@@ -322,19 +322,19 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         {
             // EarlyWinTriggerEffect を効果列に持つカード(就寝カード)を p1 がプレイし、夜 + 持ち点 100 で Outcome 確定
             // → 相手手札に Counter 持ちカードがあっても WaitingForCounterResponse には遷移しない(IsTerminated ガード)
-            var bedtimeCard = CardId.Of("bedtime");
+            var bedtimeCard = CardId.Of(CardTypeId.Of("bedtime"), 0);
             var entries = new[]
             {
-                new KeyValuePair<CardId, CardData>(bedtimeCard, new CardData("bedtime", new Dictionary<string, int>())),
-                new KeyValuePair<CardId, CardData>(CounterId, new CardData("counter", new Dictionary<string, int>())),
+                new KeyValuePair<CardTypeId, CardData>(bedtimeCard.TypeId, new CardData("bedtime", new Dictionary<string, int>())),
+                new KeyValuePair<CardTypeId, CardData>(CounterId.TypeId, new CardData("counter", new Dictionary<string, int>())),
             };
             var effects = new[]
             {
-                new KeyValuePair<CardId, IReadOnlyList<IEffect>>(
-                    bedtimeCard,
+                new KeyValuePair<CardTypeId, IReadOnlyList<IEffect>>(
+                    bedtimeCard.TypeId,
                     new IEffect[] { new EarlyWinTriggerEffect() }),
-                new KeyValuePair<CardId, IReadOnlyList<IEffect>>(
-                    CounterId,
+                new KeyValuePair<CardTypeId, IReadOnlyList<IEffect>>(
+                    CounterId.TypeId,
                     new IEffect[]
                     {
                         new KeywordedEffect(new[] { Keyword.Counter }, new AssociatableMarkerEffect()),

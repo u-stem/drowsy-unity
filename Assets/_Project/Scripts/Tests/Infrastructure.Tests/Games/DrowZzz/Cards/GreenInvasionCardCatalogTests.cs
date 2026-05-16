@@ -75,12 +75,12 @@ namespace Drowsy.Infrastructure.Tests.Games.DrowZzz.Cards
             var card02 = new CardData("緑の侵攻", new Dictionary<string, int>());
             var entries = new[]
             {
-                new KeyValuePair<CardId, CardData>(CardId.Of("02"), card02),
+                new KeyValuePair<CardTypeId, CardData>(CardTypeId.Of("02"), card02),
             };
             var effects = new[]
             {
-                new KeyValuePair<CardId, IReadOnlyList<IEffect>>(
-                    CardId.Of("02"),
+                new KeyValuePair<CardTypeId, IReadOnlyList<IEffect>>(
+                    CardTypeId.Of("02"),
                     new IEffect[]
                     {
                         new ChoiceEffect(new IReadOnlyList<IEffect>[]
@@ -112,8 +112,8 @@ namespace Drowsy.Infrastructure.Tests.Games.DrowZzz.Cards
             var so = NewSoCatalogWithCardTwo();
             var inMemory = NewInMemoryCatalogWithCardTwo();
             // When(M4-PR4 code-reviewer W-1 反映 2026-05-13:AAA Given/When/Then を CupOfThreat fixture に揃える)
-            var soName = so.Get(CardId.Of("02")).Name;
-            var inMemoryName = inMemory.Get(CardId.Of("02")).Name;
+            var soName = so.Get(CardTypeId.Of("02")).Name;
+            var inMemoryName = inMemory.Get(CardTypeId.Of("02")).Name;
             // Then
             Assert.That(soName, Is.EqualTo(inMemoryName));
         }
@@ -125,8 +125,8 @@ namespace Drowsy.Infrastructure.Tests.Games.DrowZzz.Cards
             var so = NewSoCatalogWithCardTwo();
             var inMemory = NewInMemoryCatalogWithCardTwo();
             // When
-            var soEffects = so.GetEffects(CardId.Of("02"));
-            var inMemoryEffects = inMemory.GetEffects(CardId.Of("02"));
+            var soEffects = so.GetEffects(CardTypeId.Of("02"));
+            var inMemoryEffects = inMemory.GetEffects(CardTypeId.Of("02"));
             // Then(ChoiceEffect.Branches の 2 次元順序保持 + 内側 record 値同値)
             Assert.That(soEffects, Is.EqualTo(inMemoryEffects));
         }
