@@ -135,7 +135,15 @@
     - **2026-05-13 部分対応**: Claude 推測ベースで明確な未到達と思われる 2 経路を補完(`chore: M4 範囲のカバレッジ補完` PR で実施)
       - **#A LanguageCodes.IsSupported 直接テスト**: USR-005 を `[Ubiquitous]` → 通常要件化、`LanguageCodesTests.cs` 新規(Domain.Tests/Configuration、`[TestCase]` 6 ケース + null 単独 1 メソッド)で `IsSupported("ja")` / `("en")` / `("zh")` / `("JA")` / `("ja-JP")` / `("")` / `(null)` の 7 経路を直接機械検証
       - **#B PlayerPrefsUserSettings.Dispose() 冪等性**: USR-027 新規(「二重 Dispose は silent no-op、内部 ReactiveProperty<T> を二度 Dispose しない」)+ `Given_既Dispose_When_2回目Dispose_Then_冪等で例外なし` テスト追加
-    - **未完了の残作業**: オーナー側で Unity Test Runner + `com.unity.testtools.codecoverage` Window を実機計測し、本 #A / #B 以外の未到達経路を Cobertura レポートで特定 → 必要なら追加補完 PR(本 TODO は M4-PR7 完成 PR まで継続追跡)
+    - **2026-05-16 第 1 弾(B-5、本 TODO 進行、test/m4-coverage-infrastructure-phase1 PR)**: オーナーが Cobertura レポートを取得し共有(`CodeCoverage/Report/Summary.xml`、Infrastructure 54%、Domain 100%、Application 84.2%)。**0% クラス 6 件**(`PlayerIdJsonConverter` / `HandJsonConverter` / `PileJsonConverter` / `DdpPoolJsonConverter` / `PersistedSessionV1` / `AttributeEntry`)に単体テスト fixture 6 新設 + 新規 spec md 6 件(INF-095〜133 計 30+ 件)。dotnet build 0 警告 / 0 エラー + traceability 整合性 OK(仕様 623 / Property 521)。**Infrastructure 推定 70-75% 到達見込み**(オーナー実機再計測待ち)
+    - **第 2 弾(未着手、次 PR 候補)**: 部分未達クラスの補完:
+      - **`EffectJsonConverter` 25.5%**(133 lines、約 99 未到達):多数の派生型 Polymorphic dispatch の特定 type 経路、または例外系
+      - **`GameOutcomeJsonConverter` 40.6%**(32 lines、約 19 未到達)
+      - **`DrowZzzGameSessionSerializer` 39.6%**(63 lines、約 38 未到達):Save / Load の例外系 / Async 経路
+      - **`PendingCounteredEffect` 37.5%**(Application 内、56 lines、約 35 未到達)
+      - 各 SO 系派生型(`AdjustSdpEffectAsset` 75% 等)の Validation 経路
+      → 第 2 弾実装で Infrastructure 100% 達成見込み(オーナー「100% まで」方針)
+    - **未完了の残作業**: 第 1 弾 PR マージ後にオーナー側で Coverage Window を再計測し、Infrastructure が 70%+ 到達したことを確認 → 第 2 弾 PR を Claude が起票
 
 - [ ] **N>2 拡張時の `UsageRestrictionMarkerEffect` Influence の `RemainingCount` 再評価** `priority: low`
   - **Why**: M3-PR6 で「夢」カードの使用制限を `PlayerInfluence(OwnPhaseStart, UsageRestrictionMarkerEffect, 1)` で表現した(ADR-0011 §6 JIT 確定 2026-05-14、`DrowZzzRule.ApplyAssociate` 内)。`RemainingCount=1` は N=2 前提で「相手 1 フェーズ経由後の自フェーズ Tick で除去」のセマンティクスを実現する値。N>2 拡張(Phase 3 候補)では「相手 N-1 フェーズ経由」になるため再評価が必要
