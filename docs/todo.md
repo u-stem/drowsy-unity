@@ -92,7 +92,7 @@
     - 共通点解析:同じ asmdef / namespace / 基底型(`JsonConverter<T>`)で `CardId` / `DdpPool` Converter は 86% 記録、`Hand` / `Pile` / `PlayerId` Converter は 0%。再現条件不明
     - 仮説:Unity Code Coverage が **特定の generic T 型** に対して instrumentation injection を失敗する境界条件バグ。v1.2.7 で別 generic bug(case COV-17)は修正済だが、本症状は別バグ
   - **Done when**:
-    - Unity-Technologies/com.unity.testtools.codecoverage の Issue tracker で同種報告を検索(なければ issue report 起票)
+    - Unity-Technologies/com.unity.testtools.codecoverage の Issue tracker で同種報告を **検索のみ**(オーナー方針:Unity チームへの issue report 起票はしない、プロジェクト内で代替手段を確立する)
     - **代替手段 PoC**: `coverlet` + `dotnet test` を Unity 非依存テスト(`HandJsonConverter` / `PileJsonConverter` / `PlayerIdJsonConverter` 等の Pure C# fixture)で動作確認。Unity 生成 csproj は `UnityEngine` / `UnityEditor` 依存があるため、新規 csproj 切り出し or define シンボル調整が必要
     - 動作確認できれば `scripts/run-coverlet.sh` 等で再現可能な計測経路を確立し、`docs/testing-strategy.md` に追記
     - 動作不可なら別案(AltCover / dotCover / 手動チェックリスト)を ADR で判断記録
