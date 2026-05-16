@@ -127,7 +127,10 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             // When
             var session = useCase.Execute(NewPlayers("p1", "p2"), NewDeck(20));
             // Then
-            var p0Hand = session.GameState.Players[0].Hand.Cards.Select(c => c.Value).ToArray();
+            // ADR-0018:Hand.Cards 要素は CardId(instance unique)、本テストの意図は「deck 順に応じた
+            // 種別を受け取る」検証なので TypeId.Value で比較する(CardId.Value = "<typeId>#<instance>" の
+            // instance 部分は配布順序の検証対象ではない)。
+            var p0Hand = session.GameState.Players[0].Hand.Cards.Select(c => c.TypeId.Value).ToArray();
             Assert.That(p0Hand, Is.EqualTo(new[] { "c1", "c3", "c5", "c7", "c9" }));
         }
 
@@ -139,7 +142,8 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             // When
             var session = useCase.Execute(NewPlayers("p1", "p2"), NewDeck(20));
             // Then
-            var p1Hand = session.GameState.Players[1].Hand.Cards.Select(c => c.Value).ToArray();
+            // ADR-0018:同上、TypeId.Value で比較。
+            var p1Hand = session.GameState.Players[1].Hand.Cards.Select(c => c.TypeId.Value).ToArray();
             Assert.That(p1Hand, Is.EqualTo(new[] { "c2", "c4", "c6", "c8", "c10" }));
         }
 
