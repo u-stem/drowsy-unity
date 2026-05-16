@@ -118,7 +118,10 @@ namespace Drowsy.Bootstrap
             builder.Register<DrowZzzRule>(Lifetime.Singleton);
 
             // 新規対戦の players / initialDeck(DrowZzzGamePresenter ctor が受け取り BootAsync 新規対戦経路で使用、M5-PR4)
-            builder.RegisterInstance<IReadOnlyList<PlayerId>>(BuildPlayers());
+            // players は ADR-0017 の通り PlayerRoster wrapper で登録する(VContainer 1.x の
+            // CollectionInstanceProvider.Match が IReadOnlyList<T> / IEnumerable<T> を予約型として扱い
+            // RegisterInstance を上書きするため、IReadOnlyList<PlayerId> 直接登録は不可)。
+            builder.RegisterInstance(new PlayerRoster(BuildPlayers()));
             builder.RegisterInstance(BuildInitialDeck(_cardCatalog));
         }
 

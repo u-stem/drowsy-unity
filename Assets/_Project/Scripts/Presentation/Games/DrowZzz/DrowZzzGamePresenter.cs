@@ -101,7 +101,9 @@ namespace Drowsy.Presentation.Games.DrowZzz
         /// <param name="serializer">永続化 serializer(ADR-0016 §5.2)</param>
         /// <param name="userSettings">ユーザー設定(M5-PR6 で View バインディング)</param>
         /// <param name="savePath">セーブパス(<c>DrowZzzGameSessionSerializer.DefaultSavePath()</c> 経由で Bootstrap が解決)</param>
-        /// <param name="players">新規対戦のプレイヤー Id 列(Bootstrap が構築、ADR-0016 §3.2 / M5-PR4 着手時 JIT 確定)</param>
+        /// <param name="roster">新規対戦のプレイヤー roster(Bootstrap が <see cref="PlayerRoster"/> wrapper として構築、
+        /// ADR-0017 で確定 — VContainer 1.x の <c>CollectionInstanceProvider</c> が <c>IReadOnlyList&lt;T&gt;</c> を
+        /// 予約型として扱う問題への対処)。</param>
         /// <param name="initialDeck">新規対戦の初期山札(Bootstrap が catalog から構築、ADR-0016 §3.2 / M5-PR4 着手時 JIT 確定)</param>
         /// <exception cref="ArgumentNullException">いずれかの参照型引数が null</exception>
         /// <exception cref="ArgumentException"><paramref name="savePath"/> が空白のみ</exception>
@@ -112,7 +114,7 @@ namespace Drowsy.Presentation.Games.DrowZzz
             IDrowZzzGameSessionSerializer serializer,
             IUserSettings userSettings,
             string savePath,
-            IReadOnlyList<PlayerId> players,
+            PlayerRoster roster,
             Pile initialDeck)
         {
             _startGameUseCase = startGameUseCase ?? throw new ArgumentNullException(nameof(startGameUseCase));
@@ -129,8 +131,11 @@ namespace Drowsy.Presentation.Games.DrowZzz
                 throw new ArgumentException("savePath は空・空白のみにできません", nameof(savePath));
             }
             _savePath = savePath;
-            // players の空 / 重複 / null 要素検査は StartGameUseCase.Execute に委譲(ctor では null のみ早期検出)。
-            _players = players ?? throw new ArgumentNullException(nameof(players));
+            // PlayerRoster ctor 側で null + 空配列検証済(ROSTER-002 / ROSTER-003、ADR-0017)。
+            // ここでは roster 自体の null のみ早期検出する。players の重複 / null 要素検査は引き続き
+            // StartGameUseCase.Execute に委譲する。
+            if (roster is null) throw new ArgumentNullException(nameof(roster));
+            _players = roster.Players;
             _initialDeck = initialDeck ?? throw new ArgumentNullException(nameof(initialDeck));
         }
 
