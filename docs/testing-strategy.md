@@ -88,7 +88,8 @@ public class PileTests
 | Domain | **95%+** | **MC/DC 相当のケース設計を必須**。重要なルール判定(合法手・終了判定)では `docs/specs/.../<feature>.md` にケース表を併記 |
 | Application | 80% | 主要 UseCase の正常 / 異常分岐 |
 | Infrastructure | 60% | I/O 系はモックで主要経路のみ |
-| Presentation | **計測対象外** | MonoBehaviour 中心、手動 QA / E2E でカバー |
+| Presentation(Pure C#) | **80%** | **Presenter / Binder 等の Pure C# クラスのみ計測対象**(`DrowZzzGamePresenter` / `UserSettingsBinder` 等、M5-PR2〜PR7 で多数テスト追加済)。`assemblyFilters` で `Drowsy.Presentation` を含めつつ MonoBehaviour(`DrowZzzGameView` 等)は実質除外(MonoBehaviour は EditMode テストで instantiate しない設計のため自動的に未計測になる) |
+| Presentation(MonoBehaviour) | **計測対象外** | MonoBehaviour は手動 QA / E2E でカバー(PlayMode テスト対象、PRES-033 のような `[Optional]` 統合経路) |
 
 ### 3.2 計測ツール
 
@@ -107,8 +108,10 @@ public class PileTests
 - uses: game-ci/unity-test-runner@v4
   with:
     testMode: editmode
-    coverageOptions: 'generateAdditionalMetrics;generateHtmlReport;assemblyFilters:+Drowsy.Domain,+Drowsy.Application'
+    coverageOptions: 'generateAdditionalMetrics;generateHtmlReport;assemblyFilters:+Drowsy.Domain,+Drowsy.Application,+Drowsy.Infrastructure,+Drowsy.Presentation'
 ```
+
+`Drowsy.Presentation` の MonoBehaviour(`DrowZzzGameView` 等)は EditMode テストで instantiate されないため、結果として Pure C#(Presenter / Binder)のみ計測対象になる(明示的な `-Drowsy.Presentation.Games.DrowZzz.DrowZzzGameView` 除外は不要、2026-05-16 B-2 で確認)。
 
 ### 3.4 MC/DC 相当のケース設計
 
