@@ -64,22 +64,6 @@
     - Build 時間 / サイズの変化を可視化(`docs/architecture/webgl-il2cpp-verification.md` への自動追記検討)
   - **Related**: [ADR-0016](adr/0016-m5-bootstrap-presentation.md) §「TODO 候補」、[`docs/architecture/webgl-il2cpp-verification.md`](architecture/webgl-il2cpp-verification.md)
 
-- [ ] **Presenter 単体テストの C0 カバレッジ計測対象を「計測対象外」→「Presenter のみ計測対象」に格上げ** `priority: low`
-  - **Why**: 現状 `docs/testing-strategy.md` で Presentation 層は「計測対象外」だが、M5-PR2〜PR7 で `DrowZzzGamePresenter`(Pure C#)に多数のテストを書いており、計測可能。`Drowsy.Presentation` のうち MonoBehaviour(`DrowZzzGameView`)を除外し、Presenter / Binder などの Pure C# クラスのみ計測対象にすれば、追加価値が出る
-  - **Done when**:
-    - `docs/testing-strategy.md` Presentation 行を「計測対象外」→「Presenter / Binder 等 Pure C# のみ計測対象、MonoBehaviour 除外」に更新
-    - Code Coverage 設定で `Drowsy.Presentation` を IncludeAssemblies に追加 + 適切な assemblyFilters
-    - 計測結果が Drowsy.Domain と同等の粒度で得られることを確認
-  - **Related**: [ADR-0016](adr/0016-m5-bootstrap-presentation.md) §「TODO 候補」、[`docs/testing-strategy.md`](testing-strategy.md)
-
-- [ ] **`Builds/Web/Build/` の累積出力整理(M4-PR7 / M5-PR8 跨ぎ)** `priority: low`
-  - **Why**:M5-PR8 で WebGL Build を実行した結果、新出力 `Builds/Web/Build/WebGL/`(2026-05-16、88 MB)が `Builds/Web/Build/*.{data,framework.js,loader.js,wasm}`(2026-05-14 M4-PR7 時点、約 84 MB)と並存している。Build Profile 設定差で出力構造が変わったための累積。CI 整備(WebGL Build CI 整備 TODO 参照)と合わせて、`Builds/` ディレクトリの管理方針(`.gitignore` 構造 / 出力先固定 / 古い出力のクリーンアップ手順)を整理する
-  - **Done when**:
-    - `.gitignore` の `Builds/` 配下の取り扱い見直し(本 PR 時点で `Builds/` は untracked のまま、`.gitignore` で全体除外確認)
-    - Build Profile を「単一出力先 `Builds/WebGL/`」に統一して累積を防ぐ(Unity Editor で Build Profile 編集)
-    - 既存の古い出力(`Builds/Web/Build/*.{data,framework.js,loader.js,wasm}` 直下分)を手動削除
-  - **Related**: [ADR-0016 §11 M5-PR8 完成記録](adr/0016-m5-bootstrap-presentation.md)「既知の改善候補」、[`docs/architecture/webgl-il2cpp-verification.md`](architecture/webgl-il2cpp-verification.md) §「検証結果(M5-PR8)」、WebGL Build CI 整備 TODO
-
 - [ ] **UI Toolkit `DataBinding`(Unity 2023+ API)への切替評価** `priority: low`
   - **Why**: 現状 `DrowZzzGameView` は MVP パターン + 手動バインディング(`UserSettingsBinder` 等)で実装しているが、Unity 2023+ の UI Toolkit `DataBinding` API を使えば boilerplate を削減できる可能性。M5 で MVP を選んだのは ADR-0016 §3 で「Pure C# 単体テスト性」を優先したため、`DataBinding` への切替は **Pure C# テスト性を維持できるか**を含めて Phase 3 で評価
   - **Done when**:
@@ -98,16 +82,6 @@
     - traceability チェック通過(EARS ID 維持)
   - **Related**: 起点 PR(2026-05-16 chore/todo-batch-cleanup、code-reviewer W-1 反映)、完了済みエントリ「EARS / Gherkin 全体の「ラウンド」→「ターン」用語統一(機械的リネーム)」
   - **Notes**: 第 1 弾は日本語カナ + feature ファイル限定で完了。第 2 弾は .md 内の英語表記 + テストメソッド名リネームでスコープが膨らむため別 PR で扱う
-
-- [ ] **`Window > Analysis` サブメニュー(Build Profiler / Build Report Inspector 等)の押下不能要因調査(Phase 6 候補)** `priority: low`
-  - **Why**: M4-PR7 第 6 弾(Web Desktop Development Build 初回成功、commit `5536a85` 2026-05-14)後、プロジェクトオーナーが `Window > Analysis` サブメニューを開こうとしたが、すべてのボタン(Build Profiler / Build Report Inspector / Frame Debugger 等)が **押せない状態** だったと報告。原因仮説:(1) Editor が Compile 中 / Domain Reload 中で一時無効化、(2) 必要な Profiling パッケージが `manifest.json` に未登録、(3) Unity 6 で Build Report の場所が更に変わっている(`Window > Analysis > Build Profiler` ではなく別パス)。M4-PR7 完成記録としては Build Report での型保持確認スクショなしで進める判断(オーナー確認済 2026-05-14)だが、Phase 6(CI 整備)で WebGL Build の自動検証を導入する前に再現性を確認したい
-  - **Done when**:
-    - `Window > Analysis` 押下不能の再現条件を特定(Compile 中 / Domain Reload 中 / パッケージ未登録 / 別パス 等)
-    - 必要なら `manifest.json` に `com.unity.profiling.core` 等を追加 or 別パス(`Window > Analysis > Build Profiler` Unity 6 改名後の場所)を `docs/architecture/webgl-il2cpp-verification.md` に反映
-    - Build Report 経由で `Drowsy.Domain` / `Drowsy.Application` / `Drowsy.Infrastructure` / `Newtonsoft.Json` の型保持を確認できた状態を Phase 6 CI で機械検証可能化
-    - 結果がリポジトリに反映済み(本 TODO を「完了済み」へ移動)
-  - **Related**: [ADR-0012 §M4-PR7 完成記録](adr/0012-m4-scriptableobject-and-persistence.md)、[`docs/architecture/webgl-il2cpp-verification.md`](architecture/webgl-il2cpp-verification.md) §「手順 3: 型保持の検証」、M4-PR7 第 6 弾 commit `5536a85`
-  - **Notes**: 本検証なしでも Build 自体が `Result: Succeeded`(Error 0)で完了したため、`link.xml` の効果は **間接的に担保**(型剥がしで Build エラーが出るなら Succeeded にならない)。Phase 6 CI で直接検証経路を確立するまでは「Build 通過 = link.xml 動作」を間接証拠として運用
 
 - [ ] **`DrowZzzGameConfigAsset.OnValidate` の ADR-0012 §4 検証 3 件追加実装(M5 以降)** `priority: low`
   - **Why**: M4-PR7 第 1 弾(`DrowZzzGameConfigAsset` 実装)では ADR-0012 §4「Designer 検証(`OnValidate`、初期推奨)」3 件のうち **「null / 空」検出のみ**(INF-078 / INF-079)を実装し、残り 3 件は先送り(M4-PR7 code-reviewer W-3 反映)。理由:`_fdpPool.Length >= N` の N が SO 側ハードコードになり Phase 3 N>2 拡張で再修正必要 / `_fdpPool` 重複なしは `StartGameUseCase` 側で実行時 `ArgumentException` 担保済(Designer フィードバック即時性のみが論点)/ `_ddpPool` 合計値 0 は LogWarning のみで build を妨げず仕様の硬さも弱い。本番経路の fail-fast は確保済みのため `priority: low`
@@ -236,6 +210,41 @@
       - `RCS1213`(未使用 private メンバー):`OnEnable` / `OnValidate` / `Awake` / `Start` / `Update` 等の **Unity ライフサイクルメソッド**を Roslynator が認識せず false positive(`ScriptableObjectCardCatalog.cs:56,63` の 2 件で検証済)。Unity ライフサイクルメソッド名単位の suppression(`[UsedImplicitly]` 属性付与 / 個別 `#pragma warning disable` / EditorConfig section override 等)を別 PR で評価する
 
 ## 完了済み
+
+- [x] **Presenter 単体テストの C0 カバレッジ計測対象を「計測対象外」→「Presenter のみ計測対象」に格上げ** `priority: low`
+  - **Why**: M5-PR2〜PR7 で `DrowZzzGamePresenter`(Pure C#)に多数のテストを書いており、`Drowsy.Presentation` の Pure C# クラス(Presenter / Binder)のみ計測対象にすれば追加価値が出る
+  - **Done when** (本 PR 範囲):
+    - ✓ `docs/testing-strategy.md` §3.1 のレイヤ表に「Presentation(Pure C#)」行(C0 80%、Presenter / Binder のみ計測対象)+「Presentation(MonoBehaviour)」行(計測対象外、PlayMode テスト対象)の 2 行に分割
+    - ✓ §3.3 計測コマンド例の `assemblyFilters` に `+Drowsy.Presentation` を追加(MonoBehaviour は EditMode テストで instantiate されないため自動的に未計測になる原理を注記)
+  - **オーナー側の残作業(本 PR マージ後)**:
+    - ⬜ Unity Editor > Window > Analysis > Code Coverage で `Drowsy.Presentation` を IncludeAssemblies に追加(または Settings ファイルに記録)
+    - ⬜ 計測結果が Drowsy.Domain と同等の粒度で得られることをオーナー実機で確認
+  - **Related**: [ADR-0016](adr/0016-m5-bootstrap-presentation.md) §「TODO 候補」、[`docs/testing-strategy.md`](testing-strategy.md)、本完了 PR(docs/cleanup-b234、2026-05-16)
+
+- [x] **`Builds/Web/Build/` の累積出力整理(M4-PR7 / M5-PR8 跨ぎ)** `priority: low`
+  - **Why**: M5-PR8 で WebGL Build 出力(`Builds/Web/Build/WebGL/` 88 MB)が M4-PR7 出力(`Builds/Web/Build/*.{data,framework.js,loader.js,wasm}` 84 MB)と並存。`.gitignore` 構造 / 出力先固定 / 古い出力のクリーンアップを整理
+  - **Done when** (本 PR 範囲):
+    - ✓ `.gitignore` の `/Builds/` 全体除外を確認(L141 `/Builds/` で既に全配下を git 管理対象外、コメント L137〜140 で意図明示済)— **コード変更不要**
+  - **オーナー側の残作業(本 PR マージ後、Unity Editor 実機作業)**:
+    - ⬜ Unity Editor > File > Build Profiles を開き、WebGL Build Profile の出力先を `Builds/WebGL/` に統一(M5-PR8 で `Builds/Web/Build/WebGL/` になっている設定差を解消)
+    - ⬜ 既存の古い出力 `Builds/Web/Build/*.{data,framework.js,loader.js,wasm}` を手動削除(`rm -rf Builds/Web/Build/{*.data,*.framework.js,*.loader.js,*.wasm}` 等、累積容量解消)
+    - ⬜ 統一後の出力先(`Builds/WebGL/`)が `.gitignore` の `/Builds/` 配下に含まれることを再確認
+  - **Related**: [ADR-0016 §11 M5-PR8 完成記録](adr/0016-m5-bootstrap-presentation.md)「既知の改善候補」、[`docs/architecture/webgl-il2cpp-verification.md`](architecture/webgl-il2cpp-verification.md) §「検証結果(M5-PR8)」、本完了 PR(docs/cleanup-b234、2026-05-16)
+  - **Notes**: `.gitignore` 確認時点(2026-05-16)で `/Builds/` は L141 で完全除外済。Build Profile の出力先統一は Unity Editor 上の設定編集であり code 変更を伴わないため、本 PR では「`.gitignore` 確認 + オーナー実機作業の手順明文化」で完了扱い
+
+- [x] **`Window > Analysis` サブメニュー(Build Profiler / Build Report Inspector 等)の押下不能要因調査(Phase 6 候補)** `priority: low`
+  - **Why**: M4-PR7 第 6 弾後、`Window > Analysis` サブメニューが全て押下不能とオーナー報告。Phase 6(CI 整備)で WebGL Build 自動検証導入前に再現性確認
+  - **Done when** (本 PR 範囲、調査結果):
+    - ✓ `Packages/manifest.json` を grep で確認、Profiling / Analysis 関連の追加パッケージは未登録(grep `profil` / `analysis` / `debug` で hit なし)
+    - ✓ Unity 6 公式ドキュメント調査(WebSearch)で確認:`Window > Analysis > Profiler` / `Frame Debugger` / `Physics Debugger` 等は **Unity 6 標準組み込み**(`manifest.json` 追加パッケージ不要)
+    - ✓ Build Profiler は Unity 6 で `Window > Build Profiles`(別パス)に分離、`Window > Analysis > Build Profiler` は存在しない or 異なる機能(Build パフォーマンス計測ツール)
+    - ✓ オーナー報告「サブメニューの **すべて** が押せない」は、特定パッケージの問題ではなく **Editor が Compile 中 / Domain Reload 中の一時無効化が最有力仮説**(全 Window メニューが同時無効化される挙動)
+  - **オーナー側の対処(本 PR マージ後、Unity Editor 実機作業)**:
+    - ⬜ 再現条件確認:Editor の Status bar に「Compiling Scripts...」や「Reimporting Assets...」が表示されている間か、Domain Reload 中(Console に `Reloading assemblies` ログ)に押下できないかを観察
+    - ⬜ Compile / Reload 完了後に再試行 → サブメニューが押せれば本 TODO の主仮説確定、解消
+    - ⬜ それでも押下不能な場合:`Window > Build Profiles`(Unity 6 改名後の正規パス、`Cmd/Ctrl+Shift+B` 既定)を直接使い、`Window > Analysis > Build Profiler` への期待を取り下げる
+  - **Related**: [ADR-0012 §M4-PR7 完成記録](adr/0012-m4-scriptableobject-and-persistence.md)、[`docs/architecture/webgl-il2cpp-verification.md`](architecture/webgl-il2cpp-verification.md) §「手順 3: 型保持の検証」、M4-PR7 第 6 弾 commit `5536a85`、本完了 PR(docs/cleanup-b234、2026-05-16)
+  - **Notes**: 本検証なしでも Build 自体が `Result: Succeeded`(Error 0)で完了したため、`link.xml` の効果は間接的に担保(型剥がしで Build エラーが出るなら Succeeded にならない)。Phase 6 CI(B-1 PR で確立)で `actions/upload-artifact@v4` の `if-no-files-found: error` 設定により Build 失敗の早期検知が機械化されるため、Build Report スクショによる手動型保持確認の必要性は今後低下する
 
 - [x] **ADR-0007 / ADR-0009 / ADR-0011 に「M2 サブセット先行スコープは M2-PR5 で達成、Phase 2 完結時点で M2 ステータスを完結扱い」Note 追記** `priority: low`
   - **Why**: M5-PR8 で CLAUDE.md §11 M2 ステータスを「進行中」→「完結」に清算したが、関連 ADR 側からの逆リンク注記は M5-PR8 スコープ外として残した(影響範囲を絞るため)。Phase 3 着手前に整合性を取りたい
