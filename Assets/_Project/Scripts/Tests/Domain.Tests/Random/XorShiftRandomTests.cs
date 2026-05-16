@@ -5,7 +5,7 @@ using Drowsy.Domain.Random;
 namespace Drowsy.Domain.Tests.Random
 {
     [TestFixture]
-    public class XorShiftRandomTests
+    public sealed class XorShiftRandomTests
     {
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "RND-001")]
         public void Given_seed42_When_NextIntを範囲内で100回呼ぶ_Then_全て範囲内の整数を返す()

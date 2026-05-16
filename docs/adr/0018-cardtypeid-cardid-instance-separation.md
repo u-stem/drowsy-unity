@@ -143,6 +143,7 @@ foreach (var typeId in catalog.RegisteredCardTypeIds)
 | CTYPE-002 | Unwanted | If `Of(value)` is called with null / empty / whitespace, then `ArgumentException` shall be thrown |
 | CTYPE-003 | Event-driven | When `Of(value)` is called with a non-blank string, the `CardTypeId` shall expose it via `Value` |
 | CTYPE-004 | Ubiquitous | Two `CardTypeId` instances shall be equal iff their `Value` strings are equal (record default) |
+| CTYPE-005 | Unwanted | If `Of(value)` is called with a string containing `'#'`, then `ArgumentException` shall be thrown(§8 で予約済の `CardId.Value` 区切り文字、runtime 強制) |
 
 配置: `docs/specs/domain/cards/card-type-id.md` + `.feature`
 

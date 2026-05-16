@@ -62,16 +62,22 @@ namespace Drowsy.Infrastructure.Games.DrowZzz
         /// </summary>
         private void OnEnable() => RebuildCache();
 
+#if UNITY_EDITOR
         /// <summary>
         /// Inspector で <see cref="_entries"/> が編集された時に呼ばれる(Editor only)。
         /// キャッシュを再構築し、重複 <see cref="CardEntryAsset.CardIdValue"/> を <see cref="Debug.LogError"/> で報告する
         /// (Build は妨げない、Editor 編集中の即時フィードバック、JIT 確定 2026-05-14)。
         /// </summary>
+        /// <remarks>
+        /// Infra W-3 post-Phase2 レビュー反映:OnValidate は Unity が Editor のみで呼ぶが、メソッド本体は
+        /// `#if UNITY_EDITOR` ガードなしでは IL2CPP / WebGL バイナリに残る。本ガードで Runtime ビルドから物理排除。
+        /// </remarks>
         private void OnValidate()
         {
             RebuildCache();
             DetectDuplicateIds();
         }
+#endif
 
         // 内部 cache 構築:重複 ID は「後勝ち」(InMemoryCardCatalog と同パターン)。
         // 不正 entry(null / 空 CardIdValue / 構築失敗)は skip + Debug.LogError(INF-010〜012)。
@@ -156,8 +162,11 @@ namespace Drowsy.Infrastructure.Games.DrowZzz
             return list.Count == 0 ? EmptyEffects : list;
         }
 
+#if UNITY_EDITOR
         // 重複 ID の検出(Editor のみ、Build / Runtime 経路では呼ばれない)。
         // Debug.LogError は Console に Asset リンク付きで表示され、Designer が即座にジャンプ可能。
+        // Infra W-3 post-Phase2 レビュー反映:OnValidate / SetEntriesForTest からのみ呼ばれ、
+        // Runtime 経路では到達不能のため `#if UNITY_EDITOR` で物理排除。
         private void DetectDuplicateIds()
         {
             if (_entries is null)
@@ -184,6 +193,7 @@ namespace Drowsy.Infrastructure.Games.DrowZzz
                 }
             }
         }
+#endif
 
         // Unity 6000.x では `ScriptableObject.CreateInstance` も `OnEnable` を呼ぶため通常 `_cache` は null にならないが、
         // Unity バージョン変更 / シリアライズ再構築の過渡的状態 / サブクラス化等の将来変化に対する保険として残す
@@ -284,7 +294,9 @@ namespace Drowsy.Infrastructure.Games.DrowZzz
         {
             _entries = entries;
             RebuildCache();
+#if UNITY_EDITOR
             DetectDuplicateIds();
+#endif
         }
     }
 }

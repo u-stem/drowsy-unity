@@ -5,7 +5,7 @@ using Drowsy.Domain.Game;
 namespace Drowsy.Domain.Tests.Game
 {
     [TestFixture]
-    public class TurnStateTests
+    public sealed class TurnStateTests
     {
         // 普遍要件 TURN-001 / TURN-002 は record + init-only で構造保証
 
@@ -155,6 +155,16 @@ namespace Drowsy.Domain.Tests.Game
         {
             var turn = TurnState.Initial(0);
             Assert.Throws<ArgumentOutOfRangeException>(() => turn.Next(-1));
+        }
+
+        [Test, Category("Small"), Category("SuperNormal"), Property("Requirement", "TURN-013")]
+        public void Given_TurnNumberがint最大値_When_Next_Then_OverflowException()
+        {
+            // Given: 実運用では DrowZzzClockConstants が 21 で終端するため到達しないが、
+            // Domain 単体で int.MaxValue が渡された際のサイレントオーバーフローを防ぐ checked 算術を検証。
+            var turn = new TurnState(int.MaxValue, 0);
+            // When / Then
+            Assert.Throws<OverflowException>(() => turn.Next(2));
         }
     }
 }

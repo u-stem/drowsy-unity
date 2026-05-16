@@ -33,6 +33,7 @@
 - [PILE-011] If `AddBottom(null)` is called, then the `Pile` shall throw `ArgumentNullException`.
 - [PILE-012] If `Shuffle(null)` is called, then the `Pile` shall throw `ArgumentNullException`.
 - [PILE-013] If the constructor is called with `null`, then the `Pile` shall throw `ArgumentNullException`.
+- [PILE-018] If the constructor is called with an enumerable that contains a `null` `CardId` element, then the `Pile` shall throw `ArgumentException` (Hand と対称、null 要素は混入箇所と例外箇所の乖離を防ぐため構築時に検出する)。
 
 ## 関連
 
@@ -57,6 +58,7 @@
 | PILE-011 | `Given_AddBottomにnull_When_実行_Then_ArgumentNullException` | |
 | PILE-012 | `Given_Shuffleにnull_When_実行_Then_ArgumentNullException` | |
 | PILE-013 | `Given_コンストラクタにnull_When_生成_Then_ArgumentNullException` | |
+| PILE-018 | `Given_コンストラクタにnull要素を含むcards_When_生成_Then_ArgumentException` | Hand 対称(null 要素は構築時検出) |
 | PILE-014 | `Given_同順序同要素のPile_..._Then_等価` / `Given_同枚数で異なる順序のPile_..._Then_非等価` / `Given_同枚数で異なるカードのPile_..._Then_非等価` / `Given_異なる枚数のPile_..._Then_非等価` / `Given_同一インスタンスのPile_..._Then_等価` / `Given_両方空Pile_..._Then_等価` / `Given_null_When_EqualsPile_Then_false` | n=0 / n=1 / n=2 のサイズ網羅 + 不一致 3 種(順序異 / カード異 / 枚数異)+ ReferenceEquals 短絡 + null 引数 |
 | PILE-015 | `Given_等価な2つのPile_When_GetHashCode_Then_同じ値を返す` / `Given_両方空Pile_When_GetHashCode_Then_同じ値を返す` | n=0 と n>0 のハッシュ一致を網羅 |
 | PILE-016 | `Given_等価な2つのPile_When_operator_等価_Then_true` / `Given_非等価な2つのPile_When_operator_等価_Then_false` / `Given_非等価な2つのPile_When_operator_非等価_Then_true` / `Given_両方null_When_operator_等価_Then_true` / `Given_片方nullで他方非null_When_operator_等価_Then_false` (left=null) / `Given_左側非nullで右側null_When_operator_等価_Then_false` (right=null) | == の true/false + != の true + 両 null + 片 null × 2 |

@@ -17,15 +17,23 @@ for file in "$@"; do
     *) continue ;;
   esac
 
-  # ファイル全体に [Test] が含まれていれば、Category も同じ数以上必要
-  test_count=$(grep -cE '\[Test[],]' "$file" 2>/dev/null || true)
+  # ファイル全体に [Test] / [UnityTest] が含まれていれば、Category も同じ数以上必要。
+  # [TestCase(...)] は 1 メソッドに複数付与されるため grep ベースでは正確なメソッド数を数えられず、
+  # ここでは除外する(誤検出を防ぐ。Phase 1+ で Roslyn Analyzer に格上げして対応)。
+  # grep -c は行カウントで `[Category("Small"), Category("Normal")]` のような 1 行複数 Category を
+  # 過小カウントしてしまうため、`grep -o` で出現単位にカウントする。
+  # `//` `///` `*`(block コメント継続行)で始まる行は xmldoc / コメント中の `[Test]` / `[UnityTest]`
+  # 言及を誤カウントしないよう除外する。
+  non_comment=$(grep -vE '^[[:space:]]*(///?|\*)' "$file" 2>/dev/null || true)
+  # grep が 0 件で exit 1 を返すと `set -o pipefail` でスクリプト全体が失敗するため、`|| true` で握り潰す。
+  test_count=$(printf '%s\n' "$non_comment" | { grep -oE '\[(Test|UnityTest)[],]' || true; } | wc -l | tr -d ' ')
 
   if [ "$test_count" -eq 0 ]; then
     continue
   fi
 
-  size_count=$(grep -cE 'Category\("(Small|Medium|Large)"\)' "$file" 2>/dev/null || true)
-  type_count=$(grep -cE 'Category\("(Normal|SemiNormal|Abnormal|SuperNormal)"\)' "$file" 2>/dev/null || true)
+  size_count=$(printf '%s\n' "$non_comment" | { grep -oE 'Category\("(Small|Medium|Large)"\)' || true; } | wc -l | tr -d ' ')
+  type_count=$(printf '%s\n' "$non_comment" | { grep -oE 'Category\("(Normal|SemiNormal|Abnormal|SuperNormal)"\)' || true; } | wc -l | tr -d ' ')
 
   if [ "$size_count" -lt "$test_count" ] || [ "$type_count" -lt "$test_count" ]; then
     echo "❌ $file: [Test] が $test_count 件あるが、Size カテゴリ $size_count 件 / Type カテゴリ $type_count 件しかない"

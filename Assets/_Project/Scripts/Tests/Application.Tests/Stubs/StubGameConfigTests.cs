@@ -47,16 +47,29 @@ namespace Drowsy.Application.Tests.Stubs
             Assert.That(allThree, Is.True);
         }
 
+        // Tests W-3 post-Phase2 レビュー反映:「1 テスト 1 アサーション原則」(CLAUDE.md §6)に従って
+        // min / max を別テストに分離(失敗時にどちらが問題かエラーメッセージから判別可能にする)。
+
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-154")]
-        public void Given_デフォルトStubGameConfig_When_DdpPoolの値域を取得_Then_マイナス30からプラス30()
+        public void Given_デフォルトStubGameConfig_When_DdpPoolMin_Then_マイナス30()
         {
             // Given
             var config = new StubGameConfig();
             // When
             var min = config.DdpPool.Min();
+            // Then(ADR-0009 §「DDP プールの構造」: -30 〜 +30 の下限)
+            Assert.That(min, Is.EqualTo(-30));
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-154")]
+        public void Given_デフォルトStubGameConfig_When_DdpPoolMax_Then_プラス30()
+        {
+            // Given
+            var config = new StubGameConfig();
+            // When
             var max = config.DdpPool.Max();
-            // Then(ADR-0009 §「DDP プールの構造」: -30 〜 +30)
-            Assert.That(new[] { min, max }, Is.EqualTo(new[] { -30, 30 }));
+            // Then(ADR-0009 §「DDP プールの構造」: -30 〜 +30 の上限)
+            Assert.That(max, Is.EqualTo(30));
         }
     }
 }

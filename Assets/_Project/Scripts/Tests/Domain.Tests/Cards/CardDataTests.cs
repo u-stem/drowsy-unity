@@ -6,7 +6,7 @@ using Drowsy.Domain.Cards;
 namespace Drowsy.Domain.Tests.Cards
 {
     [TestFixture]
-    public class CardDataTests
+    public sealed class CardDataTests
     {
         // 普遍要件 CDATA-001 / CDATA-002 は sealed class + private readonly + IReadOnlyDictionary で構造的に保証
 

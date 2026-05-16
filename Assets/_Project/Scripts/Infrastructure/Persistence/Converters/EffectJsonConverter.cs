@@ -168,38 +168,38 @@ namespace Drowsy.Infrastructure.Persistence.Converters
             return typeName switch
             {
                 "AdjustSdp" => new AdjustSdpEffect(
-                    jo["target"].ToObject<SdpTarget>(serializer),
-                    jo["delta"].Value<int>()),
+                    RequireToken(jo, "target", typeName).ToObject<SdpTarget>(serializer),
+                    RequireToken(jo, "delta", typeName).Value<int>()),
 
                 "ApplyInfluence" => new ApplyInfluenceEffect(
-                    jo["target"].ToObject<SdpTarget>(serializer),
-                    jo["influence"].ToObject<PlayerInfluence>(serializer)),
+                    RequireToken(jo, "target", typeName).ToObject<SdpTarget>(serializer),
+                    RequireToken(jo, "influence", typeName).ToObject<PlayerInfluence>(serializer)),
 
                 "RemoveInfluence" => new RemoveInfluenceEffect(
-                    jo["target"].ToObject<SdpTarget>(serializer)),
+                    RequireToken(jo, "target", typeName).ToObject<SdpTarget>(serializer)),
 
                 "DrawCard" => new DrawCardEffect(
-                    jo["target"].ToObject<SdpTarget>(serializer),
-                    jo["count"].Value<int>()),
+                    RequireToken(jo, "target", typeName).ToObject<SdpTarget>(serializer),
+                    RequireToken(jo, "count", typeName).Value<int>()),
 
                 "DamageBed" => new DamageBedEffect(
-                    jo["target"].ToObject<SdpTarget>(serializer),
-                    jo["percent"].Value<int>()),
+                    RequireToken(jo, "target", typeName).ToObject<SdpTarget>(serializer),
+                    RequireToken(jo, "percent", typeName).Value<int>()),
 
                 "EarlyWinTrigger" => new EarlyWinTriggerEffect(),
 
-                "Choice" => new ChoiceEffect(ReadBranches(jo["branches"], serializer)),
+                "Choice" => new ChoiceEffect(ReadBranches(jo["branches"], serializer, fieldName: "branches")),
 
                 "TimeOfDayBranch" => new TimeOfDayBranchEffect(
-                    ReadEffectList(jo["nightEffects"], serializer),
-                    ReadEffectList(jo["morningEffects"], serializer)),
+                    ReadEffectList(jo["nightEffects"], serializer, fieldName: "nightEffects"),
+                    ReadEffectList(jo["morningEffects"], serializer, fieldName: "morningEffects")),
 
                 "Keyworded" => new KeywordedEffect(
-                    jo["keywords"].ToObject<List<Keyword>>(serializer),
-                    jo["inner"].ToObject<IEffect>(serializer)),
+                    RequireToken(jo, "keywords", typeName).ToObject<List<Keyword>>(serializer),
+                    RequireToken(jo, "inner", typeName).ToObject<IEffect>(serializer)),
 
                 "RequiresMinimumTotalPointsMarker" => new RequiresMinimumTotalPointsMarkerEffect(
-                    jo["threshold"].Value<int>()),
+                    RequireToken(jo, "threshold", typeName).Value<int>()),
 
                 "UsageRestrictionMarker" => new UsageRestrictionMarkerEffect(),
 
@@ -209,6 +209,14 @@ namespace Drowsy.Infrastructure.Persistence.Converters
                     $"未知の IEffect 'type' discriminator: '{typeName}'。EffectJsonConverter に case 追加が必要"),
             };
         }
+
+        // Infra W-1 post-Phase2 レビュー反映:
+        // `jo["key"]` は存在しないキーで C# null を返し、後段 `.ToObject<T>()` / `.Value<int>()` で
+        // NullReferenceException が発生する。これは JsonException として上位で catch できず、
+        // どの field が欠落したかが分からなくなるため、欠落時に即時 JsonSerializationException 化する。
+        private static JToken RequireToken(JObject jo, string key, string discriminator) =>
+            jo[key] ?? throw new JsonSerializationException(
+                $"IEffect '{discriminator}' の deserialize に必須キー '{key}' が見つかりません");
 
         // wrapper 系(ChoiceEffect)の二重 list 表現
         private static void WriteBranches(
@@ -222,17 +230,24 @@ namespace Drowsy.Infrastructure.Persistence.Converters
             writer.WriteEndArray();
         }
 
-        private static IReadOnlyList<IReadOnlyList<IEffect>> ReadBranches(JToken token, JsonSerializer serializer)
+        private static IReadOnlyList<IReadOnlyList<IEffect>> ReadBranches(JToken token, JsonSerializer serializer, string fieldName = "branches")
         {
+            // Infra W-2: token が null(キー欠落)の場合、「配列でない」エラーより
+            // 「キーが見つかりません」の方が診断価値が高いため明示分岐する。
+            if (token is null)
+            {
+                throw new JsonSerializationException(
+                    $"ChoiceEffect の deserialize に必須キー '{fieldName}' が見つかりません");
+            }
             if (token is not JArray outerArray)
             {
                 throw new JsonSerializationException(
-                    "ChoiceEffect.branches は配列の配列として deserialize する必要があります");
+                    $"ChoiceEffect.{fieldName} は配列の配列として deserialize する必要があります");
             }
             var result = new List<IReadOnlyList<IEffect>>(outerArray.Count);
             foreach (var innerToken in outerArray)
             {
-                result.Add(ReadEffectList(innerToken, serializer));
+                result.Add(ReadEffectList(innerToken, serializer, fieldName: $"{fieldName}[]"));
             }
             return result;
         }
@@ -249,12 +264,19 @@ namespace Drowsy.Infrastructure.Persistence.Converters
             writer.WriteEndArray();
         }
 
-        private static IReadOnlyList<IEffect> ReadEffectList(JToken token, JsonSerializer serializer)
+        private static IReadOnlyList<IEffect> ReadEffectList(JToken token, JsonSerializer serializer, string fieldName = "effects")
         {
+            // Infra W-2: token が null(キー欠落)の場合、「配列でない」エラーより
+            // 「キーが見つかりません」の方が診断価値が高いため明示分岐する。
+            if (token is null)
+            {
+                throw new JsonSerializationException(
+                    $"効果列の deserialize に必須キー '{fieldName}' が見つかりません");
+            }
             if (token is not JArray array)
             {
                 throw new JsonSerializationException(
-                    "効果列は配列として deserialize する必要があります");
+                    $"効果列 '{fieldName}' は配列として deserialize する必要があります");
             }
             var result = new List<IEffect>(array.Count);
             foreach (var item in array)

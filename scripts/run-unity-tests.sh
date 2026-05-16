@@ -57,6 +57,9 @@ echo ""
 
 # Unity CLI の exit code はテスト失敗時に 2、Build エラー時に 1、起動失敗で他値。
 # set -e の早期 abort を一時無効化して exit code を捕捉する。
+# 注: `-runTests` は完了後 Unity Editor が自動終了するため `-quit` は理論上冗長だが、
+# 一部の Unity 6 マイナーリリースで `-runTests` 単独だと終了しない事例が報告されており、
+# 互換性のため `-quit` を保持する(GameCI も同じ二重指定を採用)。
 set +e
 "$UNITY_PATH" \
   -batchmode \

@@ -188,5 +188,29 @@ namespace Drowsy.Infrastructure.Tests.Persistence
                 new AdjustSdpEffect(SdpTarget.Self, 0), Settings));
             Assert.That(json["type"]?.ToString(), Is.EqualTo("AdjustSdp"));
         }
+
+        // ===== INF-134 / INF-135: 必須キー欠落で JsonSerializationException(Infra W-1 / W-2 post-Phase2 レビュー反映)=====
+
+        [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "INF-134")]
+        public void Given_AdjustSdpでdeltaキー欠落_When_Deserialize_Then_JsonSerializationException()
+        {
+            // Given(target はあるが delta が欠落)
+            const string json = "{\"type\": \"AdjustSdp\", \"target\": \"Self\"}";
+            // When / Then(NullReferenceException ではなく JsonSerializationException で診断価値のある欠落キー名を返す)
+            Assert.That(
+                () => JsonConvert.DeserializeObject<IEffect>(json, Settings),
+                Throws.TypeOf<JsonSerializationException>().With.Message.Contains("delta"));
+        }
+
+        [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "INF-135")]
+        public void Given_TimeOfDayBranchでnightEffectsキー欠落_When_Deserialize_Then_JsonSerializationException()
+        {
+            // Given(morningEffects はあるが nightEffects が欠落)
+            const string json = "{\"type\": \"TimeOfDayBranch\", \"morningEffects\": []}";
+            // When / Then(「効果列の必須キー 'nightEffects' が見つかりません」と診断)
+            Assert.That(
+                () => JsonConvert.DeserializeObject<IEffect>(json, Settings),
+                Throws.TypeOf<JsonSerializationException>().With.Message.Contains("nightEffects"));
+        }
     }
 }

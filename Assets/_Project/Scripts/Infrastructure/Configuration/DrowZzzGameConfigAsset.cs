@@ -95,11 +95,16 @@ namespace Drowsy.Infrastructure.Configuration
             }
         }
 
+#if UNITY_EDITOR
         /// <summary>
         /// Inspector 編集時 / Asset ロード時に呼ばれる(Editor only)。Designer に空 / null を
         /// <see cref="Debug.LogError"/> で通知する(Build は妨げない、Editor 編集中の即時フィードバック、
         /// <see cref="ScriptableObjectCardCatalog.OnValidate"/> と同パターン)。
         /// </summary>
+        /// <remarks>
+        /// Infra W-3 post-Phase2 レビュー反映:OnValidate は Editor 専用ライフサイクルだが、メソッド本体は
+        /// `#if UNITY_EDITOR` ガードなしでは IL2CPP / WebGL バイナリに残るため物理排除する。
+        /// </remarks>
         private void OnValidate()
         {
             if (_fdpPool is null || _fdpPool.Length == 0)
@@ -115,6 +120,7 @@ namespace Drowsy.Infrastructure.Configuration
                     "Inspector の Reset メニューでデフォルト値を復元できます。", this);
             }
         }
+#endif
 
         /// <summary>
         /// テスト用に直接プールを設定する(本 ctor は <c>internal</c>、

@@ -202,26 +202,6 @@
 
 ## 進行中
 
-- [ ] **M2 効果追加時の「ドロー総数 ≤ 山札サイズ」確認(M2 各 PR の Self-Review 項目)** `priority: medium`
-  - **Why**: ADR-0007 §「山札枯渇」で「現状の数値前提下(N=2 × MaxRound 21 × 1 Draw + 初期配布 10 = 52 ≤ 山札 56)では枯渇は発生しない」と確定したが(ADR-0009 起票時に MaxRound 20→21 へ訂正反映)、M2 で「ドロー枚数を増やす効果」(例: `DrawCardsEffect(2)` のように 1 ターンに複数枚ドローさせる効果)が追加された場合、ドロー総数が山札サイズを超える可能性がある。各 M2-PR で計算前提が崩れていないかチェックする運用を残す
-  - **Done when**:
-    - ✓ 各 M2-PR(効果 record 追加 PR)の Self-Review チェックリストに「ドロー総数 ≤ 山札サイズ - 初期配布」確認項目を追加(`.github/pull_request_template.md` 拡張、本 TODO 着手 PR で完了)
-    - ⬜ M2 完成 PR 時点で本エントリを「完了済み」に移動し、最終的に成立していた数値(ドロー総数 / 山札サイズ)を記録
-    - ⬜ 計算前提が崩れる場合は枯渇シナリオの仕様 ADR(再シャッフル / ゲーム終了 / その他)を別途起票する旨を本 TODO の Notes に追記
-  - **Related**: [ADR-0007 §「山札枯渇」](adr/0007-m2-detail-card-effects.md)、[ADR-0006 §6](adr/0006-m1-detail-application-interfaces.md)、M2-PR2 以降(進行中)、本 TODO 着手 PR(chore: M2 Self-Review 項目化、2026-05-13)
-  - **Notes**: 現時点の数値(ADR-0009 起票後): 初期配布 10、Draw 数 42(N=2 × 21 ラウンド × 1)、合計 52 ≤ 山札 56(余裕 4 枚)。M2 で 1 ターン複数 Draw 効果が入った時点で再計算が必要
-    - **2026-05-13 部分対応(本 TODO 着手 PR)**: `.github/pull_request_template.md` の「該当する場合のみ」セクションに「M2 効果追加時:ドロー総数 ≤ 山札サイズ - 初期配布」項目を追加し、本 PR 着手時点で完成済の M2-PR1〜PR5 以降(M2-PR6 以降の効果追加 PR / M2 完成 PR)で機械的に確認される運用を確立。残る Done when 2 件(数値最終記録 / ADR 起票方針追記)は M2 完成 PR 時に対応
-
-- [ ] **DDP プール枯渇可能性チェック(M2 各 PR の Self-Review 項目)** `priority: medium`
-  - **Why**: ADR-0009 §「DDP プール構造」で「13 種 × 3 枚 = 39 枚」(起票時「36 枚」表記は計算誤記、M2-PR4 PR で訂正済)「Round 5/9/13/17/21 で計 5 回抽選 × N=2 = 10 枚抽選」と確定したが、将来「DDP を追加抽選する効果」が登場した場合に総抽選回数がプール容量を超える可能性がある。各 M2-PR で効果が DDP 抽選を増やす変動を含む場合に再計算が必要
-  - **Done when**:
-    - ✓ 各 M2-PR(DDP 抽選に影響する effect 追加 PR)の Self-Review チェックリストに「DDP 総抽選 ≤ プール 39」確認項目を追加(`.github/pull_request_template.md` 拡張、本 TODO 着手 PR で完了)
-    - ⬜ M2 完成 PR 時点で本エントリを「完了済み」に移動し、最終的に成立していた数値(総抽選数 / プール容量)を記録
-    - ⬜ プール枯渇シナリオが発生する場合は別 ADR(プール拡張 / 再シャッフル / 抽選失敗時の挙動)を起票する旨を本 TODO Notes に追記
-  - **Related**: [ADR-0009 §3](adr/0009-m2-m3-dp-and-victory-conditions.md)、[ADR-0007 §「山札枯渇」](adr/0007-m2-detail-card-effects.md)(類似構造の山札枯渇チェック TODO)、本 TODO 着手 PR(chore: M2 Self-Review 項目化、2026-05-13)
-  - **Notes**: 現状想定下の総抽選 = N=2 × 5 = 10 枚 ≤ プール 39 枚(余裕 29 枚)
-    - **2026-05-13 部分対応(本 TODO 着手 PR)**: `.github/pull_request_template.md` の「該当する場合のみ」セクションに「M2 DDP 抽選効果追加時:DDP 総抽選回数 ≤ プール 39 枚」項目を追加し、本 PR 着手時点で完成済の M2-PR1〜PR5 以降(DDP 抽選効果追加 PR / M2 完成 PR)で機械的に確認される運用を確立。残る Done when 2 件(数値最終記録 / ADR 起票方針追記)は M2 完成 PR 時に対応
-
 - [ ] **`SessionFactory` 共通ヘルパーへの M2-PR5 以降 13+ fixture の段階的統合** `priority: low`
   - **Why**: 2026-05-13 chore PR で `ApplyActionUseCaseTests` / `DrowZzzRuleTests` を `Drowsy.Application.Tests.Stubs.SessionFactory` に統合済(`using static SessionFactory` 経路)。一方、M2-PR5 以降の fixture 群(`CounterActionTests` / `AssociateActionTests` / `AbandonActionTests` / `EffectInterpreterTests` / `CupOfThreatCardTests` / `GreenInvasionCardTests` / `DreamCardTests` / `CounterCounterTests` / `DrowZzzGameSessionTests` / `Effects/*Tests` 計 13+ fixture)にも類似 `NewSession` 重複が広がっており、各 fixture 固有の引数追加が発生する可能性あり
   - **Done when**:
@@ -234,6 +214,15 @@
     - **2026-05-13 第 1 弾(本 TODO 進行、PR #79)**: `DrowZzzGameSessionTests` / `EffectInterpreterTests` の 2 fixture を `SessionFactory.NewSession()` 経由に統合(`using static` パターン)。両 fixture ともローカル `NewSession()` ヘルパーが SessionFactory のデフォルト引数値と完全一致するため、引数拡張なしで切替可能。dotnet build 0 警告 / 0 エラー確認済(Unity Test Runner 緑確認はオーナー側)
     - **2026-05-16 第 2 弾(本 TODO 進行、chore/todo-batch-cleanup PR)**: `EarlyWinTriggerEffectTests` / `AdjustSdpEffectTests` の 2 fixture を統合。`SessionFactory.NewSession` に `fdp` / `sdp` パラメータ + `Dp(p1, p2)` builder を新設し、`fdp: Dp(p1: 100)` / `sdp: Dp(p1: 5)` のような明示渡しで FDP / SDP 制御を可能化。dotnet build 0 警告 / 0 エラー確認済(Unity Test Runner 緑確認はオーナー側)
     - **残対象**: `CounterActionTests` / `AssociateActionTests`(`NewSession` + `NewSessionWithBedDamage` の 2 件)/ `AbandonActionTests` / `CupOfThreatCardTests`(`NewSessionWithCardInHand`)/ `GreenInvasionCardTests`(`NewSessionWithCardInHand`)/ `DreamCardTests`(`NewSessionWithDreamInHand` + `NewSessionWithoutDream`)/ `CounterCounterTests`(`NewSessionAfterCounter`)/ Effects 配下の残 9 件(`ApplyInfluenceEffect` / `AssociatableMarkerEffect` / `ChoiceEffect` / `DamageBedEffect` / `DrawCardEffect` / `KeywordedEffect` / `RemoveInfluenceEffect` / `RequiresMinimumTotalPointsMarkerEffect` / `TimeOfDayBranchEffect` / `UsageRestrictionMarkerEffect`)。これらは各 fixture 固有の引数(Hand に特定カード / 特定 phase / 特定 BedDamage 等)を持つため、 SessionFactory.NewSession の引数拡張または fixture 個別の事後セットアップ helper として段階的に対応
+
+- [ ] **`ArgumentNullException` の `ParamName` 検証強化(init setter 例外メッセージ品質と連動)** `priority: low`
+  - **Why**: post-Phase2 全体レビュー(2026-05-16)の Tests W-1 で「80 件超の `ArgumentNullException` テストが `ParamName` を検証していない → コンストラクタ引数順を入れ替えてもテストが通る」と指摘。ただし `DrowZzzGameSession` 等が init setter 経由で例外を投げる設計で `ParamName` が常に `"value"` 固定のため、`ParamName` assert を追加しても識別力が出ない。Domain W-5(`init => _x = value ?? throw new ArgumentNullException(nameof(value))` → `nameof(X)` に修正)を先行させてから Tests 側を強化する必要がある
+  - **Done when**:
+    - ⬜ Domain / Application の `record` init setter で `nameof(value)` を `nameof(Property)` に書き換える(`DrowZzzGameSession` 全プロパティ + `GameState` + `PlayerState` 等)。値が変わるとシリアライズ後の挙動に影響しないか確認
+    - ⬜ 上記反映後、`Assert.Throws<ArgumentNullException>(...)` 80 件超を `var ex = Assert.Throws<...>(...); Assert.That(ex!.ParamName, Is.EqualTo("<expected>"))` 形式へ段階的に拡張(1 PR あたり 1 fixture)
+    - ⬜ 全 fixture 拡張完了後、本 TODO を完了済みへ移動
+  - **Related**: post-Phase2 レビュー Tests W-1 / Domain W-5、`DrowZzzGameSessionTests.cs`(26 件)/ `PlayerStateTests.cs` / `HandTests.cs` 等、本 TODO 起票 PR(chore: post-Phase2 cleanup G-7)
+  - **Notes**: `WinnerOutcome` (`Assets/_Project/Scripts/Domain/Game/GameOutcome.cs`) 等で「フィールド初期化子は `nameof(Winner)` / init setter は `nameof(value)`」と非対称になっており、統一の方向性も含めて 1 PR で整理する。本 TODO に着手する PR が複数 init setter を一括で書き換える形を想定
 
 - [ ] **Roslynator RCS ルールの段階的有効化(baseline silent → 個別 warning 化)** `priority: low`
   - **Why**: [ADR-0013](adr/0013-roslynator-adoption.md) で `Roslynator.Analyzers` 4.15.0 を導入したが、既存コードへの影響を制御するため baseline `dotnet_analyzer_diagnostic.category-roslynator.severity = silent` で開始した。Roslynator は 200+ ルールを提供しており、コードシンプリフィケーション / リファクタリング系の主要ルール(例: RCS1003 If statement should not be on a single line、RCS1018 Add accessibility modifiers、RCS1090 Add call to ConfigureAwait 等)を段階的に warning / error 化することで機械検知レイヤの実効性を高めたい
@@ -256,6 +245,24 @@
       - `RCS1213`(未使用 private メンバー):`OnEnable` / `OnValidate` / `Awake` / `Start` / `Update` 等の **Unity ライフサイクルメソッド**を Roslynator が認識せず false positive(`ScriptableObjectCardCatalog.cs:56,63` の 2 件で検証済)。Unity ライフサイクルメソッド名単位の suppression(`[UsedImplicitly]` 属性付与 / 個別 `#pragma warning disable` / EditorConfig section override 等)を別 PR で評価する
 
 ## 完了済み
+
+- [x] **M2 効果追加時の「ドロー総数 ≤ 山札サイズ」確認(M2 各 PR の Self-Review 項目)** `priority: medium`
+  - **Why**: ADR-0007 §「山札枯渇」で「現状の数値前提下(N=2 × MaxRound 21 × 1 Draw + 初期配布 10 = 52 ≤ 山札 56)では枯渇は発生しない」と確定したが(ADR-0009 起票時に MaxRound 20→21 へ訂正反映)、M2 で「ドロー枚数を増やす効果」が追加された場合、ドロー総数が山札サイズを超える可能性があった
+  - **Done when**:
+    - ✓ 各 M2-PR(効果 record 追加 PR)の Self-Review チェックリストに「ドロー総数 ≤ 山札サイズ - 初期配布」確認項目を追加(`.github/pull_request_template.md` 拡張、2026-05-13)
+    - ✓ M2 / M3 / M5 完成時点(Phase 2 完結 = M5-PR8)で最終数値を確認:**初期配布 10、Draw 数 42(N=2 × 21 ラウンド × 1)、合計 52 ≤ 山札 56(余裕 4 枚)で枯渇発生なし**。Phase 2 で追加された効果(`DrawCardEffect` / No.00「夢」/ No.01「コップ一杯の脅威」夜分岐 / No.02「緑の侵攻」)はいずれも 1 ターン 1 Draw 効果のみで、ドロー総数の前提を変更しなかった
+    - ✓ 計算前提が崩れる場合に枯渇シナリオ仕様 ADR(再シャッフル / ゲーム終了 / その他)を別途起票する旨を Notes に明記済(将来 Phase 3 で 1 ターン複数 Draw 効果が入った時点で本完了 TODO を「未着手」へ戻すか別 TODO 起票)
+  - **Related**: [ADR-0007 §「山札枯渇」](adr/0007-m2-detail-card-effects.md)、[ADR-0009](adr/0009-m2-m3-dp-and-victory-conditions.md)、M5-PR8 = Phase 2 完結 PR(#97)で清算
+  - **Notes**: Phase 2 完結時点で枯渇シナリオは未発生。Phase 3 で 1 ターン複数 Draw 効果(`DrawCardsEffect(N)` 系)が追加された際は、再計算 + 必要なら枯渇仕様 ADR 起票
+
+- [x] **DDP プール枯渇可能性チェック(M2 各 PR の Self-Review 項目)** `priority: medium`
+  - **Why**: ADR-0009 §「DDP プール構造」で「13 種 × 3 枚 = 39 枚」「Round 5/9/13/17/21 で計 5 回抽選 × N=2 = 10 枚抽選」と確定したが、将来「DDP を追加抽選する効果」が登場した場合に総抽選回数がプール容量を超える可能性があった
+  - **Done when**:
+    - ✓ 各 M2-PR(DDP 抽選に影響する effect 追加 PR)の Self-Review チェックリストに「DDP 総抽選 ≤ プール 39」確認項目を追加(`.github/pull_request_template.md` 拡張、2026-05-13)
+    - ✓ M2 / M3 / M5 完成時点(Phase 2 完結 = M5-PR8)で最終数値を確認:**N=2 × 5 = 10 枚抽選 ≤ プール 39 枚(余裕 29 枚)で枯渇発生なし**。Phase 2 で追加された効果は DDP 抽選回数を増やすものを含まなかった
+    - ✓ プール枯渇シナリオが発生する場合の別 ADR(プール拡張 / 再シャッフル / 抽選失敗時の挙動)起票方針を Notes に明記済
+  - **Related**: [ADR-0009 §3](adr/0009-m2-m3-dp-and-victory-conditions.md)、M5-PR8 = Phase 2 完結 PR(#97)で清算
+  - **Notes**: Phase 2 完結時点で枯渇シナリオは未発生。Phase 3 で DDP 抽選追加効果が出た際は再計算 + 必要なら別 ADR 起票
 
 - [x] **Presenter 単体テストの C0 カバレッジ計測対象を「計測対象外」→「Presenter のみ計測対象」に格上げ** `priority: low`
   - **Why**: M5-PR2〜PR7 で `DrowZzzGamePresenter`(Pure C#)に多数のテストを書いており、`Drowsy.Presentation` の Pure C# クラス(Presenter / Binder)のみ計測対象にすれば追加価値が出る

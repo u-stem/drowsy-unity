@@ -12,7 +12,7 @@ using static Drowsy.Application.Tests.Stubs.SessionFactory;
 namespace Drowsy.Application.Tests.Games.DrowZzz
 {
     [TestFixture]
-    public class DrowZzzGameSessionTests
+    public sealed class DrowZzzGameSessionTests
     {
         // ===== ヘルパー =====
 
@@ -146,6 +146,13 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         }
 
         // ===== DZ-007 / DZ-008: null 防御 =====
+
+        // Tests W-1 post-Phase2 レビュー(対応見送り):
+        // `ArgumentNullException` の `ParamName` 検証強化は本来「コンストラクタ引数順誤りの即検出」を目的とするが、
+        // `DrowZzzGameSession` は init setter 経由で例外を投げ ParamName が常に "value" 固定のため
+        // テストで assert する意味がない(どの引数でも "value")。
+        // 本対応は Domain W-5 「init setter の例外メッセージ品質向上(`nameof(value)` → `nameof(Property)`)」
+        // と連動する必要があるため、本 PR では見送り、`docs/todo.md` で追跡する。
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-007")]
         public void Given_GameStateにnull_When_DrowZzzGameSessionを生成_Then_ArgumentNullExceptionを投げる()

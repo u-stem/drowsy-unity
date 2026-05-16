@@ -139,6 +139,13 @@ namespace Drowsy.Application.Games.DrowZzz
             {
                 return false;
             }
+            // (4) 現プレイヤーの Hand に既に同じ CardId が含まれていない(C-1 post-Phase2 レビュー反映)
+            //     後段 ApplyAssociate での Hand.Add が ArgumentException を生 throw して呼び出し側に
+            //     露出する経路を IsLegalMove で構造的に防ぐ(Hand.Add の重複拒否は HAND-005、ADR-0018 で正当化)。
+            if (session.GameState.Players[currentIndex].Hand.Contains(action.Card))
+            {
+                return false;
+            }
             var effects = _catalog.GetEffects(action.Card.TypeId);
             foreach (var e in effects)
             {
@@ -458,6 +465,16 @@ namespace Drowsy.Application.Games.DrowZzz
                 throw new InvalidOperationException(
                     $"AssociateAction.Card ({action.Card.Value}) は連想可能カードではありません " +
                     "(効果列に AssociatableMarkerEffect が含まれていない、ADR-0011 §1)");
+            }
+            // C-1 post-Phase2 レビュー反映:既に Hand に含まれている CardId を再連想すると
+            // 後段 Hand.Add で生 ArgumentException が露出する。IsLegalAssociate と同じ防御を
+            // ApplyAssociate にも対称的に入れて InvalidOperationException で統一する(Apply 経路は
+            // ADR-0006 §3 の「IsLegalMove を呼ばず各 ApplyXxx 内で冗長検証」設計に従う)。
+            if (currentPlayer.Hand.Contains(action.Card))
+            {
+                throw new InvalidOperationException(
+                    $"AssociateAction.Card ({action.Card.Value}) は既に Hand に含まれています " +
+                    "(同一 CardId の重複連想は不可、HAND-005 / ADR-0018)");
             }
 
             // (1) 現プレイヤーの Hand に action.Card を追加(catalog 経由の直接生成、初期山札 / Pile を一切変更しない)
@@ -937,6 +954,14 @@ namespace Drowsy.Application.Games.DrowZzz
             // (2) Field 先頭の Target カードを Draw で取り出し → Discard へ
             //     (Pile に任意位置 Remove API はなく、IsLegalCounter で Field.Cards[0] == Target を検証済のため Draw で安全)
             var (drawnTarget, newField) = field.Draw();
+            // App W-1 post-Phase2 レビュー反映:Pile.Draw() の契約上 drawnTarget == field.Cards[0] が
+            // 保証されており IsLegalCounter で == action.Target も確認済だが、将来 Pile.Draw() 仕様が
+            // 変わった際の無声バグを防ぐ防御アサート(Domain 契約変更を即座に検出する)。
+            if (!drawnTarget.Equals(action.Target))
+            {
+                throw new InvalidOperationException(
+                    $"CounterAction の内部不整合: drawnTarget ({drawnTarget.Value}) と action.Target ({action.Target.Value}) が一致しません(Pile.Draw 契約違反)");
+            }
             var newDiscard = session.GameState.Discard.AddTop(drawnTarget).AddTop(action.Counter);
             // Players 配列の差し替え(反撃側のみ)
             var newPlayers = new PlayerState[session.GameState.Players.Count];

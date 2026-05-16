@@ -7,7 +7,7 @@ using Drowsy.Domain.Random;
 namespace Drowsy.Domain.Tests.Cards
 {
     [TestFixture]
-    public class PileTests
+    public sealed class PileTests
     {
         // テストヘルパー: 短い記法で CardId を作る
         private static CardId Card(string value) => CardId.Of(CardTypeId.Of(value), 0);
@@ -82,6 +82,16 @@ namespace Drowsy.Domain.Tests.Cards
         public void Given_コンストラクタにnull_When_生成_Then_ArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => new Pile(null));
+        }
+
+        [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "PILE-018")]
+        public void Given_コンストラクタにnull要素を含むcards_When_生成_Then_ArgumentException()
+        {
+            // Given(配列の途中に null CardId が混入)
+            var cards = new[] { Card("A"), null, Card("B") };
+            // When / Then(Hand 対称: null 要素は構築時に検出)
+            var ex = Assert.Throws<ArgumentException>(() => new Pile(cards));
+            Assert.That(ex!.ParamName, Is.EqualTo("cards"));
         }
 
         [Test, Category("Small"), Category("SemiNormal"), Property("Requirement", "PILE-008")]

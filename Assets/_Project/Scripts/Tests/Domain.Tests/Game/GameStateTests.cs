@@ -8,7 +8,7 @@ using Drowsy.Domain.Players;
 namespace Drowsy.Domain.Tests.Game
 {
     [TestFixture]
-    public class GameStateTests
+    public sealed class GameStateTests
     {
         // ===== ヘルパー =====
 

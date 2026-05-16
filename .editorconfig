@@ -86,6 +86,9 @@ dotnet_naming_symbols.public_members.applicable_accessibilities = public,interna
 # C# コンパイラ警告 (CS-prefix) も含めて重要ルールを error レベルに引き上げる
 
 # Null 安全 (C# nullable reference types)
+# 注: 本プロジェクトは ADR-0015 で NRT(Nullable Reference Types)を非採用と決定済。
+# `#nullable enable` をどのファイルにも書いていないため、以下の CS8xxx は事実上発火しない安全網。
+# ADR-0015 が将来 Superseded by ... で覆って NRT 採用に転じた際に、即時 error 化される設定として残置する。
 dotnet_diagnostic.CS8600.severity = error    # null リテラルを非 nullable 型に代入
 dotnet_diagnostic.CS8602.severity = error    # null 参照の可能性がある参照の逆参照
 dotnet_diagnostic.CS8603.severity = error    # null 参照の可能性がある戻り値

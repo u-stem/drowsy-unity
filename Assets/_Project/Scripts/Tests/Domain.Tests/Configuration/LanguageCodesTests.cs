@@ -8,7 +8,7 @@ namespace Drowsy.Domain.Tests.Configuration
     /// PR で USR-005 を `[Ubiquitous]` → 通常要件化、`LanguageCodesTests` 直接テストに昇格)。
     /// </summary>
     [TestFixture]
-    public class LanguageCodesTests
+    public sealed class LanguageCodesTests
     {
         // null 以外の正常 / 異常コードを `[TestCase]` で網羅(`null` は C# attribute 構文上の
         // 曖昧性回避のため別メソッドに分離、CLAUDE.md §5 「1 テスト 1 アサーション」維持)。

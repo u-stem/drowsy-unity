@@ -54,9 +54,26 @@ namespace Drowsy.Application.Tests.Stubs
         /// `Hand.Add` の unique 制約で <see cref="ArgumentException"/> を投げる。
         /// 「同種カードを複数枚配布」をテストしたい場合は本 helper を使わず、
         /// <c>CardId.Of(CardTypeId.Of(id), i)</c> を直接呼んで instance を変えて並べること。
+        /// <para>
+        /// Tests W-5 post-Phase2 レビュー反映:docstring だけで防御していた制約を機械保護化し、
+        /// 同じ string を複数渡した場合は即時 <see cref="ArgumentException"/> を投げる(誤用を即座にフェイル)。
+        /// </para>
         /// </remarks>
+        /// <exception cref="ArgumentException"><paramref name="cardIds"/> に重複する文字列が含まれる場合</exception>
         public static Pile NewDeck(params string[] cardIds)
         {
+            // Tests W-5: 重複文字列の早期検出(Hand 配布段階で隠れたエラーとして出るのを防ぐ)
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            for (int i = 0; i < cardIds.Length; i++)
+            {
+                if (!seen.Add(cardIds[i]))
+                {
+                    throw new ArgumentException(
+                        $"NewDeck に重複する CardTypeId 文字列 '{cardIds[i]}' が含まれます。" +
+                        "同種カードを複数枚配布したい場合は CardId.Of(CardTypeId.Of(id), i) を直接呼んで instance を変えてください",
+                        nameof(cardIds));
+                }
+            }
             var cards = new CardId[cardIds.Length];
             for (int i = 0; i < cardIds.Length; i++)
             {

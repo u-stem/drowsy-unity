@@ -25,14 +25,14 @@ Domain (純粋ロジック)
 **役割**: ゲームの純粋ルール。エンティティ・値オブジェクト・ルール判定。
 
 **含めて良いもの**:
-- 値オブジェクト(`CardId`, `PlayerId`)
-- エンティティ(`Card`, `Player`)
+- 値オブジェクト(`CardTypeId`, `CardId`(複合型、ADR-0018), `PlayerId`)
+- カードデータ(`CardData`)
 - 集合(`Pile`, `Hand`)
-- 状態(`GameState`, `TurnState`、すべて immutable)
-- ルール interface(`IGameRule`)
-- アクション interface(`IGameAction`)
+- 状態(`GameState`, `TurnState`, `GameOutcome`、すべて immutable)
+- 設定 interface(`IGameConfig`, `IUserSettings`)
 - ユーティリティ interface(`IRandomSource`)
 - 純 C# 実装(`XorShiftRandom`)
+- ※ ルール / アクション interface(`IGameRule`, `IGameAction`)は **Application** に配置(ADR-0006)
 
 **含めてはいけないもの**:
 - `using UnityEngine`(asmdef `noEngineReferences: true` で物理保証)

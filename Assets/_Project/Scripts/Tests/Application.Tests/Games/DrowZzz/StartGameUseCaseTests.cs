@@ -13,7 +13,7 @@ using Drowsy.Domain.Random;
 namespace Drowsy.Application.Tests.Games.DrowZzz
 {
     [TestFixture]
-    public class StartGameUseCaseTests
+    public sealed class StartGameUseCaseTests
     {
         // ===== ヘルパー =====
 

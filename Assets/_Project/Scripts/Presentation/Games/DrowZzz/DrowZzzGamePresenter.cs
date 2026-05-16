@@ -186,6 +186,21 @@ namespace Drowsy.Presentation.Games.DrowZzz
                     // 初回起動 or 永続化ファイル削除済 → 新規対戦を開始する。
                     session = _startGameUseCase.Execute(_players, _initialDeck);
                 }
+                catch (Exception loadEx) when (loadEx is not OperationCanceledException)
+                {
+                    // Pres W-4 post-Phase2 レビュー反映:JSON 破損 / IOException 等で復元失敗した場合、
+                    // 旧実装は `_current` を null のまま外側 catch に flow し、View が無言で初期化されず
+                    // ゲームが止まる経路があった。FileNotFoundException と同様に新規対戦へフォールバックし
+                    // ユーザーがゲームを開始できる状態を保つ(保存ファイルは破損のまま残るので、次の
+                    // Auto-save で上書きされる)。
+                    Debug.LogError(
+                        $"[DrowZzzGamePresenter] BootAsync: 既存セッション復元に失敗、新規対戦にフォールバックします: {loadEx}");
+                    session = _startGameUseCase.Execute(_players, _initialDeck);
+                }
+                // C-4 post-Phase2 レビュー反映:LoadAsync の継続が ThreadPool スレッド上にいる場合、
+                // 続く `_sessionSubject.OnNext` → `Render` で UI Toolkit を呼ぶとメインスレッド外操作に
+                // なり Unity が例外を投げる。明示的にメインスレッドへ戻してから OnNext を発火する。
+                await UniTask.SwitchToMainThread(ct);
                 _current = session;
                 _sessionSubject.OnNext(session);
             }
@@ -269,6 +284,13 @@ namespace Drowsy.Presentation.Games.DrowZzz
         /// <see cref="_cts"/> 経由でキャンセルされる。Game 終了時(Outcome 確定)も保存先はメイン path 上書きのみ
         /// (別名 backup は Phase 3、M5-PR7 着手時 JIT 確定 2026-05-14)。<see cref="OperationCanceledException"/> は
         /// 握りつぶし、それ以外の例外は <c>Debug.LogError</c> 記録のみでゲームプレイは継続する。
+        /// <para>
+        /// Pres W-3 post-Phase2 レビュー — Auto-save の逆順書き込み race について:
+        /// EndTurn が連打されると複数の AutoSaveAsync が並行 fire-and-forget され、
+        /// 後発が先発より早く完了して古い session で上書きされる理論可能性がある。M5(N=2 ホットシート、
+        /// 1 ターン 1 EndTurn 想定)では UI 経路上発生しないが、Phase 3 で複数同時 EndTurn が入る場合は
+        /// 序列化(SemaphoreSlim or 「実行中なら次の save を予約 1 件だけ保持」のスロット制御)に切り替えること。
+        /// </para>
         /// </remarks>
         private async UniTaskVoid AutoSaveAsync(CancellationToken ct)
         {

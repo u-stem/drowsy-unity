@@ -93,6 +93,13 @@ namespace Drowsy.Presentation.Games.DrowZzz
         /// <remarks>
         /// 2 回目以降の <see cref="Dispose"/> は silent no-op(冪等)。Subscribe(<see cref="CompositeDisposable"/>)と
         /// <c>RegisterValueChangedCallback</c> の両方を対称的に解放する。
+        /// <para>
+        /// Pres W-1 post-Phase2 レビュー反映:<see cref="IUserSettings.SetBgmVolume"/> / <c>SetSeVolume</c> /
+        /// <c>SetLanguage</c> は内部で <see cref="IUserSettings.Save"/> を呼ばない設計(disk I/O 頻発防止のため
+        /// Save を集約する、<see cref="IUserSettings.Save"/> xmldoc 参照)。本 Binder は Dispose 時に
+        /// 明示的に <see cref="IUserSettings.Save"/> を呼んで、Standalone / WebGL ビルドでも設定が
+        /// 確実に永続化されることを保証する(Application.Quit や強制終了でも flush 漏れがない設計に揃える)。
+        /// </para>
         /// </remarks>
         public void Dispose()
         {
@@ -108,6 +115,17 @@ namespace Drowsy.Presentation.Games.DrowZzz
             _seSlider.UnregisterValueChangedCallback(OnSeSliderChanged);
             _languageDropdown.UnregisterValueChangedCallback(OnLanguageDropdownChanged);
             _disposables.Dispose();
+            // Pres W-1: 設定の永続化を Binder のライフサイクル終端に集約する(Save 失敗時は LogError のみで
+            // ゲーム動作に影響させない、IUserSettings 実装側のフォールバック動作を尊重する)。
+            try
+            {
+                _userSettings.Save();
+            }
+            catch (Exception ex)
+            {
+                UnityEngine.Debug.LogError(
+                    $"[UserSettingsBinder] Dispose 時の IUserSettings.Save に失敗: {ex}");
+            }
         }
     }
 }

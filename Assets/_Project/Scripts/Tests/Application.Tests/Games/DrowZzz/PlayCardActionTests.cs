@@ -10,7 +10,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
     /// 構造的性質 (DZ-052) は init setter 宣言で保証されるためテスト免除。
     /// </summary>
     [TestFixture]
-    public class PlayCardActionTests
+    public sealed class PlayCardActionTests
     {
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-053")]
         public void Given_PlayCardActionにnullCard_When_生成_Then_ArgumentNullExceptionを投げる()

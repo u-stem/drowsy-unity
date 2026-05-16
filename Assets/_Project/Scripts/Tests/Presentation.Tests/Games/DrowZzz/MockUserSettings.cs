@@ -46,10 +46,14 @@ namespace Drowsy.Presentation.Tests.Games.DrowZzz
         /// <inheritdoc />
         public void SetLanguage(string code) => _language.Value = code;
 
+        /// <summary>テストで <see cref="Save"/> 呼出回数を検証するためのカウンタ(Pres W-1 post-Phase2 レビュー反映)。</summary>
+        public int SaveCallCount { get; private set; }
+
         /// <inheritdoc />
         public void Save()
         {
-            // テスト用 Mock では永続化なし(no-op)。
+            // テスト用 Mock では永続化なし(no-op)+ 呼出回数のみ記録。
+            SaveCallCount++;
         }
 
         /// <summary>内部 ReactiveProperty を解放する。二重 Dispose は silent no-op(M4-PR6 PlayerPrefsUserSettings 同様)。</summary>

@@ -109,11 +109,14 @@ namespace Drowsy.Application.Catalog
         /// 未登録 CardTypeId / 効果列を登録していない CardTypeId に対しては空列(<see cref="Array.Empty{T}"/>)を返す
         /// (例外を投げない、<c>PlayCardAction.Apply</c> 内の <c>Aggregate</c> に自然に乗る、ADR-0007 §3)。
         /// </remarks>
+        /// <exception cref="ArgumentNullException"><paramref name="typeId"/> が null(App W-3 post-Phase2 レビュー反映)</exception>
         public IReadOnlyList<IEffect> GetEffects(CardTypeId typeId)
         {
+            // null をサイレントに空列で受けると呼び出し側のバグが隠れるため、Get/TryGet と同様 ArgumentNullException 化。
+            // (ICardCatalog の xmldoc が `non-null` を契約として明記しているため呼び出し側のバグ検出を優先する)
             if (typeId is null)
             {
-                return EmptyEffects;
+                throw new ArgumentNullException(nameof(typeId));
             }
             return _effects.TryGetValue(typeId, out var list) ? list : EmptyEffects;
         }

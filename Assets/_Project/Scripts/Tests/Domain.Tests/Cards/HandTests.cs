@@ -5,7 +5,7 @@ using Drowsy.Domain.Cards;
 namespace Drowsy.Domain.Tests.Cards
 {
     [TestFixture]
-    public class HandTests
+    public sealed class HandTests
     {
         // 普遍要件 HAND-001 / HAND-002 は sealed class + private readonly + IReadOnlyList で構造的に保証
 

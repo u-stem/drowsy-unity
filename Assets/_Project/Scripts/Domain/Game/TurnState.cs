@@ -56,6 +56,7 @@ namespace Drowsy.Domain.Game
         /// </summary>
         /// <param name="playerCount">プレイヤー総数(GameState.Players.Count を渡す想定)</param>
         /// <exception cref="ArgumentOutOfRangeException">playerCount が 0 以下の場合</exception>
+        /// <exception cref="OverflowException">TurnNumber が int.MaxValue を超える場合(checked)</exception>
         public TurnState Next(int playerCount)
         {
             if (playerCount <= 0)
@@ -64,7 +65,10 @@ namespace Drowsy.Domain.Game
                     nameof(playerCount), playerCount,
                     "playerCount は 1 以上である必要があります");
             }
-            return new TurnState(TurnNumber + 1, (CurrentPlayerIndex + 1) % playerCount);
+            // 上限管理は呼び出し元(Application の DrowZzzClockConstants 等)が responsibility だが、
+            // Domain 単体テスト等で int.MaxValue が渡された場合のサイレントオーバーフローを防ぐ。
+            int nextTurn = checked(TurnNumber + 1);
+            return new TurnState(nextTurn, (CurrentPlayerIndex + 1) % playerCount);
         }
     }
 }

@@ -120,5 +120,19 @@ namespace Drowsy.Presentation.Tests.Games.DrowZzz
             // When / Then(2 回目の Dispose は silent no-op、例外を投げない)
             Assert.That(() => binder.Dispose(), Throws.Nothing);
         }
+
+        // ===== PRES-029: Dispose 時に IUserSettings.Save を 1 回呼ぶ(Pres W-1 post-Phase2 レビュー反映)=====
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "PRES-029")]
+        public void Given_binder_When_Dispose_Then_IUserSettingsSaveを1回呼ぶ()
+        {
+            // Given(Save 集約方針:Setter 内では Save しない、Dispose で 1 回 flush)
+            using var settings = new MockUserSettings();
+            var binder = new UserSettingsBinder(new Slider(), new Slider(), new DropdownField(), settings);
+            // When
+            binder.Dispose();
+            // Then(Save が 1 回呼ばれて永続化される、Standalone / WebGL の flush 漏れを防ぐ)
+            Assert.That(settings.SaveCallCount, Is.EqualTo(1));
+        }
     }
 }
