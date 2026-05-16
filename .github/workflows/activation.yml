@@ -1,0 +1,41 @@
+# Unity Personal License Activation 一時 workflow(`.alf` ファイル取得用)
+#
+# 使い方(オーナー実機作業、初回 1 回のみ):
+#   1. このファイルが PR #99 ブランチに含まれた状態で、GitHub Actions UI を開く
+#   2. 左サイドバー > "Acquire activation file" workflow > "Run workflow" ボタンを押す
+#      (`workflow_dispatch` トリガーで走行、Library / Cache 不要、約 1-2 分で完了)
+#   3. 走行完了後、該当 run のページから "Artifacts" セクションの
+#      `Unity_v6000.x.x.alf` をダウンロード
+#   4. https://license.unity3d.com/manual を開き、Unity ID でログイン
+#      → ダウンロードした `.alf` をアップロード → ライセンス利用規約に同意
+#      → `Unity_v6000.x.x.ulf` をダウンロード
+#   5. https://github.com/u-stem/drowsy-unity/settings/secrets/actions で
+#      以下 3 つの Repository secrets を登録:
+#      - UNITY_LICENSE: ダウンロードした `.ulf` ファイルの全内容(XML テキスト)を貼り付け
+#      - UNITY_EMAIL:   Unity ID のメールアドレス
+#      - UNITY_PASSWORD: Unity ID のパスワード
+#   6. 完了後、本 `activation.yml` ファイルは不要になる(Claude が削除 commit を入れる)
+#   7. PR #99 を Re-run all jobs で再走 → WebGL Build が `Success` で通ることを確認
+#
+# 参考: https://game.ci/docs/github/activation/personal
+
+name: Acquire activation file
+
+on:
+  workflow_dispatch:  # 手動トリガーのみ(自動走行しない)
+
+jobs:
+  activation:
+    name: Request manual activation file
+    runs-on: ubuntu-latest
+    steps:
+      - name: Request manual activation file
+        id: getManualLicenseFile
+        uses: game-ci/unity-request-activation-file@v2
+
+      - name: Expose as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.getManualLicenseFile.outputs.filePath }}
+          path: ${{ steps.getManualLicenseFile.outputs.filePath }}
+          retention-days: 1  # `.alf` は 1 日もあれば手動変換完了する
