@@ -121,6 +121,10 @@ dotnet_diagnostic.RCS1018.severity = warning  # アクセス修飾子の明示(`
 dotnet_diagnostic.RCS1049.severity = warning  # 冗長な boolean 比較を簡略化(`x == true` → `x`)
 dotnet_diagnostic.RCS1163.severity = warning  # 未使用パラメータ
 dotnet_diagnostic.RCS1170.severity = warning  # read-only auto-property 化(Immutability 方針整合)
+# 第 2 弾(2026-05-16): フォーマット / 冗長性除去系で既存コード違反 0 件のものを warning 化
+dotnet_diagnostic.RCS1036.severity = warning  # 連続する空行を削除(冗長な空行)
+dotnet_diagnostic.RCS1037.severity = warning  # 末尾空白の削除(.editorconfig `trim_trailing_whitespace` と整合)
+dotnet_diagnostic.RCS1097.severity = warning  # 冗長な ToString() 呼び出しの削除
 # 検討候補だが第 1 弾から除外したルール(docs/todo.md TODO #7 で継続追跡):
 # - RCS1213(未使用 private メンバー): Unity のライフサイクルメソッド(`OnEnable` / `OnValidate` /
 #   `Awake` / `Start` / `Update` 等は Unity Engine が reflection で呼ぶ)を Roslynator が

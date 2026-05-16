@@ -63,7 +63,7 @@
 - シナリオ: `turn-state.feature`
 - 設計根拠: [`docs/adr/0002-phase1-domain-boundaries.md`](../../../adr/0002-phase1-domain-boundaries.md)(Player N 人想定 / Domain 全体 immutable)
 - 連携: [`game-state.md`](game-state.md)(GS-020〜027 で GameState に Turn フィールドを追加)
-- DrowZzz での用語解釈: [`docs/adr/0006-m1-detail-application-interfaces.md`](../../../adr/0006-m1-detail-application-interfaces.md) §7(本仕様の `TurnState.TurnNumber` を DrowZzz では「サブターン番号」として解釈し、DrowZzz の「ターン(=ラウンド)」は `(TurnNumber + 1) / 2` で計算する。Domain 仕様自体は変更せず、ゲーム固有の用語マッピングを Application 層 ADR-0006 §7 で確定)
+- DrowZzz での用語解釈: [`docs/adr/0006-m1-detail-application-interfaces.md`](../../../adr/0006-m1-detail-application-interfaces.md) §7(本仕様の `TurnState.TurnNumber` を DrowZzz では「フェーズ番号」(ADR-0009 §用語規約で旧称「サブターン番号」から訂正)として解釈し、DrowZzz の「ターン」(ADR-0009 §用語規約で旧称「ラウンド」から訂正)は `(TurnNumber + 1) / 2` で計算する。Domain 仕様自体は変更せず、ゲーム固有の用語マッピングを Application 層 ADR-0006 §7 で確定)
 
 ## トレーサビリティ
 

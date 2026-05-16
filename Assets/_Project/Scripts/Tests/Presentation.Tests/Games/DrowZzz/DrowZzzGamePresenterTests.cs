@@ -105,6 +105,39 @@ namespace Drowsy.Presentation.Tests.Games.DrowZzz
             public ApplyActionUseCase ApplyActionUseCase { get; set; }
         }
 
+        /// <summary>
+        /// 新規対戦の bootSession を Serializer に注入し、`Presenter.Start()` で Boot を完了させる
+        /// (`MockDrowZzzGameSessionSerializer.LoadAsync` が同期完了するため Start() 戻り時点で Boot 済)。
+        /// </summary>
+        /// <remarks>
+        /// Application 層の状態遷移知識(初期 PhaseState = WaitingForDraw)をテスト本体から除去するための共通 setup
+        /// (`docs/todo.md`「Presenter テストのターン進行セットアップを共通ヘルパーへ切り出す」反映、2026-05-16)。
+        /// </remarks>
+        private static void Boot(PresenterContext ctx)
+        {
+            var bootSession = ctx.StartGameUseCase.Execute(ValidPlayers(), ValidInitialDeck());
+            ctx.Serializer.LoadAsyncReturnSession = bootSession;
+            ctx.Presenter.Start();
+        }
+
+        /// <summary>
+        /// <see cref="Boot"/> 完了済の <paramref name="ctx"/> を Draw → Play まで進めて
+        /// <see cref="DrowZzzPhaseState.WaitingForEndTurn"/> に到達させる。
+        /// </summary>
+        /// <remarks>
+        /// 進行ロジックは Application 層の WaitingForDraw → Draw → WaitingForPlay → Play → WaitingForEndTurn の
+        /// 状態遷移に依拠するため、Application 仕様が変わると本ヘルパー自身を更新する必要がある(テスト本体には
+        /// 漏らさない、code-reviewer T-1 / docs/todo.md 「Presenter テストのターン進行セットアップを共通
+        /// ヘルパーへ切り出す」反映 2026-05-16)。
+        /// </remarks>
+        private static void AdvanceToWaitingForEndTurn(PresenterContext ctx)
+        {
+            ctx.View.FireDrawClicked();
+            var afterDraw = ctx.View.RenderedSessions[ctx.View.RenderedSessions.Count - 1];
+            var currentPlayer = afterDraw.GameState.Players[afterDraw.GameState.Turn.CurrentPlayerIndex];
+            ctx.View.FirePlayClicked(currentPlayer.Hand.Cards[0]);
+        }
+
         // ===== PRES-002〜007 / PRES-014 / PRES-015: ctor null 防御 =====
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "PRES-002")]
@@ -409,13 +442,8 @@ namespace Drowsy.Presentation.Tests.Games.DrowZzz
         {
             // Given(Draw → Play を経て WaitingForEndTurn にしてから EndTurn する)
             var ctx = NewContext();
-            var bootSession = ctx.StartGameUseCase.Execute(ValidPlayers(), ValidInitialDeck());
-            ctx.Serializer.LoadAsyncReturnSession = bootSession;
-            ctx.Presenter.Start();
-            ctx.View.FireDrawClicked();
-            var afterDraw = ctx.View.RenderedSessions[ctx.View.RenderedSessions.Count - 1];
-            var currentPlayer = afterDraw.GameState.Players[afterDraw.GameState.Turn.CurrentPlayerIndex];
-            ctx.View.FirePlayClicked(currentPlayer.Hand.Cards[0]);
+            Boot(ctx);
+            AdvanceToWaitingForEndTurn(ctx);
             var saveCountBeforeEndTurn = ctx.Serializer.SaveAsyncCallCount;
 
             // When(合法な EndTurn)
@@ -434,9 +462,7 @@ namespace Drowsy.Presentation.Tests.Games.DrowZzz
         {
             // Given(初期 session は WaitingForDraw、EndTurn は不合法手)
             var ctx = NewContext();
-            var bootSession = ctx.StartGameUseCase.Execute(ValidPlayers(), ValidInitialDeck());
-            ctx.Serializer.LoadAsyncReturnSession = bootSession;
-            ctx.Presenter.Start();
+            Boot(ctx);
 
             // When(不合法な EndTurn)
             ctx.View.FireEndTurnClicked();
@@ -454,9 +480,7 @@ namespace Drowsy.Presentation.Tests.Games.DrowZzz
         {
             // Given(Auto-save は EndTurn 後のみ、Draw / Play では行わない:ADR-0016 §8)
             var ctx = NewContext();
-            var bootSession = ctx.StartGameUseCase.Execute(ValidPlayers(), ValidInitialDeck());
-            ctx.Serializer.LoadAsyncReturnSession = bootSession;
-            ctx.Presenter.Start();
+            Boot(ctx);
 
             // When(合法な Draw — Auto-save 対象外)
             ctx.View.FireDrawClicked();

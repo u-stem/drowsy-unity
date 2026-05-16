@@ -13,13 +13,27 @@ namespace Drowsy.Application.Tests.Stubs
     /// <summary>
     /// Application.Tests 配下 fixture の共通ヘルパー(`NewSession` / `NewRule` / `NewDeck`)。
     /// 統合済 fixture: `ApplyActionUseCaseTests` / `DrowZzzRuleTests`(2026-05-13)、
-    /// `DrowZzzGameSessionTests` / `EffectInterpreterTests`(2026-05-13 第 1 弾)。
+    /// `DrowZzzGameSessionTests` / `EffectInterpreterTests`(2026-05-13 第 1 弾)、
+    /// `EarlyWinTriggerEffectTests` / `AdjustSdpEffectTests`(2026-05-16 第 2 弾、`fdp` / `sdp` 引数 +
+    /// `Dp(p1, p2)` builder 追加に伴う)。
     /// 残 fixture(`CounterActionTests` / `AssociateActionTests` / `AbandonActionTests` /
     /// `CupOfThreatCardTests` / `GreenInvasionCardTests` / `DreamCardTests` /
-    /// `CounterCounterTests` / `Effects/*Tests` 等)への段階的拡張は `docs/todo.md` で追跡。
+    /// `CounterCounterTests` / `Effects/*Tests` 大部分)への段階的拡張は `docs/todo.md` で追跡。
     /// </summary>
     public static class SessionFactory
     {
+        /// <summary>
+        /// N=2 用 DP Dictionary を 2 値から組み立てるショートカット。
+        /// 引数省略で全プレイヤー 0(`{p1: 0, p2: 0}`)。<see cref="NewSession"/> の
+        /// `fdp` / `sdp` / `ddp` / `bedDamages` 引数に渡せる。
+        /// </summary>
+        public static IReadOnlyDictionary<PlayerId, int> Dp(int p1 = 0, int p2 = 0) =>
+            new Dictionary<PlayerId, int>
+            {
+                [PlayerId.Of("p1")] = p1,
+                [PlayerId.Of("p2")] = p2,
+            };
+
         /// <summary>
         /// `DrowZzzRule` の最小依存(空 `InMemoryCardCatalog` + 標準 `EffectInterpreter`)を
         /// 組み立てる。M1 互換挙動の維持目的(ADR-0007 §3、constructor 引数の `ICardCatalog<IEffect>` /
@@ -70,6 +84,8 @@ namespace Drowsy.Application.Tests.Stubs
             Hand p1Hand = null,
             int turnNumber = 1,
             DdpPool ddpPool = null,
+            IReadOnlyDictionary<PlayerId, int> fdp = null,
+            IReadOnlyDictionary<PlayerId, int> sdp = null,
             IReadOnlyDictionary<PlayerId, int> ddp = null,
             IReadOnlyDictionary<PlayerId, IReadOnlyList<PlayerInfluence>> influences = null,
             IReadOnlyDictionary<PlayerId, int> bedDamages = null)
@@ -82,14 +98,16 @@ namespace Drowsy.Application.Tests.Stubs
                 Pile.Empty,
                 Pile.Empty,
                 new TurnState(turnNumber, currentPlayerIndex));
-            var fdp = new Dictionary<PlayerId, int>
+            // 既存 fixture(`DrowZzzRuleTests` / `ApplyActionUseCaseTests` 等)互換のデフォルト fdp は `{p1: 0, p2: 10}`。
+            // 新規 fixture で固有値が必要な場合は `fdp: Dp(p1: 100, p2: 0)` のように明示する。
+            var fdpResolved = fdp ?? new Dictionary<PlayerId, int>
             {
                 [PlayerId.Of("p1")] = 0,
                 [PlayerId.Of("p2")] = 10,
             };
-            // SDP は M2-PR3 で追加(ADR-0009 §「DP 種別」)。本ヘルパー利用テストは SDP に関心がないため
-            // 全プレイヤー 0 で固定初期化する。
-            var sdp = new Dictionary<PlayerId, int>
+            // SDP は M2-PR3 で追加(ADR-0009 §「DP 種別」)。デフォルトは全プレイヤー 0 で固定、
+            // 新規 fixture で固有値が必要な場合は `sdp: Dp(p1: 5)` のように明示する。
+            var sdpResolved = sdp ?? new Dictionary<PlayerId, int>
             {
                 [PlayerId.Of("p1")] = 0,
                 [PlayerId.Of("p2")] = 0,
@@ -115,9 +133,9 @@ namespace Drowsy.Application.Tests.Stubs
             };
             return new DrowZzzGameSession(
                 gs,
-                fdp,
+                fdpResolved,
                 ddpResolved,
-                sdp,
+                sdpResolved,
                 ddpPool ?? DdpPool.Empty,
                 influencesResolved,
                 phase,

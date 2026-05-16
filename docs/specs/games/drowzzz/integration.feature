@@ -1,5 +1,5 @@
 # language: ja
-機能: DrowZzz M1 統合シナリオ (StartGame → 数ラウンド進行) (M1-PR7)
+機能: DrowZzz M1 統合シナリオ (StartGame → 数ターン進行) (M1-PR7)
 
   @DZ-077
   シナリオ: StartGameUseCase 直後の状態 (正常系・Medium)
@@ -14,19 +14,19 @@
     ならば 各ステップで PhaseState が WaitingForDraw → WaitingForPlay → WaitingForEndTurn → WaitingForDraw に遷移し、Turn.TurnNumber が 1 → 2 に増える
 
   @DZ-079
-  シナリオ: 1 ラウンド完走 (N=2 フェーズ) (正常系・Medium)
+  シナリオ: 1 ターン完走 (N=2 フェーズ) (正常系・Medium)
     前提 StartGameUseCase 直後のセッション
     もし 2 フェーズ分 (Draw → Play → EndTurn × 2) を Execute
     ならば Turn.TurnNumber = 3 (= 1 + 2)、Turn.CurrentPlayerIndex = 0 (先行プレイヤーに戻る)
 
   @DZ-080
-  シナリオ: 3 ラウンド完走 (6 フェーズ) (正常系・Medium)
+  シナリオ: 3 ターン完走 (6 フェーズ) (正常系・Medium)
     前提 StartGameUseCase 直後のセッション (Field = 空、各 Hand = 5)
-    もし 6 フェーズ分 (3 ラウンド = Draw → Play → EndTurn × 6) を Execute
+    もし 6 フェーズ分 (3 ターン = Draw → Play → EndTurn × 6) を Execute
     ならば Turn.TurnNumber = 7、Field.Count = 6 (累積)、各プレイヤー Hand.Count = 5 (Draw 1 + Play 1 = ±0)
 
   @DZ-081
   シナリオ: Deterministic Replay (準正常系・Medium)
     前提 同一 players / deck / config と、同一 seed の XorShiftRandom を 2 つ用意
-    もし それぞれで StartGame → 1 ラウンド完走を実行
+    もし それぞれで StartGame → 1 ターン完走を実行
     ならば 2 つの最終セッションは完全に等価 (DrowZzzGameSession.Equals が true)

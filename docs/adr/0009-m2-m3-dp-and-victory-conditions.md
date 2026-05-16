@@ -1,5 +1,7 @@
 # ADR-0009: M2-M3 — DP 機構(FDP / DDP / SDP)と持ち点・勝利条件
 
+> **Note(M2 / M3 完結の帰結、2026-05-16)**:本 ADR で定義した DP 機構と勝利条件は M2-PR3〜PR5(SDP / DDP)+ M3-PR1〜PR6(勝利条件 / 終了判定 / 早期勝利)で実装が完結し、Phase 2 完結時点で M2 / M3 ステータスを **完結扱い** とする(`CLAUDE.md` §11 / [ADR-0005 §7](0005-phase2-roadmap-drowzzz.md) / [ADR-0016 §11 M5-PR8 完成記録](0016-m5-bootstrap-presentation.md))。
+
 | 項目 | 値 |
 | ---- | ---- |
 | Status | Accepted |

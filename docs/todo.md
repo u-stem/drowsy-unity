@@ -88,19 +88,16 @@
     - 切替判断(採用 / 不採用 / 部分採用)を ADR で記録
   - **Related**: [ADR-0016](adr/0016-m5-bootstrap-presentation.md) §3 / §「TODO 候補」
 
-- [ ] **ADR-0007 / ADR-0009 / ADR-0011 に「M2 サブセット先行スコープは M2-PR5 で達成、Phase 2 完結時点で M2 ステータスを完結扱い」Note 追記** `priority: low`
-  - **Why**:M5-PR8(本 PR)で CLAUDE.md §11 M2 ステータスを「進行中」→「完結」に清算したが、関連 ADR 側からの逆リンク注記は本 PR スコープ外として残した(影響範囲を絞るため)。Phase 3 着手前に整合性を取りたい
+- [ ] **EARS / Gherkin の英語表記「Round X」概念用語を「ターン X」に統一(第 2 弾)** `priority: low`
+  - **Why**: 2026-05-16 chore PR `chore/todo-batch-cleanup` で日本語カナ「ラウンド」→「ターン」の機械的置換は完了したが、`.md` / `.feature` 内の英語表記 `Round 21` / `Round 22` / `Round 1〜16` / `夜の Round` / `朝の Round` 等(概念用語)が複数ファイルに残存。テストメソッド名(`Given_Round21最終フェーズで...` / `Given_夜のRound_When_...` 等)と連動する箇所は実装側のテストファイル名と一緒に書き換える必要があるため、本 PR スコープ外として残置
   - **Done when**:
-    - ADR-0007 / ADR-0009 / ADR-0011 の冒頭(または該当セクション)に「M2 サブセット先行スコープは M2-PR5 で達成、Phase 2 完結時点で M2 ステータスを完結扱い(ADR-0005 §7 / ADR-0016 §11 M5-PR8 完成記録参照)」を Note で追記
-  - **Related**: [ADR-0007](adr/0007-m2-detail-card-effects.md)、[ADR-0009](adr/0009-m2-m3-dp-and-victory-conditions.md)、[ADR-0011](adr/0011-m3-dream-card-and-game-mechanics-expansion.md)、[ADR-0016 §11 M5-PR8 完成記録](adr/0016-m5-bootstrap-presentation.md)
-
-- [ ] **`CardIdJsonConverter` の負値 instance / 不正 schema 経路に Persistence テストを追加** `priority: low`
-  - **Why**: ADR-0018 / code-reviewer 提案 6 反映。現状 `int.TryParse(instancePart)` が成功して `CardId.Of(typeId, -5)` が `ArgumentOutOfRangeException` を投げた場合、`catch (ArgumentException)` で `JsonSerializationException` に wrap されるが、本経路のテストが存在しない(実行時にのみ確認可能)。schema 違反系テスト(`"#0"` / `"dream"`(`#` なし)/ `"dream#-5"` / `"dream#abc"` 等)を Infrastructure.Tests/Persistence に追加して、診断性とリグレッション防止を担保したい
-  - **Done when**:
-    - `Infrastructure.Tests/Persistence/CardIdJsonConverterTests.cs` 新設(または既存 fixture に追加)
-    - `JsonSerializationException` を厳密に検証する Abnormal テスト(空文字列 / `#` 欠如 / 負 instance / non-int instance / `typeIdPart` 空文字列)を網羅
-    - 関連 EARS(INF-XXX または新規 PERSIST-XXX)に要件追加検討
-  - **Related**: [ADR-0018](adr/0018-cardtypeid-cardid-instance-separation.md) §8、`Assets/_Project/Scripts/Infrastructure/Persistence/Converters/CardIdJsonConverter.cs`
+    - 対象ファイル(`docs/specs/games/drowzzz/victory-conditions.md` / `cards/00-dream.md` / `cards/00-dream.feature` / `cards/cup-of-threat.feature` / `cards/cup-of-threat.md` / `counter-counter.md` / `bed-damage.md` / `dp-mechanism-ddp.md` / `effects/early-win-trigger.md` / `effects/time-of-day-branch.md` / `effects/time-of-day-branch.feature` / `presentation/games/drowzzz/presenter-skeleton.md` 等)の英語表記 `Round X` を「ターン X」に統一
+    - テストメソッド名(`Given_Round21...` / `Given_夜のRound_...` 等)は実装側のテストファイル名と一緒にリネーム(`CupOfThreatCardTests` / `DrowZzzRuleTests` 等)
+    - EARS 英語パート(DZ-190 / DZ-191 等の英語条件文中の `Round 21` / `Round 22`)は別 ADR で全 EARS 統一方針を確定してから対応(本 TODO は日本語パートと連動するテスト名のみ)
+    - 実装識別子(`RoundNumber` / `Clock.RoundNumber` / `MaxRoundNumber` 等)は維持(別 TODO「`Clock.RoundNumber` / `CurrentRound` を `TurnNumber` / `CurrentTurn` に改名」で扱う)
+    - traceability チェック通過(EARS ID 維持)
+  - **Related**: 起点 PR(2026-05-16 chore/todo-batch-cleanup、code-reviewer W-1 反映)、完了済みエントリ「EARS / Gherkin 全体の「ラウンド」→「ターン」用語統一(機械的リネーム)」
+  - **Notes**: 第 1 弾は日本語カナ + feature ファイル限定で完了。第 2 弾は .md 内の英語表記 + テストメソッド名リネームでスコープが膨らむため別 PR で扱う
 
 - [ ] **`Window > Analysis` サブメニュー(Build Profiler / Build Report Inspector 等)の押下不能要因調査(Phase 6 候補)** `priority: low`
   - **Why**: M4-PR7 第 6 弾(Web Desktop Development Build 初回成功、commit `5536a85` 2026-05-14)後、プロジェクトオーナーが `Window > Analysis` サブメニューを開こうとしたが、すべてのボタン(Build Profiler / Build Report Inspector / Frame Debugger 等)が **押せない状態** だったと報告。原因仮説:(1) Editor が Compile 中 / Domain Reload 中で一時無効化、(2) 必要な Profiling パッケージが `manifest.json` に未登録、(3) Unity 6 で Build Report の場所が更に変わっている(`Window > Analysis > Build Profiler` ではなく別パス)。M4-PR7 完成記録としては Build Report での型保持確認スクショなしで進める判断(オーナー確認済 2026-05-14)だが、Phase 6(CI 整備)で WebGL Build の自動検証を導入する前に再現性を確認したい
@@ -182,25 +179,6 @@
   - **Related**: [ADR-0009 §6.5](adr/0009-m2-m3-dp-and-victory-conditions.md)、[ADR-0008 §6](adr/0008-m2-drowzzz-clock-and-night-morning.md)、[ADR-0006 §M1-PR2 / DZ-010](adr/0006-m1-detail-application-interfaces.md)
   - **Notes**: N>2 対応(Hour / Minute 計算式の N=2 専用脱却)と同タイミングで実施するのが筋(`Hour`/`Minute` の N=2 前提も同じタイミングで再評価)。Domain `TurnState` の改名は ADR-0002 「Domain ゲーム非依存」と要相談で別 ADR
 
-- [ ] **EARS / Gherkin 全体の「ラウンド」→「ターン」用語統一(機械的リネーム)** `priority: low`
-  - **Why**: ADR-0009 で「ターン = 大単位、フェーズ = 中単位」を確定したが、EARS / .feature 内の「ラウンド」「N=2 サブターン」等の旧用語が一部残っている(本 PR では実装名 `RoundNumber` を維持する関係で部分置換に留めた、ADR-0009 §6.5)。仕様文書全体を新用語に統一する機械的リファクタ
-  - **Done when**:
-    - `docs/specs/` 配下の全 .md / .feature で「ラウンド」 → 「ターン」(概念表記)、「サブターン」 → 「フェーズ」を機械的置換
-    - 実装識別子参照(`Clock.RoundNumber` 等)は維持(改名は前述の別 TODO で扱う)
-    - traceability チェック通過(EARS ID 維持)
-  - **Related**: [ADR-0009 §6.5 / §「用語規約」](adr/0009-m2-m3-dp-and-victory-conditions.md)
-  - **Notes**: 上記の `Clock.RoundNumber` → `TurnNumber` リネームと同 PR にまとめる方が効率的
-
-- [ ] **Presenter テストのターン進行セットアップを共通ヘルパーへ切り出す** `priority: low`
-  - **Why**: M5-PR4 / M5-PR5 で追加した `DrowZzzGamePresenterTests` の PRES-019(Auto-save)等は Given セクションで `StartGameUseCase.Execute` → `FireDrawClicked` → `FirePlayClicked(手札[0])` と複数操作を経て `WaitingForEndTurn` に到達している。これは Presenter の「Handler → AutoSave パイプライン」検証範囲を超えて Application 層の状態遷移知識(WaitingForDraw → Draw → WaitingForPlay → Play → WaitingForEndTurn)をテストが直接使っており、`IdentityRandom` の挙動や `StubGameConfig` の初期 handSize が変わると Given ステップ自体が壊れるリスクがある(M5-PR5 テストハング修正レビュー code-reviewer T-1)
-  - **Done when**:
-    - `Drowsy.Presentation.Tests` にターン進行ヘルパー(`TestHelper.AdvanceTurnToEndPhase(ctx)` 等)を切り出す、または `Drowsy.Application.Tests.Stubs.SessionFactory` に「特定 PhaseState の session を生成する」helper を追加
-    - PRES-019 等の Given セクションをヘルパー呼び出しに置換し、Application 層の状態遷移知識をテスト本体から除去
-    - 既存テスト全緑を維持
-    - 結果がリポジトリに反映済み(本 TODO を「完了済み」へ移動、`Related` に PR 番号追記)
-  - **Related**: M5-PR5 テストハング修正レビュー(code-reviewer T-1)、`Assets/_Project/Scripts/Tests/Presentation.Tests/Games/DrowZzz/DrowZzzGamePresenterTests.cs`(PRES-019)、[ADR-0016 §10](adr/0016-m5-bootstrap-presentation.md)
-  - **Notes**: Phase 3 で Presenter テストが増える時点で切り出すのが筋。M5 範囲(テスト緑確認済み)では即座の対応は不要、`priority: low`
-
 
 ## 進行中
 
@@ -234,7 +212,8 @@
   - **Related**: 起点 PR(2026-05-13 chore: テストヘルパー抽出)、`docs/todo.md` 同 PR 完了済みエントリ「`ApplyActionUseCase` / `DrowZzzRuleTests` の共通テストヘルパー抽出」、`Assets/_Project/Scripts/Tests/Application.Tests/Stubs/SessionFactory.cs`、第 1 弾 PR(2026-05-13 chore: SessionFactory 統合第 1 弾、PR #79)
   - **Notes**: 段階的拡張の方がレビュー負担小、`using static SessionFactory` で呼び出し側の修正コストは小さい。各 fixture 固有の引数追加で `SessionFactory` の引数が肥大化した場合は `TestSessionBuilder`(fluent API)パターンへのリファクタを検討
     - **2026-05-13 第 1 弾(本 TODO 進行、PR #79)**: `DrowZzzGameSessionTests` / `EffectInterpreterTests` の 2 fixture を `SessionFactory.NewSession()` 経由に統合(`using static` パターン)。両 fixture ともローカル `NewSession()` ヘルパーが SessionFactory のデフォルト引数値と完全一致するため、引数拡張なしで切替可能。dotnet build 0 警告 / 0 エラー確認済(Unity Test Runner 緑確認はオーナー側)
-    - **残対象**: `CounterActionTests` / `AssociateActionTests`(`NewSession` + `NewSessionWithBedDamage` の 2 件)/ `AbandonActionTests` / `CupOfThreatCardTests`(`NewSessionWithCardInHand`)/ `GreenInvasionCardTests`(`NewSessionWithCardInHand`)/ `DreamCardTests`(`NewSessionWithDreamInHand` + `NewSessionWithoutDream`)/ `CounterCounterTests`(`NewSessionAfterCounter`)。これらは各 fixture 固有の引数(Hand に特定カード / 特定 phase / 特定 BedDamage 等)を持つため、 SessionFactory.NewSession の引数拡張または fixture 個別の事後セットアップ helper として段階的に対応
+    - **2026-05-16 第 2 弾(本 TODO 進行、chore/todo-batch-cleanup PR)**: `EarlyWinTriggerEffectTests` / `AdjustSdpEffectTests` の 2 fixture を統合。`SessionFactory.NewSession` に `fdp` / `sdp` パラメータ + `Dp(p1, p2)` builder を新設し、`fdp: Dp(p1: 100)` / `sdp: Dp(p1: 5)` のような明示渡しで FDP / SDP 制御を可能化。dotnet build 0 警告 / 0 エラー確認済(Unity Test Runner 緑確認はオーナー側)
+    - **残対象**: `CounterActionTests` / `AssociateActionTests`(`NewSession` + `NewSessionWithBedDamage` の 2 件)/ `AbandonActionTests` / `CupOfThreatCardTests`(`NewSessionWithCardInHand`)/ `GreenInvasionCardTests`(`NewSessionWithCardInHand`)/ `DreamCardTests`(`NewSessionWithDreamInHand` + `NewSessionWithoutDream`)/ `CounterCounterTests`(`NewSessionAfterCounter`)/ Effects 配下の残 9 件(`ApplyInfluenceEffect` / `AssociatableMarkerEffect` / `ChoiceEffect` / `DamageBedEffect` / `DrawCardEffect` / `KeywordedEffect` / `RemoveInfluenceEffect` / `RequiresMinimumTotalPointsMarkerEffect` / `TimeOfDayBranchEffect` / `UsageRestrictionMarkerEffect`)。これらは各 fixture 固有の引数(Hand に特定カード / 特定 phase / 特定 BedDamage 等)を持つため、 SessionFactory.NewSession の引数拡張または fixture 個別の事後セットアップ helper として段階的に対応
 
 - [ ] **Roslynator RCS ルールの段階的有効化(baseline silent → 個別 warning 化)** `priority: low`
   - **Why**: [ADR-0013](adr/0013-roslynator-adoption.md) で `Roslynator.Analyzers` 4.15.0 を導入したが、既存コードへの影響を制御するため baseline `dotnet_analyzer_diagnostic.category-roslynator.severity = silent` で開始した。Roslynator は 200+ ルールを提供しており、コードシンプリフィケーション / リファクタリング系の主要ルール(例: RCS1003 If statement should not be on a single line、RCS1018 Add accessibility modifiers、RCS1090 Add call to ConfigureAwait 等)を段階的に warning / error 化することで機械検知レイヤの実効性を高めたい
@@ -249,10 +228,54 @@
       - `RCS1049` 冗長な boolean 比較の簡略化
       - `RCS1163` 未使用パラメータ検出
       - `RCS1170` read-only auto-property 化
+    - **2026-05-16 第 2 弾(本 TODO 進行、chore/todo-batch-cleanup PR)**: フォーマット / 冗長性除去系 3 ルールを `warning` 化、いずれも既存コード違反 0 件で導入(dotnet build 0 警告 / 0 エラー確認済):
+      - `RCS1036` 連続する空行を削除(冗長な空行)
+      - `RCS1037` 末尾空白の削除(`.editorconfig` `trim_trailing_whitespace = true` と整合)
+      - `RCS1097` 冗長な `ToString()` 呼び出しの削除
     - **第 1 弾から除外したルール(後続検討)**:
       - `RCS1213`(未使用 private メンバー):`OnEnable` / `OnValidate` / `Awake` / `Start` / `Update` 等の **Unity ライフサイクルメソッド**を Roslynator が認識せず false positive(`ScriptableObjectCardCatalog.cs:56,63` の 2 件で検証済)。Unity ライフサイクルメソッド名単位の suppression(`[UsedImplicitly]` 属性付与 / 個別 `#pragma warning disable` / EditorConfig section override 等)を別 PR で評価する
 
 ## 完了済み
+
+- [x] **ADR-0007 / ADR-0009 / ADR-0011 に「M2 サブセット先行スコープは M2-PR5 で達成、Phase 2 完結時点で M2 ステータスを完結扱い」Note 追記** `priority: low`
+  - **Why**: M5-PR8 で CLAUDE.md §11 M2 ステータスを「進行中」→「完結」に清算したが、関連 ADR 側からの逆リンク注記は M5-PR8 スコープ外として残した(影響範囲を絞るため)。Phase 3 着手前に整合性を取りたい
+  - **Done when** (all met):
+    - ✓ ADR-0007 / ADR-0009 / ADR-0011 の冒頭(タイトル直下)に「M2 / M3 完結の帰結」Note を追記し、ADR-0005 §7 / ADR-0016 §11 M5-PR8 完成記録 / `CLAUDE.md` §11 へのリンクを集約
+    - ✓ ADR-0007 は §4 サブセット先行スコープ、ADR-0009 は M2-PR3〜PR5(SDP / DDP)+ M3-PR1〜PR6(勝利条件)、ADR-0011 は 6 機構の M3-PR2〜PR6 完成にそれぞれ言及
+  - **Related**: [ADR-0007](adr/0007-m2-detail-card-effects.md)、[ADR-0009](adr/0009-m2-m3-dp-and-victory-conditions.md)、[ADR-0011](adr/0011-m3-dream-card-and-game-mechanics-expansion.md)、[ADR-0016 §11 M5-PR8 完成記録](adr/0016-m5-bootstrap-presentation.md)、本完了 PR(chore/todo-batch-cleanup、2026-05-16)
+
+- [x] **`CardIdJsonConverter` の負値 instance / 不正 schema 経路に Persistence テストを追加** `priority: low`
+  - **Why**: ADR-0018 / code-reviewer 提案 6 反映。現状 `int.TryParse(instancePart)` が成功して `CardId.Of(typeId, -5)` が `ArgumentOutOfRangeException` を投げた場合、`catch (ArgumentException)` で `JsonSerializationException` に wrap されるが、本経路のテストが存在しない(実行時にのみ確認可能)。schema 違反系テストを Infrastructure.Tests/Persistence に追加して、診断性とリグレッション防止を担保したい
+  - **Done when** (all met):
+    - ✓ `Assets/_Project/Scripts/Tests/Infrastructure.Tests/Persistence/CardIdJsonConverterTests.cs` 新設(7 テストメソッド / TestCase 含め 14 経路を網羅:round-trip 3 件 + null token / 空・空白 3 件 / `#` 欠如 / 非 int 3 件 / 負値 2 件 / typeId 空)
+    - ✓ 関連 EARS を新規 spec ファイル `docs/specs/infrastructure/persistence/card-id-json-converter.md` に追加(INF-088 Ubiquitous + INF-089 normal + INF-090〜094 Abnormal 計 7 件)
+    - ✓ traceability チェック通過(仕様 ID 588 件 / テスト Property ID 492 件、INF-088〜094 すべて検出)
+    - ✓ dotnet build 0 警告 / 0 エラー確認済
+  - **Related**: [ADR-0018](adr/0018-cardtypeid-cardid-instance-separation.md) §8、`Assets/_Project/Scripts/Infrastructure/Persistence/Converters/CardIdJsonConverter.cs`、本完了 PR(chore/todo-batch-cleanup、2026-05-16)
+
+- [x] **EARS / Gherkin 全体の「ラウンド」→「ターン」用語統一(機械的リネーム)** `priority: low`
+  - **Why**: ADR-0009 で「ターン = 大単位、フェーズ = 中単位」を確定したが、EARS / .feature 内の「ラウンド」「N=2 サブターン」等の旧用語が一部残っている(M2-PR4 PR では実装名 `RoundNumber` を維持する関係で部分置換に留めた、ADR-0009 §6.5)。仕様文書全体を新用語に統一する機械的リファクタ
+  - **Done when** (本 PR 範囲):
+    - ✓ `docs/specs/` 配下の **日本語カナ表記**「ラウンド」/「サブターン」を「ターン」/「フェーズ」に機械的置換(`integration.feature` / `integration.md` / `bed-damage.md` / `clock.feature` / `clock.md` / `end-turn.md` / `victory-conditions.feature`)
+    - ✓ `victory-conditions.feature` 内の英語表記 `Round 21` / `Round 22` / `Round=1` / `Round=17` / `newRound=21` も「ターン X」に置換(code-reviewer W-1 反映)
+    - ✓ 実装識別子参照(`Clock.RoundNumber` / `MaxRoundNumber` / `NightEndRound` 等)は維持(改名は別 TODO「`Clock.RoundNumber` / `CurrentRound` を `TurnNumber` / `CurrentTurn` に改名」で扱う)
+    - ✓ `turn-state.md:66` の旧称「サブターン番号」「ターン(=ラウンド)」は ADR-0009 §用語規約による訂正である旨を明示(旧称参照を意図的に保持)
+    - ✓ `victory-conditions.feature:8` の「ターン = ラウンド」用語規約説明は「ターン = 大単位 30 分」に書き換え(旧用語マッピング廃止)
+    - ✓ traceability チェック通過(EARS ID 維持)
+  - **本 PR スコープ外として残置(次 PR 候補、TODO 化)**:
+    - ⬜ `.md` ファイル内の英語表記 `Round X` / `夜の Round` / `朝の Round`(概念表記、`victory-conditions.md` / `00-dream.md` / `00-dream.feature` / `cup-of-threat.feature` / `cup-of-threat.md` / `counter-counter.md` / `bed-damage.md` / `dp-mechanism-ddp.md` / `effects/early-win-trigger.md` / `effects/time-of-day-branch.md` / `effects/time-of-day-branch.feature` / `presentation/games/drowzzz/presenter-skeleton.md` 等)。テストメソッド名(`Given_Round21最終フェーズで...` 等)と連動するため別 PR で実装側のテスト名と一緒に書き換えるのが筋
+    - ⬜ EARS 英語パート(DZ-190 / DZ-191 等の `Round 21` / `Round 22` 表記)は「日本語用語規約」とは別文脈(英語の概念表記)で、書き換えるなら全 EARS を統一的に英語側でも整理する別 ADR / 別 PR で扱う
+  - **Related**: [ADR-0009 §6.5 / §「用語規約」](adr/0009-m2-m3-dp-and-victory-conditions.md)、本完了 PR(chore/todo-batch-cleanup、2026-05-16)、code-reviewer W-1 反映(2026-05-16)
+  - **Notes**: 実装名リネーム(`Clock.RoundNumber` → `TurnNumber`)は別 TODO で継続追跡(N>2 拡張と同タイミングで実施するのが筋)
+
+- [x] **Presenter テストのターン進行セットアップを共通ヘルパーへ切り出す** `priority: low`
+  - **Why**: M5-PR4 / M5-PR5 で追加した `DrowZzzGamePresenterTests` の PRES-019(Auto-save)等は Given セクションで `StartGameUseCase.Execute` → `FireDrawClicked` → `FirePlayClicked(手札[0])` と複数操作を経て `WaitingForEndTurn` に到達している。これは Presenter の「Handler → AutoSave パイプライン」検証範囲を超えて Application 層の状態遷移知識(WaitingForDraw → Draw → WaitingForPlay → Play → WaitingForEndTurn)をテストが直接使っており、Given ステップ自体が壊れるリスクがあった(M5-PR5 テストハング修正レビュー code-reviewer T-1)
+  - **Done when** (all met):
+    - ✓ `DrowZzzGamePresenterTests` に共通 `Boot(ctx)` / `AdvanceToWaitingForEndTurn(ctx)` private static helper を追加(Application 層の状態遷移知識を 1 箇所に集約)
+    - ✓ PRES-019 / PRES-020 / PRES-021 の Given セクションを `Boot(ctx)` + 必要に応じ `AdvanceToWaitingForEndTurn(ctx)` 呼び出しに置換
+    - ✓ dotnet build 0 警告 / 0 エラー確認済(Unity Test Runner 緑確認はオーナー側)
+  - **Related**: M5-PR5 テストハング修正レビュー(code-reviewer T-1)、`Assets/_Project/Scripts/Tests/Presentation.Tests/Games/DrowZzz/DrowZzzGamePresenterTests.cs`(PRES-019 等)、[ADR-0016 §10](adr/0016-m5-bootstrap-presentation.md)、本完了 PR(chore/todo-batch-cleanup、2026-05-16)
+  - **Notes**: 他テスト(PRES-016 / 017 / 018 / 031 / 032 等)への `Boot(ctx)` 適用は本 PR スコープ外、将来同 fixture で追加テストが増えた時点で都度適用予定
 
 - [x] **NRT (Nullable Reference Types) 有効化を検討する** `priority: low`
   - **Why**: PR-1 (CardData) で `CardData?` / `object?` のアノテーション 7 箇所に対し CS8632 警告が発生し、既存パターン(NRT 無効)に揃えて `?` を削除した経緯がある。Domain 全体で null 安全な API を表現したい場合、NRT 有効化が筋。判断は設計判断レベルになる可能性あり(ADR-0004 候補)

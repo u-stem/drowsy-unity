@@ -35,7 +35,7 @@ ADR-0006 §2.4 / §M1-PR6 の決定に基づく。`EndTurnAction` は `WaitingFo
 - **`TurnState.Next(playerCount)` の利用**: Phase 1 で実装済の `TurnState.Next(int playerCount)` をそのまま使う(`TurnNumber + 1`、`CurrentPlayerIndex = (current + 1) % playerCount`)。`playerCount` には `session.GameState.Players.Count` を渡す。
 - **Field / Hand / Deck / Discard 不変**: `EndTurnAction.Apply` は `Turn` フィールドのみ更新。`gameState with { Turn = newTurn }` で他フィールドを暗黙保持する(record の with 式)。
 - **PhaseState 戻し**: 次プレイヤーの最初のフェーズは `WaitingForDraw` で固定(M1 範囲では「省略」「特殊な初手」等の分岐は未実装、ADR-0006 §6 で M1 範囲外と確定)。
-- **ターン上限判定なし**: 全体 20 ラウンド (M3 で実装) のチェックは本 PR では行わない。`TurnNumber` は単調増加し続ける。M3 の `IsTerminated(session)` 実装で `TurnNumber > MaxRoundNumber × Players.Count` を判定する設計(ADR-0006 §7)。
+- **ターン上限判定なし**: 全体 20 ターン (M3 で実装) のチェックは本 PR では行わない。`TurnNumber` は単調増加し続ける。M3 の `IsTerminated(session)` 実装で `TurnNumber > MaxRoundNumber × Players.Count` を判定する設計(ADR-0006 §7)。`MaxRoundNumber` 実装名は維持(ADR-0009 §6.5、用語規約は「ターン」だが実装名リネームは別 PR で追随予定)。
 
 ## 関連
 
@@ -45,7 +45,7 @@ ADR-0006 §2.4 / §M1-PR6 の決定に基づく。`EndTurnAction` は `WaitingFo
   - `Assets/_Project/Scripts/Tests/Application.Tests/Games/DrowZzz/DrowZzzRuleTests.cs`(DZ-067〜076 を追加、既存 DZ-012/013 のテスト対象を `EndTurnAction` から `UnknownDrowZzzAction` ダミー派生型に更新して `_` ケースをカバー)
 - ADR: [`docs/adr/0006-m1-detail-application-interfaces.md`](../../../adr/0006-m1-detail-application-interfaces.md) §2.4 / §M1-PR6 / §7
 - 関連: [`skeleton.md`](skeleton.md)、[`setup.md`](setup.md)、[`draw.md`](draw.md)、[`play.md`](play.md)、[`apply-action-usecase.md`](../application/apply-action-usecase.md)
-- 後続: M1-PR7(統合テスト N=2 数ラウンド)、M3 着手 PR (`MaxRoundNumber` + ゲーム終了判定)
+- 後続: M1-PR7(統合テスト N=2 数ターン)、M3 着手 PR (`MaxRoundNumber` + ゲーム終了判定)
 
 ## トレーサビリティ
 
