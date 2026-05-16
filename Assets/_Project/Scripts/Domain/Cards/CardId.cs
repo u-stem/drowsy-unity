@@ -34,15 +34,27 @@ namespace Drowsy.Domain.Cards
         /// <summary>同一種別内でのインスタンス番号(0 以上)。</summary>
         public int Instance { get; }
 
+        // post-Phase2 アルゴリズム最適化レビュー Top-3 反映:旧実装は computed property
+        // `Value => $"{TypeId.Value}#{Instance}"` で参照毎に string を alloc していた。
+        // ctor で 1 回計算して private readonly field にキャッシュする方式に変更し、
+        // 以降の Value 参照を alloc ゼロにする。
+        //
+        // 重要:record 自動生成の Equals / GetHashCode はパラメータ + auto-property のみを対象とする。
+        // `_value` を明示 backing field + expression-bodied property にすることで等価判定に含めず、
+        // CardId の等価性は引き続き (TypeId, Instance) の組のみで決定する(意味的にも _value は
+        // 派生値であり、等価判定への寄与は冗長)。
+        private readonly string _value;
+
         /// <summary>
-        /// 永続化 / ログ / 表示用の文字列表現(<c>"$"{TypeId.Value}#{Instance}""</c> 形式)。
+        /// 永続化 / ログ / 表示用の文字列表現(<c>"$"{TypeId.Value}#{Instance}""</c> 形式、ctor で 1 回計算済)。
         /// </summary>
-        public string Value => $"{TypeId.Value}#{Instance}";
+        public string Value => _value;
 
         private CardId(CardTypeId typeId, int instance)
         {
             TypeId = typeId;
             Instance = instance;
+            _value = $"{typeId.Value}#{instance}";
         }
 
         /// <summary>
