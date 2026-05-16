@@ -61,6 +61,13 @@ jobs:
           targetPlatform: WebGL
           buildName: drowzzz-webgl
           buildsPath: build  # "build/<targetPlatform>/" 配下に出力(明示指定で将来の挙動変更に追随、code-reviewer S-6)
+          # GameCI v4 のデフォルト `versioning: Semantic` は git tag ベースで version 文字列を生成しようとし、
+          # NuGetForUnity が展開する Analyzer DLL(`Assets/Packages/{Microsoft.CodeAnalysis.NetAnalyzers,
+          # Microsoft.Unity.Analyzers, Roslynator.Analyzers}/`)を checkout 後に修正済扱いと判定して
+          # 「Branch is dirty. Refusing to base semantic version on uncommitted changes」で中断する事例がある。
+          # CI artifact upload が主目的で実行時 version 文字列に依存しないため、`None` で dirty チェックを無効化する
+          # (実機 Build 検証 + Status check の役割は維持、PR #99 初回 Build 失敗で発覚 2026-05-16)。
+          versioning: None
 
       # Build artifact をアップロード(GitHub Actions UI からダウンロード可能、90 日保管)
       - name: Upload Build artifact
