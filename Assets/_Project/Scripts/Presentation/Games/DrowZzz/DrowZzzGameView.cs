@@ -1,5 +1,5 @@
 using System;
-using System.Linq;
+using System.Text;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VContainer;
@@ -65,6 +65,14 @@ namespace Drowsy.Presentation.Games.DrowZzz
 
         // 設定 UI(Slider / Dropdown)と _userSettings の双方向バインダ。Start() で生成、OnDestroy() で Dispose。
         private UserSettingsBinder _settingsBinder;
+
+        // post-Phase2 アルゴリズム最適化レビュー Top-4 反映:
+        // Render は R3 OnNext で毎セッション更新ごとに呼ばれるホットパス。旧実装は
+        // `string.Join(", ", hand.Cards.Select(c => c.Value))` で Select デリゲート + Enumerator +
+        // 中間配列 + 最終文字列を毎 Render で alloc していた。StringBuilder を field 再利用 + for
+        // ループに置換し、per-Render の LINQ alloc を排除する(StringBuilder の内部配列は容量超過時
+        // のみ再 alloc、手札 ~10 枚規模では初回確保以降は alloc ゼロ)。
+        private readonly StringBuilder _handTextBuilder = new(64);
 
         /// <inheritdoc />
         public event Action OnDrawClicked;
@@ -231,9 +239,26 @@ namespace Drowsy.Presentation.Games.DrowZzz
             _pointsLabel.text =
                 $"FDP {session.FirstDrowsyPoints[currentId]} / DDP {session.DrawDrowsyPoints[currentId]} / " +
                 $"SDP {session.SecondDrowsyPoints[currentId]} / Total {session.TotalPoints(currentId)}";
-            _handLabel.text = hand.IsEmpty
-                ? "Hand: (empty)"
-                : $"Hand: {string.Join(", ", hand.Cards.Select(c => c.Value))}";
+            if (hand.IsEmpty)
+            {
+                _handLabel.text = "Hand: (empty)";
+            }
+            else
+            {
+                // Top-4 最適化:StringBuilder 再利用 + for ループで LINQ + string.Join alloc を排除
+                _handTextBuilder.Clear();
+                _handTextBuilder.Append("Hand: ");
+                var cards = hand.Cards;
+                for (int i = 0; i < cards.Count; i++)
+                {
+                    if (i > 0)
+                    {
+                        _handTextBuilder.Append(", ");
+                    }
+                    _handTextBuilder.Append(cards[i].Value);
+                }
+                _handLabel.text = _handTextBuilder.ToString();
+            }
         }
 
         /// <inheritdoc />
