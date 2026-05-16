@@ -175,23 +175,31 @@ public void Given_同じseed_When_NextInt_Then_同じ系列を生成() { ... }
 | EARS の必須要件(マーカーなし)でテスト未対応 | ERROR | 対応テストを追加 |
 | EARS の `[Ubiquitous]` / `[Optional]` 要件でテスト未対応 | INFO(無視可) | 構造的性質として許容、必要なら reflection テスト追加 |
 
-### 4.5 ID 体系図(Phase 0 時点)
+### 4.5 ID 体系図(Phase 2 完結時点)
 
-| Module | Prefix | 範囲(Phase 0) |
-| ---- | ---- | ---- |
-| Cards.CardId | CARD | CARD-001〜008 |
-| Cards.Pile | PILE | PILE-001〜013 |
-| Random | RND | RND-001〜005 |
-| Configuration (IGameConfig) | CFG | CFG-001〜003 |
-| (将来) Players | PLY | — |
-| (将来) State | ST | — |
-| (将来) Action | ACT | — |
-| (将来) Rule | RULE | — |
-| (将来) Token | TKN | — |
-| Infrastructure (`ScriptableObjectCardCatalog` / `DrowZzzGameConfigAsset` / Persistence 等)| INF | M4 で採番開始(ADR-0012)|
-| UserSettings(`IUserSettings` / `PlayerPrefsUserSettings`)| USR | M4-PR6 で採番開始(ADR-0012)|
+Phase 2 完結時点(M5-PR8 = 2026-05-16)で実稼働している EARS prefix と概観:
 
-新規モジュール追加時は本表を更新する。`INF-` / `USR-` の有効化は ADR-0012 起票 PR で実施(M3-PR6 起票 PR code-reviewer W-5 反映 2026-05-14)。
+| Module | Prefix | 範囲(現状) | 配置 |
+| ---- | ---- | ---- | ---- |
+| Cards.CardId | CARD | CARD-001〜009 | `docs/specs/domain/cards/card-id.md` |
+| Cards.CardTypeId | CTYPE | CTYPE-001〜005(ADR-0018) | `docs/specs/domain/cards/card-type-id.md` |
+| Cards.CardData | CDATA | CDATA-001〜017 | `docs/specs/domain/cards/card-data.md` |
+| Cards.Hand | HAND | HAND-001〜022 | `docs/specs/domain/cards/hand.md` |
+| Cards.Pile | PILE | PILE-001〜017 | `docs/specs/domain/cards/pile.md` |
+| Players.PlayerId / PlayerState | PLAYER | PLAYER-001〜018 | `docs/specs/domain/players/` |
+| Game.GameState / TurnState / GameOutcome | GS / TURN | GS-001〜105 / TURN-001〜012 | `docs/specs/domain/game/` |
+| Configuration (`IGameConfig`) | CFG | CFG-001〜103 | `docs/specs/domain/configuration/game-config.md` 等 |
+| UserSettings(`IUserSettings` / `PlayerPrefsUserSettings`)| USR | USR-001〜027(M4-PR6) | `docs/specs/infrastructure/settings/` |
+| Random | RND | RND-001〜005 | `docs/specs/domain/random/` |
+| Application interface(`IGameRule` / `IGameAction` / `ICardCatalog` / `InMemoryCardCatalog` / persistence)| APP | APP-001〜056 | `docs/specs/application/` |
+| DrowZzz ゲーム本体(rule / effects / clock / DP / influences / association / abandon / counter / dream 等)| DZ | DZ-001〜245 | `docs/specs/games/drowzzz/` |
+| DrowZzz PlayerRoster wrapper(ADR-0017) | ROSTER | ROSTER-001〜004 | `docs/specs/application/games/drowzzz/player-roster.md` |
+| Infrastructure(`ScriptableObjectCardCatalog` / Effect SO 群 / Persistence / Editor)| INF | INF-001〜133(ADR-0012) | `docs/specs/infrastructure/` |
+| Presentation(Presenter / View / Binder) | PRES | PRES-001〜033 | `docs/specs/presentation/` |
+
+新規モジュール追加時は本表を更新する。範囲は欠番を含む可能性あり(spec 起票時点で予約され実装で採番されなかった ID 等)。
+
+新規 prefix を追加した場合は `scripts/check-traceability.sh` の検出パターンに反映する必要がある(現状は `[A-Z]+-[0-9]+` で全 prefix を自動拾い、ホワイトリスト式ではない)。
 
 ## 5. TDD ループ
 

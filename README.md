@@ -58,10 +58,11 @@ Domain (純粋ロジック、UnityEngine 非依存)
 ```
 Assets/_Project/Scripts/
   Domain/
-    Cards/          CardId / CardData / Hand / Pile
-    Configuration/  IGameConfig (FdpPool 追加済、M3 で MaxRoundNumber 追加予定)
+    Cards/          CardTypeId / CardId(複合型、ADR-0018) / CardData / Hand / Pile
+    Configuration/  IGameConfig(L3) / IUserSettings(L4、M4-PR6) / LanguageCodes / UserSettingsDefaults
+                    ※ MaxRoundNumber は DrowZzzClockConstants 側に定義(ADR-0010 §8)
     Players/        PlayerId / PlayerState
-    Game/           GameState / TurnState
+    Game/           GameState / TurnState / GameOutcome
     Compat/         IsExternalInit (C# 9 init setter 用 polyfill、ADR-0004)
     Random/         IRandomSource / XorShiftRandom
     Drowsy.Domain.asmdef  (noEngineReferences: true)
@@ -126,7 +127,7 @@ CLAUDE.md / .gitattributes / .gitignore
 | [`lefthook`](https://github.com/evilmartians/lefthook) | 2.x | Git pre-commit / commit-msg フック |
 | [`gitleaks`](https://github.com/gitleaks/gitleaks) | 8.x | 機密検出 |
 | [`gh`](https://cli.github.com/) | 任意 | PR 作成 / 確認(GitHub CLI) |
-| [`uv`](https://github.com/astral-sh/uv) | 任意 | unity-mcp 連携時の Python 実行(Phase 2 以降想定) |
+| [`uv`](https://github.com/astral-sh/uv) | 任意 | unity-mcp 連携時の Python 実行(将来導入時) |
 | [`chezmoi`](https://www.chezmoi.io/) | 任意 | グローバル dotfiles 管理 |
 
 ## セットアップ手順
@@ -153,11 +154,11 @@ git config --global user.email "<numericId>+<your-handle>@users.noreply.github.c
 #    (未 Installed の場合は `Restore Packages` ボタンで packages.config から展開)
 
 # 6. テスト実行(Window > General > Test Runner > EditMode > Run All)
-#    → 334 ケース全緑(Domain 205 / Application 129)
+#    → 870+ ケース全緑(Phase 2 完結時点、内訳は Domain / Application / Infrastructure / Presentation)
 
 # 7. (任意) カバレッジ確認(Window > Analysis > Code Coverage)
 #    Enable Code Coverage 有効化 → Editor 再起動 → Generate from Tests
-#    → Drowsy.Domain + Drowsy.Application 共に C0 100%(M1 完成時点)
+#    → Domain 100% を維持、Application / Infrastructure / Presentation も計測対象(目標は CLAUDE.md §6 参照)
 ```
 
 ## 開発フロー
@@ -181,7 +182,7 @@ git config --global user.email "<numericId>+<your-handle>@users.noreply.github.c
 | ファイル保存時 | エディタ依存 | `.editorconfig` |
 | `git add` → pre-commit | commit 直前 | lefthook 6 commands |
 | `git commit` | commit 直前 | lefthook commit-msg(Conventional Commits) |
-| `git push` | — | (Phase 6 で CI 整備予定) |
+| `git push` | — | GitHub Actions / GameCI 本格整備は未着手(`docs/todo.md` で追跡) |
 | PR マージ前 | branch protection | GitHub Rulesets(linear history / PR 必須) |
 
 pre-commit の内訳:
@@ -202,7 +203,7 @@ pre-commit の内訳:
 - **仕様駆動(SBE)**: EARS Markdown + Gherkin `.feature`(`docs/specs/` 配下)
 - **TDD**: Red → Green → Refactor。バグ修正は再現テストから
 - **Category 必須**: Size(Small/Medium/Large)+ Type(Normal/SemiNormal/Abnormal/SuperNormal)
-- **カバレッジ目標**: Domain **C0 95%+**(現状 **100%**)、Application **80%+**(M1 完成時点 **100%**)、Infrastructure 60%、Presentation 計測対象外
+- **カバレッジ目標**: Domain **C0 95%+**(Phase 2 完結時点 **100%** 維持)、Application **80%+**、Infrastructure **60%+**、Presentation は対象だが MonoBehaviour 中心のため手動 QA で補完
 - **トレーサビリティ**: 各 EARS 要件に `[<MODULE>-<NUMBER>]` ID、テストに `[Property("Requirement", "<ID>")]` で機械検証
 
 ## 定数管理
@@ -213,7 +214,7 @@ pre-commit の内訳:
 | ---- | ---- | ---- |
 | L1 / L2 | 数学的・ドメイン上の不変量 | Domain `<Module>Constants` の `const` |
 | L3 | ゲームバランス調整可能値 | `IGameConfig` interface (Domain) + ScriptableObject (Infrastructure) |
-| L4 | ユーザー設定 | `IUserSettings` + PlayerPrefs(Phase 2 以降) |
+| L4 | ユーザー設定 | `IUserSettings` + `PlayerPrefsUserSettings`(M4-PR6 で実装済) |
 | L5 | 環境固有値 | Unity ビルド設定 / `csc.rsp` define シンボル |
 
 マジックナンバー禁止。CA1802 を warning 化済。
