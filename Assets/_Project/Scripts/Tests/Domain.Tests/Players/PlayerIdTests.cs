@@ -5,7 +5,7 @@ using Drowsy.Domain.Players;
 namespace Drowsy.Domain.Tests.Players
 {
     [TestFixture]
-    public class PlayerIdTests
+    public sealed class PlayerIdTests
     {
         // 普遍要件 PLAYER-001 / PLAYER-002 は sealed record で構造的に保証
 

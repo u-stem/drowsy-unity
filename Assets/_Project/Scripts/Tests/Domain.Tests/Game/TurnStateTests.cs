@@ -5,7 +5,7 @@ using Drowsy.Domain.Game;
 namespace Drowsy.Domain.Tests.Game
 {
     [TestFixture]
-    public class TurnStateTests
+    public sealed class TurnStateTests
     {
         // 普遍要件 TURN-001 / TURN-002 は record + init-only で構造保証
 

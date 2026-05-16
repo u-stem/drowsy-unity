@@ -10,7 +10,7 @@ namespace Drowsy.Domain.Tests.Cards
     /// テスト集合に全面差し替え(ADR-0018 §2)。
     /// </summary>
     [TestFixture]
-    public class CardIdTests
+    public sealed class CardIdTests
     {
         // ===== CARD-004: 有効な (typeId, instance) で Of を呼ぶと TypeId / Instance / Value が保持される =====
 

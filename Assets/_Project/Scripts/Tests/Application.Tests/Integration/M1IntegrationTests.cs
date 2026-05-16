@@ -16,7 +16,7 @@ namespace Drowsy.Application.Tests.Integration
     /// で N=2 数ラウンド回し、組み合わせの正しさと累積の正しさを検証する(ADR-0006 §M1-PR7、ADR-0005 §M1 Definition of Done)。
     /// </summary>
     [TestFixture]
-    public class M1IntegrationTests
+    public sealed class M1IntegrationTests
     {
         // ===== ヘルパー =====
 

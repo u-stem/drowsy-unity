@@ -10,7 +10,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
     /// 用語規約 (ADR-0009 §「用語規約」) に従い、コメント内では「ターン (30 分単位)」と表現する。
     /// </summary>
     [TestFixture]
-    public class DrowZzzClockTests
+    public sealed class DrowZzzClockTests
     {
         // ===== DZ-090 / DZ-094: Hour 計算式の境界値カバレッジ =====
         // 式: Hour = (21 + (RoundNumber - 1) / 2) % 24

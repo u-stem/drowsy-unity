@@ -7,7 +7,7 @@ using Drowsy.Domain.Random;
 namespace Drowsy.Domain.Tests.Cards
 {
     [TestFixture]
-    public class PileTests
+    public sealed class PileTests
     {
         // テストヘルパー: 短い記法で CardId を作る
         private static CardId Card(string value) => CardId.Of(CardTypeId.Of(value), 0);

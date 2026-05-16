@@ -4,7 +4,7 @@ using Drowsy.Application;
 namespace Drowsy.Application.Tests
 {
     [TestFixture]
-    public class IGameActionTests
+    public sealed class IGameActionTests
     {
         // ダミー record。「record が IGameAction を実装できる」契約 (APP-002) の検証用。
         private sealed record DummyAction : IGameAction;

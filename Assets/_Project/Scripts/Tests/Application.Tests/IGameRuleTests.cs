@@ -6,7 +6,7 @@ using Drowsy.Domain.Players;
 namespace Drowsy.Application.Tests
 {
     [TestFixture]
-    public class IGameRuleTests
+    public sealed class IGameRuleTests
     {
         // ダミー Action / Session / Rule。
         // IGameRule<TAction, TSession> の最小契約(APP-005)+ M3 拡張(APP-041 / APP-042)を検証するための骨格実装。

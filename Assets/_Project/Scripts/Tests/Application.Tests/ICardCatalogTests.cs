@@ -7,7 +7,7 @@ using Drowsy.Domain.Cards;
 namespace Drowsy.Application.Tests
 {
     [TestFixture]
-    public class ICardCatalogTests
+    public sealed class ICardCatalogTests
     {
         // ICardCatalog<TEffect> の契約検証用ダミー実装 (M2-PR1 で ジェネリック化、ADR-0007 §2)。
         // TEffect = IEffect を採用 (DrowZzz 専用)。

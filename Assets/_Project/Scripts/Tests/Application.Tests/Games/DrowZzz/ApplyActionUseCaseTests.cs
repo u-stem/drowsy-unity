@@ -13,7 +13,7 @@ using static Drowsy.Application.Tests.Stubs.SessionFactory;
 namespace Drowsy.Application.Tests.Games.DrowZzz
 {
     [TestFixture]
-    public class ApplyActionUseCaseTests
+    public sealed class ApplyActionUseCaseTests
     {
         // ヘルパー(`NewSession` / `NewRule` / `NewDeck`)は M1-PR6 reviewer 指摘 P-2 起点の
         // `docs/todo.md`「テストヘルパー抽出」TODO で 2026-05-13 に `Drowsy.Application.Tests.Stubs.SessionFactory`

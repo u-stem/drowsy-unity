@@ -8,7 +8,7 @@ using Drowsy.Domain.Cards;
 namespace Drowsy.Application.Tests.Catalog
 {
     [TestFixture]
-    public class InMemoryCardCatalogTests
+    public sealed class InMemoryCardCatalogTests
     {
         // ===== ヘルパー =====
 

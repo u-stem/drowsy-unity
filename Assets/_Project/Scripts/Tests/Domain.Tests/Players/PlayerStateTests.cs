@@ -6,7 +6,7 @@ using Drowsy.Domain.Players;
 namespace Drowsy.Domain.Tests.Players
 {
     [TestFixture]
-    public class PlayerStateTests
+    public sealed class PlayerStateTests
     {
         // 普遍要件 PLAYER-009 / PLAYER-010 は record class + init-only プロパティで構造的に保証
 

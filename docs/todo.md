@@ -215,6 +215,15 @@
     - **2026-05-16 第 2 弾(本 TODO 進行、chore/todo-batch-cleanup PR)**: `EarlyWinTriggerEffectTests` / `AdjustSdpEffectTests` の 2 fixture を統合。`SessionFactory.NewSession` に `fdp` / `sdp` パラメータ + `Dp(p1, p2)` builder を新設し、`fdp: Dp(p1: 100)` / `sdp: Dp(p1: 5)` のような明示渡しで FDP / SDP 制御を可能化。dotnet build 0 警告 / 0 エラー確認済(Unity Test Runner 緑確認はオーナー側)
     - **残対象**: `CounterActionTests` / `AssociateActionTests`(`NewSession` + `NewSessionWithBedDamage` の 2 件)/ `AbandonActionTests` / `CupOfThreatCardTests`(`NewSessionWithCardInHand`)/ `GreenInvasionCardTests`(`NewSessionWithCardInHand`)/ `DreamCardTests`(`NewSessionWithDreamInHand` + `NewSessionWithoutDream`)/ `CounterCounterTests`(`NewSessionAfterCounter`)/ Effects 配下の残 9 件(`ApplyInfluenceEffect` / `AssociatableMarkerEffect` / `ChoiceEffect` / `DamageBedEffect` / `DrawCardEffect` / `KeywordedEffect` / `RemoveInfluenceEffect` / `RequiresMinimumTotalPointsMarkerEffect` / `TimeOfDayBranchEffect` / `UsageRestrictionMarkerEffect`)。これらは各 fixture 固有の引数(Hand に特定カード / 特定 phase / 特定 BedDamage 等)を持つため、 SessionFactory.NewSession の引数拡張または fixture 個別の事後セットアップ helper として段階的に対応
 
+- [ ] **`ArgumentNullException` の `ParamName` 検証強化(init setter 例外メッセージ品質と連動)** `priority: low`
+  - **Why**: post-Phase2 全体レビュー(2026-05-16)の Tests W-1 で「80 件超の `ArgumentNullException` テストが `ParamName` を検証していない → コンストラクタ引数順を入れ替えてもテストが通る」と指摘。ただし `DrowZzzGameSession` 等が init setter 経由で例外を投げる設計で `ParamName` が常に `"value"` 固定のため、`ParamName` assert を追加しても識別力が出ない。Domain W-5(`init => _x = value ?? throw new ArgumentNullException(nameof(value))` → `nameof(X)` に修正)を先行させてから Tests 側を強化する必要がある
+  - **Done when**:
+    - ⬜ Domain / Application の `record` init setter で `nameof(value)` を `nameof(Property)` に書き換える(`DrowZzzGameSession` 全プロパティ + `GameState` + `PlayerState` 等)。値が変わるとシリアライズ後の挙動に影響しないか確認
+    - ⬜ 上記反映後、`Assert.Throws<ArgumentNullException>(...)` 80 件超を `var ex = Assert.Throws<...>(...); Assert.That(ex!.ParamName, Is.EqualTo("<expected>"))` 形式へ段階的に拡張(1 PR あたり 1 fixture)
+    - ⬜ 全 fixture 拡張完了後、本 TODO を完了済みへ移動
+  - **Related**: post-Phase2 レビュー Tests W-1 / Domain W-5、`DrowZzzGameSessionTests.cs`(26 件)/ `PlayerStateTests.cs` / `HandTests.cs` 等、本 TODO 起票 PR(chore: post-Phase2 cleanup G-7)
+  - **Notes**: `WinnerOutcome` (`Assets/_Project/Scripts/Domain/Game/GameOutcome.cs`) 等で「フィールド初期化子は `nameof(Winner)` / init setter は `nameof(value)`」と非対称になっており、統一の方向性も含めて 1 PR で整理する。本 TODO に着手する PR が複数 init setter を一括で書き換える形を想定
+
 - [ ] **Roslynator RCS ルールの段階的有効化(baseline silent → 個別 warning 化)** `priority: low`
   - **Why**: [ADR-0013](adr/0013-roslynator-adoption.md) で `Roslynator.Analyzers` 4.15.0 を導入したが、既存コードへの影響を制御するため baseline `dotnet_analyzer_diagnostic.category-roslynator.severity = silent` で開始した。Roslynator は 200+ ルールを提供しており、コードシンプリフィケーション / リファクタリング系の主要ルール(例: RCS1003 If statement should not be on a single line、RCS1018 Add accessibility modifiers、RCS1090 Add call to ConfigureAwait 等)を段階的に warning / error 化することで機械検知レイヤの実効性を高めたい
   - **Done when**:
