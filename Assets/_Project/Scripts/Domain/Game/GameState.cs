@@ -1,7 +1,17 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using Drowsy.Domain.Cards;
 using Drowsy.Domain.Players;
+
+// post-Phase2 アルゴリズム最適化レビュー Top-2 反映:
+// Drowsy.Application が GameState.WithPlayersUnchecked / internal ctor を呼べるよう InternalsVisibleTo を許可する。
+// 衛生的には Properties/AssemblyInfo.cs に分離するのが理想だが、Unity Editor の Auto-refresh が必要なため
+// 暫定措置として本 namespace ファイル内に同居させる(C# 文法上 assembly attribute は任意の .cs ファイルに置ける)。
+// 将来 Properties/AssemblyInfo.cs への移行は docs/todo.md で追跡。
+[assembly: InternalsVisibleTo("Drowsy.Application")]
+[assembly: InternalsVisibleTo("Drowsy.Domain.Tests")]
+[assembly: InternalsVisibleTo("Drowsy.Application.Tests")]
 
 namespace Drowsy.Domain.Game
 {
@@ -115,6 +125,65 @@ namespace Drowsy.Domain.Game
             Discard = discard;
             Field = field;
             Turn = turn;
+        }
+
+        /// <summary>
+        /// 既に検証済みの <paramref name="alreadyValidatedPlayers"/> 配列を防御コピー / 重複検証なしで
+        /// 受け取り、現 <see cref="GameState"/> から Players のみ差し替えた新インスタンスを返す。
+        /// </summary>
+        /// <remarks>
+        /// <b>post-Phase2 アルゴリズム最適化レビュー Top-2 反映</b>:
+        /// 旧経路 <c>gameState with { Players = newPlayers }</c> は init setter が
+        /// <see cref="ValidateAndCopyPlayers"/> を再走させ、呼び出し元が既に確保した <c>PlayerState[N]</c>
+        /// と同サイズの配列を **もう一度** alloc + <see cref="HashSet{T}"/> alloc + 重複検証を行っていた。
+        /// <see cref="DrowZzzRule"/> の Apply 系で「現プレイヤー 1 人だけ差し替える」パターンが頻出
+        /// (1 Apply あたり 1〜2 回)で、各呼び出しが <c>PlayerState[N]</c> + <c>HashSet&lt;PlayerId&gt;</c>
+        /// の 2 alloc を発生させていた。
+        /// <para>
+        /// 本メソッドは呼び出し元の責務として「<paramref name="alreadyValidatedPlayers"/> は null でない、
+        /// null 要素を含まない、重複 PlayerId を含まない」ことを保証する前提で防御コピーをスキップする。
+        /// Turn と Players の整合性(GS-022、<c>CurrentPlayerIndex &lt; Players.Length</c>)のみ維持する
+        /// (Players 配列の長さが変わるユースケースは現状なく、現プレイヤー差し替えのみ)。
+        /// </para>
+        /// <para>
+        /// internal 公開で <see cref="DrowZzzRule"/> 等 Drowsy.Application からのみ利用可能
+        /// (<c>AssemblyInfo.cs</c> の <c>InternalsVisibleTo</c>)。外部からは引き続き
+        /// <c>with { Players = ... }</c> の安全経路を使う。
+        /// </para>
+        /// </remarks>
+        /// <param name="alreadyValidatedPlayers">既に検証済みの <see cref="PlayerState"/> 配列(non-null、null 要素なし、重複 PlayerId なし)</param>
+        /// <exception cref="ArgumentNullException"><paramref name="alreadyValidatedPlayers"/> が null</exception>
+        /// <exception cref="ArgumentException">現 <see cref="Turn"/> の <see cref="TurnState.CurrentPlayerIndex"/> が <paramref name="alreadyValidatedPlayers"/> の範囲外になる場合(GS-022)</exception>
+        internal GameState WithPlayersUnchecked(PlayerState[] alreadyValidatedPlayers)
+        {
+            if (alreadyValidatedPlayers is null)
+            {
+                throw new ArgumentNullException(nameof(alreadyValidatedPlayers));
+            }
+            if (_turn.CurrentPlayerIndex >= alreadyValidatedPlayers.Length)
+            {
+                throw new ArgumentException(
+                    $"alreadyValidatedPlayers ({alreadyValidatedPlayers.Length} 人) が現在の Turn.CurrentPlayerIndex ({_turn.CurrentPlayerIndex}) の範囲外になります",
+                    nameof(alreadyValidatedPlayers));
+            }
+            // internal unchecked ctor 経由で全フィールドを直接代入(init setter を経由しないため
+            // ValidateAndCopyPlayers / EnsureKeysMatchPlayers が走らない、PlayerState[] / HashSet alloc を回避)。
+            return new GameState(alreadyValidatedPlayers, _deck, _discard, _field, _turn, uncheckedMarker: default);
+        }
+
+        // internal unchecked constructor for WithPlayersUnchecked.
+        // uncheckedMarker は public 5 引数 ctor とのオーバーロード曖昧性を排除するための型タグ(値は使用しない)。
+        // 呼び出し元(WithPlayersUnchecked のみ)が事前検証を保証する責務を持つ。
+        // アクセシビリティは ctor と同じ internal に揃える(CS0051 回避)。
+        internal readonly struct UncheckedCtorMarker { }
+        internal GameState(PlayerState[] alreadyValidatedPlayers, Pile deck, Pile discard, Pile field, TurnState turn, UncheckedCtorMarker uncheckedMarker)
+        {
+            _ = uncheckedMarker; // suppress unused warning
+            _players = alreadyValidatedPlayers;
+            _deck = deck;
+            _discard = discard;
+            _field = field;
+            _turn = turn;
         }
 
         // 防御コピー + null 要素 / 重複 PlayerId の検証

@@ -486,7 +486,12 @@ namespace Drowsy.Application.Games.DrowZzz
             {
                 newPlayers[i] = i == currentIndex ? updatedPlayer : session.GameState.Players[i];
             }
-            var newGameState = session.GameState with { Players = newPlayers };
+            // post-Phase2 アルゴリズム最適化レビュー Top-2 反映:
+            // 旧経路 `session.GameState with { Players = newPlayers }` は GameState の Players init setter で
+            // ValidateAndCopyPlayers (PlayerState[N] alloc + HashSet<PlayerId> alloc + null/重複検証) を
+            // 再走させていた。呼び出し元(本箇所)で既に「新規 alloc 配列 + null 要素なし + 重複なし」を
+            // 構造的に保証しているため WithPlayersUnchecked 経由で防御コピーをスキップする。
+            var newGameState = session.GameState.WithPlayersUnchecked(newPlayers);
 
             // (2) M3-PR6:対象カードの効果列に UsageRestrictionMarkerEffect があれば、自プレイヤーに使用制限 Influence を付与する
             //     (ADR-0011 §6、JIT 確定 2026-05-14:候補 C `PlayerInfluence` 流用で「次の自分のターン以降」を表現)。
