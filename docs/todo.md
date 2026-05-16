@@ -56,12 +56,43 @@
 
 ## 未着手
 
-- [ ] **CLAUDE.md §11「Phase 進捗」の M2 ステータスを「進行中」→「完結」に清算** `priority: low`
-  - **Why**:M5-PR8 着手 commit の code-reviewer W-3 指摘。CLAUDE.md §11 で M2 は「進行中(M2-PR6 以降は後続効果カードを JIT 共有で逐次追加)」と書かれているが、M3 / M4 / M5 が「完結」表記されている時系列上は M2 も実質完結扱いが自然(M3 で No.00 「夢」カード追加、ADR-0007 サブセット先行スコープも M2-PR5 で達成)。Phase 2 完結処理を最終整合させるため、M5-PR8 完結 commit と同 PR で M2 ステータスを清算するか、M5-PR8 マージ後の別軽量 PR で対応する
+- [ ] **WebGL Build を CI で自動化(GameCI 経由)** `priority: medium`
+  - **Why**: M5-PR8 で WebGL Build `Result: Success` を確認したが、現状はオーナー実機作業。Phase 3 以降の継続的検証のため、CI(GitHub Actions / GameCI)で push / PR ごとに自動 Build したい。ADR-0016 §「TODO 候補」から本 todo.md に移行
   - **Done when**:
-    - CLAUDE.md §11 M2 行を「完結」表記に更新(M2-PR1〜PR5 完成 + ADR-0007 サブセット先行スコープ達成 + 残効果カードは M3 で No.00 追加済 = 実質完結 を明示)
-    - 関連 ADR(ADR-0007 / ADR-0009 / ADR-0011)に「M2 サブセット先行スコープは M2-PR5 で達成、Phase 2 完結時点で M2 ステータスを完結扱い」を Note で追記検討
-  - **Related**: [ADR-0007](adr/0007-m2-detail-card-effects.md)、[ADR-0009](adr/0009-m2-m3-dp-and-victory-conditions.md)、[ADR-0011](adr/0011-m3-dream-card-and-game-mechanics-expansion.md)、本 ADR-0016 M5-PR8 着手 commit code-reviewer W-3
+    - `.github/workflows/webgl-build.yml`(or 相当)を新設、GameCI Action で WebGL Build を実行
+    - PR ごとに Build artifact をアップロード(オプション:GitHub Releases へ公開)
+    - Build 時間 / サイズの変化を可視化(`docs/architecture/webgl-il2cpp-verification.md` への自動追記検討)
+  - **Related**: [ADR-0016](adr/0016-m5-bootstrap-presentation.md) §「TODO 候補」、[`docs/architecture/webgl-il2cpp-verification.md`](architecture/webgl-il2cpp-verification.md)
+
+- [ ] **Presenter 単体テストの C0 カバレッジ計測対象を「計測対象外」→「Presenter のみ計測対象」に格上げ** `priority: low`
+  - **Why**: 現状 `docs/testing-strategy.md` で Presentation 層は「計測対象外」だが、M5-PR2〜PR7 で `DrowZzzGamePresenter`(Pure C#)に多数のテストを書いており、計測可能。`Drowsy.Presentation` のうち MonoBehaviour(`DrowZzzGameView`)を除外し、Presenter / Binder などの Pure C# クラスのみ計測対象にすれば、追加価値が出る
+  - **Done when**:
+    - `docs/testing-strategy.md` Presentation 行を「計測対象外」→「Presenter / Binder 等 Pure C# のみ計測対象、MonoBehaviour 除外」に更新
+    - Code Coverage 設定で `Drowsy.Presentation` を IncludeAssemblies に追加 + 適切な assemblyFilters
+    - 計測結果が Drowsy.Domain と同等の粒度で得られることを確認
+  - **Related**: [ADR-0016](adr/0016-m5-bootstrap-presentation.md) §「TODO 候補」、[`docs/testing-strategy.md`](testing-strategy.md)
+
+- [ ] **`Builds/Web/Build/` の累積出力整理(M4-PR7 / M5-PR8 跨ぎ)** `priority: low`
+  - **Why**:M5-PR8 で WebGL Build を実行した結果、新出力 `Builds/Web/Build/WebGL/`(2026-05-16、88 MB)が `Builds/Web/Build/*.{data,framework.js,loader.js,wasm}`(2026-05-14 M4-PR7 時点、約 84 MB)と並存している。Build Profile 設定差で出力構造が変わったための累積。CI 整備(WebGL Build CI 整備 TODO 参照)と合わせて、`Builds/` ディレクトリの管理方針(`.gitignore` 構造 / 出力先固定 / 古い出力のクリーンアップ手順)を整理する
+  - **Done when**:
+    - `.gitignore` の `Builds/` 配下の取り扱い見直し(本 PR 時点で `Builds/` は untracked のまま、`.gitignore` で全体除外確認)
+    - Build Profile を「単一出力先 `Builds/WebGL/`」に統一して累積を防ぐ(Unity Editor で Build Profile 編集)
+    - 既存の古い出力(`Builds/Web/Build/*.{data,framework.js,loader.js,wasm}` 直下分)を手動削除
+  - **Related**: [ADR-0016 §11 M5-PR8 完成記録](adr/0016-m5-bootstrap-presentation.md)「既知の改善候補」、[`docs/architecture/webgl-il2cpp-verification.md`](architecture/webgl-il2cpp-verification.md) §「検証結果(M5-PR8)」、WebGL Build CI 整備 TODO
+
+- [ ] **UI Toolkit `DataBinding`(Unity 2023+ API)への切替評価** `priority: low`
+  - **Why**: 現状 `DrowZzzGameView` は MVP パターン + 手動バインディング(`UserSettingsBinder` 等)で実装しているが、Unity 2023+ の UI Toolkit `DataBinding` API を使えば boilerplate を削減できる可能性。M5 で MVP を選んだのは ADR-0016 §3 で「Pure C# 単体テスト性」を優先したため、`DataBinding` への切替は **Pure C# テスト性を維持できるか**を含めて Phase 3 で評価
+  - **Done when**:
+    - `DataBinding` API の Pure C# テスト可能性を PoC で検証
+    - 既存 `UserSettingsBinder` テスト相当の項目が `DataBinding` API で同等に書けるか確認
+    - 切替判断(採用 / 不採用 / 部分採用)を ADR で記録
+  - **Related**: [ADR-0016](adr/0016-m5-bootstrap-presentation.md) §3 / §「TODO 候補」
+
+- [ ] **ADR-0007 / ADR-0009 / ADR-0011 に「M2 サブセット先行スコープは M2-PR5 で達成、Phase 2 完結時点で M2 ステータスを完結扱い」Note 追記** `priority: low`
+  - **Why**:M5-PR8(本 PR)で CLAUDE.md §11 M2 ステータスを「進行中」→「完結」に清算したが、関連 ADR 側からの逆リンク注記は本 PR スコープ外として残した(影響範囲を絞るため)。Phase 3 着手前に整合性を取りたい
+  - **Done when**:
+    - ADR-0007 / ADR-0009 / ADR-0011 の冒頭(または該当セクション)に「M2 サブセット先行スコープは M2-PR5 で達成、Phase 2 完結時点で M2 ステータスを完結扱い(ADR-0005 §7 / ADR-0016 §11 M5-PR8 完成記録参照)」を Note で追記
+  - **Related**: [ADR-0007](adr/0007-m2-detail-card-effects.md)、[ADR-0009](adr/0009-m2-m3-dp-and-victory-conditions.md)、[ADR-0011](adr/0011-m3-dream-card-and-game-mechanics-expansion.md)、[ADR-0016 §11 M5-PR8 完成記録](adr/0016-m5-bootstrap-presentation.md)
 
 - [ ] **`CardIdJsonConverter` の負値 instance / 不正 schema 経路に Persistence テストを追加** `priority: low`
   - **Why**: ADR-0018 / code-reviewer 提案 6 反映。現状 `int.TryParse(instancePart)` が成功して `CardId.Of(typeId, -5)` が `ArgumentOutOfRangeException` を投げた場合、`catch (ArgumentException)` で `JsonSerializationException` に wrap されるが、本経路のテストが存在しない(実行時にのみ確認可能)。schema 違反系テスト(`"#0"` / `"dream"`(`#` なし)/ `"dream#-5"` / `"dream#abc"` 等)を Infrastructure.Tests/Persistence に追加して、診断性とリグレッション防止を担保したい
