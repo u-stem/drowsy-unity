@@ -640,7 +640,9 @@ namespace Drowsy.Application.Games.DrowZzz
             int hash = HashCode.Combine(_gameState, _phaseState, _ddpPool, _outcome);
             foreach (var kv in _firstDrowsyPoints)
             {
-                hash ^= HashCode.Combine(kv.Key, kv.Value);
+                // FDP は seed 0 で DDP / SDP / Influences / BedDamages との XOR 衝突を回避
+                // (App W-6 post-Phase2 レビュー反映:全 dict に明示 seed を付けて統一)
+                hash ^= HashCode.Combine(kv.Key, kv.Value, 0);
             }
             foreach (var kv in _drawDrowsyPoints)
             {

@@ -312,6 +312,69 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 rule.Apply(session, new AssociateAction(DreamCardId)));
         }
 
+        // C-1 post-Phase2 レビュー反映:対象 CardId が既に Hand に含まれている場合は IsLegalMove で弾く
+        // (後段 Hand.Add の ArgumentException が呼び出し側に生 throw されないよう IsLegalMove で構造的に防ぐ)
+
+        [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-205")]
+        public void Given_既に手札にある連想可能カード_When_IsLegalMove_Then_false()
+        {
+            // Given: catalog に DreamCardId 登録 + 連想可能 + TotalPoints 100、
+            //       かつ現プレイヤーの Hand に "dream#0"(= DreamCardId)を直接持たせる。
+            var rule = NewRuleWithAssociatable();
+            var sessionWithDreamInHand = NewSessionWithCardAlreadyInHand(
+                inHand: DreamCardId,
+                fdpP1: 100,
+                phase: DrowZzzPhaseState.WaitingForDraw);
+            // When / Then
+            Assert.That(rule.IsLegalMove(sessionWithDreamInHand, new AssociateAction(DreamCardId)), Is.False);
+        }
+
+        [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-205")]
+        public void Given_既に手札にある連想可能カード_When_AssociateActionをApply_Then_InvalidOperationException()
+        {
+            // Given
+            var rule = NewRuleWithAssociatable();
+            var sessionWithDreamInHand = NewSessionWithCardAlreadyInHand(
+                inHand: DreamCardId,
+                fdpP1: 100,
+                phase: DrowZzzPhaseState.WaitingForDraw);
+            // When / Then: Apply は IsLegalMove false → InvalidOperationException 経路
+            //              (Hand.Add の生 ArgumentException が露出しないことを構造的に保証)
+            Assert.Throws<InvalidOperationException>(() =>
+                rule.Apply(sessionWithDreamInHand, new AssociateAction(DreamCardId)));
+        }
+
+        // 任意 CardId を手札に含むセッションを構築するヘルパー(C-1 検証用)
+        private static DrowZzzGameSession NewSessionWithCardAlreadyInHand(
+            CardId inHand,
+            int fdpP1,
+            DrowZzzPhaseState phase)
+        {
+            var players = new[]
+            {
+                new PlayerState(PlayerId.Of("p1"), new Hand(new[] { inHand })),
+                new PlayerState(PlayerId.Of("p2"), Hand.Empty),
+            };
+            var gs = new GameState(
+                players, Pile.Empty, Pile.Empty, Pile.Empty,
+                new TurnState(1, 0));
+            var fdp = new Dictionary<PlayerId, int> { [PlayerId.Of("p1")] = fdpP1, [PlayerId.Of("p2")] = 0 };
+            var ddp = new Dictionary<PlayerId, int> { [PlayerId.Of("p1")] = 0, [PlayerId.Of("p2")] = 0 };
+            var sdp = new Dictionary<PlayerId, int> { [PlayerId.Of("p1")] = 0, [PlayerId.Of("p2")] = 0 };
+            var influences = new Dictionary<PlayerId, IReadOnlyList<PlayerInfluence>>
+            {
+                [PlayerId.Of("p1")] = Array.Empty<PlayerInfluence>(),
+                [PlayerId.Of("p2")] = Array.Empty<PlayerInfluence>(),
+            };
+            var bed = new Dictionary<PlayerId, int>
+            {
+                [PlayerId.Of("p1")] = 0,
+                [PlayerId.Of("p2")] = 0,
+            };
+            return new DrowZzzGameSession(
+                gs, fdp, ddp, sdp, DdpPool.Empty, influences, phase, outcome: null, bedDamages: bed, System.Array.Empty<PendingCounteredEffect>());
+        }
+
         // ===== AssociateAction の null 防御(positional ctor / with 式 両経路)=====
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-204")]

@@ -139,6 +139,13 @@ namespace Drowsy.Application.Games.DrowZzz
             {
                 return false;
             }
+            // (4) 現プレイヤーの Hand に既に同じ CardId が含まれていない(C-1 post-Phase2 レビュー反映)
+            //     後段 ApplyAssociate での Hand.Add が ArgumentException を生 throw して呼び出し側に
+            //     露出する経路を IsLegalMove で構造的に防ぐ(Hand.Add の重複拒否は HAND-005、ADR-0018 で正当化)。
+            if (session.GameState.Players[currentIndex].Hand.Contains(action.Card))
+            {
+                return false;
+            }
             var effects = _catalog.GetEffects(action.Card.TypeId);
             foreach (var e in effects)
             {
@@ -937,6 +944,14 @@ namespace Drowsy.Application.Games.DrowZzz
             // (2) Field 先頭の Target カードを Draw で取り出し → Discard へ
             //     (Pile に任意位置 Remove API はなく、IsLegalCounter で Field.Cards[0] == Target を検証済のため Draw で安全)
             var (drawnTarget, newField) = field.Draw();
+            // App W-1 post-Phase2 レビュー反映:Pile.Draw() の契約上 drawnTarget == field.Cards[0] が
+            // 保証されており IsLegalCounter で == action.Target も確認済だが、将来 Pile.Draw() 仕様が
+            // 変わった際の無声バグを防ぐ防御アサート(Domain 契約変更を即座に検出する)。
+            if (!drawnTarget.Equals(action.Target))
+            {
+                throw new InvalidOperationException(
+                    $"CounterAction の内部不整合: drawnTarget ({drawnTarget.Value}) と action.Target ({action.Target.Value}) が一致しません(Pile.Draw 契約違反)");
+            }
             var newDiscard = session.GameState.Discard.AddTop(drawnTarget).AddTop(action.Counter);
             // Players 配列の差し替え(反撃側のみ)
             var newPlayers = new PlayerState[session.GameState.Players.Count];

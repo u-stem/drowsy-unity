@@ -165,5 +165,17 @@ namespace Drowsy.Application.Tests.Catalog
             // Then
             Assert.That(got, Is.EqualTo(registeredEffects));
         }
+
+        // ===== APP-061: GetEffects(null) は ArgumentNullException(App W-3 post-Phase2 レビュー反映)=====
+
+        [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "APP-061")]
+        public void Given_nullCardTypeId_When_GetEffectsを呼ぶ_Then_ArgumentNullExceptionを投げる()
+        {
+            // Given
+            var catalog = new InMemoryCardCatalog(new KeyValuePair<CardTypeId, CardData>[0]);
+            // When / Then(ICardCatalog 契約上 typeId は non-null、サイレント空列返却ではなく呼び出し側のバグ検出を優先)
+            var ex = Assert.Throws<ArgumentNullException>(() => catalog.GetEffects(null));
+            Assert.That(ex!.ParamName, Is.EqualTo("typeId"));
+        }
     }
 }
