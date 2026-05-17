@@ -5,6 +5,7 @@ using Drowsy.Application.Catalog;
 using Drowsy.Application.Games.DrowZzz;
 using Drowsy.Application.Games.DrowZzz.Effects;
 using Drowsy.Application.Games.DrowZzz.Influences;
+using Drowsy.Application.Tests.Stubs;
 using Drowsy.Domain.Cards;
 using Drowsy.Domain.Game;
 using Drowsy.Domain.Players;
@@ -75,28 +76,6 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             IReadOnlyList<CardId> p1Hand = null,
             int currentPlayerIndex = 0)
         {
-            var players = new[]
-            {
-                new PlayerState(PlayerId.Of("p1"), new Hand(p1Hand ?? new[] { CardCId, PlainId })),
-                new PlayerState(PlayerId.Of("p2"), new Hand(Array.Empty<CardId>())),
-            };
-            var discard = new Pile(new[] { CardBId, CardAId }); // top = B, [1] = A
-            var gs = new GameState(
-                players, Pile.Empty, discard, Pile.Empty,
-                new TurnState(1, currentPlayerIndex));
-            var fdp = new Dictionary<PlayerId, int> { [PlayerId.Of("p1")] = 0, [PlayerId.Of("p2")] = 0 };
-            var ddp = new Dictionary<PlayerId, int> { [PlayerId.Of("p1")] = 0, [PlayerId.Of("p2")] = 0 };
-            var sdp = new Dictionary<PlayerId, int> { [PlayerId.Of("p1")] = 0, [PlayerId.Of("p2")] = 0 };
-            var influences = new Dictionary<PlayerId, IReadOnlyList<PlayerInfluence>>
-            {
-                [PlayerId.Of("p1")] = Array.Empty<PlayerInfluence>(),
-                [PlayerId.Of("p2")] = Array.Empty<PlayerInfluence>(),
-            };
-            var bed = new Dictionary<PlayerId, int>
-            {
-                [PlayerId.Of("p1")] = 0,
-                [PlayerId.Of("p2")] = 0,
-            };
             var defaultPending = new PendingCounteredEffect[]
             {
                 new PendingCounteredEffect(
@@ -104,11 +83,13 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                     OriginalCard: CardAId,
                     OriginalEffects: new IEffect[] { new AdjustSdpEffect(SdpTarget.Self, 10) }),
             };
-            return new DrowZzzGameSession(
-                gs, fdp, ddp, sdp, DdpPool.Empty, influences,
-                DrowZzzPhaseState.WaitingForEndTurn,
-                outcome: null,
-                bedDamages: bed,
+            return SessionFactory.NewSession(
+                phase: DrowZzzPhaseState.WaitingForEndTurn,
+                currentPlayerIndex: currentPlayerIndex,
+                discard: new Pile(new[] { CardBId, CardAId }), // top = B, [1] = A
+                p0Hand: new Hand(p1Hand ?? new[] { CardCId, PlainId }),
+                p1Hand: new Hand(Array.Empty<CardId>()),
+                fdp: SessionFactory.Dp(p1: 0, p2: 0),
                 pendingCounteredEffects: pending ?? defaultPending);
         }
 

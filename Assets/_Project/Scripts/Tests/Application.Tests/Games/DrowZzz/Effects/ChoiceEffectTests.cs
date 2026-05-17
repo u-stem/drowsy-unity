@@ -1,11 +1,8 @@
 using System;
-using System.Collections.Generic;
 using NUnit.Framework;
 using Drowsy.Application.Games.DrowZzz;
 using Drowsy.Application.Games.DrowZzz.Effects;
-using Drowsy.Application.Games.DrowZzz.Influences;
-using Drowsy.Domain.Cards;
-using Drowsy.Domain.Game;
+using Drowsy.Application.Tests.Stubs;
 using Drowsy.Domain.Players;
 
 namespace Drowsy.Application.Tests.Games.DrowZzz.Effects
@@ -130,43 +127,10 @@ namespace Drowsy.Application.Tests.Games.DrowZzz.Effects
                 interpreter.Apply(BuildMinimalSession(), ce));
         }
 
-        // ChoiceEffect の直接渡しテスト用、最小 session を構築する(他テストファイルと同パターン、共通ヘルパー化は
-        // M2 全体の `docs/todo.md`「共通テストヘルパー抽出」TODO で別途追跡)。
-        private static DrowZzzGameSession BuildMinimalSession()
-        {
-            var players = new[]
-            {
-                new PlayerState(PlayerId.Of("p1"), Hand.Empty),
-                new PlayerState(PlayerId.Of("p2"), Hand.Empty),
-            };
-            var gs = new GameState(
-                players, Pile.Empty, Pile.Empty, Pile.Empty,
-                new TurnState(1, 0));
-            var fdp = new Dictionary<PlayerId, int>
-            {
-                [PlayerId.Of("p1")] = 0,
-                [PlayerId.Of("p2")] = 0,
-            };
-            var ddp = new Dictionary<PlayerId, int>
-            {
-                [PlayerId.Of("p1")] = 0,
-                [PlayerId.Of("p2")] = 0,
-            };
-            var sdp = new Dictionary<PlayerId, int>
-            {
-                [PlayerId.Of("p1")] = 0,
-                [PlayerId.Of("p2")] = 0,
-            };
-            var influences = new Dictionary<PlayerId, IReadOnlyList<PlayerInfluence>>
-            {
-                [PlayerId.Of("p1")] = Array.Empty<PlayerInfluence>(),
-                [PlayerId.Of("p2")] = Array.Empty<PlayerInfluence>(),
-            };
-            return new DrowZzzGameSession(
-                gs, fdp, ddp, sdp,
-                DdpPool.Empty,
-                influences,
-                DrowZzzPhaseState.WaitingForPlay, outcome: null, bedDamages: new Dictionary<PlayerId, int> { [PlayerId.Of("p1")] = 0, [PlayerId.Of("p2")] = 0 }, System.Array.Empty<PendingCounteredEffect>());
-        }
+        // ChoiceEffect の直接渡しテスト用、最小 session を構築する。
+        private static DrowZzzGameSession BuildMinimalSession() =>
+            SessionFactory.NewSession(
+                phase: DrowZzzPhaseState.WaitingForPlay,
+                fdp: SessionFactory.Dp(p1: 0, p2: 0));
     }
 }

@@ -15,10 +15,13 @@ namespace Drowsy.Application.Tests.Stubs
     /// 統合済 fixture: `ApplyActionUseCaseTests` / `DrowZzzRuleTests`(2026-05-13)、
     /// `DrowZzzGameSessionTests` / `EffectInterpreterTests`(2026-05-13 第 1 弾)、
     /// `EarlyWinTriggerEffectTests` / `AdjustSdpEffectTests`(2026-05-16 第 2 弾、`fdp` / `sdp` 引数 +
-    /// `Dp(p1, p2)` builder 追加に伴う)。
-    /// 残 fixture(`CounterActionTests` / `AssociateActionTests` / `AbandonActionTests` /
-    /// `CupOfThreatCardTests` / `GreenInvasionCardTests` / `DreamCardTests` /
-    /// `CounterCounterTests` / `Effects/*Tests` 大部分)への段階的拡張は `docs/todo.md` で追跡。
+    /// `Dp(p1, p2)` builder 追加に伴う)、
+    /// `AbandonActionTests` / `AssociateActionTests` / `CounterActionTests`(2026-05-16 第 3 弾)、
+    /// `CupOfThreatCardTests` / `GreenInvasionCardTests` / `DreamCardTests` / `CounterCounterTests` /
+    /// `Effects/*Tests` 9 fixture(`ApplyInfluence` / `AssociatableMarker` / `Choice` / `DamageBed` /
+    /// `DrawCard` / `Keyworded` / `RemoveInfluence` / `RequiresMinimumTotalPointsMarker` /
+    /// `TimeOfDayBranch` / `UsageRestrictionMarker`)(2026-05-17 第 4 弾、`pendingCounteredEffects`
+    /// 引数追加に伴う)。
     /// </summary>
     public static class SessionFactory
     {
@@ -107,7 +110,9 @@ namespace Drowsy.Application.Tests.Stubs
             IReadOnlyDictionary<PlayerId, int> sdp = null,
             IReadOnlyDictionary<PlayerId, int> ddp = null,
             IReadOnlyDictionary<PlayerId, IReadOnlyList<PlayerInfluence>> influences = null,
-            IReadOnlyDictionary<PlayerId, int> bedDamages = null)
+            IReadOnlyDictionary<PlayerId, int> bedDamages = null,
+            GameOutcome outcome = null,
+            IReadOnlyList<PendingCounteredEffect> pendingCounteredEffects = null)
         {
             var p0 = new PlayerState(PlayerId.Of("p1"), p0Hand ?? Hand.Empty);
             var p1 = new PlayerState(PlayerId.Of("p2"), p1Hand ?? Hand.Empty);
@@ -158,9 +163,9 @@ namespace Drowsy.Application.Tests.Stubs
                 ddpPool ?? DdpPool.Empty,
                 influencesResolved,
                 phase,
-                outcome: null,
+                outcome: outcome,
                 bedDamages: bedDamagesResolved,
-                Array.Empty<PendingCounteredEffect>());
+                pendingCounteredEffects ?? Array.Empty<PendingCounteredEffect>());
         }
     }
 }

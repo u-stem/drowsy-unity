@@ -1,11 +1,8 @@
 using System;
-using System.Collections.Generic;
 using NUnit.Framework;
 using Drowsy.Application.Games.DrowZzz;
 using Drowsy.Application.Games.DrowZzz.Effects;
-using Drowsy.Application.Games.DrowZzz.Influences;
-using Drowsy.Domain.Cards;
-using Drowsy.Domain.Game;
+using Drowsy.Application.Tests.Stubs;
 using Drowsy.Domain.Players;
 
 namespace Drowsy.Application.Tests.Games.DrowZzz.Effects
@@ -23,33 +20,11 @@ namespace Drowsy.Application.Tests.Games.DrowZzz.Effects
         // 注:本テストは EffectInterpreter.Apply を直接呼ぶ(Rule 経路ではない)。
         // ApplyAdjustSdp / KeywordedEffect.Apply 等の interpreter 内部は PhaseState を参照しないため、
         // session.PhaseState を WaitingForPlay で固定しても合法性ガードに影響しない(DZ-212 評価論はフェーズ独立)。
-        private static DrowZzzGameSession NewSession(int sdpP1 = 0)
-        {
-            var players = new[]
-            {
-                new PlayerState(PlayerId.Of("p1"), Hand.Empty),
-                new PlayerState(PlayerId.Of("p2"), Hand.Empty),
-            };
-            var gs = new GameState(
-                players, Pile.Empty, Pile.Empty, Pile.Empty,
-                new TurnState(1, 0));
-            var fdp = new Dictionary<PlayerId, int> { [PlayerId.Of("p1")] = 0, [PlayerId.Of("p2")] = 0 };
-            var ddp = new Dictionary<PlayerId, int> { [PlayerId.Of("p1")] = 0, [PlayerId.Of("p2")] = 0 };
-            var sdp = new Dictionary<PlayerId, int> { [PlayerId.Of("p1")] = sdpP1, [PlayerId.Of("p2")] = 0 };
-            var influences = new Dictionary<PlayerId, IReadOnlyList<PlayerInfluence>>
-            {
-                [PlayerId.Of("p1")] = Array.Empty<PlayerInfluence>(),
-                [PlayerId.Of("p2")] = Array.Empty<PlayerInfluence>(),
-            };
-            var bed = new Dictionary<PlayerId, int>
-            {
-                [PlayerId.Of("p1")] = 0,
-                [PlayerId.Of("p2")] = 0,
-            };
-            return new DrowZzzGameSession(
-                gs, fdp, ddp, sdp, DdpPool.Empty, influences, DrowZzzPhaseState.WaitingForPlay,
-                outcome: null, bedDamages: bed, System.Array.Empty<PendingCounteredEffect>());
-        }
+        private static DrowZzzGameSession NewSession(int sdpP1 = 0) =>
+            SessionFactory.NewSession(
+                phase: DrowZzzPhaseState.WaitingForPlay,
+                fdp: SessionFactory.Dp(p1: 0, p2: 0),
+                sdp: SessionFactory.Dp(p1: sdpP1, p2: 0));
 
         // ===== DZ-210: null / empty 防御 =====
 

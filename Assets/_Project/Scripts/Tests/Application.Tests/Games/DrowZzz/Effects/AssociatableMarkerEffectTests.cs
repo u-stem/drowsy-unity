@@ -1,10 +1,7 @@
-using System;
-using System.Collections.Generic;
 using NUnit.Framework;
 using Drowsy.Application.Games.DrowZzz;
 using Drowsy.Application.Games.DrowZzz.Effects;
-using Drowsy.Application.Games.DrowZzz.Influences;
-using Drowsy.Domain.Cards;
+using Drowsy.Application.Tests.Stubs;
 using Drowsy.Domain.Game;
 using Drowsy.Domain.Players;
 
@@ -24,33 +21,14 @@ namespace Drowsy.Application.Tests.Games.DrowZzz.Effects
             int fdpP1 = 0,
             int sdpP1 = 0,
             int bedP1 = 0,
-            GameOutcome outcome = null)
-        {
-            var players = new[]
-            {
-                new PlayerState(PlayerId.Of("p1"), Hand.Empty),
-                new PlayerState(PlayerId.Of("p2"), Hand.Empty),
-            };
-            var gs = new GameState(
-                players, Pile.Empty, Pile.Empty, Pile.Empty,
-                new TurnState(turnNumber, 0));
-            var fdp = new Dictionary<PlayerId, int> { [PlayerId.Of("p1")] = fdpP1, [PlayerId.Of("p2")] = 0 };
-            var ddp = new Dictionary<PlayerId, int> { [PlayerId.Of("p1")] = 0, [PlayerId.Of("p2")] = 0 };
-            var sdp = new Dictionary<PlayerId, int> { [PlayerId.Of("p1")] = sdpP1, [PlayerId.Of("p2")] = 0 };
-            var influences = new Dictionary<PlayerId, IReadOnlyList<PlayerInfluence>>
-            {
-                [PlayerId.Of("p1")] = Array.Empty<PlayerInfluence>(),
-                [PlayerId.Of("p2")] = Array.Empty<PlayerInfluence>(),
-            };
-            var bed = new Dictionary<PlayerId, int>
-            {
-                [PlayerId.Of("p1")] = bedP1,
-                [PlayerId.Of("p2")] = 0,
-            };
-            return new DrowZzzGameSession(
-                gs, fdp, ddp, sdp, DdpPool.Empty, influences, DrowZzzPhaseState.WaitingForPlay,
-                outcome: outcome, bedDamages: bed, System.Array.Empty<PendingCounteredEffect>());
-        }
+            GameOutcome outcome = null) =>
+            SessionFactory.NewSession(
+                phase: DrowZzzPhaseState.WaitingForPlay,
+                turnNumber: turnNumber,
+                fdp: SessionFactory.Dp(p1: fdpP1, p2: 0),
+                sdp: SessionFactory.Dp(p1: sdpP1, p2: 0),
+                bedDamages: SessionFactory.Dp(p1: bedP1, p2: 0),
+                outcome: outcome);
 
         // ===== DZ-208: AssociatableMarkerEffect は no-op(session 不変返却)=====
 
