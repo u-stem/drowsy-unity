@@ -43,7 +43,14 @@ ADR-0011 §1 起票時点では「JIT 確認待ち」だった 4 項目のうち
 
 ## 状態遷移(`Apply`)
 
-- [DZ-206] When `AssociateAction(card)` is applied, the current player's `Hand` shall gain `card` via `Hand.Add(card)`. The `PhaseState` and every other field of the session (`Deck`, `Discard`, `Field`, `Turn`, `DDP`, `SDP`, `DdpPool`, `Influences`, `BedDamages`, `Outcome`, and the opponent's `PlayerState`) shall remain unchanged.
+- [DZ-206] When `AssociateAction(card)` is applied, the current player's `Hand` shall gain `card` via `Hand.Add(card)`. The `PhaseState` and every other field of the session (`Deck`, `Discard`, `Field`, `Turn`, `DDP`, `SDP`, `DdpPool`, `Influences`, `BedDamages`, `Outcome`, and the opponent's `PlayerState`) shall remain unchanged. **Exception (ADR-0019 追加 2026-05-17)**: `AssociatedCardIds` は本 Action で `card` が末尾追加される(DZ-256 参照、本「不変」条件から除外)。
+
+## AssociatedCardIds(ADR-0019、PR ①)
+
+- [DZ-255] [Ubiquitous] `DrowZzzGameSession.AssociatedCardIds` shall be an `IReadOnlyCollection<CardId>` backed internally by `HashSet<CardId>`. The initial value (when no `AssociateAction` has been applied) shall be an empty set.
+- [DZ-256] When `AssociateAction(card)` is applied to a session, the resulting session's `AssociatedCardIds` shall contain `card` (in addition to all previously associated `CardId` values).
+- [DZ-257] When `IsAssociated(card)` is called on a session, the method shall return `true` if `card` is contained in `AssociatedCardIds`, otherwise `false`. The lookup shall be O(1) (internal `HashSet<CardId>.Contains`).
+- [DZ-258] [Ubiquitous] `AssociatedCardIds` shall be **persistent (Add only, never removed)**: subsequent `PlayCardAction` / `AbandonAction` / `EndTurnAction` / `DrawCardAction` shall not remove any `CardId` from `AssociatedCardIds`. A `CardId` once added via `AssociateAction` remains in the set until the session ends.
 
 ## 不採用案
 
@@ -87,3 +94,7 @@ ADR-0011 §1 起票時点では「JIT 確認待ち」だった 4 項目のうち
 | DZ-204 | `AssociateAction` null 防御 2 件(positional ctor / `with` 式) | sealed record の null 二重ガード |
 | DZ-205 | `IsLegalMove` 関連 6 件(3 PhaseState × true / 79 false / 未登録 false / マーカーなし false)+ 終了済 session 1 件 + Apply 防御例外 3 件 | 合法性 |
 | DZ-206 | Apply 関連 9 件(手札に追加 / 枚数 +1 / PhaseState 不変 / Deck 不変 / Discard 不変 / 相手プレイヤー不変 / SDP 不変 / BedDamages 不変 / Outcome null 維持) | 状態遷移 + 他フィールド網羅 |
+| DZ-255 | (テスト免除: Ubiquitous) | `DrowZzzGameSession` ctor default = 空集合、構造的保証 |
+| DZ-256 | `AssociateActionTests.Given_*_When_ApplyAssociate_Then_AssociatedCardIdsにcardが追加される` | 永続記録 Add 経路 |
+| DZ-257 | `AssociateActionTests.Given_AssociatedCardIdsに含まれるcard_When_IsAssociated_Then_true` + `Given_AssociatedCardIdsに含まれないcard_When_IsAssociated_Then_false` + `Given_null_When_IsAssociated_Then_ArgumentNullException` | O(1) lookup + null 防御 |
+| DZ-258 | (テスト免除: Ubiquitous) | Add only / Remove なしの永続セマンティクス、構造的保証(`ApplyAssociate` 以外の経路で `AssociatedCardIds` を書き換える箇所が存在しないことを Roslyn / grep で機械的に確認可能) |

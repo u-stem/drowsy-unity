@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Drowsy.Application.Games.DrowZzz.Influences;
+using Drowsy.Domain.Cards;
 using Drowsy.Domain.Game;
 using Drowsy.Domain.Players;
 
@@ -70,6 +71,11 @@ namespace Drowsy.Application.Games.DrowZzz
         // Players キー集合とは独立(セッション単位の保留情報)、末尾追加・末尾取り出しの LIFO セマンティクスで意味を持つ
         // (経路 2 で最後エントリの CounterCard を照合 / 削除、Influences の FIFO Tick とは異なる扱い)。
         private readonly IReadOnlyList<PendingCounteredEffect> _pendingCounteredEffects;
+        // _associatedCardIds は AssociateAction で連想された CardId の永続記録(ADR-0019、PR ①)。
+        // Players キー集合と独立(セッション単位の集合)、Add only / Remove なし、HashSet 内部表現で IReadOnlySet 公開。
+        // 後続 PR ② で No.04「静寂を纏う」が「連想由来は選択不可」検証に利用する。
+        // PR ① 単独では「ApplyAssociate で記録するが consumer 不在」状態(意図的、レビュー粒度のための先行整備)。
+        private readonly HashSet<CardId> _associatedCardIds;
 
         /// <summary>Domain ルート集約。</summary>
         public GameState GameState
@@ -285,6 +291,45 @@ namespace Drowsy.Application.Games.DrowZzz
         }
 
         /// <summary>
+        /// <see cref="AssociateAction"/> で連想された <see cref="CardId"/> の永続記録(ADR-0019、PR ①)。
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// Add only / Remove なしの永続セマンティクス:一度連想された CardId は手札から Discard / Field に
+        /// 移動しても本集合に残り続け、ゲーム終了まで「連想由来」属性を保持する。後続 PR ② で
+        /// No.04「静寂を纏う」が「連想由来は選択不可」検証に利用する。null 入力は空集合へ正規化される
+        /// (後方互換性 + Persistence v1 で欠落 → 空集合復元のため)。
+        /// </para>
+        /// <para>
+        /// 公開型は <see cref="IReadOnlyCollection{CardId}"/>(<c>netstandard2.1</c> では <c>IReadOnlySet&lt;T&gt;</c>
+        /// が未提供のため、Unity 6 ターゲットでは <see cref="HashSet{CardId}"/> を <see cref="IReadOnlyCollection{CardId}"/>
+        /// にアップキャストして公開する)。膜素早い membership check は <see cref="IsAssociated(CardId)"/> を利用
+        /// (内部 <see cref="HashSet{CardId}"/> 経由で O(1)、LINQ <c>Contains</c> の O(n) を避ける)。
+        /// </para>
+        /// </remarks>
+        public IReadOnlyCollection<CardId> AssociatedCardIds
+        {
+            get => _associatedCardIds;
+            init => _associatedCardIds = ValidateAndCopyAssociatedCardIds(value, paramName: nameof(AssociatedCardIds));
+        }
+
+        /// <summary>
+        /// <see cref="AssociatedCardIds"/> に <paramref name="card"/> が含まれているかを O(1) で判定する
+        /// (ADR-0019、内部 <see cref="HashSet{CardId}"/> 経由)。
+        /// </summary>
+        /// <param name="card">判定対象の <see cref="CardId"/>(null 不可)</param>
+        /// <returns>連想記録に含まれていれば true</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="card"/> が null</exception>
+        public bool IsAssociated(CardId card)
+        {
+            if (card is null)
+            {
+                throw new ArgumentNullException(nameof(card));
+            }
+            return _associatedCardIds.Contains(card);
+        }
+
+        /// <summary>
         /// DrowZzz のゲーム内時計。Phase 1 <c>TurnNumber</c> から DrowZzz 用語(ターン =
         /// ラウンド、N=2 想定)への変換を担う唯一の情報源(ADR-0008 §2 案 X、計算式集約点)。
         /// </summary>
@@ -327,11 +372,13 @@ namespace Drowsy.Application.Games.DrowZzz
             DrowZzzPhaseState phaseState,
             GameOutcome outcome,
             IReadOnlyDictionary<PlayerId, int> bedDamages,
-            IReadOnlyList<PendingCounteredEffect> pendingCounteredEffects)
+            IReadOnlyList<PendingCounteredEffect> pendingCounteredEffects,
+            IReadOnlyCollection<CardId> associatedCardIds = null)
         {
             // 順序が重要: GameState を先に確定 → 各 DP / Influences / BedDamages の init setter で _gameState を参照して cross-field 検証。
             // (GameState init setter 時点では DP 群 / Influences / BedDamages が null なので cross-field はスキップされる)
             // PendingCounteredEffects は Players キー集合と独立のため cross-field 検証なし(セッション単位の保留情報、M3-PR5c)。
+            // AssociatedCardIds も Players キー集合と独立(セッション単位の永続記録、ADR-0019)、null は空 set へ正規化。
             GameState = gameState;
             FirstDrowsyPoints = firstDrowsyPoints;
             DrawDrowsyPoints = drawDrowsyPoints;
@@ -342,6 +389,7 @@ namespace Drowsy.Application.Games.DrowZzz
             Outcome = outcome;
             BedDamages = bedDamages;
             PendingCounteredEffects = pendingCounteredEffects;
+            AssociatedCardIds = associatedCardIds;
         }
 
         /// <summary>
@@ -447,6 +495,34 @@ namespace Drowsy.Application.Games.DrowZzz
                 arr[i] = source[i];
             }
             return arr;
+        }
+
+        // AssociatedCardIds の防御コピー + null 正規化(ADR-0019)。
+        // - null は空 HashSet へ正規化(後方互換性:Persistence v1 で欠落 → 空集合復元の経路と整合、ctor 引数 optional default 経路と整合)
+        // - 入力は IReadOnlyCollection<CardId>(netstandard2.1 に IReadOnlySet<T> が無いため Collection で受ける)、
+        //   内部は HashSet<CardId> で保持(IsAssociated の O(1) 検索 + 入力に重複 CardId が混ざっても自動排除)
+        // - 個々の CardId 要素は null 不可(Pile 等と同パターン、CardId 自体が non-null record)
+        // - paramName: 呼び出し元 init setter / ctor 引数名(post-Phase2 #4 ParamName 強化と整合、code-reviewer P-1 反映 2026-05-17)
+        private static HashSet<CardId> ValidateAndCopyAssociatedCardIds(
+            IReadOnlyCollection<CardId> source,
+            string paramName)
+        {
+            if (source is null)
+            {
+                return new HashSet<CardId>();
+            }
+            var copy = new HashSet<CardId>(source.Count);
+            foreach (var id in source)
+            {
+                if (id is null)
+                {
+                    throw new ArgumentException(
+                        "AssociatedCardIds に null 要素を含めることはできません",
+                        paramName);
+                }
+                copy.Add(id);
+            }
+            return copy;
         }
 
         // Influences の防御コピー + null 検証(各 list 内の null 要素も検出)。
@@ -609,6 +685,12 @@ namespace Drowsy.Application.Games.DrowZzz
             {
                 return false;
             }
+            // ADR-0019: AssociatedCardIds の値同値性。順序非依存集合同値(HashSet<CardId>.SetEquals)。
+            // 永続記録セマンティクスのため Count 比較 + SetEquals で十分(順序情報を持たない設計)。
+            if (!_associatedCardIds.SetEquals(other._associatedCardIds))
+            {
+                return false;
+            }
             return true;
         }
 
@@ -725,6 +807,12 @@ namespace Drowsy.Application.Games.DrowZzz
             for (int i = 0; i < _pendingCounteredEffects.Count; i++)
             {
                 hash = HashCode.Combine(hash, _pendingCounteredEffects[i], i, 5);
+            }
+            // ADR-0019: AssociatedCardIds を順序非依存で合成(set のため、各要素の hash XOR で順序非依存性を担保)。
+            // seed 6 で他フィールドとの XOR 衝突を回避。各要素は CardId.GetHashCode(record 自動生成)を利用。
+            foreach (var id in _associatedCardIds)
+            {
+                hash ^= HashCode.Combine(id, 6);
             }
             return hash;
         }

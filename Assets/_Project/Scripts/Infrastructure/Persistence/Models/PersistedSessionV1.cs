@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Drowsy.Application.Games.DrowZzz;
 using Drowsy.Application.Games.DrowZzz.Influences;
+using Drowsy.Domain.Cards;
 using Drowsy.Domain.Game;
 using Drowsy.Domain.Players;
 
@@ -62,6 +63,17 @@ namespace Drowsy.Infrastructure.Persistence.Models
         /// <summary>「無効化された効果」遡及発動保留 list。</summary>
         public IReadOnlyList<PendingCounteredEffect> PendingCounteredEffects { get; init; }
 
+        /// <summary>
+        /// AssociateAction で連想された CardId の永続記録(ADR-0019、PR ①)。
+        /// </summary>
+        /// <remarks>
+        /// **後方互換性**:旧 v1 JSON(本フィールドなし)読み込み時は null として deserialize され、
+        /// <see cref="ToDomain"/> 内で `?? Array.Empty<CardId>()` 経由で空集合に正規化される(schemaVersion bump 不要)。
+        /// 内部は <see cref="List{CardId}"/>(順序情報なし、Set としての意味のみ)で `DrowZzzGameSession` 側 ctor で
+        /// <see cref="HashSet{CardId}"/> に防御コピーされる。
+        /// </remarks>
+        public List<CardId> AssociatedCardIds { get; init; }
+
         /// <summary>Domain の <see cref="DrowZzzGameSession"/> から DTO を生成する。</summary>
         /// <exception cref="ArgumentNullException">session が null</exception>
         public static PersistedSessionV1 FromDomain(DrowZzzGameSession session)
@@ -84,6 +96,9 @@ namespace Drowsy.Infrastructure.Persistence.Models
                 Outcome = session.Outcome,
                 BedDamages = ToStringKeyed(session.BedDamages),
                 PendingCounteredEffects = session.PendingCounteredEffects,
+                // ADR-0019:HashSet<CardId> → List<CardId> 変換(順序は意味を持たないが JSON 表現上は順序付きリスト)。
+                // 空集合は空 list で保存される(`AssociatedCardIds.Count == 0` の場合も Field 自体は serialize される)。
+                AssociatedCardIds = session.AssociatedCardIds.ToList(),
             };
         }
 
@@ -100,6 +115,9 @@ namespace Drowsy.Infrastructure.Persistence.Models
             EnsureNotNull(BedDamages, nameof(BedDamages));
             EnsureNotNull(PendingCounteredEffects, nameof(PendingCounteredEffects));
 
+            // ADR-0019:旧 v1 JSON(本フィールドなし)読み込み時は AssociatedCardIds = null となるため、
+            // `?? Array.Empty<CardId>()` で空集合に正規化する(schemaVersion bump 不要の後方互換性経路)。
+            // DrowZzzGameSession ctor 側でも null → 空 set へ正規化されるが、明示的に Array.Empty を渡して意図を表明する。
             return new DrowZzzGameSession(
                 gameState: GameState,
                 firstDrowsyPoints: FromStringKeyed(FirstDrowsyPoints),
@@ -110,7 +128,8 @@ namespace Drowsy.Infrastructure.Persistence.Models
                 phaseState: PhaseState,
                 outcome: Outcome,
                 bedDamages: FromStringKeyed(BedDamages),
-                pendingCounteredEffects: PendingCounteredEffects);
+                pendingCounteredEffects: PendingCounteredEffects,
+                associatedCardIds: AssociatedCardIds ?? (IReadOnlyCollection<CardId>)Array.Empty<CardId>());
         }
 
         // --- helpers ---

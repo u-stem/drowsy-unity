@@ -1,10 +1,13 @@
 using System;
 using System.Collections.Generic;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using NUnit.Framework;
 using Drowsy.Application.Games.DrowZzz;
 using Drowsy.Application.Games.DrowZzz.Influences;
 using Drowsy.Domain.Game;
 using Drowsy.Domain.Players;
+using Drowsy.Infrastructure.Persistence;
 using Drowsy.Infrastructure.Persistence.Models;
 
 namespace Drowsy.Infrastructure.Tests.Persistence
@@ -141,6 +144,82 @@ namespace Drowsy.Infrastructure.Tests.Persistence
             var dto = BuildValidDtoBase() with { PendingCounteredEffects = null };
             var ex = Assert.Throws<InvalidOperationException>(() => dto.ToDomain());
             Assert.That(ex.Message, Does.Contain("PendingCounteredEffects"));
+        }
+
+        // ===== INF-134: AssociatedCardIds round-trip(ADR-0019、PR ①)=====
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "INF-134")]
+        public void Given_AssociatedCardIdsを含むsession_When_FromDomainからToDomain_Then_含まれるCardIdが保存される()
+        {
+            // Given(session に CardId 2 件を AssociatedCardIds として持たせる)
+            var card1 = Drowsy.Domain.Cards.CardId.Of(Drowsy.Domain.Cards.CardTypeId.Of("dream"), 0);
+            var card2 = Drowsy.Domain.Cards.CardId.Of(Drowsy.Domain.Cards.CardTypeId.Of("silence"), 0);
+            var original = DrowZzzSessionTestFixtures.MinimalSession() with { AssociatedCardIds = new[] { card1, card2 } };
+
+            // When
+            var restored = PersistedSessionV1.FromDomain(original).ToDomain();
+
+            // Then(SetEquals 経由の値同値 = card1 / card2 がともに復元される)
+            Assert.That(restored.IsAssociated(card1), Is.True);
+            Assert.That(restored.IsAssociated(card2), Is.True);
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "INF-134")]
+        public void Given_AssociatedCardIdsを含むsession_When_FromDomainからToDomain_Then_件数が保存される()
+        {
+            // Given
+            var card1 = Drowsy.Domain.Cards.CardId.Of(Drowsy.Domain.Cards.CardTypeId.Of("dream"), 0);
+            var card2 = Drowsy.Domain.Cards.CardId.Of(Drowsy.Domain.Cards.CardTypeId.Of("silence"), 0);
+            var original = DrowZzzSessionTestFixtures.MinimalSession() with { AssociatedCardIds = new[] { card1, card2 } };
+
+            // When
+            var restored = PersistedSessionV1.FromDomain(original).ToDomain();
+
+            // Then
+            Assert.That(restored.AssociatedCardIds.Count, Is.EqualTo(2));
+        }
+
+        // ===== INF-135: 後方互換性 — DTO の AssociatedCardIds = null から ToDomain で空集合に正規化 =====
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "INF-135")]
+        public void Given_AssociatedCardIdsがnullのDTO_When_ToDomain_Then_空集合に正規化される()
+        {
+            // Given(旧 v1 JSON で AssociatedCardIds フィールドが存在しないケースを模擬 — DTO 直接 null)
+            var dto = BuildValidDtoBase() with { AssociatedCardIds = null };
+
+            // When(EnsureNotNull 対象外 + ToDomain 内で `?? Array.Empty<CardId>()` 経由で空集合に正規化)
+            var restored = dto.ToDomain();
+
+            // Then(空集合復元、例外なし、schemaVersion bump 不要の後方互換性経路、ADR-0019)
+            Assert.That(restored.AssociatedCardIds.Count, Is.EqualTo(0));
+        }
+
+        // ===== INF-136: JSON 文字列経由の後方互換性 — 旧 v1 JSON(AssociatedCardIds フィールド欠落)を deserialize して ToDomain =====
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "INF-136")]
+        public void Given_AssociatedCardIdsフィールド欠落のJSON文字列_When_Deserialize後にToDomain_Then_空集合に復元される()
+        {
+            // Given(旧 v1 JSON を文字列レベルで模擬:有効 session を一旦シリアライズ → JObject 経由で
+            //  AssociatedCardIds プロパティを構造的に Remove → 再 serialize → Newtonsoft.Json で deserialize。
+            //  JsonSerializerSettings の Formatting.Indented で fragile な string.Replace を避けるため
+            //  JObject 経由で実施(code-reviewer W-2 反映時の Replace パターンが Indented 形式と不一致だった
+            //  バグの修正、2026-05-17 INF-136 fixup)。
+            var settings = DrowZzzJsonSettings.Create();
+            var validSession = DrowZzzSessionTestFixtures.MinimalSession();
+            var dtoJson = JsonConvert.SerializeObject(PersistedSessionV1.FromDomain(validSession), settings);
+            var jObject = JObject.Parse(dtoJson);
+            var removed = jObject.Remove("AssociatedCardIds");
+            Assume.That(removed, Is.True, "前提失敗: 有効 JSON に AssociatedCardIds プロパティが存在しない");
+            var legacyJson = jObject.ToString();
+
+            // When(legacyJson を deserialize、フィールド欠落により property は null)
+            var dto = JsonConvert.DeserializeObject<PersistedSessionV1>(legacyJson, settings);
+            Assume.That(dto, Is.Not.Null, "deserialize 失敗");
+            Assume.That(dto.AssociatedCardIds, Is.Null, "旧 v1 JSON 模擬で AssociatedCardIds が null になっていない");
+            var restored = dto.ToDomain();
+
+            // Then(空集合復元 + 他フィールドの round-trip 整合性)
+            Assert.That(restored.AssociatedCardIds.Count, Is.EqualTo(0));
         }
 
         // ===== ヘルパー =====

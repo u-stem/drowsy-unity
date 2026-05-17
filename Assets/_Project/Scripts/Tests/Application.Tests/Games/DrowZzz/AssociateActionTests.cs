@@ -335,5 +335,65 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var ex = Assert.Throws<ArgumentNullException>(() => _ = action with { Card = null });
             Assert.That(ex!.ParamName, Is.EqualTo("Card"));
         }
+
+        // ===== DZ-256: ApplyAssociate で AssociatedCardIds に card が追加される(ADR-0019、PR ①)=====
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-256")]
+        public void Given_AssociateAction_When_ApplyAssociate_Then_AssociatedCardIdsにcardが追加される()
+        {
+            // Given(初期 AssociatedCardIds = 空集合)
+            var rule = NewRuleWithAssociatable();
+            var session = NewSession(phase: DrowZzzPhaseState.WaitingForPlay, fdpP1: 80);
+            Assume.That(session.AssociatedCardIds.Count, Is.EqualTo(0));
+            // When
+            var next = rule.Apply(session, new AssociateAction(DreamCardId));
+            // Then(連想で引いた CardId が永続記録される)
+            Assert.That(next.IsAssociated(DreamCardId), Is.True);
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-256")]
+        public void Given_AssociateAction_When_ApplyAssociate_Then_AssociatedCardIdsの件数が1になる()
+        {
+            // Given
+            var rule = NewRuleWithAssociatable();
+            var session = NewSession(phase: DrowZzzPhaseState.WaitingForPlay, fdpP1: 80);
+            // When
+            var next = rule.Apply(session, new AssociateAction(DreamCardId));
+            // Then(初期 0 → +1)
+            Assert.That(next.AssociatedCardIds.Count, Is.EqualTo(1));
+        }
+
+        // ===== DZ-257: IsAssociated の O(1) lookup + null 防御 =====
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-257")]
+        public void Given_AssociatedCardIdsに含まれるcard_When_IsAssociated_Then_true()
+        {
+            // Given(セッション直接構築で AssociatedCardIds に DreamCardId を渡す)
+            var rule = NewRuleWithAssociatable();
+            var session = Stubs.SessionFactory.NewSession(
+                phase: DrowZzzPhaseState.WaitingForDraw,
+                associatedCardIds: new[] { DreamCardId });
+            // When / Then
+            Assert.That(session.IsAssociated(DreamCardId), Is.True);
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-257")]
+        public void Given_AssociatedCardIdsに含まれないcard_When_IsAssociated_Then_false()
+        {
+            // Given
+            var session = Stubs.SessionFactory.NewSession(phase: DrowZzzPhaseState.WaitingForDraw);
+            // When / Then(空集合 → 任意 CardId は未登録)
+            Assert.That(session.IsAssociated(DreamCardId), Is.False);
+        }
+
+        [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-257")]
+        public void Given_null_When_IsAssociated_Then_ArgumentNullException()
+        {
+            // Given
+            var session = Stubs.SessionFactory.NewSession(phase: DrowZzzPhaseState.WaitingForDraw);
+            // When / Then
+            var ex = Assert.Throws<ArgumentNullException>(() => session.IsAssociated(null));
+            Assert.That(ex!.ParamName, Is.EqualTo("card"));
+        }
     }
 }
