@@ -115,8 +115,12 @@ namespace Drowsy.Presentation.Games.DrowZzz
             _seSlider.UnregisterValueChangedCallback(OnSeSliderChanged);
             _languageDropdown.UnregisterValueChangedCallback(OnLanguageDropdownChanged);
             _disposables.Dispose();
-            // Pres W-1: 設定の永続化を Binder のライフサイクル終端に集約する(Save 失敗時は LogError のみで
-            // ゲーム動作に影響させない、IUserSettings 実装側のフォールバック動作を尊重する)。
+            // Pres W-1: 設定の永続化を Binder のライフサイクル終端に集約する。
+            // 現行実装 PlayerPrefsUserSettings は Dispose 後の Save() を silent no-op にしたため
+            // (USR-025、Setter / Save 非対称設計)、Unity の GameObject 破棄順序非決定性で
+            // Settings → Binder の順で Dispose されても本 try は throw しない経路に揃った。
+            // ただし IUserSettings は interface であり、将来 / テストスタブの別実装が
+            // Save() で例外を投げる可能性は残るため try-catch を維持し、Dispose 処理の継続を保証する。
             try
             {
                 _userSettings.Save();

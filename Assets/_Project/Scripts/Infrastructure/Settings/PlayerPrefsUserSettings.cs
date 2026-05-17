@@ -119,15 +119,41 @@ namespace Drowsy.Infrastructure.Settings
         }
 
         /// <inheritdoc />
+        /// <remarks>
+        /// USR-025: Dispose 後の <see cref="Save"/> は silent no-op(USR-022 / 023 / 024 の Setter 群が
+        /// <see cref="ObjectDisposedException"/> を投げる非対称設計)。本 wrapper を Dispose した時点で
+        /// 内部 <see cref="ReactiveProperty{T}"/> は解放されるが、Setter が呼ばれる度に
+        /// <see cref="PlayerPrefs.SetFloat(string,float)"/> / <see cref="PlayerPrefs.SetString(string,string)"/> で
+        /// 静的 PlayerPrefs バッファには値が既に書かれているため、flush(<see cref="PlayerPrefs.Save"/>)は
+        /// wrapper 状態に依存しない無害な操作として扱う。
+        /// <para>
+        /// この非対称により、Unity の GameObject 破棄順序が非決定的でも
+        /// <c>DrowZzzGameView.OnDestroy</c> → <c>UserSettingsBinder.Dispose</c> → <c>IUserSettings.Save</c>
+        /// の呼び出しが <c>ProjectLifetimeScope</c> の本 wrapper 破棄より後に走っても安全に flush を試みられる
+        /// (VContainer LifetimeScope と MonoBehaviour ライフサイクルが別管理である M5 構成に必要な吸収層)。
+        /// </para>
+        /// <para>
+        /// 注意:Dispose 後の <see cref="Save"/> は <see cref="PlayerPrefs.Save"/> を呼ばずに silent return
+        /// するため、最後の Set 以降に明示 flush されていない値はディスク永続化が遅延する可能性がある。
+        /// 通常は (1) Dispose 前に <c>UserSettingsBinder</c> が Dispose されて Save が走る、(2) Unity が
+        /// <see cref="MonoBehaviour"/>.OnApplicationQuit で <see cref="PlayerPrefs.Save"/> を自動実行する、の
+        /// いずれかで flush 漏れが発生しない設計(Dispose 後の Save は破棄順序非決定性吸収のための安全網)。
+        /// </para>
+        /// </remarks>
         public void Save()
         {
-            ThrowIfDisposed();
+            if (_disposed)
+            {
+                return;
+            }
             PlayerPrefs.Save();
         }
 
         /// <summary>
         /// 内部 <see cref="ReactiveProperty{T}"/> 3 件を Dispose する。
-        /// 以降の Setter / Save 呼び出しは <see cref="ObjectDisposedException"/> を投げる。
+        /// 以降の Setter 呼び出し(<see cref="SetBgmVolume"/> / <see cref="SetSeVolume"/> /
+        /// <see cref="SetLanguage"/>)は <see cref="ObjectDisposedException"/> を投げる。
+        /// <see cref="Save"/> のみ silent no-op(USR-025、ライフサイクル非対称性吸収)。
         /// </summary>
         /// <remarks>
         /// Getter(<see cref="BgmVolume"/> / <see cref="SeVolume"/> / <see cref="Language"/>)は

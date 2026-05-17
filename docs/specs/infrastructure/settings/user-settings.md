@@ -28,6 +28,7 @@ ADR-0012 §8「`IUserSettings` + PlayerPrefs(サブスコープ、M4-PR6)」+ M4
 - [USR-015] When `SetBgmVolume(v)` is called with `v > 1.0`, the `BgmVolume` getter shall return 1.0 (clamped).
 - [USR-016] When `SetBgmVolume(v)` is called with `v < 0.0`, the `BgmVolume` getter shall return 0.0 (clamped).
 - [USR-017] When `SetLanguage(code)` is called with `"en"`, the `Language` getter shall return `"en"` and `PlayerPrefs.GetString("drowsy.lang")` shall return `"en"`.
+- [USR-025] When `Save()` is called after `Dispose()`, the call shall be a silent no-op(USR-022 / USR-023 / USR-024 の Setter が `ObjectDisposedException` を投げる非対称設計、Setter は wrapper 内部状態を変更する責務がある一方 `Save` は静的 PlayerPrefs バッファの flush 操作で wrapper 状態に依存しないため).Setter 経由で値は既に `PlayerPrefs.SetXxx` に書かれているため、flush 失敗時もデータ損失はない.Unity の GameObject 破棄順序が非決定的で `DrowZzzGameView.OnDestroy` → `UserSettingsBinder.Dispose` → `IUserSettings.Save` が `ProjectLifetimeScope` の本 wrapper 破棄より後に走る経路を吸収する.
 - [USR-027] When `Dispose()` is called after the first `Dispose()` (二重 Dispose), the second call shall be a silent no-op (冪等性、`if (_disposed) return` ガードで内部 `ReactiveProperty<T>.Dispose()` を二度呼ばない正常系設計、code-reviewer S-1 で Event-driven に分類変更、2026-05-13 カバレッジ補完 PR で新規追加).
 
 ## 状態駆動要件 (State-driven)
@@ -43,7 +44,8 @@ ADR-0012 §8「`IUserSettings` + PlayerPrefs(サブスコープ、M4-PR6)」+ M4
 - [USR-022] If `SetBgmVolume(v)` is called after `Dispose()`, `ObjectDisposedException` shall be thrown.
 - [USR-023] If `SetSeVolume(v)` is called after `Dispose()`, `ObjectDisposedException` shall be thrown.
 - [USR-024] If `SetLanguage(code)` is called after `Dispose()`, `ObjectDisposedException` shall be thrown.
-- [USR-025] If `Save()` is called after `Dispose()`, `ObjectDisposedException` shall be thrown.
+
+> (USR-025 は Event-driven 系に移動。`Save()` は flush 操作で wrapper 状態に依存しないため silent no-op に方針変更、2026-05-17 fix PR)
 
 ## 任意要件 (Optional)
 
@@ -108,6 +110,6 @@ CLAUDE.md §9「定数管理方針」階層別に分類:
 | USR-022 | `Given_Dispose済_When_SetBgmVolume_Then_ObjectDisposedException` | |
 | USR-023 | `Given_Dispose済_When_SetSeVolume_Then_ObjectDisposedException` | |
 | USR-024 | `Given_Dispose済_When_SetLanguage_Then_ObjectDisposedException` | |
-| USR-025 | `Given_Dispose済_When_Save_Then_ObjectDisposedException` | |
+| USR-025 | `Given_Dispose済_When_Save_Then_silent_no_op` | Setter 系 USR-022 / 023 / 024 とは非対称(`Save` は静的 PlayerPrefs flush で wrapper 状態に依存しないため throw → silent no-op に方針変更、2026-05-17 fix PR)|
 | USR-026 | `Given_PlayerPrefsに範囲外SE_When_インスタンス化_Then_default0_5に復帰する` | SE ctor 範囲外復帰(USR-018 BGM 対称) |
 | USR-027 | `Given_既Dispose_When_2回目Dispose_Then_冪等で例外なし` | `_disposed` フラグ冪等性、Event-driven 系正常動作、2026-05-13 カバレッジ補完 PR で新規 |

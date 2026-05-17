@@ -353,7 +353,9 @@ namespace Drowsy.Infrastructure.Tests.Settings
             Assert.Throws<ArgumentException>(() => settings.SetLanguage(code));
         }
 
-        // ===== USR-022 〜 USR-025: Dispose 後の操作 =====
+        // ===== USR-022 〜 USR-024: Dispose 後の Setter は throw、USR-025: Dispose 後の Save は silent no-op
+        //       (Setter は内部状態変更責務 / Save は flush 操作で wrapper 状態に依存しない非対称設計、
+        //        2026-05-17 fix PR で USR-025 の方針を throw → no-op に変更) =====
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "USR-022")]
         public void Given_Dispose済_When_SetBgmVolume_Then_ObjectDisposedException()
@@ -388,15 +390,15 @@ namespace Drowsy.Infrastructure.Tests.Settings
             Assert.Throws<ObjectDisposedException>(() => settings.SetLanguage(LanguageCodes.En));
         }
 
-        [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "USR-025")]
-        public void Given_Dispose済_When_Save_Then_ObjectDisposedException()
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "USR-025")]
+        public void Given_Dispose済_When_Save_Then_silent_no_op()
         {
             // Given
             var settings = new PlayerPrefsUserSettings();
             settings.Dispose();
 
-            // When / Then
-            Assert.Throws<ObjectDisposedException>(() => settings.Save());
+            // When / Then(silent no-op = 例外なし、戻り値なし)
+            Assert.DoesNotThrow(() => settings.Save());
         }
 
         // ===== USR-027: Dispose の冪等性(二重呼び出しで例外なし、2026-05-13 カバレッジ補完) =====
