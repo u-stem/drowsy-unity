@@ -333,7 +333,8 @@ namespace Drowsy.Infrastructure.Tests.Settings
             using var settings = new PlayerPrefsUserSettings();
 
             // When / Then
-            Assert.Throws<ArgumentNullException>(() => settings.SetLanguage(null));
+            var ex = Assert.Throws<ArgumentNullException>(() => settings.SetLanguage(null));
+            Assert.That(ex!.ParamName, Is.EqualTo("code"));
         }
 
         // 1 テスト 1 アサーション(CLAUDE.md §5)を維持するため [TestCase] で分割。

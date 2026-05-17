@@ -122,13 +122,15 @@ namespace Drowsy.Domain.Tests.Players
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "PLAYER-015")]
         public void Given_nullId_When_コンストラクタ_Then_ArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new PlayerState(null, Hand.Empty));
+            var ex = Assert.Throws<ArgumentNullException>(() => new PlayerState(null, Hand.Empty));
+            Assert.That(ex!.ParamName, Is.EqualTo("Id"));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "PLAYER-016")]
         public void Given_nullHand_When_コンストラクタ_Then_ArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new PlayerState(PlayerId.Of("p1"), null));
+            var ex = Assert.Throws<ArgumentNullException>(() => new PlayerState(PlayerId.Of("p1"), null));
+            Assert.That(ex!.ParamName, Is.EqualTo("Hand"));
         }
 
         // ===== PLAYER-017 / PLAYER-018: with 式での null 防御 =====
@@ -139,7 +141,8 @@ namespace Drowsy.Domain.Tests.Players
             // Given: init setter の null 防御が with 式経由でも効くことを確認
             var state = new PlayerState(PlayerId.Of("p1"), Hand.Empty);
             // When / Then
-            Assert.Throws<ArgumentNullException>(() => _ = state with { Id = null });
+            var ex = Assert.Throws<ArgumentNullException>(() => _ = state with { Id = null });
+            Assert.That(ex!.ParamName, Is.EqualTo("Id"));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "PLAYER-018")]
@@ -148,7 +151,8 @@ namespace Drowsy.Domain.Tests.Players
             // Given
             var state = new PlayerState(PlayerId.Of("p1"), Hand.Empty);
             // When / Then
-            Assert.Throws<ArgumentNullException>(() => _ = state with { Hand = null });
+            var ex = Assert.Throws<ArgumentNullException>(() => _ = state with { Hand = null });
+            Assert.That(ex!.ParamName, Is.EqualTo("Hand"));
         }
     }
 }

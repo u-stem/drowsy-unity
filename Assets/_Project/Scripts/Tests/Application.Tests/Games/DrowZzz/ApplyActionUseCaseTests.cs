@@ -98,14 +98,16 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_sessionにnull_When_Execute_Then_ArgumentNullExceptionを投げる()
         {
             var useCase = new ApplyActionUseCase(NewRule());
-            Assert.Throws<ArgumentNullException>(() => useCase.Execute(null, new DrawCardAction()));
+            var ex = Assert.Throws<ArgumentNullException>(() => useCase.Execute(null, new DrawCardAction()));
+            Assert.That(ex!.ParamName, Is.EqualTo("session"));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "APP-029")]
         public void Given_actionにnull_When_Execute_Then_ArgumentNullExceptionを投げる()
         {
             var useCase = new ApplyActionUseCase(NewRule());
-            Assert.Throws<ArgumentNullException>(() => useCase.Execute(NewSession(), null));
+            var ex = Assert.Throws<ArgumentNullException>(() => useCase.Execute(NewSession(), null));
+            Assert.That(ex!.ParamName, Is.EqualTo("action"));
         }
 
         // ===== APP-030: constructor null 検証 =====
@@ -113,7 +115,8 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "APP-030")]
         public void Given_ruleにnull_When_ApplyActionUseCaseを生成_Then_ArgumentNullExceptionを投げる()
         {
-            Assert.Throws<ArgumentNullException>(() => _ = new ApplyActionUseCase(null));
+            var ex = Assert.Throws<ArgumentNullException>(() => _ = new ApplyActionUseCase(null));
+            Assert.That(ex!.ParamName, Is.EqualTo("rule"));
         }
     }
 }

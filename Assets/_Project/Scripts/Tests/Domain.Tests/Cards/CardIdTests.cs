@@ -42,7 +42,8 @@ namespace Drowsy.Domain.Tests.Cards
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "CARD-006")]
         public void Given_typeIdがnull_When_Ofを呼ぶ_Then_ArgumentNullExceptionを投げる()
         {
-            Assert.Throws<ArgumentNullException>(() => CardId.Of(null, 0));
+            var ex = Assert.Throws<ArgumentNullException>(() => CardId.Of(null, 0));
+            Assert.That(ex!.ParamName, Is.EqualTo("typeId"));
         }
 
         // ===== CARD-007: instance 負数は ArgumentOutOfRangeException =====

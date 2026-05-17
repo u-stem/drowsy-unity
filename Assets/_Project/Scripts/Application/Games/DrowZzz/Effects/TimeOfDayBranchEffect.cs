@@ -33,14 +33,14 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
         public IReadOnlyList<IEffect> NightEffects
         {
             get => _nightEffects;
-            init => _nightEffects = value ?? throw new ArgumentNullException(nameof(value));
+            init => _nightEffects = value ?? throw new ArgumentNullException(nameof(NightEffects));
         }
 
         /// <summary>朝(<see cref="DrowZzzClock.IsMorning"/>)に評価される効果列(順序保持、左から逐次評価)。</summary>
         public IReadOnlyList<IEffect> MorningEffects
         {
             get => _morningEffects;
-            init => _morningEffects = value ?? throw new ArgumentNullException(nameof(value));
+            init => _morningEffects = value ?? throw new ArgumentNullException(nameof(MorningEffects));
         }
 
         /// <exception cref="ArgumentNullException">いずれかの引数が null(DZ-123 / DZ-124)</exception>

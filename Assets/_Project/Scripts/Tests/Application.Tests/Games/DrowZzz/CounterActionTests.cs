@@ -294,13 +294,15 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-216")]
         public void Given_Counter_null_When_CounterAction生成_Then_ArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => _ = new CounterAction(Counter: null, Target: TargetId));
+            var ex = Assert.Throws<ArgumentNullException>(() => _ = new CounterAction(Counter: null, Target: TargetId));
+            Assert.That(ex!.ParamName, Is.EqualTo("Counter"));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-216")]
         public void Given_Target_null_When_CounterAction生成_Then_ArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => _ = new CounterAction(Counter: CounterId, Target: null));
+            var ex = Assert.Throws<ArgumentNullException>(() => _ = new CounterAction(Counter: CounterId, Target: null));
+            Assert.That(ex!.ParamName, Is.EqualTo("Target"));
         }
 
         // ===== DZ-219 補強:Discard.Cards[1] が TargetId であること(P-3 反映)=====

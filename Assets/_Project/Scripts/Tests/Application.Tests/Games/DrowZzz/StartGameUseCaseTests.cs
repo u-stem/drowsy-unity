@@ -211,7 +211,8 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_playersにnull_When_Execute_Then_ArgumentNullExceptionを投げる()
         {
             var useCase = NewUseCase();
-            Assert.Throws<ArgumentNullException>(() => useCase.Execute(null, NewDeck(20)));
+            var ex = Assert.Throws<ArgumentNullException>(() => useCase.Execute(null, NewDeck(20)));
+            Assert.That(ex!.ParamName, Is.EqualTo("players"));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-029")]
@@ -234,8 +235,9 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_initialDeckにnull_When_Execute_Then_ArgumentNullExceptionを投げる()
         {
             var useCase = NewUseCase();
-            Assert.Throws<ArgumentNullException>(() =>
+            var ex = Assert.Throws<ArgumentNullException>(() =>
                 useCase.Execute(NewPlayers("p1", "p2"), null));
+            Assert.That(ex!.ParamName, Is.EqualTo("initialDeck"));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-032")]

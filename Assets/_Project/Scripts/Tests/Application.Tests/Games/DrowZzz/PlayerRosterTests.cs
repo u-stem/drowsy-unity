@@ -23,7 +23,8 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_playersNull_When_Ctor_Then_ArgumentNullException()
         {
             // Given / When / Then
-            Assert.Throws<ArgumentNullException>(() => _ = new PlayerRoster(null));
+            var ex = Assert.Throws<ArgumentNullException>(() => _ = new PlayerRoster(null));
+            Assert.That(ex!.ParamName, Is.EqualTo("players"));
         }
 
         // ===== ROSTER-003: ctor empty 防御 =====

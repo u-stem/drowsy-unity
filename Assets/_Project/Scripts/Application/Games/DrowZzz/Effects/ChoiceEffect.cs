@@ -30,7 +30,7 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
         public IReadOnlyList<IReadOnlyList<IEffect>> Branches
         {
             get => _branches;
-            init => _branches = value ?? throw new ArgumentNullException(nameof(value));
+            init => _branches = value ?? throw new ArgumentNullException(nameof(Branches));
         }
 
         /// <exception cref="ArgumentNullException"><paramref name="branches"/> または各 inner list が null</exception>

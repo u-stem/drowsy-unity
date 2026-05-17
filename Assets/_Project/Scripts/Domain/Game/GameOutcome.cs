@@ -36,7 +36,7 @@ namespace Drowsy.Domain.Game
         public PlayerId Winner
         {
             get => _winner;
-            init => _winner = value ?? throw new ArgumentNullException(nameof(value));
+            init => _winner = value ?? throw new ArgumentNullException(nameof(Winner));
         }
     }
 

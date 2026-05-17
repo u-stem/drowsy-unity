@@ -329,29 +329,33 @@ namespace Drowsy.Domain.Tests.Game
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "GS-010")]
         public void Given_nullPlayers_When_コンストラクタ_Then_ArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(
+            var ex = Assert.Throws<ArgumentNullException>(
                 () => new GameState(null, Pile.Empty, Pile.Empty, Pile.Empty, TurnState.Initial(0)));
+            Assert.That(ex!.ParamName, Is.EqualTo("Players"));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "GS-011")]
         public void Given_nullDeck_When_コンストラクタ_Then_ArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(
+            var ex = Assert.Throws<ArgumentNullException>(
                 () => new GameState(new[] { Player("p1") }, null, Pile.Empty, Pile.Empty, TurnState.Initial(0)));
+            Assert.That(ex!.ParamName, Is.EqualTo("Deck"));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "GS-012")]
         public void Given_nullDiscard_When_コンストラクタ_Then_ArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(
+            var ex = Assert.Throws<ArgumentNullException>(
                 () => new GameState(new[] { Player("p1") }, Pile.Empty, null, Pile.Empty, TurnState.Initial(0)));
+            Assert.That(ex!.ParamName, Is.EqualTo("Discard"));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "GS-013")]
         public void Given_nullField_When_コンストラクタ_Then_ArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(
+            var ex = Assert.Throws<ArgumentNullException>(
                 () => new GameState(new[] { Player("p1") }, Pile.Empty, Pile.Empty, null, TurnState.Initial(0)));
+            Assert.That(ex!.ParamName, Is.EqualTo("Field"));
         }
 
         // ===== GS-014: players に null 要素 =====
@@ -380,28 +384,32 @@ namespace Drowsy.Domain.Tests.Game
         public void Given_GameState_When_with式でPlayersをnullに_Then_ArgumentNullException()
         {
             var state = NewState();
-            Assert.Throws<ArgumentNullException>(() => _ = state with { Players = null });
+            var ex = Assert.Throws<ArgumentNullException>(() => _ = state with { Players = null });
+            Assert.That(ex!.ParamName, Is.EqualTo("Players"));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "GS-017")]
         public void Given_GameState_When_with式でDeckをnullに_Then_ArgumentNullException()
         {
             var state = NewState();
-            Assert.Throws<ArgumentNullException>(() => _ = state with { Deck = null });
+            var ex = Assert.Throws<ArgumentNullException>(() => _ = state with { Deck = null });
+            Assert.That(ex!.ParamName, Is.EqualTo("Deck"));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "GS-018")]
         public void Given_GameState_When_with式でDiscardをnullに_Then_ArgumentNullException()
         {
             var state = NewState();
-            Assert.Throws<ArgumentNullException>(() => _ = state with { Discard = null });
+            var ex = Assert.Throws<ArgumentNullException>(() => _ = state with { Discard = null });
+            Assert.That(ex!.ParamName, Is.EqualTo("Discard"));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "GS-019")]
         public void Given_GameState_When_with式でFieldをnullに_Then_ArgumentNullException()
         {
             var state = NewState();
-            Assert.Throws<ArgumentNullException>(() => _ = state with { Field = null });
+            var ex = Assert.Throws<ArgumentNullException>(() => _ = state with { Field = null });
+            Assert.That(ex!.ParamName, Is.EqualTo("Field"));
         }
 
         // ===== GS-020 / GS-021 / GS-022: PR-5 で追加した Turn 関連の異常系 =====
@@ -409,15 +417,17 @@ namespace Drowsy.Domain.Tests.Game
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "GS-020")]
         public void Given_nullTurn_When_コンストラクタ_Then_ArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(
+            var ex = Assert.Throws<ArgumentNullException>(
                 () => new GameState(new[] { Player("p1") }, Pile.Empty, Pile.Empty, Pile.Empty, null));
+            Assert.That(ex!.ParamName, Is.EqualTo("Turn"));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "GS-021")]
         public void Given_GameState_When_with式でTurnをnullに_Then_ArgumentNullException()
         {
             var state = NewState();
-            Assert.Throws<ArgumentNullException>(() => _ = state with { Turn = null });
+            var ex = Assert.Throws<ArgumentNullException>(() => _ = state with { Turn = null });
+            Assert.That(ex!.ParamName, Is.EqualTo("Turn"));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "GS-022")]

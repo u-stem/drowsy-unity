@@ -20,7 +20,8 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_nullを渡す_When_DdpPoolを生成_Then_ArgumentNullExceptionを投げる()
         {
             // Given / When / Then
-            Assert.Throws<ArgumentNullException>(() => _ = new DdpPool(null));
+            var ex = Assert.Throws<ArgumentNullException>(() => _ = new DdpPool(null));
+            Assert.That(ex!.ParamName, Is.EqualTo("values"));
         }
 
         // ===== DZ-149: 空 DdpPool から Draw → InvalidOperationException =====
@@ -77,7 +78,8 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             // Given
             var pool = new DdpPool(new[] { 10, 20, 30 });
             // When / Then
-            Assert.Throws<ArgumentNullException>(() => pool.Shuffle(null));
+            var ex = Assert.Throws<ArgumentNullException>(() => pool.Shuffle(null));
+            Assert.That(ex!.ParamName, Is.EqualTo("rng"));
         }
 
         // ===== DZ-152: Shuffle は決定的 + Fisher-Yates のマルチセット保存性 =====

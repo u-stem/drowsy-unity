@@ -79,28 +79,28 @@ namespace Drowsy.Application.Games.DrowZzz
             {
                 if (value is null)
                 {
-                    throw new ArgumentNullException(nameof(value));
+                    throw new ArgumentNullException(nameof(GameState));
                 }
                 // cross-field: 既に DP 群 / Influences が確定していれば、それぞれの PlayerId キー集合と新 GameState.Players が一致するか検証
                 if (_firstDrowsyPoints is not null)
                 {
-                    EnsureKeysMatchPlayers(_firstDrowsyPoints.Keys, value, nameof(value), keysetName: "FirstDrowsyPoints");
+                    EnsureKeysMatchPlayers(_firstDrowsyPoints.Keys, value, nameof(GameState), keysetName: "FirstDrowsyPoints");
                 }
                 if (_drawDrowsyPoints is not null)
                 {
-                    EnsureKeysMatchPlayers(_drawDrowsyPoints.Keys, value, nameof(value), keysetName: "DrawDrowsyPoints");
+                    EnsureKeysMatchPlayers(_drawDrowsyPoints.Keys, value, nameof(GameState), keysetName: "DrawDrowsyPoints");
                 }
                 if (_secondDrowsyPoints is not null)
                 {
-                    EnsureKeysMatchPlayers(_secondDrowsyPoints.Keys, value, nameof(value), keysetName: "SecondDrowsyPoints");
+                    EnsureKeysMatchPlayers(_secondDrowsyPoints.Keys, value, nameof(GameState), keysetName: "SecondDrowsyPoints");
                 }
                 if (_influences is not null)
                 {
-                    EnsureKeysMatchPlayers(_influences.Keys, value, nameof(value), keysetName: "Influences");
+                    EnsureKeysMatchPlayers(_influences.Keys, value, nameof(GameState), keysetName: "Influences");
                 }
                 if (_bedDamages is not null)
                 {
-                    EnsureKeysMatchPlayers(_bedDamages.Keys, value, nameof(value), keysetName: "BedDamages");
+                    EnsureKeysMatchPlayers(_bedDamages.Keys, value, nameof(GameState), keysetName: "BedDamages");
                 }
                 _gameState = value;
             }
@@ -115,10 +115,10 @@ namespace Drowsy.Application.Games.DrowZzz
             get => _firstDrowsyPoints;
             init
             {
-                var copied = ValidateAndCopyDp(value, dpName: "FirstDrowsyPoints");
+                var copied = ValidateAndCopyDp(value, dpName: "FirstDrowsyPoints", paramName: nameof(FirstDrowsyPoints));
                 if (_gameState is not null)
                 {
-                    EnsureKeysMatchPlayers(copied.Keys, _gameState, nameof(value), keysetName: "FirstDrowsyPoints");
+                    EnsureKeysMatchPlayers(copied.Keys, _gameState, nameof(FirstDrowsyPoints), keysetName: "FirstDrowsyPoints");
                 }
                 _firstDrowsyPoints = copied;
             }
@@ -136,10 +136,10 @@ namespace Drowsy.Application.Games.DrowZzz
             get => _drawDrowsyPoints;
             init
             {
-                var copied = ValidateAndCopyDp(value, dpName: "DrawDrowsyPoints");
+                var copied = ValidateAndCopyDp(value, dpName: "DrawDrowsyPoints", paramName: nameof(DrawDrowsyPoints));
                 if (_gameState is not null)
                 {
-                    EnsureKeysMatchPlayers(copied.Keys, _gameState, nameof(value), keysetName: "DrawDrowsyPoints");
+                    EnsureKeysMatchPlayers(copied.Keys, _gameState, nameof(DrawDrowsyPoints), keysetName: "DrawDrowsyPoints");
                 }
                 _drawDrowsyPoints = copied;
             }
@@ -156,10 +156,10 @@ namespace Drowsy.Application.Games.DrowZzz
             get => _secondDrowsyPoints;
             init
             {
-                var copied = ValidateAndCopyDp(value, dpName: "SecondDrowsyPoints");
+                var copied = ValidateAndCopyDp(value, dpName: "SecondDrowsyPoints", paramName: nameof(SecondDrowsyPoints));
                 if (_gameState is not null)
                 {
-                    EnsureKeysMatchPlayers(copied.Keys, _gameState, nameof(value), keysetName: "SecondDrowsyPoints");
+                    EnsureKeysMatchPlayers(copied.Keys, _gameState, nameof(SecondDrowsyPoints), keysetName: "SecondDrowsyPoints");
                 }
                 _secondDrowsyPoints = copied;
             }
@@ -172,7 +172,7 @@ namespace Drowsy.Application.Games.DrowZzz
         public DdpPool DdpPool
         {
             get => _ddpPool;
-            init => _ddpPool = value ?? throw new ArgumentNullException(nameof(value));
+            init => _ddpPool = value ?? throw new ArgumentNullException(nameof(DdpPool));
         }
 
         /// <summary>
@@ -189,10 +189,10 @@ namespace Drowsy.Application.Games.DrowZzz
             get => _influences;
             init
             {
-                var copied = ValidateAndCopyInfluences(value);
+                var copied = ValidateAndCopyInfluences(value, paramName: nameof(Influences));
                 if (_gameState is not null)
                 {
-                    EnsureKeysMatchPlayers(copied.Keys, _gameState, nameof(value), keysetName: "Influences");
+                    EnsureKeysMatchPlayers(copied.Keys, _gameState, nameof(Influences), keysetName: "Influences");
                 }
                 _influences = copied;
             }
@@ -251,10 +251,10 @@ namespace Drowsy.Application.Games.DrowZzz
             get => _bedDamages;
             init
             {
-                var copied = ValidateAndCopyBedDamages(value);
+                var copied = ValidateAndCopyBedDamages(value, paramName: nameof(BedDamages));
                 if (_gameState is not null)
                 {
-                    EnsureKeysMatchPlayers(copied.Keys, _gameState, nameof(value), keysetName: "BedDamages");
+                    EnsureKeysMatchPlayers(copied.Keys, _gameState, nameof(BedDamages), keysetName: "BedDamages");
                 }
                 _bedDamages = copied;
             }
@@ -281,7 +281,7 @@ namespace Drowsy.Application.Games.DrowZzz
         public IReadOnlyList<PendingCounteredEffect> PendingCounteredEffects
         {
             get => _pendingCounteredEffects;
-            init => _pendingCounteredEffects = ValidateAndCopyPendingCounteredEffects(value);
+            init => _pendingCounteredEffects = ValidateAndCopyPendingCounteredEffects(value, paramName: nameof(PendingCounteredEffects));
         }
 
         /// <summary>
@@ -379,13 +379,15 @@ namespace Drowsy.Application.Games.DrowZzz
         }
 
         // FDP / DDP / SDP の防御コピー + null 検証(共通化、dpName でエラーメッセージを区別)
+        // paramName: 呼び出し元 init setter の Property 名(post-Phase2 #4 ParamName 強化 Phase A+B 第 2 弾)
         private static Dictionary<PlayerId, int> ValidateAndCopyDp(
             IReadOnlyDictionary<PlayerId, int> source,
-            string dpName)
+            string dpName,
+            string paramName)
         {
             if (source is null)
             {
-                throw new ArgumentNullException(nameof(source), $"{dpName} に null は渡せません");
+                throw new ArgumentNullException(paramName, $"{dpName} に null は渡せません");
             }
             var buffer = new Dictionary<PlayerId, int>(source.Count);
             foreach (var kv in source)
@@ -396,12 +398,14 @@ namespace Drowsy.Application.Games.DrowZzz
         }
 
         // BedDamages の防御コピー + null 検証 + 範囲検証(0〜100%、ADR-0011 §3)
+        // paramName: 呼び出し元 init setter の Property 名(post-Phase2 #4 ParamName 強化 Phase A+B 第 2 弾)
         private static Dictionary<PlayerId, int> ValidateAndCopyBedDamages(
-            IReadOnlyDictionary<PlayerId, int> source)
+            IReadOnlyDictionary<PlayerId, int> source,
+            string paramName)
         {
             if (source is null)
             {
-                throw new ArgumentNullException(nameof(source), "BedDamages に null は渡せません");
+                throw new ArgumentNullException(paramName, "BedDamages に null は渡せません");
             }
             var buffer = new Dictionary<PlayerId, int>(source.Count);
             foreach (var kv in source)
@@ -413,7 +417,7 @@ namespace Drowsy.Application.Games.DrowZzz
                         $"BedDamages[{kv.Key?.Value ?? "<null>"}] は " +
                         $"{DrowZzzBedConstants.MinBedDamagePercent}〜{DrowZzzBedConstants.MaxBedDamagePercent}% の範囲である必要があります " +
                         $"(現在: {kv.Value}、ADR-0011 §3)",
-                        nameof(source));
+                        paramName);
                 }
                 buffer[kv.Key] = kv.Value;
             }
@@ -422,12 +426,14 @@ namespace Drowsy.Application.Games.DrowZzz
 
         // PendingCounteredEffects の防御コピー + null 検証(list / 各要素ともに null 不可、空 list は許容)。
         // 内部表現は PendingCounteredEffect[] として保持し、IReadOnlyList で公開(Influences と同パターン)。
+        // paramName: 呼び出し元 init setter の Property 名(post-Phase2 #4 ParamName 強化 Phase A+B 第 2 弾)
         private static IReadOnlyList<PendingCounteredEffect> ValidateAndCopyPendingCounteredEffects(
-            IReadOnlyList<PendingCounteredEffect> source)
+            IReadOnlyList<PendingCounteredEffect> source,
+            string paramName)
         {
             if (source is null)
             {
-                throw new ArgumentNullException(nameof(source), "PendingCounteredEffects に null は渡せません(空 list は許容)");
+                throw new ArgumentNullException(paramName, "PendingCounteredEffects に null は渡せません(空 list は許容)");
             }
             var arr = new PendingCounteredEffect[source.Count];
             for (int i = 0; i < source.Count; i++)
@@ -436,7 +442,7 @@ namespace Drowsy.Application.Games.DrowZzz
                 {
                     throw new ArgumentException(
                         $"PendingCounteredEffects[{i}] に null 要素を含めることはできません",
-                        nameof(source));
+                        paramName);
                 }
                 arr[i] = source[i];
             }
@@ -446,12 +452,14 @@ namespace Drowsy.Application.Games.DrowZzz
         // Influences の防御コピー + null 検証(各 list 内の null 要素も検出)。
         // 内部 value 型は IReadOnlyList<PlayerInfluence> として保持し、PlayerInfluence[] を中身として
         // 防御コピーする(配列だが IReadOnlyList で公開され immutable な扱い、Pile / DdpPool 同パターン)。
+        // paramName: 呼び出し元 init setter の Property 名(post-Phase2 #4 ParamName 強化 Phase A+B 第 2 弾)
         private static Dictionary<PlayerId, IReadOnlyList<PlayerInfluence>> ValidateAndCopyInfluences(
-            IReadOnlyDictionary<PlayerId, IReadOnlyList<PlayerInfluence>> source)
+            IReadOnlyDictionary<PlayerId, IReadOnlyList<PlayerInfluence>> source,
+            string paramName)
         {
             if (source is null)
             {
-                throw new ArgumentNullException(nameof(source), "Influences に null は渡せません");
+                throw new ArgumentNullException(paramName, "Influences に null は渡せません");
             }
             var buffer = new Dictionary<PlayerId, IReadOnlyList<PlayerInfluence>>(source.Count);
             foreach (var kv in source)
@@ -460,7 +468,7 @@ namespace Drowsy.Application.Games.DrowZzz
                 {
                     throw new ArgumentException(
                         $"Influences[{kv.Key?.Value ?? "<null>"}] に null list は渡せません(空 list は許容)",
-                        nameof(source));
+                        paramName);
                 }
                 var arr = new PlayerInfluence[kv.Value.Count];
                 for (int i = 0; i < kv.Value.Count; i++)
@@ -469,7 +477,7 @@ namespace Drowsy.Application.Games.DrowZzz
                     {
                         throw new ArgumentException(
                             $"Influences[{kv.Key?.Value ?? "<null>"}][{i}] に null 要素を含めることはできません",
-                            nameof(source));
+                            paramName);
                     }
                     arr[i] = kv.Value[i];
                 }

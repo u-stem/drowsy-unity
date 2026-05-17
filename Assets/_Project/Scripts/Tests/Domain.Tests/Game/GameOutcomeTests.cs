@@ -28,7 +28,8 @@ namespace Drowsy.Domain.Tests.Game
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "GS-105")]
         public void Given_Winnerにnull_When_WinnerOutcomeを生成_Then_ArgumentNullExceptionを投げる()
         {
-            Assert.Throws<ArgumentNullException>(() => new WinnerOutcome(null));
+            var ex = Assert.Throws<ArgumentNullException>(() => new WinnerOutcome(null));
+            Assert.That(ex!.ParamName, Is.EqualTo("Winner"));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "GS-105")]
@@ -37,7 +38,8 @@ namespace Drowsy.Domain.Tests.Game
             // Given
             var outcome = new WinnerOutcome(PlayerId.Of("p1"));
             // When / Then(with 経由でも init setter の二重ガードが効く)
-            Assert.Throws<ArgumentNullException>(() => { var _ = outcome with { Winner = null }; });
+            var ex = Assert.Throws<ArgumentNullException>(() => { var _ = outcome with { Winner = null }; });
+            Assert.That(ex!.ParamName, Is.EqualTo("Winner"));
         }
 
         // ===== GS-102: WinnerOutcome の値同値性 =====

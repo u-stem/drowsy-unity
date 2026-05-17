@@ -51,8 +51,9 @@ namespace Drowsy.Application.Tests.Games.DrowZzz.Influences
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-156")]
         public void Given_TickEffectにnull_When_PlayerInfluenceを生成_Then_ArgumentNullExceptionを投げる()
         {
-            Assert.Throws<ArgumentNullException>(() =>
+            var ex = Assert.Throws<ArgumentNullException>(() =>
                 new PlayerInfluence(InfluenceTrigger.OwnPhaseStart, null, 3));
+            Assert.That(ex!.ParamName, Is.EqualTo("TickEffect"));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-156")]
@@ -75,7 +76,8 @@ namespace Drowsy.Application.Tests.Games.DrowZzz.Influences
             // Given
             var inf = new PlayerInfluence(InfluenceTrigger.OwnPhaseStart, Tick(), 3);
             // When / Then(with 経由でも init setter の二重ガードが効く)
-            Assert.Throws<ArgumentNullException>(() => { var _ = inf with { TickEffect = null }; });
+            var ex = Assert.Throws<ArgumentNullException>(() => { var _ = inf with { TickEffect = null }; });
+            Assert.That(ex!.ParamName, Is.EqualTo("TickEffect"));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-156")]
