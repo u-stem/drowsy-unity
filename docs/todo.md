@@ -286,6 +286,21 @@
     - **2026-05-17 第 4 弾(本 TODO 進行、chore/rcs1118-and-sessionfactory-4th PR)**: `RCS1118`(const にできるローカル変数)を `warning` 化(dotnet build 0 警告 / 0 エラー確認済):
       - 既存違反 15 箇所(全 Persistence 系テストの JSON string + Domain Tests `CardDataTests` / `CardTypeIdTests` / `PlayerIdTests` の `var name = "..."` 形式)を同 PR で `var` → `const string` に機械置換
       - 違反箇所はすべて `var x = "literal"` パターンで、awk で各行先頭の `var ` を `const string ` に置換するワンライナーで対応
+    - **2026-05-17 第 5 弾(本 TODO 進行、chore/roslynator-rcs-5th PR)**: 「Remove empty/redundant 系」衛生規則 12 ルールを `warning` 化(いずれも既存コード違反 0 件、dotnet build 0 警告 / 0 エラー確認済):
+      - `RCS1033` 冗長な boolean literal(`!= true` 等)
+      - `RCS1034` 冗長な `sealed` 修飾子
+      - `RCS1038` 空の statement(`;`)
+      - `RCS1040` 空の `else` 節
+      - `RCS1041` 空の initializer(`new Foo() { }`)
+      - `RCS1042` enum の `= 0` 既定値割当
+      - `RCS1043` 単一 part の `partial` 修飾子
+      - `RCS1066` 空の `finally` 節
+      - `RCS1071` 冗長な base constructor 呼び出し
+      - `RCS1091` 空の `#region`
+      - `RCS1093` コードを含まないファイル
+      - `RCS1212` 冗長な代入(代入値が読まれる前に再代入 / 破棄されるケース)
+    - **第 5 弾で検討したが除外したルール(後続検討)**:
+      - `RCS1035`(冗長な trailing comma の除去):既存違反 100 件、いずれも multi-line initializer 末尾のカンマで「git diff を綺麗に保つ」スタイル(プロジェクト全体で意図的に統一済)。さらに本ルール自体が `deprecated`(`Use RCS1260 instead` メッセージ付)。後継 `RCS1260` は `roslynator_trailing_comma_style = include|omit` で挙動を選べるため、プロジェクトスタイル(trailing comma を残す = `include`)に合わせて将来別 PR で評価する
     - **第 1 弾から除外したルール(後続検討)**:
       - `RCS1213`(未使用 private メンバー):`OnEnable` / `OnValidate` / `Awake` / `Start` / `Update` 等の **Unity ライフサイクルメソッド**を Roslynator が認識せず false positive(`ScriptableObjectCardCatalog.cs:56,63` の 2 件で検証済)。Unity ライフサイクルメソッド名単位の suppression(`[UsedImplicitly]` 属性付与 / 個別 `#pragma warning disable` / EditorConfig section override 等)を別 PR で評価する
 

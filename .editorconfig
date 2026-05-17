@@ -137,6 +137,26 @@ dotnet_diagnostic.RCS1234.severity = warning  # enum の重複値検出
 # 第 4 弾(2026-05-17): const にできるローカル変数を明示化
 # - RCS1118: 既存違反 15+ 箇所(テスト中心の JSON string 等)を本 PR 同時修正で導入
 dotnet_diagnostic.RCS1118.severity = warning  # const にできるローカル変数(コンパイル時定数の明示化)
+# 第 5 弾(2026-05-17 第 2 セッション): 「Remove empty/redundant 系」衛生規則を warning 化
+# - すべて既存コード違反 0 件で導入(`dotnet build` で事前確認済)
+dotnet_diagnostic.RCS1033.severity = warning  # 冗長な boolean literal の除去(`!= true` 等)
+dotnet_diagnostic.RCS1034.severity = warning  # 冗長な `sealed` 修飾子の除去
+dotnet_diagnostic.RCS1038.severity = warning  # 空の statement(`;`)の除去
+dotnet_diagnostic.RCS1040.severity = warning  # 空の `else` 節の除去
+dotnet_diagnostic.RCS1041.severity = warning  # 空の initializer(`new Foo() { }`)の除去
+dotnet_diagnostic.RCS1042.severity = warning  # enum の `= 0` 既定値割当の除去
+dotnet_diagnostic.RCS1043.severity = warning  # 単一 part の `partial` 修飾子除去
+dotnet_diagnostic.RCS1066.severity = warning  # 空の `finally` 節の除去
+dotnet_diagnostic.RCS1071.severity = warning  # 冗長な base constructor 呼び出しの除去
+dotnet_diagnostic.RCS1091.severity = warning  # 空の `#region` の除去
+dotnet_diagnostic.RCS1093.severity = warning  # コードを含まないファイルの検出
+dotnet_diagnostic.RCS1212.severity = warning  # 冗長な代入の除去(代入値が読まれる前に再代入 / 破棄されるケース)
+# 第 5 弾で検討したが除外したルール(後続検討):
+# - RCS1035(冗長な trailing comma の除去): 既存 100 件違反、いずれも multi-line initializer
+#   末尾のカンマで「git diff を綺麗に保つ」スタイル(プロジェクト全体で意図的に統一済)。
+#   さらに本ルール自体が deprecated(`Use RCS1260 instead`)。後継の RCS1260 は
+#   `roslynator_trailing_comma_style = include|omit` で挙動を選べるため、プロジェクトスタイル
+#   (trailing comma を残す = `include`)に合わせて将来別 PR で評価する
 # 検討候補だが第 1 弾から除外したルール(docs/todo.md TODO #7 で継続追跡):
 # - RCS1213(未使用 private メンバー): Unity のライフサイクルメソッド(`OnEnable` / `OnValidate` /
 #   `Awake` / `Start` / `Update` 等は Unity Engine が reflection で呼ぶ)を Roslynator が
