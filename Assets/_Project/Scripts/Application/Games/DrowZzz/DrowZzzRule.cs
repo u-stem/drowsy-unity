@@ -804,6 +804,12 @@ namespace Drowsy.Application.Games.DrowZzz
             }
             int currentIndex = session.GameState.Turn.CurrentPlayerIndex;
             var currentPlayer = session.GameState.Players[currentIndex];
+
+            // ADR-0022 snapshot ベース walk(`OnOwnAbandonAfter`):本 Abandon で新規付与された影響は対象外。
+            // 実際の AbandonAction では本カードプレイで influence 付与は行われないが、対称性 + 将来拡張性のため snapshot を取る。
+            var preInfluencesSnapshot = session.Influences.TryGetValue(currentPlayer.Id, out var preInfs)
+                ? preInfs
+                : System.Array.Empty<PlayerInfluence>();
             if (currentPlayer.Hand.Count == 0
                 || action.CardIndex < 0
                 || action.CardIndex >= currentPlayer.Hand.Count)
@@ -847,13 +853,23 @@ namespace Drowsy.Application.Games.DrowZzz
             };
 
             // (2) Choice に応じた追加効果
-            return action.Choice switch
+            var afterChoice = action.Choice switch
             {
                 AbandonChoice.GainSdp => ApplyAbandonGainSdp(afterDiscard, currentPlayer.Id),
                 AbandonChoice.RepairBed => ApplyAbandonRepairBed(afterDiscard, currentPlayer.Id),
                 _ => throw new NotImplementedException(
                     $"DrowZzzRule.ApplyAbandon: 未知の AbandonChoice ({action.Choice})、将来 enum 拡張時に case 追加"),
             };
+
+            // ADR-0022:Reactive Tick walk(`OnOwnAbandonAfter` トリガー)。
+            // preInfluencesSnapshot に対して walk するため、本 Abandon で新規付与された影響は対象外。
+            // 終了済 session(将来 Abandon 経路で Outcome 確定が入った場合のリグレッション防御、
+            // code-reviewer W-2 反映 2026-05-17、`ApplyPlayCard` と対称)。
+            if (afterChoice.IsTerminated)
+            {
+                return afterChoice;
+            }
+            return ApplyReactiveInfluencesAfter(afterChoice, preInfluencesSnapshot, InfluenceTrigger.OnOwnAbandonAfter);
         }
 
         // AbandonChoice.GainSdp の処理: 現プレイヤーの SDP を AbandonSdpGain(+5) だけ増やす
@@ -942,6 +958,12 @@ namespace Drowsy.Application.Games.DrowZzz
             int currentIndex = gameState.Turn.CurrentPlayerIndex;
             var current = gameState.Players[currentIndex];
 
+            // ADR-0022 snapshot ベース walk:アクション開始時の影響 list を取得しておく(本 PlayCard で新規付与された
+            // 影響は snapshot 外で対象外、「付与時の本アクション自身への適用回避」を構造的に保証)。
+            var preInfluencesSnapshot = session.Influences.TryGetValue(current.Id, out var preInfs)
+                ? preInfs
+                : System.Array.Empty<PlayerInfluence>();
+
             if (!current.Hand.Contains(action.Card))
             {
                 throw new InvalidOperationException(
@@ -1017,7 +1039,48 @@ namespace Drowsy.Application.Games.DrowZzz
                     }
                 }
             }
-            return currentSession;
+
+            // ADR-0022:Reactive Tick walk(`OnOwnPlayCardAfter` トリガー)。
+            // preInfluencesSnapshot に対して walk するため、本 PlayCard 内で `ApplyInfluence` により新規付与された
+            // 影響は対象外(snapshot ベース walk)。
+            // 終了済 session(EarlyWinTriggerEffect 等で Outcome 確定後)は Reactive walk を skip し、
+            // 終了済 session の SDP を改変しないようガード(code-reviewer W-2 反映 2026-05-17、ADR-0010 §6 と整合)。
+            if (currentSession.IsTerminated)
+            {
+                return currentSession;
+            }
+            return ApplyReactiveInfluencesAfter(currentSession, preInfluencesSnapshot, InfluenceTrigger.OnOwnPlayCardAfter);
+        }
+
+        // ADR-0022:Reactive Influence Tick walk。
+        // snapshot として渡された influences のうち、指定 trigger に一致する TickEffect を順次 Interpreter で適用する。
+        // 本メソッド呼び出し時点で session.Influences が更新されていても、snapshot 内の影響のみが対象
+        // (本アクションで新規付与された影響は snapshot に含まれず対象外、ADR-0022 §4)。
+        // current player(= 影響保有者、Reactive trigger はアクション主体に対してのみ発動)を前提。
+        // **設計前提(code-reviewer W-4 反映 2026-05-17)**:呼び出し時点の PhaseState(`WaitingForEndTurn` /
+        // `WaitingForCounterResponse`)を Reactive effect が変更してはならない。現状の Reactive effect は SDP 操作のみで
+        // PhaseState / Outcome に作用しないため整合するが、将来 PhaseState 遷移を伴う Reactive effect を追加する場合は
+        // 本前提を再評価(ApplyPlayCard 内 WaitingForCounterResponse 遷移判定の後に走るため、上書きリスクあり)。
+        private DrowZzzGameSession ApplyReactiveInfluencesAfter(
+            DrowZzzGameSession session,
+            IReadOnlyList<PlayerInfluence> snapshot,
+            InfluenceTrigger trigger)
+        {
+            if (snapshot.Count == 0)
+            {
+                return session;
+            }
+            var current = session;
+            for (int i = 0; i < snapshot.Count; i++)
+            {
+                var inf = snapshot[i];
+                if (inf.Trigger != trigger)
+                {
+                    continue;
+                }
+                current = _interpreter.Apply(current, inf.TickEffect, EffectContext.Default);
+            }
+            return current;
         }
 
         // 相手プレイヤーの手札に Counter キーワード持ち効果列を含むカードがあるか(M3-PR5b、ADR-0011 §4.3.3):

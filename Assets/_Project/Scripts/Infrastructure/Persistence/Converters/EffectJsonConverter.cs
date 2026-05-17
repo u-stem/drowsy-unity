@@ -41,6 +41,8 @@ namespace Drowsy.Infrastructure.Persistence.Converters
     /// <item><c>RestrictAllUsageAndAbandonInfluenceMarker</c>(<see cref="RestrictAllUsageAndAbandonInfluenceMarkerEffect"/>、No.09「強引過ぎる一手」2026-05-17、ADR-0020 と同 PR)</item>
     /// <item><c>RestrictDrawCardInfluenceMarker</c>(<see cref="RestrictDrawCardInfluenceMarkerEffect"/>、No.10「安直過ぎる一手」2026-05-17、ADR-0021 と同 PR)</item>
     /// <item><c>AdjustSdpByHandCount</c>(<see cref="AdjustSdpByHandCountEffect"/>、No.11「機械仕掛けの冬将軍」2026-05-17)</item>
+    /// <item><c>AdjustSdpAfterPlayCard</c>(<see cref="AdjustSdpAfterPlayCardEffect"/>、No.12「偽りの太陽」2026-05-17、ADR-0022 と同 PR)</item>
+    /// <item><c>AdjustSdpAfterAbandon</c>(<see cref="AdjustSdpAfterAbandonEffect"/>、No.12「偽りの太陽」2026-05-17、ADR-0022 と同 PR)</item>
     /// </list>
     /// </para>
     /// <para>
@@ -203,6 +205,18 @@ namespace Drowsy.Infrastructure.Persistence.Converters
                     // フィールドなし(動的計算は EffectInterpreter で session から取得)
                     break;
 
+                case AdjustSdpAfterPlayCardEffect e:
+                    writer.WriteValue("AdjustSdpAfterPlayCard");
+                    writer.WritePropertyName("delta");
+                    writer.WriteValue(e.Delta);
+                    break;
+
+                case AdjustSdpAfterAbandonEffect e:
+                    writer.WriteValue("AdjustSdpAfterAbandon");
+                    writer.WritePropertyName("delta");
+                    writer.WriteValue(e.Delta);
+                    break;
+
                 default:
                     throw new JsonSerializationException(
                         $"未対応の IEffect 派生型: {value.GetType().FullName}。新しい派生型は EffectJsonConverter に case 追加が必要");
@@ -292,6 +306,12 @@ namespace Drowsy.Infrastructure.Persistence.Converters
                 "RestrictDrawCardInfluenceMarker" => new RestrictDrawCardInfluenceMarkerEffect(),
 
                 "AdjustSdpByHandCount" => new AdjustSdpByHandCountEffect(),
+
+                "AdjustSdpAfterPlayCard" => new AdjustSdpAfterPlayCardEffect(
+                    RequireToken(jo, "delta", typeName).Value<int>()),
+
+                "AdjustSdpAfterAbandon" => new AdjustSdpAfterAbandonEffect(
+                    RequireToken(jo, "delta", typeName).Value<int>()),
 
                 _ => throw new JsonSerializationException(
                     $"未知の IEffect 'type' discriminator: '{typeName}'。EffectJsonConverter に case 追加が必要"),
