@@ -112,7 +112,8 @@ namespace Drowsy.Application.Tests.Stubs
             IReadOnlyDictionary<PlayerId, IReadOnlyList<PlayerInfluence>> influences = null,
             IReadOnlyDictionary<PlayerId, int> bedDamages = null,
             GameOutcome outcome = null,
-            IReadOnlyList<PendingCounteredEffect> pendingCounteredEffects = null)
+            IReadOnlyList<PendingCounteredEffect> pendingCounteredEffects = null,
+            IReadOnlyCollection<CardId> associatedCardIds = null)
         {
             var p0 = new PlayerState(PlayerId.Of("p1"), p0Hand ?? Hand.Empty);
             var p1 = new PlayerState(PlayerId.Of("p2"), p1Hand ?? Hand.Empty);
@@ -165,7 +166,8 @@ namespace Drowsy.Application.Tests.Stubs
                 phase,
                 outcome: outcome,
                 bedDamages: bedDamagesResolved,
-                pendingCounteredEffects ?? Array.Empty<PendingCounteredEffect>());
+                pendingCounteredEffects ?? Array.Empty<PendingCounteredEffect>(),
+                associatedCardIds);
         }
     }
 }

@@ -477,6 +477,13 @@ namespace Drowsy.Application.Games.DrowZzz
                     "(同一 CardId の重複連想は不可、HAND-005 / ADR-0018)");
             }
 
+            // (0) ADR-0019:連想された CardId を session.AssociatedCardIds に永続記録する(Add only、Remove なし)。
+            //     後続 PR ② で No.04「静寂を纏う」が「連想由来は選択不可」検証に利用する。
+            //     既存 set に同一 CardId が含まれていても HashSet 性質で冪等(本経路の発生条件は ADR-0018 + IsLegalAssociate
+            //     の Hand 重複防御により構造的に起きないが、防御コピー経路の安全性として整合)。
+            var newAssociatedCardIds = new HashSet<CardId>(session.AssociatedCardIds);
+            newAssociatedCardIds.Add(action.Card);
+
             // (1) 現プレイヤーの Hand に action.Card を追加(catalog 経由の直接生成、初期山札 / Pile を一切変更しない)
             var updatedPlayer = currentPlayer with { Hand = currentPlayer.Hand.Add(action.Card) };
 
@@ -498,7 +505,9 @@ namespace Drowsy.Application.Games.DrowZzz
             //     最上位 scan で本 marker を検出 → PlayerInfluence(OwnPhaseStart, UsageRestrictionMarkerEffect, 1) を末尾追加。
             //     `RemainingCount=1` で次の自フェーズ Tick 時に 0 になり除去される(N=2 想定で相手 1 フェーズ経由後の自フェーズ、
             //     N>2 拡張時の対応は `docs/todo.md` で追跡、M3-PR6 code-reviewer W-4 反映 2026-05-14)。
-            var newSession = session with { GameState = newGameState };
+            // ADR-0019:GameState 差し替えと同タイミングで AssociatedCardIds も差し替える(with 式は init setter で
+            // ValidateAndCopyAssociatedCardIds を再走させて防御コピーを行う、構築済 HashSet を渡しても安全)。
+            var newSession = session with { GameState = newGameState, AssociatedCardIds = newAssociatedCardIds };
             if (hasUsageRestrictionMarker)
             {
                 var restrictionInfluence = new PlayerInfluence(
