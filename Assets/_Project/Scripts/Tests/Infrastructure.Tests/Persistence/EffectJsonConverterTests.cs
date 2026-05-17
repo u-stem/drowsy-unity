@@ -4,6 +4,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Drowsy.Application.Games.DrowZzz.Effects;
 using Drowsy.Application.Games.DrowZzz.Influences;
+using Drowsy.Domain.Cards;
 using Drowsy.Infrastructure.Persistence;
 // 本ファイルは UnityEngine を import しない(ScriptableObject 等の依存なし、code-reviewer W-1 反映)。
 // `using Property = NUnit.Framework.PropertyAttribute` alias は不採用:
@@ -237,6 +238,16 @@ namespace Drowsy.Infrastructure.Tests.Persistence
         {
             // Given(No.12 本体、Delta=+5 = No.12 設計値、Delta フィールドあり)
             var original = new AdjustSdpAfterAbandonEffect(5);
+            Assert.That(RoundTrip(original), Is.EqualTo(original));
+        }
+
+        // ===== INF-159: No.13/14/15「最後の砦Ⅰ/Ⅱ/Ⅲ」追加 AssociateSpecificCardEffect Round-Trip(2026-05-17)=====
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "INF-159")]
+        public void Given_AssociateSpecificCardEffect_When_RoundTrip_Then_等価()
+        {
+            // Given(No.13 → "14" を自動連想する設計値、TargetCardTypeId フィールドあり)
+            var original = new AssociateSpecificCardEffect(CardTypeId.Of("14"));
             Assert.That(RoundTrip(original), Is.EqualTo(original));
         }
 

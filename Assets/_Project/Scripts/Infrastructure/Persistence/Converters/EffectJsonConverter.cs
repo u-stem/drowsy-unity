@@ -43,6 +43,7 @@ namespace Drowsy.Infrastructure.Persistence.Converters
     /// <item><c>AdjustSdpByHandCount</c>(<see cref="AdjustSdpByHandCountEffect"/>、No.11「機械仕掛けの冬将軍」2026-05-17)</item>
     /// <item><c>AdjustSdpAfterPlayCard</c>(<see cref="AdjustSdpAfterPlayCardEffect"/>、No.12「偽りの太陽」2026-05-17、ADR-0022 と同 PR)</item>
     /// <item><c>AdjustSdpAfterAbandon</c>(<see cref="AdjustSdpAfterAbandonEffect"/>、No.12「偽りの太陽」2026-05-17、ADR-0022 と同 PR)</item>
+    /// <item><c>AssociateSpecificCard</c>(<see cref="AssociateSpecificCardEffect"/>、No.13/14/15「最後の砦Ⅰ/Ⅱ/Ⅲ」2026-05-17)</item>
     /// </list>
     /// </para>
     /// <para>
@@ -217,6 +218,14 @@ namespace Drowsy.Infrastructure.Persistence.Converters
                     writer.WriteValue(e.Delta);
                     break;
 
+                case AssociateSpecificCardEffect e:
+                    writer.WriteValue("AssociateSpecificCard");
+                    // JSON キー名は既存 `RestrictSpecificCardInfluence` の `"targetCardTypeId"` と統一
+                    // (code-reviewer W-1 反映 2026-05-17、SO 側 SerializeField 名 `_targetCardTypeIdValue` と JSON キー名は別)
+                    writer.WritePropertyName("targetCardTypeId");
+                    writer.WriteValue(e.TargetCardTypeId.Value);
+                    break;
+
                 default:
                     throw new JsonSerializationException(
                         $"未対応の IEffect 派生型: {value.GetType().FullName}。新しい派生型は EffectJsonConverter に case 追加が必要");
@@ -312,6 +321,9 @@ namespace Drowsy.Infrastructure.Persistence.Converters
 
                 "AdjustSdpAfterAbandon" => new AdjustSdpAfterAbandonEffect(
                     RequireToken(jo, "delta", typeName).Value<int>()),
+
+                "AssociateSpecificCard" => new AssociateSpecificCardEffect(
+                    CardTypeId.Of(RequireToken(jo, "targetCardTypeId", typeName).Value<string>())),
 
                 _ => throw new JsonSerializationException(
                     $"未知の IEffect 'type' discriminator: '{typeName}'。EffectJsonConverter に case 追加が必要"),
