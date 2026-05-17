@@ -59,6 +59,9 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
 
         // 現プレイヤー p1 が手札 1 枚(existing)を持つセッション
         // fdpP1 で TotalPoints(p1) = fdp + ddp + sdp = fdpP1 を制御(他 DP は 0 固定)
+        // 2026-05-17 SessionFactory 統合 第 3 弾:内部実装を SessionFactory.NewSession 呼び出しに置換し
+        // FDP / DDP / SDP / Influences / BedDamages の dictionary 直接構築を排除した
+        // (呼び出し側 API は維持、phase / fdpP1 / initialHand 引数のセマンティクスはそのまま)。
         private static DrowZzzGameSession NewSession(
             DrowZzzPhaseState phase = DrowZzzPhaseState.WaitingForDraw,
             int fdpP1 = 80,
@@ -69,29 +72,10 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             {
                 p1HandCards[i] = CardId.Of(CardTypeId.Of($"existing{i + 1}"), 0);
             }
-            var players = new[]
-            {
-                new PlayerState(PlayerId.Of("p1"), new Hand(p1HandCards)),
-                new PlayerState(PlayerId.Of("p2"), Hand.Empty),
-            };
-            var gs = new GameState(
-                players, Pile.Empty, Pile.Empty, Pile.Empty,
-                new TurnState(1, 0));
-            var fdp = new Dictionary<PlayerId, int> { [PlayerId.Of("p1")] = fdpP1, [PlayerId.Of("p2")] = 0 };
-            var ddp = new Dictionary<PlayerId, int> { [PlayerId.Of("p1")] = 0, [PlayerId.Of("p2")] = 0 };
-            var sdp = new Dictionary<PlayerId, int> { [PlayerId.Of("p1")] = 0, [PlayerId.Of("p2")] = 0 };
-            var influences = new Dictionary<PlayerId, IReadOnlyList<PlayerInfluence>>
-            {
-                [PlayerId.Of("p1")] = Array.Empty<PlayerInfluence>(),
-                [PlayerId.Of("p2")] = Array.Empty<PlayerInfluence>(),
-            };
-            var bed = new Dictionary<PlayerId, int>
-            {
-                [PlayerId.Of("p1")] = 0,
-                [PlayerId.Of("p2")] = 0,
-            };
-            return new DrowZzzGameSession(
-                gs, fdp, ddp, sdp, DdpPool.Empty, influences, phase, outcome: null, bedDamages: bed, System.Array.Empty<PendingCounteredEffect>());
+            return Stubs.SessionFactory.NewSession(
+                phase: phase,
+                p0Hand: new Hand(p1HandCards),
+                fdp: Stubs.SessionFactory.Dp(p1: fdpP1, p2: 0));
         }
 
         // ===== DZ-205: IsLegalMove の合法条件(全 PhaseState + 80 以上 + 連想可能カード登録)=====
@@ -255,33 +239,13 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
 
         // ベッド破損率を指定可能な NewSession 派生(W-2 BedDamages 不変テスト用)。
         // 通常 NewSession は bedP1=0 固定だが、本テスト群で 40% の状態を作るために別ヘルパーを用意。
-        private static DrowZzzGameSession NewSessionWithBedDamage(int fdpP1, int bedP1)
-        {
-            var players = new[]
-            {
-                new PlayerState(PlayerId.Of("p1"), new Hand(new[] { CardId.Of(CardTypeId.Of("existing1"), 0) })),
-                new PlayerState(PlayerId.Of("p2"), Hand.Empty),
-            };
-            var gs = new GameState(
-                players, Pile.Empty, Pile.Empty, Pile.Empty,
-                new TurnState(1, 0));
-            var fdp = new Dictionary<PlayerId, int> { [PlayerId.Of("p1")] = fdpP1, [PlayerId.Of("p2")] = 0 };
-            var ddp = new Dictionary<PlayerId, int> { [PlayerId.Of("p1")] = 0, [PlayerId.Of("p2")] = 0 };
-            var sdp = new Dictionary<PlayerId, int> { [PlayerId.Of("p1")] = 0, [PlayerId.Of("p2")] = 0 };
-            var influences = new Dictionary<PlayerId, IReadOnlyList<PlayerInfluence>>
-            {
-                [PlayerId.Of("p1")] = Array.Empty<PlayerInfluence>(),
-                [PlayerId.Of("p2")] = Array.Empty<PlayerInfluence>(),
-            };
-            var bed = new Dictionary<PlayerId, int>
-            {
-                [PlayerId.Of("p1")] = bedP1,
-                [PlayerId.Of("p2")] = 0,
-            };
-            return new DrowZzzGameSession(
-                gs, fdp, ddp, sdp, DdpPool.Empty, influences,
-                DrowZzzPhaseState.WaitingForDraw, outcome: null, bedDamages: bed, System.Array.Empty<PendingCounteredEffect>());
-        }
+        // 2026-05-17 SessionFactory 統合 第 3 弾。
+        private static DrowZzzGameSession NewSessionWithBedDamage(int fdpP1, int bedP1) =>
+            Stubs.SessionFactory.NewSession(
+                phase: DrowZzzPhaseState.WaitingForDraw,
+                p0Hand: new Hand(new[] { CardId.Of(CardTypeId.Of("existing1"), 0) }),
+                fdp: Stubs.SessionFactory.Dp(p1: fdpP1, p2: 0),
+                bedDamages: Stubs.SessionFactory.Dp(p1: bedP1, p2: 0));
 
         // ===== Apply 防御例外(IsLegalMove 違反時の明示)=====
 
@@ -345,35 +309,15 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         }
 
         // 任意 CardId を手札に含むセッションを構築するヘルパー(C-1 検証用)
+        // 2026-05-17 SessionFactory 統合 第 3 弾。
         private static DrowZzzGameSession NewSessionWithCardAlreadyInHand(
             CardId inHand,
             int fdpP1,
-            DrowZzzPhaseState phase)
-        {
-            var players = new[]
-            {
-                new PlayerState(PlayerId.Of("p1"), new Hand(new[] { inHand })),
-                new PlayerState(PlayerId.Of("p2"), Hand.Empty),
-            };
-            var gs = new GameState(
-                players, Pile.Empty, Pile.Empty, Pile.Empty,
-                new TurnState(1, 0));
-            var fdp = new Dictionary<PlayerId, int> { [PlayerId.Of("p1")] = fdpP1, [PlayerId.Of("p2")] = 0 };
-            var ddp = new Dictionary<PlayerId, int> { [PlayerId.Of("p1")] = 0, [PlayerId.Of("p2")] = 0 };
-            var sdp = new Dictionary<PlayerId, int> { [PlayerId.Of("p1")] = 0, [PlayerId.Of("p2")] = 0 };
-            var influences = new Dictionary<PlayerId, IReadOnlyList<PlayerInfluence>>
-            {
-                [PlayerId.Of("p1")] = Array.Empty<PlayerInfluence>(),
-                [PlayerId.Of("p2")] = Array.Empty<PlayerInfluence>(),
-            };
-            var bed = new Dictionary<PlayerId, int>
-            {
-                [PlayerId.Of("p1")] = 0,
-                [PlayerId.Of("p2")] = 0,
-            };
-            return new DrowZzzGameSession(
-                gs, fdp, ddp, sdp, DdpPool.Empty, influences, phase, outcome: null, bedDamages: bed, System.Array.Empty<PendingCounteredEffect>());
-        }
+            DrowZzzPhaseState phase) =>
+            Stubs.SessionFactory.NewSession(
+                phase: phase,
+                p0Hand: new Hand(new[] { inHand }),
+                fdp: Stubs.SessionFactory.Dp(p1: fdpP1, p2: 0));
 
         // ===== AssociateAction の null 防御(positional ctor / with 式 両経路)=====
 
