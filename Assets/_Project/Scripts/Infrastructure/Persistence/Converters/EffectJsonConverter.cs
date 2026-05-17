@@ -33,6 +33,7 @@ namespace Drowsy.Infrastructure.Persistence.Converters
     /// <item><c>AssociatableMarker</c>(<see cref="AssociatableMarkerEffect"/>)</item>
     /// <item><c>RestrictSpecificCardInfluence</c>(<see cref="RestrictSpecificCardInfluenceEffect"/>、ADR-0019 PR ②)</item>
     /// <item><c>ApplyTargetedRestriction</c>(<see cref="ApplyTargetedRestrictionEffect"/>、ADR-0019 PR ②)</item>
+    /// <item><c>StackHandCardOnDeckTop</c>(<see cref="StackHandCardOnDeckTopEffect"/>、No.05「喧騒を纏う」2026-05-17)</item>
     /// </list>
     /// </para>
     /// <para>
@@ -145,7 +146,9 @@ namespace Drowsy.Infrastructure.Persistence.Converters
                 case RestrictSpecificCardInfluenceEffect e:
                     writer.WriteValue("RestrictSpecificCardInfluence");
                     writer.WritePropertyName("targetCardTypeId");
-                    serializer.Serialize(writer, e.TargetCardTypeId);
+                    // CardTypeId は sealed record + static Of() factory、default ctor 不在のため string 値で serialize する
+                    // (2026-05-17 No.05 開発中に発覚した INF-139 テスト失敗 fixup、Newtonsoft default reflection 回避)
+                    writer.WriteValue(e.TargetCardTypeId.Value);
                     break;
 
                 case ApplyTargetedRestrictionEffect e:
@@ -154,6 +157,12 @@ namespace Drowsy.Infrastructure.Persistence.Converters
                     serializer.Serialize(writer, e.Target);
                     writer.WritePropertyName("remainingCount");
                     writer.WriteValue(e.RemainingCount);
+                    break;
+
+                case StackHandCardOnDeckTopEffect e:
+                    writer.WriteValue("StackHandCardOnDeckTop");
+                    writer.WritePropertyName("source");
+                    serializer.Serialize(writer, e.Source);
                     break;
 
                 default:
@@ -223,11 +232,15 @@ namespace Drowsy.Infrastructure.Persistence.Converters
                 "AssociatableMarker" => new AssociatableMarkerEffect(),
 
                 "RestrictSpecificCardInfluence" => new RestrictSpecificCardInfluenceEffect(
-                    RequireToken(jo, "targetCardTypeId", typeName).ToObject<CardTypeId>(serializer)),
+                    // WriteJson 側と対称:string 値 → CardTypeId.Of(string) で復元(default ctor 不在のため Newtonsoft default 経路は使えない)
+                    CardTypeId.Of(RequireToken(jo, "targetCardTypeId", typeName).Value<string>())),
 
                 "ApplyTargetedRestriction" => new ApplyTargetedRestrictionEffect(
                     RequireToken(jo, "target", typeName).ToObject<SdpTarget>(serializer),
                     RequireToken(jo, "remainingCount", typeName).Value<int>()),
+
+                "StackHandCardOnDeckTop" => new StackHandCardOnDeckTopEffect(
+                    RequireToken(jo, "source", typeName).ToObject<SdpTarget>(serializer)),
 
                 _ => throw new JsonSerializationException(
                     $"未知の IEffect 'type' discriminator: '{typeName}'。EffectJsonConverter に case 追加が必要"),
