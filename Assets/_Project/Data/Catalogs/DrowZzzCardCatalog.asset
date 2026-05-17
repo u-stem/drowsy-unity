@@ -31,6 +31,11 @@ MonoBehaviour:
     _attributes: []
     _effects:
     - rid: 8832664179837239381
+  - _cardIdValue: 03
+    _name: "\u8EAB\u4F53\u306B\u3044\u3044\u3082\u306E"
+    _attributes: []
+    _effects:
+    - rid: 8832664195353804900
   references:
     version: 2
     RefIds:
@@ -158,3 +163,62 @@ MonoBehaviour:
       data:
         _target: 0
         _delta: -80
+    - rid: 8832664195353804900
+      type: {class: TimeOfDayBranchEffectAsset, ns: Drowsy.Infrastructure.Games.DrowZzz.Effects, asm: Drowsy.Infrastructure}
+      data:
+        _nightEffects:
+        - rid: 8832664195353804901
+        - rid: 8832664195353804902
+        - rid: 8832664195353804903
+        _morningEffects:
+        - rid: 8832664195353804905
+        - rid: 8832664195353804906
+        - rid: 8832664195353804907
+    - rid: 8832664195353804901
+      type: {class: AdjustSdpEffectAsset, ns: Drowsy.Infrastructure.Games.DrowZzz.Effects, asm: Drowsy.Infrastructure}
+      data:
+        _target: 0
+        _delta: -20
+    - rid: 8832664195353804902
+      type: {class: AdjustSdpEffectAsset, ns: Drowsy.Infrastructure.Games.DrowZzz.Effects, asm: Drowsy.Infrastructure}
+      data:
+        _target: 1
+        _delta: 5
+    - rid: 8832664195353804903
+      type: {class: ApplyInfluenceEffectAsset, ns: Drowsy.Infrastructure.Games.DrowZzz.Effects, asm: Drowsy.Infrastructure}
+      data:
+        _target: 0
+        _influence:
+          _trigger: 0
+          _tickEffect:
+            rid: 8832664195353804904
+          _remainingCount: 2147483647
+    - rid: 8832664195353804904
+      type: {class: AdjustSdpEffectAsset, ns: Drowsy.Infrastructure.Games.DrowZzz.Effects, asm: Drowsy.Infrastructure}
+      data:
+        _target: 0
+        _delta: 4
+    - rid: 8832664195353804905
+      type: {class: AdjustSdpEffectAsset, ns: Drowsy.Infrastructure.Games.DrowZzz.Effects, asm: Drowsy.Infrastructure}
+      data:
+        _target: 0
+        _delta: -10
+    - rid: 8832664195353804906
+      type: {class: AdjustSdpEffectAsset, ns: Drowsy.Infrastructure.Games.DrowZzz.Effects, asm: Drowsy.Infrastructure}
+      data:
+        _target: 1
+        _delta: 5
+    - rid: 8832664195353804907
+      type: {class: ApplyInfluenceEffectAsset, ns: Drowsy.Infrastructure.Games.DrowZzz.Effects, asm: Drowsy.Infrastructure}
+      data:
+        _target: 0
+        _influence:
+          _trigger: 0
+          _tickEffect:
+            rid: 8832664195353804908
+          _remainingCount: 2147483647
+    - rid: 8832664195353804908
+      type: {class: AdjustSdpEffectAsset, ns: Drowsy.Infrastructure.Games.DrowZzz.Effects, asm: Drowsy.Infrastructure}
+      data:
+        _target: 0
+        _delta: -6
