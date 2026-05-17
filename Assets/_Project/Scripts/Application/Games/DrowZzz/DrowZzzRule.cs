@@ -435,6 +435,20 @@ namespace Drowsy.Application.Games.DrowZzz
             return true;
         }
 
+        // 自プレイヤーの Influences に DoubleBedDamageSdpInfluenceMarkerEffect を TickEffect として持つものがあるかを判定する
+        // (No.06「牙の届かぬ領域」、2026-05-17)。`ApplyBedDamageToCurrentPlayer` 内のベッド破損 SDP 計算 2 倍化判定で利用。
+        private static bool HasDoubleBedDamageInfluence(IReadOnlyList<PlayerInfluence> influences)
+        {
+            for (int i = 0; i < influences.Count; i++)
+            {
+                if (influences[i].TickEffect is DoubleBedDamageSdpInfluenceMarkerEffect)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         // 自プレイヤーの Influences に RestrictSpecificCardInfluenceEffect を TickEffect として持ち、
         // かつその TargetCardTypeId が target に一致するものがあるかを判定する(ADR-0019 PR ②、No.04「静寂を纏う」)。
         private static bool HasSpecificCardRestrictionInfluence(
@@ -1267,9 +1281,20 @@ namespace Drowsy.Application.Games.DrowZzz
                     $"内部不変条件違反: BedDamages に PlayerId {currentPlayerId.Value} のキーがありません(cross-field 検証の漏れ)");
             }
             int sdpDamage = bedDamagePercent / DrowZzzBedConstants.BedDamageRatePerSdp;
+            // No.06「牙の届かぬ領域」(2026-05-17):現プレイヤーの Influences に
+            // DoubleBedDamageSdpInfluenceMarkerEffect を含むなら、sdpDamage を 2 倍化する。
+            // 既存 BedDamage 計算経路を 1 箇所に集約しているため、将来「ベッド破損 SDP プラス変換 effect」が
+            // 追加された場合も計算結果に対する 2 倍化が共通経路で honor される(オーナー JIT 共有 2026-05-17)。
+            // 注意:複数保有時も 2 倍止まり(bool 検出、累積乗算なし、code-reviewer W-1 反映 2026-05-17、
+            // untouchable-realm.md §「複数保有時 / 境界ケースの注記」参照)。
+            if (HasDoubleBedDamageInfluence(session.Influences[currentPlayerId]))
+            {
+                sdpDamage *= 2;
+            }
             if (sdpDamage == 0)
             {
                 // 破損 0% / 1〜4%(整数除算で切り捨て 0)では SDP に影響なし、session 不変返却
+                // 2 倍化後でも 0 のままなら no-op
                 return session;
             }
             // SDP を damage 分減算(0 floor なし、ADR-0009 「持ち点低い方が勝ち」と整合、SDP は負値許容)

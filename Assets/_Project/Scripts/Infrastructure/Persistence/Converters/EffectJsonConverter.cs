@@ -34,6 +34,7 @@ namespace Drowsy.Infrastructure.Persistence.Converters
     /// <item><c>RestrictSpecificCardInfluence</c>(<see cref="RestrictSpecificCardInfluenceEffect"/>、ADR-0019 PR ②)</item>
     /// <item><c>ApplyTargetedRestriction</c>(<see cref="ApplyTargetedRestrictionEffect"/>、ADR-0019 PR ②)</item>
     /// <item><c>StackHandCardOnDeckTop</c>(<see cref="StackHandCardOnDeckTopEffect"/>、No.05「喧騒を纏う」2026-05-17)</item>
+    /// <item><c>DoubleBedDamageSdpInfluenceMarker</c>(<see cref="DoubleBedDamageSdpInfluenceMarkerEffect"/>、No.06「牙の届かぬ領域」2026-05-17)</item>
     /// </list>
     /// </para>
     /// <para>
@@ -165,6 +166,11 @@ namespace Drowsy.Infrastructure.Persistence.Converters
                     serializer.Serialize(writer, e.Source);
                     break;
 
+                case DoubleBedDamageSdpInfluenceMarkerEffect _:
+                    writer.WriteValue("DoubleBedDamageSdpInfluenceMarker");
+                    // フィールドなし marker
+                    break;
+
                 default:
                     throw new JsonSerializationException(
                         $"未対応の IEffect 派生型: {value.GetType().FullName}。新しい派生型は EffectJsonConverter に case 追加が必要");
@@ -241,6 +247,8 @@ namespace Drowsy.Infrastructure.Persistence.Converters
 
                 "StackHandCardOnDeckTop" => new StackHandCardOnDeckTopEffect(
                     RequireToken(jo, "source", typeName).ToObject<SdpTarget>(serializer)),
+
+                "DoubleBedDamageSdpInfluenceMarker" => new DoubleBedDamageSdpInfluenceMarkerEffect(),
 
                 _ => throw new JsonSerializationException(
                     $"未知の IEffect 'type' discriminator: '{typeName}'。EffectJsonConverter に case 追加が必要"),

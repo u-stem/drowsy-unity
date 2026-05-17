@@ -103,6 +103,10 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
                 // 2026-05-17 No.05「喧騒を纏う」:Source プレイヤーの手札から context.TargetCardId のカードを除去し
                 // 共通山札(Deck)の top に置く。次のターンの相手のドローを操作する戦術カード。
                 StackHandCardOnDeckTopEffect stack => ApplyStackHandCardOnDeckTop(session, stack, context),
+                // 2026-05-17 No.06「牙の届かぬ領域」:ベッド破損 SDP 変動 2 倍化 marker(PlayerInfluence.TickEffect 用)。
+                // 判別用に効果列 / Tick 時に置かれるだけで session 不変返却(no-op、`UsageRestrictionMarkerEffect` と完全対称)。
+                // 実 2 倍化計算は `DrowZzzRule.ApplyBedDamageToCurrentPlayer` 内で本 marker を Influence walk で検出して行う。
+                DoubleBedDamageSdpInfluenceMarkerEffect _ => session,
                 // M3-PR5a: キーワード能力を inner effect に付与するラッパー(ADR-0011 §4)。Keywords 自体は判別用属性で
                 // 副作用を持たず、Inner effect を context 込みで再帰的に Apply するだけ。
                 // Instinct は AbandonAction.IsLegalMove で利用、Frenzy / Counter は M3-PR5b 以降で機構化。

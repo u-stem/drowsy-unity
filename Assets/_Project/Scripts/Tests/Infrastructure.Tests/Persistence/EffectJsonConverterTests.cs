@@ -164,6 +164,16 @@ namespace Drowsy.Infrastructure.Tests.Persistence
             Assert.That(RoundTrip(original), Is.EqualTo(original));
         }
 
+        // ===== INF-143: No.06「牙の届かぬ領域」追加 DoubleBedDamageSdpInfluenceMarkerEffect Round-Trip(2026-05-17)=====
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "INF-143")]
+        public void Given_DoubleBedDamageSdpInfluenceMarkerEffect_When_RoundTrip_Then_等価()
+        {
+            // Given(フィールドなし marker、No.06 本体ユースケース)
+            var original = new DoubleBedDamageSdpInfluenceMarkerEffect();
+            Assert.That(RoundTrip(original), Is.EqualTo(original));
+        }
+
         // ===== INF-055: wrapper 再帰(KeywordedEffect (Choice (Keyworded (AdjustSdp))))=====
 
         [Test, Category("Medium"), Category("Normal"), Property("Requirement", "INF-055")]
