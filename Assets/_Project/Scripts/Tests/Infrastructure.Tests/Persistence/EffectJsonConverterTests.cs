@@ -251,6 +251,20 @@ namespace Drowsy.Infrastructure.Tests.Persistence
             Assert.That(RoundTrip(original), Is.EqualTo(original));
         }
 
+        // ===== INF-161: No.16「自分勝手な審判」追加 ConditionalApplyOrClearInfluencesEffect Round-Trip(2026-05-17)=====
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "INF-161")]
+        public void Given_ConditionalApplyOrClearInfluencesEffect_When_RoundTrip_Then_等価()
+        {
+            // Given(No.16 本体、Target=Self / Threshold=2 / InfluenceToApply=OwnPhaseStart SDP-4 Perpetual)
+            var influence = new PlayerInfluence(
+                InfluenceTrigger.OwnPhaseStart,
+                new AdjustSdpEffect(SdpTarget.Self, -4),
+                InfluenceConstants.Perpetual);
+            var original = new ConditionalApplyOrClearInfluencesEffect(SdpTarget.Self, 2, influence);
+            Assert.That(RoundTrip(original), Is.EqualTo(original));
+        }
+
         // ===== INF-055: wrapper 再帰(KeywordedEffect (Choice (Keyworded (AdjustSdp))))=====
 
         [Test, Category("Medium"), Category("Normal"), Property("Requirement", "INF-055")]

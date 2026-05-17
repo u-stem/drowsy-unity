@@ -44,6 +44,7 @@ namespace Drowsy.Infrastructure.Persistence.Converters
     /// <item><c>AdjustSdpAfterPlayCard</c>(<see cref="AdjustSdpAfterPlayCardEffect"/>、No.12「偽りの太陽」2026-05-17、ADR-0022 と同 PR)</item>
     /// <item><c>AdjustSdpAfterAbandon</c>(<see cref="AdjustSdpAfterAbandonEffect"/>、No.12「偽りの太陽」2026-05-17、ADR-0022 と同 PR)</item>
     /// <item><c>AssociateSpecificCard</c>(<see cref="AssociateSpecificCardEffect"/>、No.13/14/15「最後の砦Ⅰ/Ⅱ/Ⅲ」2026-05-17)</item>
+    /// <item><c>ConditionalApplyOrClearInfluences</c>(<see cref="ConditionalApplyOrClearInfluencesEffect"/>、No.16「自分勝手な審判」2026-05-17)</item>
     /// </list>
     /// </para>
     /// <para>
@@ -226,6 +227,16 @@ namespace Drowsy.Infrastructure.Persistence.Converters
                     writer.WriteValue(e.TargetCardTypeId.Value);
                     break;
 
+                case ConditionalApplyOrClearInfluencesEffect e:
+                    writer.WriteValue("ConditionalApplyOrClearInfluences");
+                    writer.WritePropertyName("target");
+                    serializer.Serialize(writer, e.Target);
+                    writer.WritePropertyName("threshold");
+                    writer.WriteValue(e.Threshold);
+                    writer.WritePropertyName("influenceToApply");
+                    serializer.Serialize(writer, e.InfluenceToApply);
+                    break;
+
                 default:
                     throw new JsonSerializationException(
                         $"未対応の IEffect 派生型: {value.GetType().FullName}。新しい派生型は EffectJsonConverter に case 追加が必要");
@@ -324,6 +335,11 @@ namespace Drowsy.Infrastructure.Persistence.Converters
 
                 "AssociateSpecificCard" => new AssociateSpecificCardEffect(
                     CardTypeId.Of(RequireToken(jo, "targetCardTypeId", typeName).Value<string>())),
+
+                "ConditionalApplyOrClearInfluences" => new ConditionalApplyOrClearInfluencesEffect(
+                    RequireToken(jo, "target", typeName).ToObject<SdpTarget>(serializer),
+                    RequireToken(jo, "threshold", typeName).Value<int>(),
+                    RequireToken(jo, "influenceToApply", typeName).ToObject<PlayerInfluence>(serializer)),
 
                 _ => throw new JsonSerializationException(
                     $"未知の IEffect 'type' discriminator: '{typeName}'。EffectJsonConverter に case 追加が必要"),
