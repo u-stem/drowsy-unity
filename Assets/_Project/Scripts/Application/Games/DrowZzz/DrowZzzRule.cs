@@ -314,11 +314,13 @@ namespace Drowsy.Application.Games.DrowZzz
                 return false;
             }
             // 効果列の最上位 scan を 1 ループで完結させる(ChoiceEffect 範囲チェック +
-            // RequiresMinimumTotalPointsMarkerEffect 閾値チェック + UsageRestrictionMarkerEffect 存在判定を同時に行う)。
+            // RequiresMinimumTotalPointsMarkerEffect 閾値チェック + UsageRestrictionMarkerEffect 存在判定 +
+            // ApplyTargetedRestrictionEffect 存在判定を同時に行う)。
             // M3-PR6 JIT 確定 2026-05-14:walk スコープは「最上位のみ」(wrapper effect の inner には walk しない、
             // 将来 nested 配置が必要なカードが出てきた時点で再帰化、ADR-0011 §6 / `HasKeywordInEffect` と同方針)。
             var effects = _catalog.GetEffects(action.Card.TypeId);
             bool hasUsageRestrictionMarker = false;
+            bool hasApplyTargetedRestriction = false;
             foreach (var e in effects)
             {
                 if (e is ChoiceEffect ce)
@@ -341,6 +343,13 @@ namespace Drowsy.Application.Games.DrowZzz
                 {
                     hasUsageRestrictionMarker = true;
                 }
+                else if (e is ApplyTargetedRestrictionEffect)
+                {
+                    // No.04「静寂を纏う」系:プレイ時に action.TargetCardId が必須(ADR-0019 PR ②)。
+                    // TimeOfDayBranchEffect 内の夜・朝両方に同 effect が含まれる場合でも、IsLegal は静的に
+                    // 「TargetCardId が指定されていること」のみ検証(時間帯別の効果有無は ApplyPlayCard で実行時判定)。
+                    hasApplyTargetedRestriction = true;
+                }
             }
             // 連想後使用制限チェック:カード側が marker を持ち、かつ自プレイヤーが該当 Influence を保有している時のみ illegal。
             // (marker 単独では illegal にしない。Influence 単独でも、対象カードに marker がなければ illegal にしない。
@@ -350,7 +359,62 @@ namespace Drowsy.Application.Games.DrowZzz
             {
                 return false;
             }
+            // ADR-0019 PR ②:自プレイヤーが RestrictSpecificCardInfluenceEffect を保有していて、その TargetCardTypeId が
+            // 本 action.Card.TypeId と一致する場合は illegal(「静寂を纏う」由来の特定カード使用禁止)。
+            if (HasSpecificCardRestrictionInfluence(session.Influences[currentPlayerId], action.Card.TypeId))
+            {
+                return false;
+            }
+            // ADR-0019 PR ②:ApplyTargetedRestrictionEffect 持ちカードプレイ時の追加検証:
+            //  (1) action.TargetCardId が指定されていること
+            //  (2) action.TargetCardId が相手プレイヤーの手札に含まれていること
+            //  (3) action.TargetCardId が session.AssociatedCardIds に含まれていないこと(連想由来は選択不可)
+            if (hasApplyTargetedRestriction)
+            {
+                if (action.TargetCardId is null)
+                {
+                    return false;
+                }
+                // N=2 想定:相手プレイヤーを current 以外の唯一の Player として解決(`ResolveTargetPlayerId` と同方針)。
+                // N>2 拡張時は「TargetCardId が複数プレイヤーの誰の手札にあるか?」の解決方法を別途設計が必要。
+                // 本 PR ② では N=2 前提で実装、N>2 拡張時の対応は ADR-0019 §補足「N>2 拡張時の TargetCardId 解決」で追跡
+                // (code-reviewer W-1 反映 2026-05-17、`docs/todo.md` 肥大化回避方針のため ADR 補足に集約)。
+                PlayerState opponentPlayer = null;
+                for (int i = 0; i < session.GameState.Players.Count; i++)
+                {
+                    if (i != currentIndex)
+                    {
+                        opponentPlayer = session.GameState.Players[i];
+                        break;
+                    }
+                }
+                if (opponentPlayer is null || !opponentPlayer.Hand.Contains(action.TargetCardId))
+                {
+                    return false;
+                }
+                if (session.IsAssociated(action.TargetCardId))
+                {
+                    return false;
+                }
+            }
             return true;
+        }
+
+        // 自プレイヤーの Influences に RestrictSpecificCardInfluenceEffect を TickEffect として持ち、
+        // かつその TargetCardTypeId が target に一致するものがあるかを判定する(ADR-0019 PR ②、No.04「静寂を纏う」)。
+        private static bool HasSpecificCardRestrictionInfluence(
+            IReadOnlyList<PlayerInfluence> influences,
+            CardTypeId target)
+        {
+            for (int i = 0; i < influences.Count; i++)
+            {
+                if (influences[i].TickEffect is RestrictSpecificCardInfluenceEffect restrict
+                    && restrict.TargetCardTypeId.Equals(target))
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         // 自プレイヤーの Influences に UsageRestrictionMarkerEffect を TickEffect として持つものがあるかを判定する。
@@ -726,8 +790,9 @@ namespace Drowsy.Application.Games.DrowZzz
             // M2-PR1: プレイされたカードの効果列を catalog から取得し、左から順に Interpreter で逐次評価。
             // M2-PR5: ChoiceEffect は unwrap して action.Choice の branch のみ評価(interpreter には届かない)。
             //         EffectContext(InfluenceRemovalIndex) を interpreter に thread し、RemoveInfluenceEffect に届ける。
+            // 2026-05-17 PR ②: TargetCardId を context に thread し、ApplyTargetedRestrictionEffect に届ける(No.04「静寂を纏う」)。
             var rawEffects = _catalog.GetEffects(action.Card.TypeId);
-            var context = new EffectContext(action.InfluenceRemovalIndex);
+            var context = new EffectContext(action.InfluenceRemovalIndex, action.TargetCardId);
             var currentSession = afterPlay;
             foreach (var effect in rawEffects)
             {

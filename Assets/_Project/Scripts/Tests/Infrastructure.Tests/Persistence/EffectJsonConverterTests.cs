@@ -135,6 +135,25 @@ namespace Drowsy.Infrastructure.Tests.Persistence
             Assert.That(RoundTrip(original), Is.EqualTo(original));
         }
 
+        // ===== INF-139: ADR-0019 PR ② 追加 2 effect の Persistence Round-Trip(code-reviewer P-4 反映 2026-05-17)=====
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "INF-139")]
+        public void Given_RestrictSpecificCardInfluenceEffect_When_RoundTrip_Then_等価()
+        {
+            // Given(CardTypeId "X" を TargetCardTypeId に持つ marker)
+            var original = new RestrictSpecificCardInfluenceEffect(Drowsy.Domain.Cards.CardTypeId.Of("X"));
+            // When / Then(round-trip 経由で CardTypeId.Value も含めて値同値)
+            Assert.That(RoundTrip(original), Is.EqualTo(original));
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "INF-139")]
+        public void Given_ApplyTargetedRestrictionEffect_When_RoundTrip_Then_等価()
+        {
+            // Given(Opponent / RemainingCount=2 の動的影響付与効果)
+            var original = new ApplyTargetedRestrictionEffect(SdpTarget.Opponent, 2);
+            Assert.That(RoundTrip(original), Is.EqualTo(original));
+        }
+
         // ===== INF-055: wrapper 再帰(KeywordedEffect (Choice (Keyworded (AdjustSdp))))=====
 
         [Test, Category("Medium"), Category("Normal"), Property("Requirement", "INF-055")]

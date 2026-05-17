@@ -35,11 +35,18 @@ namespace Drowsy.Application.Games.DrowZzz
     /// <see cref="Drowsy.Application.Games.DrowZzz.Effects.RemoveInfluenceEffect"/> を含む効果列の評価時に、
     /// 削除対象の影響 index(0-based)として参照される。範囲外なら no-op(graceful)。M2-PR5 で導入。
     /// </param>
+    /// <param name="TargetCardId">
+    /// <see cref="Drowsy.Application.Games.DrowZzz.Effects.ApplyTargetedRestrictionEffect"/> を含む効果列の評価時に、
+    /// 「相手の手札から選択したカード」の <see cref="CardId"/> として参照される(No.04「静寂を纏う」、ADR-0019 PR ②、2026-05-17 で導入)。
+    /// null は「未指定」を意味し、<see cref="Drowsy.Application.Games.DrowZzz.Effects.ApplyTargetedRestrictionEffect"/>
+    /// を含むカードのプレイ時は必須(<see cref="DrowZzzRule.IsLegalMove"/> で防御)。それ以外のカードでは無視される。
+    /// </param>
     /// <remarks>
     /// M2-PR5 で <paramref name="Choice"/> / <paramref name="InfluenceRemovalIndex"/> を追加(両者 default 0 で後方互換維持、
     /// M1-PR5〜M2-PR4 の単一引数 ctor 呼び出しは全て継続動作)。
+    /// 2026-05-17 PR ② で <paramref name="TargetCardId"/> を追加(default null で後方互換維持)。
     /// </remarks>
-    public sealed record PlayCardAction(CardId Card, int Choice = 0, int InfluenceRemovalIndex = 0) : DrowZzzAction
+    public sealed record PlayCardAction(CardId Card, int Choice = 0, int InfluenceRemovalIndex = 0, CardId TargetCardId = null) : DrowZzzAction
     {
         // null 防御の二重ガード:
         //  - バッキングフィールドの初期化式で positional ctor 経由の null を弾く (Card パラメータを使用、

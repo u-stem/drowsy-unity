@@ -194,9 +194,10 @@ namespace Drowsy.Infrastructure.Tests.Persistence
             Assert.That(restored.AssociatedCardIds.Count, Is.EqualTo(0));
         }
 
-        // ===== INF-136: JSON 文字列経由の後方互換性 — 旧 v1 JSON(AssociatedCardIds フィールド欠落)を deserialize して ToDomain =====
+        // ===== INF-137: JSON 文字列経由の後方互換性 — 旧 v1 JSON(AssociatedCardIds フィールド欠落)を deserialize して ToDomain
+        //               (2026-05-17 PR ② で INF-136 → INF-137 にリネーム、card-catalog.md INF-136(No.03)との衝突回避) =====
 
-        [Test, Category("Small"), Category("Normal"), Property("Requirement", "INF-136")]
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "INF-137")]
         public void Given_AssociatedCardIdsフィールド欠落のJSON文字列_When_Deserialize後にToDomain_Then_空集合に復元される()
         {
             // Given(旧 v1 JSON を文字列レベルで模擬:有効 session を一旦シリアライズ → JObject 経由で

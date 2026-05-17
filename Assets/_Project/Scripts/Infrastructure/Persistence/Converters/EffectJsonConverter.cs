@@ -4,6 +4,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Drowsy.Application.Games.DrowZzz.Effects;
 using Drowsy.Application.Games.DrowZzz.Influences;
+using Drowsy.Domain.Cards;
 
 namespace Drowsy.Infrastructure.Persistence.Converters
 {
@@ -30,6 +31,8 @@ namespace Drowsy.Infrastructure.Persistence.Converters
     /// <item><c>RequiresMinimumTotalPointsMarker</c>(<see cref="RequiresMinimumTotalPointsMarkerEffect"/>)</item>
     /// <item><c>UsageRestrictionMarker</c>(<see cref="UsageRestrictionMarkerEffect"/>)</item>
     /// <item><c>AssociatableMarker</c>(<see cref="AssociatableMarkerEffect"/>)</item>
+    /// <item><c>RestrictSpecificCardInfluence</c>(<see cref="RestrictSpecificCardInfluenceEffect"/>、ADR-0019 PR ②)</item>
+    /// <item><c>ApplyTargetedRestriction</c>(<see cref="ApplyTargetedRestrictionEffect"/>、ADR-0019 PR ②)</item>
     /// </list>
     /// </para>
     /// <para>
@@ -139,6 +142,20 @@ namespace Drowsy.Infrastructure.Persistence.Converters
                     // フィールドなし marker
                     break;
 
+                case RestrictSpecificCardInfluenceEffect e:
+                    writer.WriteValue("RestrictSpecificCardInfluence");
+                    writer.WritePropertyName("targetCardTypeId");
+                    serializer.Serialize(writer, e.TargetCardTypeId);
+                    break;
+
+                case ApplyTargetedRestrictionEffect e:
+                    writer.WriteValue("ApplyTargetedRestriction");
+                    writer.WritePropertyName("target");
+                    serializer.Serialize(writer, e.Target);
+                    writer.WritePropertyName("remainingCount");
+                    writer.WriteValue(e.RemainingCount);
+                    break;
+
                 default:
                     throw new JsonSerializationException(
                         $"未対応の IEffect 派生型: {value.GetType().FullName}。新しい派生型は EffectJsonConverter に case 追加が必要");
@@ -204,6 +221,13 @@ namespace Drowsy.Infrastructure.Persistence.Converters
                 "UsageRestrictionMarker" => new UsageRestrictionMarkerEffect(),
 
                 "AssociatableMarker" => new AssociatableMarkerEffect(),
+
+                "RestrictSpecificCardInfluence" => new RestrictSpecificCardInfluenceEffect(
+                    RequireToken(jo, "targetCardTypeId", typeName).ToObject<CardTypeId>(serializer)),
+
+                "ApplyTargetedRestriction" => new ApplyTargetedRestrictionEffect(
+                    RequireToken(jo, "target", typeName).ToObject<SdpTarget>(serializer),
+                    RequireToken(jo, "remainingCount", typeName).Value<int>()),
 
                 _ => throw new JsonSerializationException(
                     $"未知の IEffect 'type' discriminator: '{typeName}'。EffectJsonConverter に case 追加が必要"),

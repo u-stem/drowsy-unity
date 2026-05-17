@@ -93,6 +93,13 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
                 //  (2) PlayerInfluence.TickEffect として保有 → IsLegalPlayCard で illegal フラグ + Tick 時 no-op
                 // いずれも本 case 自体は session 不変返却(no-op)。RemainingCount 減算と除去は DrowZzzRule.TickInfluences の責務。
                 UsageRestrictionMarkerEffect _ => session,
+                // ADR-0019 PR ②(No.04「静寂を纏う」):特定カード使用禁止マーカー。PlayerInfluence.TickEffect として保有され、
+                // IsLegalPlayCard で TargetCardTypeId 一致のカードプレイを illegal 化する判別用 effect。
+                // 本 case 自体は session 不変返却(no-op、UsageRestrictionMarkerEffect と完全対称)。
+                RestrictSpecificCardInfluenceEffect _ => session,
+                // ADR-0019 PR ②(No.04「静寂を纏う」):動的影響付与効果。context.TargetCardId.TypeId を使って
+                // PlayerInfluence(OwnPhaseStart, RestrictSpecificCardInfluenceEffect(typeId), RemainingCount) を Target に付与。
+                ApplyTargetedRestrictionEffect targetedRestriction => ApplyApplyTargetedRestriction(session, targetedRestriction, context),
                 // M3-PR5a: キーワード能力を inner effect に付与するラッパー(ADR-0011 §4)。Keywords 自体は判別用属性で
                 // 副作用を持たず、Inner effect を context 込みで再帰的に Apply するだけ。
                 // Instinct は AbandonAction.IsLegalMove で利用、Frenzy / Counter は M3-PR5b 以降で機構化。
@@ -206,6 +213,50 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
                     : kv.Value;
             }
             return session with { SecondDrowsyPoints = newSdp };
+        }
+
+        // ApplyTargetedRestrictionEffect の評価: context.TargetCardId.TypeId を読んで Target プレイヤーに
+        // PlayerInfluence(OwnPhaseStart, RestrictSpecificCardInfluenceEffect(typeId), effect.RemainingCount) を末尾追加。
+        // ADR-0019 PR ②(No.04「静寂を纏う」)。context.TargetCardId が null の場合は IsLegalPlayCard で
+        // 事前防御済(`ApplyTargetedRestrictionEffect` 持ちカードプレイ時に null は illegal)だが、interpreter 内でも
+        // 防御的に InvalidOperationException でフェイルファスト。
+        private static DrowZzzGameSession ApplyApplyTargetedRestriction(
+            DrowZzzGameSession session,
+            ApplyTargetedRestrictionEffect effect,
+            EffectContext context)
+        {
+            if (context.TargetCardId is null)
+            {
+                throw new InvalidOperationException(
+                    "ApplyTargetedRestrictionEffect 評価時に EffectContext.TargetCardId が null です。" +
+                    "本 effect を含むカードプレイ時の `PlayCardAction.TargetCardId` 指定漏れ " +
+                    "(IsLegalPlayCard で防御されているはずの経路)。");
+            }
+            var targetId = ResolveTargetPlayerId(session, effect.Target);
+            var restrictionInfluence = new Drowsy.Application.Games.DrowZzz.Influences.PlayerInfluence(
+                Drowsy.Application.Games.DrowZzz.Influences.InfluenceTrigger.OwnPhaseStart,
+                new RestrictSpecificCardInfluenceEffect(context.TargetCardId.TypeId),
+                effect.RemainingCount);
+            var newInfluences = new Dictionary<PlayerId, IReadOnlyList<Drowsy.Application.Games.DrowZzz.Influences.PlayerInfluence>>(session.Influences.Count);
+            foreach (var kv in session.Influences)
+            {
+                if (kv.Key.Equals(targetId))
+                {
+                    // 末尾に追加(FIFO Tick 規約、ApplyInfluenceEffect と同パターン)
+                    var newList = new Drowsy.Application.Games.DrowZzz.Influences.PlayerInfluence[kv.Value.Count + 1];
+                    for (int i = 0; i < kv.Value.Count; i++)
+                    {
+                        newList[i] = kv.Value[i];
+                    }
+                    newList[kv.Value.Count] = restrictionInfluence;
+                    newInfluences[kv.Key] = newList;
+                }
+                else
+                {
+                    newInfluences[kv.Key] = kv.Value;
+                }
+            }
+            return session with { Influences = newInfluences };
         }
 
         // ApplyInfluenceEffect の評価: Target が指す playerId の影響 list 末尾に effect.Influence を追加する。
