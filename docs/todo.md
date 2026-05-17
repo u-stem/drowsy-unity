@@ -283,7 +283,12 @@
       - `RCS1036` 連続する空行を削除(冗長な空行)
       - `RCS1037` 末尾空白の削除(`.editorconfig` `trim_trailing_whitespace = true` と整合)
       - `RCS1097` 冗長な `ToString()` 呼び出しの削除
+    - **2026-05-17 第 3 弾(本 TODO 進行、chore/todo-housekeeping-and-followups PR)**: 文字列 / enum 衛生規則 3 ルールを `warning` 化(dotnet build 0 警告 / 0 エラー確認済):
+      - `RCS1192` 不要な逐語的文字列リテラル(`@"abc"` → `"abc"`):既存違反 0 件
+      - `RCS1214` 不要な文字列補間(`$"abc"` → `"abc"`):既存違反 3 箇所(`EffectInterpreter.cs` L106/L107/L148)を同 PR 同時修正
+      - `RCS1234` enum の重複値検出:既存違反 0 件
     - **第 1 弾から除外したルール(後続検討)**:
+      - `RCS1118`(const にできるローカル変数):既存違反 15+ 箇所(Persistence 系テストの JSON string 等)あり、機械的修正可能だが本 PR スコープ外。次回 RCS PR で `const` 化 + 有効化を試みる
       - `RCS1213`(未使用 private メンバー):`OnEnable` / `OnValidate` / `Awake` / `Start` / `Update` 等の **Unity ライフサイクルメソッド**を Roslynator が認識せず false positive(`ScriptableObjectCardCatalog.cs:56,63` の 2 件で検証済)。Unity ライフサイクルメソッド名単位の suppression(`[UsedImplicitly]` 属性付与 / 個別 `#pragma warning disable` / EditorConfig section override 等)を別 PR で評価する
 
 ## 完了済み

@@ -103,8 +103,8 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
 
                 _ => throw new NotImplementedException(
                     $"EffectInterpreter.Apply ({effect.GetType().Name}) は本実装範囲では到達不可。" +
-                    $"ChoiceEffect は DrowZzzRule.ApplyPlayCard で unwrap されるため interpreter には届かない設計。" +
-                    $"将来 IEffect 派生型を追加する PR で対応する"),
+                    "ChoiceEffect は DrowZzzRule.ApplyPlayCard で unwrap されるため interpreter には届かない設計。" +
+                    "将来 IEffect 派生型を追加する PR で対応する"),
             };
         }
 
@@ -145,7 +145,7 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
             {
                 // ADR-0007 §1.4 / DZ-118: M2-PR3 では Opponent ドローカードは未登場。将来追加時に case 拡張。
                 throw new NotImplementedException(
-                    $"DrawCardEffect(Opponent, _) は M2-PR3 範囲では未実装(ADR-0009 仕様カードで使用されていないため、DZ-118)");
+                    "DrawCardEffect(Opponent, _) は M2-PR3 範囲では未実装(ADR-0009 仕様カードで使用されていないため、DZ-118)");
             }
             var targetId = ResolveTargetPlayerId(session, effect.Target);
             var gameState = session.GameState;
