@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using NUnit.Framework;
 using Drowsy.Application.Games.DrowZzz;
 using Drowsy.Application.Games.DrowZzz.Influences;
@@ -198,14 +199,18 @@ namespace Drowsy.Infrastructure.Tests.Persistence
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "INF-136")]
         public void Given_AssociatedCardIdsフィールド欠落のJSON文字列_When_Deserialize後にToDomain_Then_空集合に復元される()
         {
-            // Given(旧 v1 JSON を文字列レベルで模擬:有効 session を一旦シリアライズ → AssociatedCardIds キーを除去 →
-            //  Newtonsoft.Json で deserialize、本経路は実装時に確認した「フィールド欠落 → null property」を文字列入力経由で再現)
+            // Given(旧 v1 JSON を文字列レベルで模擬:有効 session を一旦シリアライズ → JObject 経由で
+            //  AssociatedCardIds プロパティを構造的に Remove → 再 serialize → Newtonsoft.Json で deserialize。
+            //  JsonSerializerSettings の Formatting.Indented で fragile な string.Replace を避けるため
+            //  JObject 経由で実施(code-reviewer W-2 反映時の Replace パターンが Indented 形式と不一致だった
+            //  バグの修正、2026-05-17 INF-136 fixup)。
             var settings = DrowZzzJsonSettings.Create();
             var validSession = DrowZzzSessionTestFixtures.MinimalSession();
             var dtoJson = JsonConvert.SerializeObject(PersistedSessionV1.FromDomain(validSession), settings);
-            // 古い v1 schema を模擬:`"AssociatedCardIds":[]` の行(または `[<...>]` 形式)を完全除去する単純な機械置換。
-            // FromDomain が出力する形式は `"AssociatedCardIds":[]`(空集合は `[]` で serialize される、ADR-0019 §3 補足)。
-            var legacyJson = dtoJson.Replace("\"AssociatedCardIds\":[]", "").Replace(",,", ",").Replace(",}", "}");
+            var jObject = JObject.Parse(dtoJson);
+            var removed = jObject.Remove("AssociatedCardIds");
+            Assume.That(removed, Is.True, "前提失敗: 有効 JSON に AssociatedCardIds プロパティが存在しない");
+            var legacyJson = jObject.ToString();
 
             // When(legacyJson を deserialize、フィールド欠落により property は null)
             var dto = JsonConvert.DeserializeObject<PersistedSessionV1>(legacyJson, settings);
