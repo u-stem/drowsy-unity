@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Drowsy.Application.Games.DrowZzz.Influences;
+using Drowsy.Domain.Cards;
 using Drowsy.Domain.Game;
 using Drowsy.Domain.Players;
 
@@ -140,6 +141,10 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
                 // 適用されるが、actor != 保有者のケースが想定外、SdpTarget enum がなく current player 固定)。
                 AdjustSdpAfterPlayCardEffect e => ApplyAdjustSdpDeltaForCurrentPlayer(session, e.Delta),
                 AdjustSdpAfterAbandonEffect e => ApplyAdjustSdpDeltaForCurrentPlayer(session, e.Delta),
+                // 2026-05-17 No.13/14/15「最後の砦Ⅰ/Ⅱ/Ⅲ」:カード効果として current player の Hand に
+                // 指定 CardTypeId のカードを自動連想で追加する effect。Instance 番号を Hand 内で unique 採番、
+                // AssociatedCardIds にも記録(ADR-0019 と整合、No.04 「静寂を纏う」の連想由来除外対象になる)。
+                AssociateSpecificCardEffect e => ApplyAssociateSpecificCard(session, e),
                 // M3-PR5a: キーワード能力を inner effect に付与するラッパー(ADR-0011 §4)。Keywords 自体は判別用属性で
                 // 副作用を持たず、Inner effect を context 込みで再帰的に Apply するだけ。
                 // Instinct は AbandonAction.IsLegalMove で利用、Frenzy / Counter は M3-PR5b 以降で機構化。
@@ -253,6 +258,47 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
                     : kv.Value;
             }
             return session with { SecondDrowsyPoints = newSdp };
+        }
+
+        // AssociateSpecificCardEffect の評価(No.13/14/15「最後の砦Ⅰ/Ⅱ/Ⅲ」、2026-05-17):
+        // current player の Hand に指定 CardTypeId のカードを自動連想で追加する。
+        // - Instance 番号は Hand 内で unique になる最小値を採番(0 から順に試行、HAND-005 重複検出を構造的に回避)
+        // - AssociatedCardIds に新 CardId を追加(ADR-0019 連想由来永続記録と整合、No.04 連想由来除外対象になる)
+        // - GameState.Players[currentIndex] のみ差し替え、他プレイヤー / Pile / Discard / Field は不変
+        // 注意:本 effect は PlayCardAction の効果列で使用される設計前提。
+        //       PlayerInfluence.TickEffect として配置すると CurrentPlayerIndex が指す player が
+        //       期待と異なるケース(Tick 経路では新 current = 影響保有者、PlayCard 経路では actor)があり意図と乖離。
+        private static DrowZzzGameSession ApplyAssociateSpecificCard(DrowZzzGameSession session, AssociateSpecificCardEffect effect)
+        {
+            int currentIndex = session.GameState.Turn.CurrentPlayerIndex;
+            var currentPlayer = session.GameState.Players[currentIndex];
+            // Hand 内で当該 TypeId の未使用 Instance 番号を採番(0 から順に試行)。
+            // 終了保証(code-reviewer P-1 反映 2026-05-17):上限を `Hand.Count + 1` で明示
+            // (Hand サイズ有限のため、最悪でも Count+1 回試行すれば必ず未使用 instance に到達)。
+            // 実用上は同 TypeId の枚数 k で O(k * Hand.Count)、k < 10 / Hand.Count < 60 想定で十分高速。
+            int maxAttempts = currentPlayer.Hand.Count + 1;
+            CardId newCardId = CardId.Of(effect.TargetCardTypeId, 0);
+            for (int newInstance = 0; newInstance < maxAttempts; newInstance++)
+            {
+                newCardId = CardId.Of(effect.TargetCardTypeId, newInstance);
+                if (!currentPlayer.Hand.Contains(newCardId))
+                {
+                    break;
+                }
+            }
+            // Hand.Add
+            var updatedPlayer = currentPlayer with { Hand = currentPlayer.Hand.Add(newCardId) };
+            // Players 配列を新しい配列に置換(現プレイヤーのみ差し替え)
+            var newPlayers = new PlayerState[session.GameState.Players.Count];
+            for (int i = 0; i < newPlayers.Length; i++)
+            {
+                newPlayers[i] = i == currentIndex ? updatedPlayer : session.GameState.Players[i];
+            }
+            var newGameState = session.GameState.WithPlayersUnchecked(newPlayers);
+            // AssociatedCardIds に追加(ADR-0019 と整合、HashSet 性質で冪等)
+            var newAssociatedCardIds = new HashSet<CardId>(session.AssociatedCardIds);
+            newAssociatedCardIds.Add(newCardId);
+            return session with { GameState = newGameState, AssociatedCardIds = newAssociatedCardIds };
         }
 
         // AdjustSdpAfterPlayCardEffect / AdjustSdpAfterAbandonEffect 共通の SDP 増減ヘルパー(ADR-0022 / No.12「偽りの太陽」、2026-05-17):
