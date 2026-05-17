@@ -56,6 +56,25 @@
 
 ## 未着手
 
+- [ ] **新規 effect の spec md を `docs/specs/games/drowzzz/effects/` 配下に整備** `priority: low`
+  - **Why**: Phase 2 完結後の新規 effect 群が xmldoc 中心の文書化に留まっており、effect-level spec md(`adjust-sdp.md` / `apply-influence.md` / `keyworded-effect.md` と同様の形式)が未整備
+  - **対象 effect**(2026-05-17 時点):
+    - `RestrictSpecificCardInfluenceEffect`(No.04 由来、ADR-0019 PR ②)
+    - `ApplyTargetedRestrictionEffect`(No.04 由来、ADR-0019 PR ②)
+    - `StackHandCardOnDeckTopEffect`(No.05)
+    - `DoubleBedDamageSdpInfluenceMarkerEffect`(No.06)
+    - `RemoveInvertBedDamageInfluenceEffect`(No.07)
+    - `InvertBedDamageSdpInfluenceMarkerEffect`(No.08)
+    - `RestrictAllUsageAndAbandonInfluenceMarkerEffect`(No.09、ADR-0020)
+    - `RestrictDrawCardInfluenceMarkerEffect`(No.10、ADR-0021)
+    - `AdjustSdpByHandCountEffect`(No.11、**動的計算 TickEffect の初導入** で将来汎用化の起点)
+  - **Done when**:
+    - 各 effect について `docs/specs/games/drowzzz/effects/<effect-name>.md` を作成
+    - EARS 要件(EFF-NNN 系)を起票してテストカバレッジと紐付け
+    - 既存カード spec から effect spec へ link(`../effects/<name>.md` 形式)
+  - **Notes**: 着手範囲が大きいため effect 単位で分割 PR 可能。`AdjustSdpByHandCountEffect` は将来汎用化(`(SdpTarget Target, int Multiplier, int Sign)` 等)を予定しているため優先度高め(code-reviewer W-3 反映 2026-05-17、No.11 PR で起票)
+  - **Related**: [code-reviewer W-3 指摘元 PR](https://github.com/u-stem/drowsy-unity/pull/) — No.11「機械仕掛けの冬将軍」追加 PR
+
 - [ ] **WebGL Build を CI で自動化(blocked: Unity 6 Hub-managed License 制約)** `priority: low`
   - **Why**: M5-PR8 で WebGL Build `Result: Success` を確認したが、現状はオーナー実機作業。Phase 3 以降の継続的検証のため、CI で push / PR ごとに自動 Build したい
   - **2026-05-16 検証結果(PR #99 close)**:GameCI 経由の無料 Personal License 利用は **現状不可能** と判明、本 TODO を「未着手」に戻して priority を `medium` → `low` に格下げ

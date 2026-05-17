@@ -40,6 +40,7 @@ namespace Drowsy.Infrastructure.Persistence.Converters
     /// <item><c>RemoveInvertBedDamageInfluence</c>(<see cref="RemoveInvertBedDamageInfluenceEffect"/>、No.07「知恵の及ばぬ領域」2026-05-17)</item>
     /// <item><c>RestrictAllUsageAndAbandonInfluenceMarker</c>(<see cref="RestrictAllUsageAndAbandonInfluenceMarkerEffect"/>、No.09「強引過ぎる一手」2026-05-17、ADR-0020 と同 PR)</item>
     /// <item><c>RestrictDrawCardInfluenceMarker</c>(<see cref="RestrictDrawCardInfluenceMarkerEffect"/>、No.10「安直過ぎる一手」2026-05-17、ADR-0021 と同 PR)</item>
+    /// <item><c>AdjustSdpByHandCount</c>(<see cref="AdjustSdpByHandCountEffect"/>、No.11「機械仕掛けの冬将軍」2026-05-17)</item>
     /// </list>
     /// </para>
     /// <para>
@@ -197,6 +198,11 @@ namespace Drowsy.Infrastructure.Persistence.Converters
                     // フィールドなし marker
                     break;
 
+                case AdjustSdpByHandCountEffect _:
+                    writer.WriteValue("AdjustSdpByHandCount");
+                    // フィールドなし(動的計算は EffectInterpreter で session から取得)
+                    break;
+
                 default:
                     throw new JsonSerializationException(
                         $"未対応の IEffect 派生型: {value.GetType().FullName}。新しい派生型は EffectJsonConverter に case 追加が必要");
@@ -284,6 +290,8 @@ namespace Drowsy.Infrastructure.Persistence.Converters
                 "RestrictAllUsageAndAbandonInfluenceMarker" => new RestrictAllUsageAndAbandonInfluenceMarkerEffect(),
 
                 "RestrictDrawCardInfluenceMarker" => new RestrictDrawCardInfluenceMarkerEffect(),
+
+                "AdjustSdpByHandCount" => new AdjustSdpByHandCountEffect(),
 
                 _ => throw new JsonSerializationException(
                     $"未知の IEffect 'type' discriminator: '{typeName}'。EffectJsonConverter に case 追加が必要"),

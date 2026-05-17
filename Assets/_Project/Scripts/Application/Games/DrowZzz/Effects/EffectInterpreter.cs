@@ -127,6 +127,10 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
                 // 実際の illegal 化判定は DrowZzzRule.IsLegalMove の DrawCardAction 経路で
                 // `HasRestrictDrawCardInfluence` walk で検出。stuck 化回避は ADR-0021 の EndTurnAction 全フェーズ合法化で担保。
                 RestrictDrawCardInfluenceMarkerEffect _ => session,
+                // 2026-05-17 No.11「機械仕掛けの冬将軍」:影響保有者(= Tick 時の current player)の Hand.Count に応じて
+                // SDP を動的に減らす effect。`PlayerInfluence.TickEffect` として使われる(Perpetual)。
+                // 計算式:SDP[currentPlayer] -= currentPlayer.Hand.Count。Hand.Count == 0 なら no-op。
+                AdjustSdpByHandCountEffect _ => ApplyAdjustSdpByHandCount(session),
                 // M3-PR5a: キーワード能力を inner effect に付与するラッパー(ADR-0011 §4)。Keywords 自体は判別用属性で
                 // 副作用を持たず、Inner effect を context 込みで再帰的に Apply するだけ。
                 // Instinct は AbandonAction.IsLegalMove で利用、Frenzy / Counter は M3-PR5b 以降で機構化。
@@ -237,6 +241,33 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
             {
                 newSdp[kv.Key] = kv.Key.Equals(targetId)
                     ? kv.Value + effect.Delta
+                    : kv.Value;
+            }
+            return session with { SecondDrowsyPoints = newSdp };
+        }
+
+        // AdjustSdpByHandCountEffect の評価(No.11「機械仕掛けの冬将軍」、2026-05-17):
+        // Tick 時の current player(= 影響保有者、`TickInfluencesForCurrentPlayer` は新 current player に対して Tick)の
+        // Hand.Count を取得し、SDP[currentPlayer] -= Hand.Count を適用する。
+        // Hand.Count == 0 なら session 不変返却(SDP -0 = 不変、graceful no-op)。
+        private static DrowZzzGameSession ApplyAdjustSdpByHandCount(DrowZzzGameSession session)
+        {
+            int currentIndex = session.GameState.Turn.CurrentPlayerIndex;
+            var currentPlayer = session.GameState.Players[currentIndex];
+            int handCount = currentPlayer.Hand.Count;
+            if (handCount == 0)
+            {
+                // Hand.Count == 0 は no-op(SDP -= 0 = 不変)。
+                // 二重目的のガード(code-reviewer P-2 反映 2026-05-17):
+                //  (1) パフォーマンス最適化:Dictionary 再生成 + session 防御コピーコストを回避
+                //  (2) セマンティクス文書:「機械仕掛けが止まる」(保有者が手札を使い切ったフェーズ)を明示
+                return session;
+            }
+            var newSdp = new Dictionary<PlayerId, int>(session.SecondDrowsyPoints.Count);
+            foreach (var kv in session.SecondDrowsyPoints)
+            {
+                newSdp[kv.Key] = kv.Key.Equals(currentPlayer.Id)
+                    ? kv.Value - handCount
                     : kv.Value;
             }
             return session with { SecondDrowsyPoints = newSdp };
