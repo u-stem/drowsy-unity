@@ -35,6 +35,8 @@ namespace Drowsy.Infrastructure.Persistence.Converters
     /// <item><c>ApplyTargetedRestriction</c>(<see cref="ApplyTargetedRestrictionEffect"/>、ADR-0019 PR ②)</item>
     /// <item><c>StackHandCardOnDeckTop</c>(<see cref="StackHandCardOnDeckTopEffect"/>、No.05「喧騒を纏う」2026-05-17)</item>
     /// <item><c>DoubleBedDamageSdpInfluenceMarker</c>(<see cref="DoubleBedDamageSdpInfluenceMarkerEffect"/>、No.06「牙の届かぬ領域」2026-05-17)</item>
+    /// <item><c>InvertBedDamageSdpInfluenceMarker</c>(<see cref="InvertBedDamageSdpInfluenceMarkerEffect"/>、No.08「廻るための知恵」2026-05-17)</item>
+    /// <item><c>RemoveInvertBedDamageInfluence</c>(<see cref="RemoveInvertBedDamageInfluenceEffect"/>、No.07「知恵の及ばぬ領域」2026-05-17)</item>
     /// </list>
     /// </para>
     /// <para>
@@ -171,6 +173,17 @@ namespace Drowsy.Infrastructure.Persistence.Converters
                     // フィールドなし marker
                     break;
 
+                case InvertBedDamageSdpInfluenceMarkerEffect _:
+                    writer.WriteValue("InvertBedDamageSdpInfluenceMarker");
+                    // フィールドなし marker
+                    break;
+
+                case RemoveInvertBedDamageInfluenceEffect e:
+                    writer.WriteValue("RemoveInvertBedDamageInfluence");
+                    writer.WritePropertyName("target");
+                    serializer.Serialize(writer, e.Target);
+                    break;
+
                 default:
                     throw new JsonSerializationException(
                         $"未対応の IEffect 派生型: {value.GetType().FullName}。新しい派生型は EffectJsonConverter に case 追加が必要");
@@ -249,6 +262,11 @@ namespace Drowsy.Infrastructure.Persistence.Converters
                     RequireToken(jo, "source", typeName).ToObject<SdpTarget>(serializer)),
 
                 "DoubleBedDamageSdpInfluenceMarker" => new DoubleBedDamageSdpInfluenceMarkerEffect(),
+
+                "InvertBedDamageSdpInfluenceMarker" => new InvertBedDamageSdpInfluenceMarkerEffect(),
+
+                "RemoveInvertBedDamageInfluence" => new RemoveInvertBedDamageInfluenceEffect(
+                    RequireToken(jo, "target", typeName).ToObject<SdpTarget>(serializer)),
 
                 _ => throw new JsonSerializationException(
                     $"未知の IEffect 'type' discriminator: '{typeName}'。EffectJsonConverter に case 追加が必要"),

@@ -55,6 +55,19 @@ MonoBehaviour:
     - rid: 8832664195353804940
     - rid: 8832664195353804941
     - rid: 8832664195353804942
+  - _cardIdValue: 07
+    _name: "\u77E5\u6075\u306E\u53CA\u3070\u306C\u9818\u57DF"
+    _attributes: []
+    _effects:
+    - rid: 8832664195353804950
+    - rid: 8832664195353804951
+    - rid: 8832664195353804952
+    - rid: 8832664195353804953
+  - _cardIdValue: 08
+    _name: "\u5EFB\u308B\u305F\u3081\u306E\u77E5\u6075"
+    _attributes: []
+    _effects:
+    - rid: 8832664195353804960
   references:
     version: 2
     RefIds:
@@ -335,4 +348,93 @@ MonoBehaviour:
           _remainingCount: 4
     - rid: 8832664195353804944
       type: {class: DoubleBedDamageSdpInfluenceMarkerEffectAsset, ns: Drowsy.Infrastructure.Games.DrowZzz.Effects, asm: Drowsy.Infrastructure}
+      data:
+    - rid: 8832664195353804950
+      type: {class: AdjustSdpEffectAsset, ns: Drowsy.Infrastructure.Games.DrowZzz.Effects, asm: Drowsy.Infrastructure}
+      data:
+        _target: 0
+        _delta: -6
+    - rid: 8832664195353804951
+      type: {class: AdjustSdpEffectAsset, ns: Drowsy.Infrastructure.Games.DrowZzz.Effects, asm: Drowsy.Infrastructure}
+      data:
+        _target: 1
+        _delta: 5
+    - rid: 8832664195353804952
+      type: {class: RemoveInvertBedDamageInfluenceEffectAsset, ns: Drowsy.Infrastructure.Games.DrowZzz.Effects, asm: Drowsy.Infrastructure}
+      data:
+        _target: 1
+    - rid: 8832664195353804953
+      type: {class: KeywordedEffectAsset, ns: Drowsy.Infrastructure.Games.DrowZzz.Effects, asm: Drowsy.Infrastructure}
+      data:
+        _keywords: 00000000
+        _inner:
+          rid: 8832664195353804954
+    - rid: 8832664195353804954
+      type: {class: ApplyInfluenceEffectAsset, ns: Drowsy.Infrastructure.Games.DrowZzz.Effects, asm: Drowsy.Infrastructure}
+      data:
+        _target: 1
+        _influence:
+          _trigger: 0
+          _tickEffect:
+            rid: 8832664195353804955
+          _remainingCount: 4
+    - rid: 8832664195353804955
+      type: {class: RestrictSpecificCardInfluenceEffectAsset, ns: Drowsy.Infrastructure.Games.DrowZzz.Effects, asm: Drowsy.Infrastructure}
+      data:
+        _targetCardTypeIdValue: 08
+    - rid: 8832664195353804960
+      type: {class: ChoiceEffectAsset, ns: Drowsy.Infrastructure.Games.DrowZzz.Effects, asm: Drowsy.Infrastructure}
+      data:
+        _branches:
+        - _effects:
+          - rid: 8832664195353804962
+          - rid: 8832664195353804963
+        - _effects:
+          - rid: 8832664195353804965
+          - rid: 8832664195353804966
+    - rid: 8832664195353804962
+      type: {class: AdjustSdpEffectAsset, ns: Drowsy.Infrastructure.Games.DrowZzz.Effects, asm: Drowsy.Infrastructure}
+      data:
+        _target: 1
+        _delta: 5
+    - rid: 8832664195353804963
+      type: {class: KeywordedEffectAsset, ns: Drowsy.Infrastructure.Games.DrowZzz.Effects, asm: Drowsy.Infrastructure}
+      data:
+        _keywords: 01000000
+        _inner:
+          rid: 8832664195353804968
+    - rid: 8832664195353804968
+      type: {class: ApplyInfluenceEffectAsset, ns: Drowsy.Infrastructure.Games.DrowZzz.Effects, asm: Drowsy.Infrastructure}
+      data:
+        _target: 0
+        _influence:
+          _trigger: 0
+          _tickEffect:
+            rid: 8832664195353804964
+          _remainingCount: 2147483647
+    - rid: 8832664195353804964
+      type: {class: InvertBedDamageSdpInfluenceMarkerEffectAsset, ns: Drowsy.Infrastructure.Games.DrowZzz.Effects, asm: Drowsy.Infrastructure}
+      data:
+    - rid: 8832664195353804965
+      type: {class: AdjustSdpEffectAsset, ns: Drowsy.Infrastructure.Games.DrowZzz.Effects, asm: Drowsy.Infrastructure}
+      data:
+        _target: 0
+        _delta: 5
+    - rid: 8832664195353804966
+      type: {class: KeywordedEffectAsset, ns: Drowsy.Infrastructure.Games.DrowZzz.Effects, asm: Drowsy.Infrastructure}
+      data:
+        _keywords: 01000000
+        _inner:
+          rid: 8832664195353804969
+    - rid: 8832664195353804969
+      type: {class: ApplyInfluenceEffectAsset, ns: Drowsy.Infrastructure.Games.DrowZzz.Effects, asm: Drowsy.Infrastructure}
+      data:
+        _target: 1
+        _influence:
+          _trigger: 0
+          _tickEffect:
+            rid: 8832664195353804967
+          _remainingCount: 2147483647
+    - rid: 8832664195353804967
+      type: {class: InvertBedDamageSdpInfluenceMarkerEffectAsset, ns: Drowsy.Infrastructure.Games.DrowZzz.Effects, asm: Drowsy.Infrastructure}
       data:

@@ -107,6 +107,15 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
                 // 判別用に効果列 / Tick 時に置かれるだけで session 不変返却(no-op、`UsageRestrictionMarkerEffect` と完全対称)。
                 // 実 2 倍化計算は `DrowZzzRule.ApplyBedDamageToCurrentPlayer` 内で本 marker を Influence walk で検出して行う。
                 DoubleBedDamageSdpInfluenceMarkerEffect _ => session,
+                // 2026-05-17 No.08「廻るための知恵」:ベッド破損 SDP 符号反転 marker(PlayerInfluence.TickEffect 用)。
+                // session 不変返却(no-op)。実反転計算は `DrowZzzRule.ApplyBedDamageToCurrentPlayer` 内で本 marker を
+                // Influence walk で **保有数カウント** し、奇偶判定で符号反転する(オーナー JIT 確定 2026-05-17、
+                // No.06 2 倍化と組み合わせ時は「反転 → 2 倍化」の順、SDP -8 → +8 → +16)。
+                InvertBedDamageSdpInfluenceMarkerEffect _ => session,
+                // 2026-05-17 No.07「知恵の及ばぬ領域」:Target プレイヤーの Influences から
+                // InvertBedDamageSdpInfluenceMarkerEffect を TickEffect として持つ Influence を **1 件だけ** 除去。
+                // 該当なしなら graceful no-op(RemoveInfluenceEffect の範囲外 no-op と同パターン)。
+                RemoveInvertBedDamageInfluenceEffect remove => ApplyRemoveInvertBedDamage(session, remove),
                 // M3-PR5a: キーワード能力を inner effect に付与するラッパー(ADR-0011 §4)。Keywords 自体は判別用属性で
                 // 副作用を持たず、Inner effect を context 込みで再帰的に Apply するだけ。
                 // Instinct は AbandonAction.IsLegalMove で利用、Frenzy / Counter は M3-PR5b 以降で機構化。
@@ -220,6 +229,57 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
                     : kv.Value;
             }
             return session with { SecondDrowsyPoints = newSdp };
+        }
+
+        // RemoveInvertBedDamageInfluenceEffect の評価: Target プレイヤーの Influences から
+        // InvertBedDamageSdpInfluenceMarkerEffect を TickEffect として持つ Influence を先頭から 1 件除去。
+        // 該当なしなら session 不変返却(graceful no-op、`RemoveInfluenceEffect` 範囲外 no-op と同方針)。
+        // 2026-05-17 No.07「知恵の及ばぬ領域」、ADR-0019 連想由来除外パターンとは独立(本効果は Influence 削除)。
+        private static DrowZzzGameSession ApplyRemoveInvertBedDamage(
+            DrowZzzGameSession session,
+            RemoveInvertBedDamageInfluenceEffect effect)
+        {
+            var targetId = ResolveTargetPlayerId(session, effect.Target);
+            var newInfluences = new Dictionary<PlayerId, IReadOnlyList<Drowsy.Application.Games.DrowZzz.Influences.PlayerInfluence>>(session.Influences.Count);
+            bool mutated = false;
+            foreach (var kv in session.Influences)
+            {
+                if (!kv.Key.Equals(targetId))
+                {
+                    newInfluences[kv.Key] = kv.Value;
+                    continue;
+                }
+                // Target の影響 list から InvertBedDamageSdpInfluenceMarkerEffect を TickEffect に持つ先頭 1 件を除去
+                int removalIndex = -1;
+                for (int i = 0; i < kv.Value.Count; i++)
+                {
+                    if (kv.Value[i].TickEffect is InvertBedDamageSdpInfluenceMarkerEffect)
+                    {
+                        removalIndex = i;
+                        break;
+                    }
+                }
+                if (removalIndex < 0)
+                {
+                    // 該当 marker なし、graceful no-op
+                    newInfluences[kv.Key] = kv.Value;
+                    continue;
+                }
+                // 該当 index を除去、後続要素は前にシフト
+                var newList = new Drowsy.Application.Games.DrowZzz.Influences.PlayerInfluence[kv.Value.Count - 1];
+                int dst = 0;
+                for (int i = 0; i < kv.Value.Count; i++)
+                {
+                    if (i == removalIndex)
+                    {
+                        continue;
+                    }
+                    newList[dst++] = kv.Value[i];
+                }
+                newInfluences[kv.Key] = newList;
+                mutated = true;
+            }
+            return mutated ? session with { Influences = newInfluences } : session;
         }
 
         // ApplyTargetedRestrictionEffect の評価: context.TargetCardId.TypeId を読んで Target プレイヤーに

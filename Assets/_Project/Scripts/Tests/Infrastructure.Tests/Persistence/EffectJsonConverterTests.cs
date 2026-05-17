@@ -174,6 +174,24 @@ namespace Drowsy.Infrastructure.Tests.Persistence
             Assert.That(RoundTrip(original), Is.EqualTo(original));
         }
 
+        // ===== INF-146: No.07 / No.08 追加 2 派生型 Round-Trip(2026-05-17)=====
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "INF-146")]
+        public void Given_InvertBedDamageSdpInfluenceMarkerEffect_When_RoundTrip_Then_等価()
+        {
+            // Given(No.08 本体、フィールドなし marker)
+            var original = new InvertBedDamageSdpInfluenceMarkerEffect();
+            Assert.That(RoundTrip(original), Is.EqualTo(original));
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "INF-146")]
+        public void Given_RemoveInvertBedDamageInfluenceEffect_When_RoundTrip_Then_等価()
+        {
+            // Given(No.07 本体、Target = Opponent)
+            var original = new RemoveInvertBedDamageInfluenceEffect(SdpTarget.Opponent);
+            Assert.That(RoundTrip(original), Is.EqualTo(original));
+        }
+
         // ===== INF-055: wrapper 再帰(KeywordedEffect (Choice (Keyworded (AdjustSdp))))=====
 
         [Test, Category("Medium"), Category("Normal"), Property("Requirement", "INF-055")]
