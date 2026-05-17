@@ -222,6 +222,24 @@ namespace Drowsy.Infrastructure.Tests.Persistence
             Assert.That(RoundTrip(original), Is.EqualTo(original));
         }
 
+        // ===== INF-154 / 155: No.12「偽りの太陽」追加 AdjustSdpAfterPlayCard / AfterAbandon Round-Trip(2026-05-17、ADR-0022 と同 PR)=====
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "INF-154")]
+        public void Given_AdjustSdpAfterPlayCardEffect_When_RoundTrip_Then_等価()
+        {
+            // Given(No.12 本体、Delta=-10 = No.12 設計値、Delta フィールドあり)
+            var original = new AdjustSdpAfterPlayCardEffect(-10);
+            Assert.That(RoundTrip(original), Is.EqualTo(original));
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "INF-155")]
+        public void Given_AdjustSdpAfterAbandonEffect_When_RoundTrip_Then_等価()
+        {
+            // Given(No.12 本体、Delta=+5 = No.12 設計値、Delta フィールドあり)
+            var original = new AdjustSdpAfterAbandonEffect(5);
+            Assert.That(RoundTrip(original), Is.EqualTo(original));
+        }
+
         // ===== INF-055: wrapper 再帰(KeywordedEffect (Choice (Keyworded (AdjustSdp))))=====
 
         [Test, Category("Medium"), Category("Normal"), Property("Requirement", "INF-055")]

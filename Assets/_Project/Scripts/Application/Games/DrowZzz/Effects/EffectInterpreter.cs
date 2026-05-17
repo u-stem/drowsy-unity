@@ -131,6 +131,15 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
                 // SDP を動的に減らす effect。`PlayerInfluence.TickEffect` として使われる(Perpetual)。
                 // 計算式:SDP[currentPlayer] -= currentPlayer.Hand.Count。Hand.Count == 0 なら no-op。
                 AdjustSdpByHandCountEffect _ => ApplyAdjustSdpByHandCount(session),
+                // 2026-05-17 No.12「偽りの太陽」(ADR-0022):Reactive Influence の TickEffect。
+                // ApplyPlayCard / ApplyAbandon の末尾 walk で発動、保有者 = 当該アクション主体 = current player。
+                // 計算式:SDP[currentPlayer] += Delta。
+                // **設計前提(code-reviewer P-6 反映 2026-05-17)**:これらの effect は `InfluenceTrigger.OnOwnPlayCardAfter` /
+                // `OnOwnAbandonAfter` の TickEffect としてのみ使用する(Reactive walk 内で current player = 影響保有者が保証される)。
+                // カード効果列(TimeOfDayBranchEffect 直接子など)への配置は意図しない挙動になる(actor の SDP に
+                // 適用されるが、actor != 保有者のケースが想定外、SdpTarget enum がなく current player 固定)。
+                AdjustSdpAfterPlayCardEffect e => ApplyAdjustSdpDeltaForCurrentPlayer(session, e.Delta),
+                AdjustSdpAfterAbandonEffect e => ApplyAdjustSdpDeltaForCurrentPlayer(session, e.Delta),
                 // M3-PR5a: キーワード能力を inner effect に付与するラッパー(ADR-0011 §4)。Keywords 自体は判別用属性で
                 // 副作用を持たず、Inner effect を context 込みで再帰的に Apply するだけ。
                 // Instinct は AbandonAction.IsLegalMove で利用、Frenzy / Counter は M3-PR5b 以降で機構化。
@@ -241,6 +250,27 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
             {
                 newSdp[kv.Key] = kv.Key.Equals(targetId)
                     ? kv.Value + effect.Delta
+                    : kv.Value;
+            }
+            return session with { SecondDrowsyPoints = newSdp };
+        }
+
+        // AdjustSdpAfterPlayCardEffect / AdjustSdpAfterAbandonEffect 共通の SDP 増減ヘルパー(ADR-0022 / No.12「偽りの太陽」、2026-05-17):
+        // current player(= 影響保有者、Reactive walk のタイミングで保有者 = currentPlayer 確定)の SDP に Delta 加算。
+        // Delta == 0 なら session 不変返却(graceful no-op)。
+        private static DrowZzzGameSession ApplyAdjustSdpDeltaForCurrentPlayer(DrowZzzGameSession session, int delta)
+        {
+            if (delta == 0)
+            {
+                return session;
+            }
+            int currentIndex = session.GameState.Turn.CurrentPlayerIndex;
+            var currentPlayer = session.GameState.Players[currentIndex];
+            var newSdp = new Dictionary<PlayerId, int>(session.SecondDrowsyPoints.Count);
+            foreach (var kv in session.SecondDrowsyPoints)
+            {
+                newSdp[kv.Key] = kv.Key.Equals(currentPlayer.Id)
+                    ? kv.Value + delta
                     : kv.Value;
             }
             return session with { SecondDrowsyPoints = newSdp };
