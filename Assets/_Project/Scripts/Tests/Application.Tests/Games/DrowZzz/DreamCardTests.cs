@@ -5,6 +5,7 @@ using Drowsy.Application.Catalog;
 using Drowsy.Application.Games.DrowZzz;
 using Drowsy.Application.Games.DrowZzz.Effects;
 using Drowsy.Application.Games.DrowZzz.Influences;
+using Drowsy.Application.Tests.Stubs;
 using Drowsy.Domain.Cards;
 using Drowsy.Domain.Game;
 using Drowsy.Domain.Players;
@@ -68,34 +69,6 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             DrowZzzPhaseState phase,
             bool hasUsageRestrictionInfluence)
         {
-            var p1Hand = new Hand(new[] { CardId.Of(CardTypeId.Of("00"), 0) });
-            var players = new[]
-            {
-                new PlayerState(PlayerId.Of("p1"), p1Hand),
-                new PlayerState(PlayerId.Of("p2"), Hand.Empty),
-            };
-            var gs = new GameState(
-                players,
-                Pile.Empty,
-                Pile.Empty,
-                Pile.Empty,
-                new TurnState(turnNumber, 0));
-            // TotalPoints は FDP + DDP + SDP の computed プロパティ。テスト目的は閾値判定なので FDP 1 軸に集約する。
-            var fdp = new Dictionary<PlayerId, int>
-            {
-                [PlayerId.Of("p1")] = totalPoints,
-                [PlayerId.Of("p2")] = 0,
-            };
-            var ddp = new Dictionary<PlayerId, int>
-            {
-                [PlayerId.Of("p1")] = 0,
-                [PlayerId.Of("p2")] = 0,
-            };
-            var sdp = new Dictionary<PlayerId, int>
-            {
-                [PlayerId.Of("p1")] = 0,
-                [PlayerId.Of("p2")] = 0,
-            };
             // M3-PR6: hasUsageRestrictionInfluence=true なら使用制限 Influence(RemainingCount=1)を p1 に 1 件付与
             var p1Influences = hasUsageRestrictionInfluence
                 ? (IReadOnlyList<PlayerInfluence>)new[]
@@ -111,73 +84,20 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 [PlayerId.Of("p1")] = p1Influences,
                 [PlayerId.Of("p2")] = Array.Empty<PlayerInfluence>(),
             };
-            return new DrowZzzGameSession(
-                gs,
-                fdp,
-                ddp,
-                sdp,
-                DdpPool.Empty,
-                influences,
-                phase,
-                outcome: null,
-                bedDamages: new Dictionary<PlayerId, int>
-                {
-                    [PlayerId.Of("p1")] = 0,
-                    [PlayerId.Of("p2")] = 0,
-                },
-                Array.Empty<PendingCounteredEffect>());
+            // TotalPoints は FDP + DDP + SDP の computed プロパティ。テスト目的は閾値判定なので FDP 1 軸に集約する。
+            return SessionFactory.NewSession(
+                phase: phase,
+                p0Hand: new Hand(new[] { CardId.Of(CardTypeId.Of("00"), 0) }),
+                turnNumber: turnNumber,
+                fdp: SessionFactory.Dp(p1: totalPoints, p2: 0),
+                influences: influences);
         }
 
         // 「夢」非保持 / 影響なしの Session(連想を発動する前提)を構築。totalPoints で連想閾値テストを切り替え。
-        private static DrowZzzGameSession NewSessionWithoutDream(int totalPoints, DrowZzzPhaseState phase)
-        {
-            var players = new[]
-            {
-                new PlayerState(PlayerId.Of("p1"), Hand.Empty),
-                new PlayerState(PlayerId.Of("p2"), Hand.Empty),
-            };
-            var gs = new GameState(
-                players,
-                Pile.Empty,
-                Pile.Empty,
-                Pile.Empty,
-                new TurnState(1, 0));
-            var fdp = new Dictionary<PlayerId, int>
-            {
-                [PlayerId.Of("p1")] = totalPoints,
-                [PlayerId.Of("p2")] = 0,
-            };
-            var ddp = new Dictionary<PlayerId, int>
-            {
-                [PlayerId.Of("p1")] = 0,
-                [PlayerId.Of("p2")] = 0,
-            };
-            var sdp = new Dictionary<PlayerId, int>
-            {
-                [PlayerId.Of("p1")] = 0,
-                [PlayerId.Of("p2")] = 0,
-            };
-            var influences = new Dictionary<PlayerId, IReadOnlyList<PlayerInfluence>>
-            {
-                [PlayerId.Of("p1")] = Array.Empty<PlayerInfluence>(),
-                [PlayerId.Of("p2")] = Array.Empty<PlayerInfluence>(),
-            };
-            return new DrowZzzGameSession(
-                gs,
-                fdp,
-                ddp,
-                sdp,
-                DdpPool.Empty,
-                influences,
-                phase,
-                outcome: null,
-                bedDamages: new Dictionary<PlayerId, int>
-                {
-                    [PlayerId.Of("p1")] = 0,
-                    [PlayerId.Of("p2")] = 0,
-                },
-                Array.Empty<PendingCounteredEffect>());
-        }
+        private static DrowZzzGameSession NewSessionWithoutDream(int totalPoints, DrowZzzPhaseState phase) =>
+            SessionFactory.NewSession(
+                phase: phase,
+                fdp: SessionFactory.Dp(p1: totalPoints, p2: 0));
 
         // ===== DZ-230: 連想で「夢」を引くと使用制限 Influence が付与される =====
 

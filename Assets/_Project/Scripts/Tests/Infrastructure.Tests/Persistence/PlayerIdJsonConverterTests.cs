@@ -40,7 +40,7 @@ namespace Drowsy.Infrastructure.Tests.Persistence
         public void Given_JsonNullToken_When_Deserialize_Then_nullを返す()
         {
             // Given(JSON literal null)
-            var json = "null";
+            const string json = "null";
 
             // When
             var restored = JsonConvert.DeserializeObject<PlayerId>(json, Settings);

@@ -4,6 +4,7 @@ using NUnit.Framework;
 using Drowsy.Application.Games.DrowZzz;
 using Drowsy.Application.Games.DrowZzz.Effects;
 using Drowsy.Application.Games.DrowZzz.Influences;
+using Drowsy.Application.Tests.Stubs;
 using Drowsy.Domain.Cards;
 using Drowsy.Domain.Game;
 using Drowsy.Domain.Players;
@@ -29,38 +30,18 @@ namespace Drowsy.Application.Tests.Games.DrowZzz.Effects
             IReadOnlyList<PlayerInfluence> p1Influences = null,
             IReadOnlyList<PlayerInfluence> p2Influences = null)
         {
-            var players = new[]
-            {
-                new PlayerState(PlayerId.Of("p1"), Hand.Empty),
-                new PlayerState(PlayerId.Of("p2"), Hand.Empty),
-            };
-            var gs = new GameState(
-                players,
-                Pile.Empty,
-                Pile.Empty,
-                Pile.Empty,
-                new TurnState(1, currentPlayerIndex));
-            var fdp = new Dictionary<PlayerId, int>
-            {
-                [PlayerId.Of("p1")] = 0,
-                [PlayerId.Of("p2")] = 0,
-            };
-            var ddp = new Dictionary<PlayerId, int>
-            {
-                [PlayerId.Of("p1")] = 0,
-                [PlayerId.Of("p2")] = 0,
-            };
-            var sdp = new Dictionary<PlayerId, int>
-            {
-                [PlayerId.Of("p1")] = 0,
-                [PlayerId.Of("p2")] = 0,
-            };
-            var influences = new Dictionary<PlayerId, IReadOnlyList<PlayerInfluence>>
-            {
-                [PlayerId.Of("p1")] = p1Influences ?? Array.Empty<PlayerInfluence>(),
-                [PlayerId.Of("p2")] = p2Influences ?? Array.Empty<PlayerInfluence>(),
-            };
-            return new DrowZzzGameSession(gs, fdp, ddp, sdp, DdpPool.Empty, influences, DrowZzzPhaseState.WaitingForPlay, outcome: null, bedDamages: new Dictionary<PlayerId, int> { [PlayerId.Of("p1")] = 0, [PlayerId.Of("p2")] = 0 }, System.Array.Empty<PendingCounteredEffect>());
+            var influences = p1Influences == null && p2Influences == null
+                ? null
+                : new Dictionary<PlayerId, IReadOnlyList<PlayerInfluence>>
+                {
+                    [PlayerId.Of("p1")] = p1Influences ?? Array.Empty<PlayerInfluence>(),
+                    [PlayerId.Of("p2")] = p2Influences ?? Array.Empty<PlayerInfluence>(),
+                };
+            return SessionFactory.NewSession(
+                phase: DrowZzzPhaseState.WaitingForPlay,
+                currentPlayerIndex: currentPlayerIndex,
+                fdp: SessionFactory.Dp(p1: 0, p2: 0),
+                influences: influences);
         }
 
         // ===== DZ-158: 構築 / null 防御 =====

@@ -202,19 +202,14 @@
 
 ## 進行中
 
-- [ ] **`SessionFactory` 共通ヘルパーへの M2-PR5 以降 13+ fixture の段階的統合** `priority: low`
-  - **Why**: 2026-05-13 chore PR で `ApplyActionUseCaseTests` / `DrowZzzRuleTests` を `Drowsy.Application.Tests.Stubs.SessionFactory` に統合済(`using static SessionFactory` 経路)。一方、M2-PR5 以降の fixture 群(`CounterActionTests` / `AssociateActionTests` / `AbandonActionTests` / `EffectInterpreterTests` / `CupOfThreatCardTests` / `GreenInvasionCardTests` / `DreamCardTests` / `CounterCounterTests` / `DrowZzzGameSessionTests` / `Effects/*Tests` 計 13+ fixture)にも類似 `NewSession` 重複が広がっており、各 fixture 固有の引数追加が発生する可能性あり
-  - **Done when**:
-    - ⬜ 各 fixture を 1〜数件ずつ段階的に `SessionFactory.NewSession` 経由に切替(`using static SessionFactory` パターン)— **第 1 弾(2 fixture)完了済、後続 PR で継続**
-    - ⬜ 必要に応じて `SessionFactory.NewSession` の引数を拡張(各 fixture 固有の引数を吸収できるかケースバイケースで判断、引数 11〜15 個まで増える可能性)
-    - ⬜ 既存テスト全緑を維持
-    - ⬜ 全 fixture 統合完了で本 TODO を「完了済み」に移動(または「採用しない」判断時は理由を Notes に明記)
-  - **Related**: 起点 PR(2026-05-13 chore: テストヘルパー抽出)、`docs/todo.md` 同 PR 完了済みエントリ「`ApplyActionUseCase` / `DrowZzzRuleTests` の共通テストヘルパー抽出」、`Assets/_Project/Scripts/Tests/Application.Tests/Stubs/SessionFactory.cs`、第 1 弾 PR(2026-05-13 chore: SessionFactory 統合第 1 弾、PR #79)
-  - **Notes**: 段階的拡張の方がレビュー負担小、`using static SessionFactory` で呼び出し側の修正コストは小さい。各 fixture 固有の引数追加で `SessionFactory` の引数が肥大化した場合は `TestSessionBuilder`(fluent API)パターンへのリファクタを検討
-    - **2026-05-13 第 1 弾(本 TODO 進行、PR #79)**: `DrowZzzGameSessionTests` / `EffectInterpreterTests` の 2 fixture を `SessionFactory.NewSession()` 経由に統合(`using static` パターン)。両 fixture ともローカル `NewSession()` ヘルパーが SessionFactory のデフォルト引数値と完全一致するため、引数拡張なしで切替可能。dotnet build 0 警告 / 0 エラー確認済(Unity Test Runner 緑確認はオーナー側)
-    - **2026-05-16 第 2 弾(本 TODO 進行、chore/todo-batch-cleanup PR)**: `EarlyWinTriggerEffectTests` / `AdjustSdpEffectTests` の 2 fixture を統合。`SessionFactory.NewSession` に `fdp` / `sdp` パラメータ + `Dp(p1, p2)` builder を新設し、`fdp: Dp(p1: 100)` / `sdp: Dp(p1: 5)` のような明示渡しで FDP / SDP 制御を可能化。dotnet build 0 警告 / 0 エラー確認済(Unity Test Runner 緑確認はオーナー側)
-    - **2026-05-17 第 3 弾(本 TODO 進行、chore/todo-housekeeping-and-followups PR)**: `AbandonActionTests` / `AssociateActionTests`(`NewSession` + `NewSessionWithBedDamage` + `NewSessionWithCardAlreadyInHand`)/ `CounterActionTests` の 3 fixture(計 4 ヘルパー)を統合。`SessionFactory.NewSession` に `Pile discard` / `Pile field` 引数を追加して受け皿を整備。各 fixture のローカル `NewSession*` ヘルパーは API 互換維持で呼び出し側 50+ 件は変更不要、内部実装のみ SessionFactory.NewSession 呼び出しに置換して dictionary 直接構築を排除。dotnet build 0 警告 / 0 エラー確認済(Unity Test Runner 緑確認はオーナー側)
-    - **残対象**: `CupOfThreatCardTests`(`NewSessionWithCardInHand`)/ `GreenInvasionCardTests`(`NewSessionWithCardInHand`)/ `DreamCardTests`(`NewSessionWithDreamInHand` + `NewSessionWithoutDream`)/ `CounterCounterTests`(`NewSessionAfterCounter`)/ Effects 配下の残 9 件(`ApplyInfluenceEffect` / `AssociatableMarkerEffect` / `ChoiceEffect` / `DamageBedEffect` / `DrawCardEffect` / `KeywordedEffect` / `RemoveInfluenceEffect` / `RequiresMinimumTotalPointsMarkerEffect` / `TimeOfDayBranchEffect` / `UsageRestrictionMarkerEffect`)。これらは各 fixture 固有の引数(Hand に特定カード / 特定 phase / 特定 BedDamage 等)を持つため、 SessionFactory.NewSession の引数拡張または fixture 個別の事後セットアップ helper として段階的に対応
+<!-- 「SessionFactory 共通ヘルパーへの M2-PR5 以降 13+ fixture の段階的統合」は
+     chore/rcs1118-and-sessionfactory-4th PR(2026-05-17)で完全クローズ:
+     - 第 1 弾(2026-05-13、PR #79): DrowZzzGameSessionTests / EffectInterpreterTests(2 fixture、`using static` パターン)
+     - 第 2 弾(2026-05-16、chore/todo-batch-cleanup): EarlyWinTriggerEffectTests / AdjustSdpEffectTests(2 fixture、fdp/sdp 引数 + Dp(p1, p2) builder 新設)
+     - 第 3 弾(2026-05-17、chore/todo-housekeeping-and-followups PR #110): AbandonActionTests / AssociateActionTests / CounterActionTests(3 fixture / 4 ヘルパー、Pile discard / Pile field 引数追加)
+     - 第 4 弾(2026-05-17、本 PR): CupOfThreatCardTests / GreenInvasionCardTests / DreamCardTests(2 ヘルパー)/ CounterCounterTests / Effects 配下 10 fixture(計 13 fixture / 14 ヘルパー、382 行純減)。
+       SessionFactory.NewSession に `GameOutcome outcome` / `IReadOnlyList<PendingCounteredEffect> pendingCounteredEffects` 引数追加で受け皿完成
+     - 累計 21 ヘルパー統合、dotnet build 0 警告 / 0 エラー、各 fixture のローカル `NewSession*` ヘルパーは API 互換維持で呼び出し側 200+ 件は変更不要 -->
 
 <!-- 「DrowZzzRule の複合 with { Players, Deck/Field/Discard } の Unchecked factory 拡張」は
      chore/post-phase2-allocation-followups PR #108(2026-05-17)で完全クローズ:
@@ -288,8 +283,10 @@
       - `RCS1192` 不要な逐語的文字列リテラル(`@"abc"` → `"abc"`):既存違反 0 件
       - `RCS1214` 不要な文字列補間(`$"abc"` → `"abc"`):既存違反 3 箇所(`EffectInterpreter.cs` L106/L107/L148)を同 PR 同時修正
       - `RCS1234` enum の重複値検出:既存違反 0 件
+    - **2026-05-17 第 4 弾(本 TODO 進行、chore/rcs1118-and-sessionfactory-4th PR)**: `RCS1118`(const にできるローカル変数)を `warning` 化(dotnet build 0 警告 / 0 エラー確認済):
+      - 既存違反 15 箇所(全 Persistence 系テストの JSON string + Domain Tests `CardDataTests` / `CardTypeIdTests` / `PlayerIdTests` の `var name = "..."` 形式)を同 PR で `var` → `const string` に機械置換
+      - 違反箇所はすべて `var x = "literal"` パターンで、awk で各行先頭の `var ` を `const string ` に置換するワンライナーで対応
     - **第 1 弾から除外したルール(後続検討)**:
-      - `RCS1118`(const にできるローカル変数):既存違反 15+ 箇所(Persistence 系テストの JSON string 等)あり、機械的修正可能だが本 PR スコープ外。次回 RCS PR で `const` 化 + 有効化を試みる
       - `RCS1213`(未使用 private メンバー):`OnEnable` / `OnValidate` / `Awake` / `Start` / `Update` 等の **Unity ライフサイクルメソッド**を Roslynator が認識せず false positive(`ScriptableObjectCardCatalog.cs:56,63` の 2 件で検証済)。Unity ライフサイクルメソッド名単位の suppression(`[UsedImplicitly]` 属性付与 / 個別 `#pragma warning disable` / EditorConfig section override 等)を別 PR で評価する
 
 ## 完了済み

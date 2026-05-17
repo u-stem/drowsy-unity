@@ -1,11 +1,8 @@
 using System;
-using System.Collections.Generic;
 using NUnit.Framework;
 using Drowsy.Application.Games.DrowZzz;
 using Drowsy.Application.Games.DrowZzz.Effects;
-using Drowsy.Application.Games.DrowZzz.Influences;
-using Drowsy.Domain.Cards;
-using Drowsy.Domain.Game;
+using Drowsy.Application.Tests.Stubs;
 using Drowsy.Domain.Players;
 
 namespace Drowsy.Application.Tests.Games.DrowZzz.Effects
@@ -21,43 +18,12 @@ namespace Drowsy.Application.Tests.Games.DrowZzz.Effects
 
         // Clock の RoundNumber を制御するため TurnState.TurnNumber を直接指定可能なセッションヘルパー。
         // TurnNumber = 2*(round-1) + 1 が round の現プレイヤーフェーズ(N=2)。
-        private static DrowZzzGameSession NewSession(int turnNumber, int sdpP1 = 0)
-        {
-            var players = new[]
-            {
-                new PlayerState(PlayerId.Of("p1"), Hand.Empty),
-                new PlayerState(PlayerId.Of("p2"), Hand.Empty),
-            };
-            var gs = new GameState(
-                players,
-                Pile.Empty,
-                Pile.Empty,
-                Pile.Empty,
-                new TurnState(turnNumber, 0));
-            var fdp = new Dictionary<PlayerId, int>
-            {
-                [PlayerId.Of("p1")] = 0,
-                [PlayerId.Of("p2")] = 0,
-            };
-            var sdp = new Dictionary<PlayerId, int>
-            {
-                [PlayerId.Of("p1")] = sdpP1,
-                [PlayerId.Of("p2")] = 0,
-            };
-            // DDP / DdpPool は M2-PR4 で追加。本 fixture は Clock 分岐評価テスト目的のため DDP=0 / 空 DdpPool で固定。
-            var ddp = new Dictionary<PlayerId, int>
-            {
-                [PlayerId.Of("p1")] = 0,
-                [PlayerId.Of("p2")] = 0,
-            };
-            // M2-PR5: Influences は本 fixture では空 list 固定
-            var influences = new Dictionary<PlayerId, IReadOnlyList<PlayerInfluence>>
-            {
-                [PlayerId.Of("p1")] = Array.Empty<PlayerInfluence>(),
-                [PlayerId.Of("p2")] = Array.Empty<PlayerInfluence>(),
-            };
-            return new DrowZzzGameSession(gs, fdp, ddp, sdp, DdpPool.Empty, influences, DrowZzzPhaseState.WaitingForPlay, outcome: null, bedDamages: new Dictionary<PlayerId, int> { [PlayerId.Of("p1")] = 0, [PlayerId.Of("p2")] = 0 }, System.Array.Empty<PendingCounteredEffect>());
-        }
+        private static DrowZzzGameSession NewSession(int turnNumber, int sdpP1 = 0) =>
+            SessionFactory.NewSession(
+                phase: DrowZzzPhaseState.WaitingForPlay,
+                turnNumber: turnNumber,
+                fdp: SessionFactory.Dp(p1: 0, p2: 0),
+                sdp: SessionFactory.Dp(p1: sdpP1, p2: 0));
 
         // ===== DZ-120: 夜で NightEffects 評価 =====
 

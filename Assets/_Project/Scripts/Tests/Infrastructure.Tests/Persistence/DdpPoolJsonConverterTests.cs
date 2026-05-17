@@ -52,7 +52,7 @@ namespace Drowsy.Infrastructure.Tests.Persistence
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "INF-118")]
         public void Given_JsonNullToken_When_Deserialize_Then_nullを返す()
         {
-            var json = "null";
+            const string json = "null";
 
             var restored = JsonConvert.DeserializeObject<DdpPool>(json, Settings);
 
@@ -101,7 +101,7 @@ namespace Drowsy.Infrastructure.Tests.Persistence
         public void Given_重複int配列_When_Deserialize_Then_成功で重複保持()
         {
             // Given(同じ 5 が 3 回)
-            var json = "[5,5,5]";
+            const string json = "[5,5,5]";
 
             // When
             var restored = JsonConvert.DeserializeObject<DdpPool>(json, Settings);
