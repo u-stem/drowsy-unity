@@ -449,6 +449,23 @@ namespace Drowsy.Application.Games.DrowZzz
             return false;
         }
 
+        // 自プレイヤーの Influences に InvertBedDamageSdpInfluenceMarkerEffect を TickEffect として持つものを **件数カウント** する
+        // (No.08「廻るための知恵」、2026-05-17)。`ApplyBedDamageToCurrentPlayer` 内の符号反転奇偶判定で利用
+        // (1 件=反転 / 2 件=元に戻る / 3 件=反転、オーナー JIT 確定 2026-05-17「そのたびに ± が変わる」セマンティクス)。
+        // No.06「2 倍化」が bool 検出(複数保有時も 2 倍止まり)なのと対照的な設計。
+        private static int CountInvertBedDamageInfluence(IReadOnlyList<PlayerInfluence> influences)
+        {
+            int count = 0;
+            for (int i = 0; i < influences.Count; i++)
+            {
+                if (influences[i].TickEffect is InvertBedDamageSdpInfluenceMarkerEffect)
+                {
+                    count++;
+                }
+            }
+            return count;
+        }
+
         // 自プレイヤーの Influences に RestrictSpecificCardInfluenceEffect を TickEffect として持ち、
         // かつその TargetCardTypeId が target に一致するものがあるかを判定する(ADR-0019 PR ②、No.04「静寂を纏う」)。
         private static bool HasSpecificCardRestrictionInfluence(
@@ -1281,20 +1298,30 @@ namespace Drowsy.Application.Games.DrowZzz
                     $"内部不変条件違反: BedDamages に PlayerId {currentPlayerId.Value} のキーがありません(cross-field 検証の漏れ)");
             }
             int sdpDamage = bedDamagePercent / DrowZzzBedConstants.BedDamageRatePerSdp;
+            // No.08「廻るための知恵」(2026-05-17):現プレイヤーの Influences に
+            // InvertBedDamageSdpInfluenceMarkerEffect を保有していたら、保有数の奇偶で符号反転する。
+            // 1 件 = 反転 / 2 件 = 元に戻る / 3 件 = 反転(オーナー JIT 確定 2026-05-17、「廻るための知恵は 3 枚なので
+            // 1 プレイヤーに対して 3 つ同じ影響が付く可能性がある、そのたびに ± が変わる」)。
+            int invertCount = CountInvertBedDamageInfluence(session.Influences[currentPlayerId]);
+            if (invertCount % 2 == 1)
+            {
+                sdpDamage = -sdpDamage;
+            }
             // No.06「牙の届かぬ領域」(2026-05-17):現プレイヤーの Influences に
             // DoubleBedDamageSdpInfluenceMarkerEffect を含むなら、sdpDamage を 2 倍化する。
             // 既存 BedDamage 計算経路を 1 箇所に集約しているため、将来「ベッド破損 SDP プラス変換 effect」が
             // 追加された場合も計算結果に対する 2 倍化が共通経路で honor される(オーナー JIT 共有 2026-05-17)。
             // 注意:複数保有時も 2 倍止まり(bool 検出、累積乗算なし、code-reviewer W-1 反映 2026-05-17、
             // untouchable-realm.md §「複数保有時 / 境界ケースの注記」参照)。
+            // 順序:**逆転(符号反転)→ 2 倍化** の順で適用(オーナー JIT 確定 2026-05-17、SDP -8 → +8 → +16)。
             if (HasDoubleBedDamageInfluence(session.Influences[currentPlayerId]))
             {
                 sdpDamage *= 2;
             }
             if (sdpDamage == 0)
             {
-                // 破損 0% / 1〜4%(整数除算で切り捨て 0)では SDP に影響なし、session 不変返却
-                // 2 倍化後でも 0 のままなら no-op
+                // 破損 0% / 1〜4%(整数除算で切り捨て 0)では SDP に影響なし、session 不変返却。
+                // 反転(× -1)後・2 倍化後でも 0 のままなら no-op(0 × -1 = 0、0 × 2 = 0、code-reviewer W-1 反映 2026-05-17)。
                 return session;
             }
             // SDP を damage 分減算(0 floor なし、ADR-0009 「持ち点低い方が勝ち」と整合、SDP は負値許容)
