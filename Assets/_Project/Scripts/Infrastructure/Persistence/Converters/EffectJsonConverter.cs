@@ -9,7 +9,8 @@ using Drowsy.Domain.Cards;
 namespace Drowsy.Infrastructure.Persistence.Converters
 {
     /// <summary>
-    /// <see cref="IEffect"/> 12 派生型を polymorphic に serialize / deserialize する converter。
+    /// 各 <see cref="IEffect"/> 派生型を polymorphic に serialize / deserialize する converter。
+    /// 対応派生型は本クラス doc の `<list>` ブロック(code-reviewer S-5 反映 2026-05-17、件数明示の陳腐化を避けるため列挙のみ)を参照。
     /// </summary>
     /// <remarks>
     /// ADR-0012 §7「JIT 確定: Discriminator = カスタム JsonConverter (Recommended)」(2026-05-13 ユーザー JIT 確定)
@@ -37,6 +38,7 @@ namespace Drowsy.Infrastructure.Persistence.Converters
     /// <item><c>DoubleBedDamageSdpInfluenceMarker</c>(<see cref="DoubleBedDamageSdpInfluenceMarkerEffect"/>、No.06「牙の届かぬ領域」2026-05-17)</item>
     /// <item><c>InvertBedDamageSdpInfluenceMarker</c>(<see cref="InvertBedDamageSdpInfluenceMarkerEffect"/>、No.08「廻るための知恵」2026-05-17)</item>
     /// <item><c>RemoveInvertBedDamageInfluence</c>(<see cref="RemoveInvertBedDamageInfluenceEffect"/>、No.07「知恵の及ばぬ領域」2026-05-17)</item>
+    /// <item><c>RestrictAllUsageAndAbandonInfluenceMarker</c>(<see cref="RestrictAllUsageAndAbandonInfluenceMarkerEffect"/>、No.09「強引過ぎる一手」2026-05-17、ADR-0020 と同 PR)</item>
     /// </list>
     /// </para>
     /// <para>
@@ -184,6 +186,11 @@ namespace Drowsy.Infrastructure.Persistence.Converters
                     serializer.Serialize(writer, e.Target);
                     break;
 
+                case RestrictAllUsageAndAbandonInfluenceMarkerEffect _:
+                    writer.WriteValue("RestrictAllUsageAndAbandonInfluenceMarker");
+                    // フィールドなし marker
+                    break;
+
                 default:
                     throw new JsonSerializationException(
                         $"未対応の IEffect 派生型: {value.GetType().FullName}。新しい派生型は EffectJsonConverter に case 追加が必要");
@@ -267,6 +274,8 @@ namespace Drowsy.Infrastructure.Persistence.Converters
 
                 "RemoveInvertBedDamageInfluence" => new RemoveInvertBedDamageInfluenceEffect(
                     RequireToken(jo, "target", typeName).ToObject<SdpTarget>(serializer)),
+
+                "RestrictAllUsageAndAbandonInfluenceMarker" => new RestrictAllUsageAndAbandonInfluenceMarkerEffect(),
 
                 _ => throw new JsonSerializationException(
                     $"未知の IEffect 'type' discriminator: '{typeName}'。EffectJsonConverter に case 追加が必要"),

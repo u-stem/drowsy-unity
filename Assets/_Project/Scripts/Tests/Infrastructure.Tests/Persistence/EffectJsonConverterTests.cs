@@ -192,6 +192,16 @@ namespace Drowsy.Infrastructure.Tests.Persistence
             Assert.That(RoundTrip(original), Is.EqualTo(original));
         }
 
+        // ===== INF-148: No.09「強引過ぎる一手」追加 RestrictAllUsageAndAbandonInfluenceMarkerEffect Round-Trip(2026-05-17、ADR-0020 と同 PR)=====
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "INF-148")]
+        public void Given_RestrictAllUsageAndAbandonInfluenceMarkerEffect_When_RoundTrip_Then_等価()
+        {
+            // Given(No.09 本体、フィールドなし marker)
+            var original = new RestrictAllUsageAndAbandonInfluenceMarkerEffect();
+            Assert.That(RoundTrip(original), Is.EqualTo(original));
+        }
+
         // ===== INF-055: wrapper 再帰(KeywordedEffect (Choice (Keyworded (AdjustSdp))))=====
 
         [Test, Category("Medium"), Category("Normal"), Property("Requirement", "INF-055")]

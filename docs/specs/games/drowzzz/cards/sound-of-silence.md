@@ -97,7 +97,7 @@ new KeyValuePair<CardTypeId, IReadOnlyList<IEffect>>(CardTypeId.Of("04"), new IE
 ## Tick 評価 / 使用禁止検証のシナリオ
 
 - [DZ-267] When B holds `PlayerInfluence(OwnPhaseStart, RestrictSpecificCardInfluenceEffect(c.TypeId), 2)` and B tries to play any card with `CardTypeId == c.TypeId`, `IsLegalMove` shall return `false`(使用禁止 Influence による illegal 化、`RestrictSpecificCardInfluenceEffect` 自体は session 不変な marker)。
-- [DZ-268] When B holds `PlayerInfluence(OwnPhaseStart, RestrictSpecificCardInfluenceEffect(c.TypeId), 1)` and B's phase rotation Tick fires, B's influence shall be removed (`RemainingCount` 1 → 0 で除去、`UsageRestrictionMarkerEffect` と完全対称)。
+- [DZ-268] When B holds `PlayerInfluence(OwnPhaseStart, RestrictSpecificCardInfluenceEffect(c.TypeId), 1)` and A's EndTurn rotates current to B, B's influence shall remain with `RemainingCount = 1`(ADR-0020:Tick は count 不変、B 自身の EndTurn で count -1 → 0 で除去)。これにより count=1 marker が B の自フェーズ全体で機能し、本 Influence walk で Card `c.TypeId` が illegal 化される。
 
 ## 定数依存
 
@@ -149,4 +149,4 @@ new KeyValuePair<CardTypeId, IReadOnlyList<IEffect>>(CardTypeId.Of("04"), new IE
 | DZ-265 | `Given_相手手札にないTargetCardId_When_Card04をIsLegalMove_Then_false` | 同上 |
 | DZ-266 | `Given_AssociatedCardIds含有のTargetCardId_When_Card04をIsLegalMove_Then_false` | 連想由来除外 |
 | DZ-267 | `Given_使用禁止InfluencePlayer_When_対象カードをIsLegalMove_Then_false` | RestrictSpecificCardInfluenceEffect 経由 illegal 化 |
-| DZ-268 | `Given_カウント1の使用禁止Influence_When_自フェーズTick_Then_Influence除去` | 寿命 0 到達除去 |
+| DZ-268 | `Given_カウント1の使用禁止Influence_When_自フェーズTick_Then_カウント1で残存` | ADR-0020 後の count=1 marker は B フェーズで機能、B 自身の EndTurn で除去 |

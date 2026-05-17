@@ -38,25 +38,33 @@
     ならば 結果は false である
 
   @DZ-176
-  シナリオ: フェーズ進行で影響が Tick される
+  シナリオ: フェーズ進行で影響が Tick される(ADR-0020:Tick は TickEffect のみ、count 不変)
     前提 p2 が GreenInvasionInfluence(カウント 3) を 1 件保有
     かつ p1 が WaitingForEndTurn
     もし p1 が EndTurnAction を適用する
     ならば p2 が新しい current player になる
     かつ p2 の SDP が -5 になる
-    かつ p2 の影響の RemainingCount が 2 になる
+    かつ p2 の影響の RemainingCount は 3 のまま(p2 自身の EndTurn で -1 されるまで遅延)
 
   @DZ-177
-  シナリオ: カウント 1 から Tick で除去
+  シナリオ: カウント 1 でも次の自フェーズで 1 回機能、p2 自身の EndTurn で除去(ADR-0020)
     前提 p2 が GreenInvasionInfluence(カウント 1) を 1 件保有
     かつ p1 が WaitingForEndTurn
     もし p1 が EndTurnAction を適用する
-    ならば p2 の Influences 件数が 0 になる
+    ならば p2 の SDP が -5 になる
+    かつ p2 の Influences 件数が 1 で残る(RemainingCount=1、除去は p2 自身の EndTurn まで遅延)
 
   @DZ-178
-  シナリオ: 他プレイヤーの影響は Tick されない
+  シナリオ: p2 Tick は count を変えない(ADR-0020:Decrement は p2 自身の EndTurn 時)
     前提 p1 と p2 が各 GreenInvasionInfluence(カウント 3) を 1 件ずつ保有
     かつ p1 が WaitingForEndTurn
     もし p1 が EndTurnAction を適用する
-    ならば p2 のみ Tick される(SDP -5、カウント 2)
-    かつ p1 の影響の RemainingCount は 3 のまま
+    ならば p1 の影響の RemainingCount は 2 になる(p1 EndTurn 冒頭の Decrement で 3→2)
+    かつ p2 の影響の RemainingCount は 3 のまま(Tick で TickEffect 適用のみ、count 不変)
+
+  @DZ-179
+  シナリオ: 自プレイヤー自身の EndTurn 冒頭で Decrement(ADR-0020 新規)
+    前提 p1 が GreenInvasionInfluence(カウント 3) を 1 件保有
+    かつ p1 が WaitingForEndTurn
+    もし p1 が EndTurnAction を適用する
+    ならば p1 の影響の RemainingCount が 2 になる(EndTurn 冒頭 Decrement で 3→2)

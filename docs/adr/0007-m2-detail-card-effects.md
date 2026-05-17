@@ -142,7 +142,7 @@ ADR-0007 §1.2 では「内部に Dictionary / List を持つ effect」の設計
 | `ApplyInfluenceEffect(SdpTarget, PlayerInfluence)` | 対象プレイヤーの list 末尾に影響を追加(FIFO 規約) |
 | `RemoveInfluenceEffect(SdpTarget)` | 対象プレイヤーの list から `EffectContext.InfluenceRemovalIndex` の影響を 1 件除去(範囲外 / 空 list は graceful no-op) |
 | `ChoiceEffect(IReadOnlyList<IReadOnlyList<IEffect>>)` | 選択式カードのラッパー。`DrowZzzRule.ApplyPlayCard` 内で `PlayCardAction.Choice` を読んで unwrap(interpreter には届かない) |
-| Tick 評価点 | `DrowZzzRule.ApplyEndTurn` の DDP 抽選後、新 `CurrentPlayerIndex` が指すプレイヤーの list を先頭から評価 → `TickEffect` を `EffectInterpreter.Apply` → `RemainingCount-1` → 0 で除去 |
+| Tick 評価点 | `DrowZzzRule.ApplyEndTurn` の DDP 抽選後、新 `CurrentPlayerIndex` が指すプレイヤーの list を先頭から評価 → `TickEffect` を `EffectInterpreter.Apply`(ADR-0020 後は **`RemainingCount` 減算は本ステップから分離**、`ApplyEndTurn` 冒頭の `DecrementInfluencesForCurrentPlayer` で旧 current の全 Influences を count -1、0 で除去)|
 
 ##### EffectContext 引数の追加
 

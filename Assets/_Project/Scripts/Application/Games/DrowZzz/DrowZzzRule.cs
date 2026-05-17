@@ -49,8 +49,17 @@ namespace Drowsy.Application.Games.DrowZzz
     /// 経由で <see cref="RemoveInfluenceEffect"/> に届ける。</item>
     /// <item><b>フェーズ開始時の Tick</b>: <see cref="EndTurnAction"/> Apply 内、DDP 抽選後に新 <c>CurrentPlayerIndex</c> が
     /// 指すプレイヤーの保有影響を順次 Tick する(<see cref="InfluenceTrigger.OwnPhaseStart"/>)。
-    /// 各 Tick は <c>TickEffect</c> を Interpreter で適用 → <c>RemainingCount</c> -1 → 0 で除去。</item>
+    /// 各 Tick は <c>TickEffect</c> を Interpreter で適用するのみ(<c>RemainingCount</c> は不変)。</item>
     /// </list>
+    /// </para>
+    /// <para>
+    /// ADR-0020(2026-05-17)で <c>RemainingCount</c> 減算タイミングを「Tick 直後」から
+    /// 「<see cref="EndTurnAction"/> 実行時のフェーズ終了側」へ移動。具体的には <see cref="ApplyEndTurn"/> の冒頭
+    /// (PendingClear 直後、<c>Turn.Next</c> 前)で旧 current プレイヤーの全 Influences に対して
+    /// <c>RemainingCount -= 1</c>、0 到達なら除去する(<c>DecrementInfluencesForCurrentPlayer</c>)。
+    /// これにより「カウント N = 自フェーズ N 回機能」が Marker 系 Influence(<c>IsLegalMove</c> で「存在時」効果を発揮する型)
+    /// の N=1 でも成立する(No.09「強引過ぎる一手」のカウント1 Marker 機能化が動機)。
+    /// カウント N ≥ 2 のカード(No.02 / No.04 / No.06 / No.07 / No.08)は発動回数不変。
     /// </para>
     /// </remarks>
     public sealed class DrowZzzRule : IGameRule<DrowZzzAction, DrowZzzGameSession>
@@ -176,10 +185,17 @@ namespace Drowsy.Application.Games.DrowZzz
             {
                 return false;
             }
+            // No.09「強引過ぎる一手」(ADR-0020 と同 PR、2026-05-17):
+            // 現プレイヤーが RestrictAllUsageAndAbandonInfluenceMarkerEffect の Influence を保有していたら
+            // AbandonAction も illegal 化する(「放棄」をテキスト上で明示禁止)。
+            var currentPlayerId = session.GameState.Players[currentIndex].Id;
+            if (HasUsageAndAbandonRestrictionInfluence(session.Influences[currentPlayerId]))
+            {
+                return false;
+            }
             if (action.Choice == AbandonChoice.RepairBed)
             {
                 // 0% では修繕不可(JIT 確定 2026-05-13、(b) 不可選択を採用)
-                var currentPlayerId = session.GameState.Players[currentIndex].Id;
                 if (session.BedDamages[currentPlayerId] <= DrowZzzBedConstants.MinBedDamagePercent)
                 {
                     return false;
@@ -310,6 +326,13 @@ namespace Drowsy.Application.Games.DrowZzz
             int currentIndex = session.GameState.Turn.CurrentPlayerIndex;
             var currentPlayerId = session.GameState.Players[currentIndex].Id;
             if (!session.GameState.Players[currentIndex].Hand.Contains(action.Card))
+            {
+                return false;
+            }
+            // No.09「強引過ぎる一手」(ADR-0020 と同 PR、2026-05-17):
+            // 現プレイヤーが RestrictAllUsageAndAbandonInfluenceMarkerEffect の Influence を保有していたら、
+            // CardId に関わらずすべての PlayCardAction を illegal 化する(乙に付与された影響保有者は手段を使えない)。
+            if (HasUsageAndAbandonRestrictionInfluence(session.Influences[currentPlayerId]))
             {
                 return false;
             }
@@ -476,6 +499,21 @@ namespace Drowsy.Application.Games.DrowZzz
             {
                 if (influences[i].TickEffect is RestrictSpecificCardInfluenceEffect restrict
                     && restrict.TargetCardTypeId.Equals(target))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // 対象プレイヤーの Influences に RestrictAllUsageAndAbandonInfluenceMarkerEffect を TickEffect として持つものが
+        // あるかを判定する(No.09「強引過ぎる一手」、2026-05-17 / ADR-0020 と同 PR)。
+        // PlayCardAction / CounterAction / AbandonAction の 3 メソッド経路で actor の influences を walk する用途。
+        private static bool HasUsageAndAbandonRestrictionInfluence(IReadOnlyList<PlayerInfluence> influences)
+        {
+            for (int i = 0; i < influences.Count; i++)
+            {
+                if (influences[i].TickEffect is RestrictAllUsageAndAbandonInfluenceMarkerEffect)
                 {
                     return true;
                 }
@@ -964,6 +1002,15 @@ namespace Drowsy.Application.Games.DrowZzz
             {
                 return false;
             }
+            // No.09「強引過ぎる一手」(ADR-0020 と同 PR、2026-05-17):
+            // 反撃を打つプレイヤー(= counterPlayerIndex = currentIndex の相手)が
+            // RestrictAllUsageAndAbandonInfluenceMarkerEffect を保有していたら CounterAction も illegal 化する
+            // (オーナー JIT 確定 2026-05-17:「使用」に CounterAction も含む)。
+            var counterPlayerId = session.GameState.Players[counterPlayerIndex].Id;
+            if (HasUsageAndAbandonRestrictionInfluence(session.Influences[counterPlayerId]))
+            {
+                return false;
+            }
             // (3) Counter カードに Counter キーワードあり
             var counterEffects = _catalog.GetEffects(action.Counter.TypeId);
             if (!HasKeywordInEffects(counterEffects, Keyword.Counter))
@@ -1005,6 +1052,14 @@ namespace Drowsy.Application.Games.DrowZzz
             int currentIndex = session.GameState.Turn.CurrentPlayerIndex;
             var currentHand = session.GameState.Players[currentIndex].Hand;
             if (!currentHand.Contains(action.Counter))
+            {
+                return false;
+            }
+            // No.09「強引過ぎる一手」(ADR-0020 と同 PR、2026-05-17):
+            // 反撃の反撃を打つプレイヤー(= currentIndex = A プレイヤー、自ターン中)が
+            // RestrictAllUsageAndAbandonInfluenceMarkerEffect を保有していたら CounterAction も illegal 化する。
+            var currentPlayerId = session.GameState.Players[currentIndex].Id;
+            if (HasUsageAndAbandonRestrictionInfluence(session.Influences[currentPlayerId]))
             {
                 return false;
             }
@@ -1235,11 +1290,18 @@ namespace Drowsy.Application.Games.DrowZzz
                 ? session
                 : session with { PendingCounteredEffects = System.Array.Empty<PendingCounteredEffect>() };
 
-            var gameState = sessionAfterPendingClear.GameState;
+            // ADR-0020: 旧 current プレイヤー(自フェーズを終了するプレイヤー)の Influences すべてに対して
+            // RemainingCount -= 1、0 到達なら除去。Turn.Next の前に実行することで、
+            // 「フェーズ N で機能した影響を、そのフェーズ終了時にカウントダウンする」セマンティクスを実現する。
+            // 旧仕様(Tick 内で count -1)では Marker 系 Influence の count=1 が自フェーズ開始時に
+            // 即除去されて IsLegalMove で参照できなくなる問題があった(本 ADR で根本対処)。
+            var sessionAfterDecrement = DecrementInfluencesForCurrentPlayer(sessionAfterPendingClear);
+
+            var gameState = sessionAfterDecrement.GameState;
             var newTurn = gameState.Turn.Next(gameState.Players.Count);
             var newGameState = gameState with { Turn = newTurn };
 
-            var nextSession = sessionAfterPendingClear with
+            var nextSession = sessionAfterDecrement with
             {
                 GameState = newGameState,
                 PhaseState = DrowZzzPhaseState.WaitingForDraw,
@@ -1262,8 +1324,9 @@ namespace Drowsy.Application.Games.DrowZzz
                 nextSession = DrawDdpForAllPlayers(nextSession);
             }
 
-            // M2-PR5: 新フェーズの current player が保有する影響を Tick(OwnPhaseStart)。
-            // 0 件なら no-op、影響を持つ場合は順次 TickEffect 適用 + RemainingCount-1、0 到達で list から除去。
+            // M2-PR5 + ADR-0020: 新フェーズの current player が保有する影響を Tick(OwnPhaseStart)。
+            // 0 件なら no-op、影響を持つ場合は順次 TickEffect 適用のみ(RemainingCount は不変、
+            // count -1 は ADR-0020 で本メソッド冒頭の DecrementInfluencesForCurrentPlayer に移動)。
             nextSession = TickInfluencesForCurrentPlayer(nextSession);
 
             // M3-PR1: Round 21 完了検出 + Outcome 設定(ADR-0010 §4(b))。
@@ -1385,11 +1448,12 @@ namespace Drowsy.Application.Games.DrowZzz
             };
         }
 
-        // M2-PR5: 新フェーズの current player が保有する影響を Tick する(InfluenceTrigger.OwnPhaseStart)。
+        // M2-PR5 + ADR-0020: 新フェーズの current player が保有する影響を Tick する(InfluenceTrigger.OwnPhaseStart)。
         // - list 先頭から順に評価(FIFO)
         // - 各影響の TickEffect を Interpreter で適用 + 適用後の session を持ち越し
-        // - RemainingCount-1 し、0 到達なら除去、1 以上なら新 PlayerInfluence で置換
         // - 他プレイヤーの影響は不変
+        // - **ADR-0020 で RemainingCount 減算は本メソッドから DecrementInfluencesForCurrentPlayer に移動**
+        //   (本メソッドは TickEffect 適用のみ、Influences の構造変更なし)
         // 影響 0 件なら session 不変返却(graceful no-op)。
         private DrowZzzGameSession TickInfluencesForCurrentPlayer(DrowZzzGameSession session)
         {
@@ -1402,23 +1466,44 @@ namespace Drowsy.Application.Games.DrowZzz
             }
 
             // OwnPhaseStart の影響のみを評価対象とする(将来トリガー拡張時に他種類は素通し)。
-            // 評価後の新 list を構築:
-            //  - TickEffect を Interpreter 適用 → session が新 session に置換
-            //  - RemainingCount-1 → 0 ならスキップ、1 以上なら新 PlayerInfluence で置換
+            // ADR-0020 後は TickEffect 適用のみ、Influences 構造は不変。
             var current = session;
-            var rebuilt = new List<PlayerInfluence>(currentInfluences.Count);
             for (int i = 0; i < currentInfluences.Count; i++)
             {
                 var inf = currentInfluences[i];
                 if (inf.Trigger != InfluenceTrigger.OwnPhaseStart)
                 {
                     // 将来トリガー拡張: 他種類は Tick せず保持
-                    rebuilt.Add(inf);
                     continue;
                 }
                 // Tick 評価: TickEffect を current session に適用、context は Default
                 // (Tick 内部で RemoveInfluenceEffect 等の per-play 文脈を必要とする効果は M2-PR5 範囲では登場しない)
                 current = _interpreter.Apply(current, inf.TickEffect, EffectContext.Default);
+            }
+            return current;
+        }
+
+        // ADR-0020: 旧 current プレイヤー(= フェーズを終了するプレイヤー)の Influences すべてに対して
+        // RemainingCount -= 1 を適用し、0 到達なら除去する。ApplyEndTurn の冒頭(PendingClear 直後、Turn.Next 前)で呼ばれる。
+        // - 全 InfluenceTrigger に対して一律 -1(将来トリガー拡張時も「N 回機能 → N 回 -1 で除去」の意味論を保つ)
+        // - 他プレイヤーの影響は不変
+        // - 影響 0 件なら session 不変返却(graceful no-op)
+        // - Perpetual (= int.MaxValue) に対しても一律 -1(`InfluenceConstants.Perpetual` の xmldoc が示す通り、
+        //   1 ゲーム上限 42 回 -1 では 0 到達しない前提のため、特別扱いなしで設計上問題なし。code-reviewer W-3 反映 2026-05-17)
+        private static DrowZzzGameSession DecrementInfluencesForCurrentPlayer(DrowZzzGameSession session)
+        {
+            int currentIndex = session.GameState.Turn.CurrentPlayerIndex;
+            var currentPlayerId = session.GameState.Players[currentIndex].Id;
+            if (!session.Influences.TryGetValue(currentPlayerId, out var currentInfluences)
+                || currentInfluences.Count == 0)
+            {
+                return session;
+            }
+
+            var rebuilt = new List<PlayerInfluence>(currentInfluences.Count);
+            for (int i = 0; i < currentInfluences.Count; i++)
+            {
+                var inf = currentInfluences[i];
                 int newCount = inf.RemainingCount - 1;
                 if (newCount >= 1)
                 {
@@ -1428,14 +1513,14 @@ namespace Drowsy.Application.Games.DrowZzz
             }
 
             // 影響 dict を新規 build(他プレイヤーの list は不変、current player の list を rebuilt で置換)
-            var newInfluences = new Dictionary<PlayerId, IReadOnlyList<PlayerInfluence>>(current.Influences.Count);
-            foreach (var kv in current.Influences)
+            var newInfluences = new Dictionary<PlayerId, IReadOnlyList<PlayerInfluence>>(session.Influences.Count);
+            foreach (var kv in session.Influences)
             {
                 newInfluences[kv.Key] = kv.Key.Equals(currentPlayerId)
                     ? rebuilt
                     : kv.Value;
             }
-            return current with { Influences = newInfluences };
+            return session with { Influences = newInfluences };
         }
     }
 }

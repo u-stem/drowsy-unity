@@ -92,7 +92,7 @@ new KeyValuePair<CardId, IReadOnlyList<IEffect>>(CardId.Of("00"), new IEffect[]
 ### 使用制限の効果
 
 - [DZ-231] When player A holds Card `"00"` in hand and `PlayerInfluence(OwnPhaseStart, UsageRestrictionMarkerEffect, _)` in influences, `PlayCardAction(CardId.Of("00"))` shall be **illegal**(`IsLegalMove` returns `false`)while phase is `WaitingForPlay`。
-- [DZ-232] When player A's `EndTurnAction` rotates current player to B, then B's `EndTurnAction` rotates back to A, A's Tick at the second `OwnPhaseStart` shall decrement `RemainingCount` from 1 to 0 and remove the influence. After removal, `PlayCardAction(CardId.Of("00"))` shall become legal(同条件下で `IsLegalMove` → `true`、FDS ≥ 100 等他条件は別 DZ で担保)。
+- [DZ-232] When player A's `EndTurnAction` rotates current player to B, then B's `EndTurnAction` rotates back to A, the `DecrementInfluencesForCurrentPlayer` step in A's first `EndTurnAction`(ADR-0020 後は `Turn.Next` 前に実行)shall decrement A's UsageRestriction influence `RemainingCount` from 1 to 0 and remove it. After A returns to its next own phase, `PlayCardAction(CardId.Of("00"))` shall become legal(同条件下で `IsLegalMove` → `true`、FDS ≥ 100 等他条件は別 DZ で担保)。ADR-0020 後の補足:旧仕様(M2-PR5)では A の 2 度目の自フェーズ開始時 Tick で count -1 で即除去だったが、新仕様では A の 1 度目の `EndTurnAction` 冒頭 Decrement で除去される。プレイヤー体験としては「翌々自フェーズで合法化される」点が共通(N+2 フェーズ目)で戦略的影響なし。
 
 ### 使用条件(FDS ≥ 100)
 

@@ -146,7 +146,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         }
 
         [Test, Category("Medium"), Category("Normal"), Property("Requirement", "DZ-283")]
-        public void Given_p2が2xInfluence保有_BedDamage40pct_p1current_When_p1EndTurnでp2フェーズへ_Then_Influenceの残カウントが3()
+        public void Given_p2が2xInfluence保有_BedDamage40pct_p1current_When_p1EndTurnでp2フェーズへ_Then_Influenceの残カウントは不変4()
         {
             // Given
             var rule = NewRule(NewCatalogWithCardSix());
@@ -157,8 +157,8 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var session = sessionInPlay with { PhaseState = DrowZzzPhaseState.WaitingForEndTurn };
             // When
             var next = rule.Apply(session, new EndTurnAction());
-            // Then(Tick で RemainingCount 4 → 3)
-            Assert.That(next.Influences[PlayerId.Of("p2")][0].RemainingCount, Is.EqualTo(3));
+            // Then(ADR-0020:p2 Tick で TickEffect 適用のみ、count は p2 自身の EndTurn で -1 されるまで 4 のまま)
+            Assert.That(next.Influences[PlayerId.Of("p2")][0].RemainingCount, Is.EqualTo(4));
         }
 
         // ===== DZ-284: 2 倍化 Influence 非保有時の通常ベッド破損 Tick(SDP -8、非リグレッション)=====
@@ -227,12 +227,15 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             Assert.That(legal, Is.False);
         }
 
-        // ===== DZ-285: カウント 1 から Tick で除去 =====
+        // ===== DZ-285: カウント 1 Marker は p2 フェーズ全体で機能、p2 EndTurn で除去(ADR-0020) =====
 
         [Test, Category("Medium"), Category("Normal"), Property("Requirement", "DZ-285")]
-        public void Given_p2が2xInfluenceカウント1保有_p1current_When_p1EndTurnでp2フェーズへ_Then_p2のInfluences件数が0()
+        public void Given_p2が2xInfluenceカウント1保有_p1current_When_p1EndTurnでp2フェーズへ_Then_p2のInfluencesはカウント1で残存()
         {
-            // Given(p2 が 2 倍化 Influence カウント 1、p1 WaitingForEndTurn → EndTurn で p2 自フェーズへ Tick)
+            // Given(p2 が 2 倍化 Influence カウント 1、p1 WaitingForEndTurn → EndTurn で p2 自フェーズへ)
+            // ADR-0020 後:p1 EndTurn 冒頭で p1 Decrement(no-op、p1 影響なし)→ Turn.Next で p2 へ →
+            // ApplyBedDamageToCurrentPlayer で marker 検出して 2 倍化(BedDamage 0% なので結果も 0)→
+            // p2 Tick で TickEffect (marker no-op) 適用、count 1 のまま残存。除去は p2 自身の EndTurn まで遅延。
             var rule = NewRule(NewCatalogWithCardSix());
             var inf = new PlayerInfluence(
                 InfluenceTrigger.OwnPhaseStart,
@@ -242,8 +245,9 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var session = sessionInPlay with { PhaseState = DrowZzzPhaseState.WaitingForEndTurn };
             // When
             var next = rule.Apply(session, new EndTurnAction());
-            // Then
-            Assert.That(next.Influences[PlayerId.Of("p2")].Count, Is.EqualTo(0));
+            // Then(ADR-0020:count=1 marker は p2 フェーズで機能、count=1 のまま残存)
+            Assert.That(next.Influences[PlayerId.Of("p2")].Count, Is.EqualTo(1));
+            Assert.That(next.Influences[PlayerId.Of("p2")][0].RemainingCount, Is.EqualTo(1));
         }
     }
 }

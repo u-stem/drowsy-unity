@@ -82,11 +82,13 @@ new KeyValuePair<CardTypeId, IReadOnlyList<IEffect>>(CardTypeId.Of("06"), new IE
 
 - [DZ-282] When Card `"06"` is targeted by `CounterAction`(対戦相手による反撃)during `WaitingForCounterResponse`, `IsLegalMove` shall return `false`(Frenzy 持ちカードは反撃を受けない、ADR-0011 §4.5、既存 No.00「夢」と同パターン)。
 
-## Tick 評価のシナリオ(ベッド破損 2 倍化)
+## Tick 評価のシナリオ(ベッド破損 2 倍化、ADR-0020 後の仕様)
 
-- [DZ-283] When B holds `PlayerInfluence(OwnPhaseStart, DoubleBedDamageSdpInfluenceMarkerEffect, 4)` and a phase rotation makes B the new current player while `BedDamages[B] = 40%`, the resulting session shall reflect `SDP[B] -= 16`(通常の `40 / 5 = 8` を 2 倍化、Influence の RemainingCount は 4 → 3 に減算)。
+ADR-0020 で count -1 タイミングを `ApplyEndTurn` 冒頭(Turn.Next 前)に移動。Tick は `TickEffect` 適用のみ(count 不変)。
+
+- [DZ-283] When B holds `PlayerInfluence(OwnPhaseStart, DoubleBedDamageSdpInfluenceMarkerEffect, 4)` and a phase rotation makes B the new current player while `BedDamages[B] = 40%`, the resulting session shall reflect `SDP[B] -= 16`(通常の `40 / 5 = 8` を 2 倍化、ADR-0020 後は Influence の RemainingCount は 4 のまま、B 自身の EndTurn 冒頭で -1)。
 - [DZ-284] When B does **not** hold any `DoubleBedDamageSdpInfluenceMarkerEffect` Influence and a phase rotation makes B the new current player while `BedDamages[B] = 40%`, the resulting session shall reflect `SDP[B] -= 8`(通常の `bedDamage / 5`、2 倍化なし)。
-- [DZ-285] When B holds the 2x Influence with `RemainingCount = 1` and a phase rotation Tick fires, B's influence shall be removed (`RemainingCount` 1 → 0 で除去、`UsageRestrictionMarkerEffect` と完全対称)。
+- [DZ-285] When B holds the 2x Influence with `RemainingCount = 1` and A's EndTurn rotates current to B, B's influence shall remain with `RemainingCount = 1`(ADR-0020:Tick は count 不変、B 自身の EndTurn で count -1 → 0 で除去)。これにより count=1 marker が B の自フェーズ全体(BedDamage 計算含む)で機能する。
 
 ## 定数依存
 
@@ -128,6 +130,6 @@ new KeyValuePair<CardTypeId, IReadOnlyList<IEffect>>(CardTypeId.Of("06"), new IE
 | DZ-280 | `Given_任意フェーズ_When_Card06をプレイ_Then_相手のSDPがマイナス4` | 統合テスト |
 | DZ-281 | `Given_任意フェーズ_When_Card06をプレイ_Then_相手のInfluencesにBedDamage2xが付与される` | 統合テスト |
 | DZ-282 | `Given_p2手札にCard06_When_p1がCounterActionで対象_Then_IsLegalMoveがfalse` | Frenzy = 反撃不可 |
-| DZ-283 | `Given_p2が2xInfluence保有_BedDamage40%_p1current_When_p1EndTurnでp2フェーズへ_Then_p2のSDPがマイナス16` + `Then_Influenceの残カウントが3になる` | 2 件に分割(2 倍化 SDP + RemainingCount 減算) |
+| DZ-283 | `Given_p2が2xInfluence保有_BedDamage40%_p1current_When_p1EndTurnでp2フェーズへ_Then_p2のSDPがマイナス16` + `Then_Influenceの残カウントは不変4` | 2 件に分割(2 倍化 SDP + RemainingCount 不変、ADR-0020 後) |
 | DZ-284 | `Given_p2が2xInfluence非保有_BedDamage40%_p1current_When_p1EndTurnでp2フェーズへ_Then_p2のSDPがマイナス8` | 通常計算経路の非リグレッション |
-| DZ-285 | `Given_p2が2xInfluenceカウント1保有_p1current_When_p1EndTurnでp2フェーズへ_Then_p2のInfluences件数が0` | 寿命 0 到達除去 |
+| DZ-285 | `Given_p2が2xInfluenceカウント1保有_p1current_When_p1EndTurnでp2フェーズへ_Then_p2のInfluencesはカウント1で残存` | ADR-0020 後の count=1 marker は p2 フェーズで機能、p2 自身の EndTurn で除去 |
