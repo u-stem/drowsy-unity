@@ -48,6 +48,13 @@ MonoBehaviour:
     _effects:
     - rid: 8832664195353804930
     - rid: 8832664195353804935
+  - _cardIdValue: 06
+    _name: "\u7259\u306E\u5C4A\u304B\u306C\u9818\u57DF"
+    _attributes: []
+    _effects:
+    - rid: 8832664195353804940
+    - rid: 8832664195353804941
+    - rid: 8832664195353804942
   references:
     version: 2
     RefIds:
@@ -301,3 +308,31 @@ MonoBehaviour:
       type: {class: StackHandCardOnDeckTopEffectAsset, ns: Drowsy.Infrastructure.Games.DrowZzz.Effects, asm: Drowsy.Infrastructure}
       data:
         _source: 0
+    - rid: 8832664195353804940
+      type: {class: AdjustSdpEffectAsset, ns: Drowsy.Infrastructure.Games.DrowZzz.Effects, asm: Drowsy.Infrastructure}
+      data:
+        _target: 0
+        _delta: -12
+    - rid: 8832664195353804941
+      type: {class: AdjustSdpEffectAsset, ns: Drowsy.Infrastructure.Games.DrowZzz.Effects, asm: Drowsy.Infrastructure}
+      data:
+        _target: 1
+        _delta: -4
+    - rid: 8832664195353804942
+      type: {class: KeywordedEffectAsset, ns: Drowsy.Infrastructure.Games.DrowZzz.Effects, asm: Drowsy.Infrastructure}
+      data:
+        _keywords: 00000000
+        _inner:
+          rid: 8832664195353804943
+    - rid: 8832664195353804943
+      type: {class: ApplyInfluenceEffectAsset, ns: Drowsy.Infrastructure.Games.DrowZzz.Effects, asm: Drowsy.Infrastructure}
+      data:
+        _target: 1
+        _influence:
+          _trigger: 0
+          _tickEffect:
+            rid: 8832664195353804944
+          _remainingCount: 4
+    - rid: 8832664195353804944
+      type: {class: DoubleBedDamageSdpInfluenceMarkerEffectAsset, ns: Drowsy.Infrastructure.Games.DrowZzz.Effects, asm: Drowsy.Infrastructure}
+      data:
