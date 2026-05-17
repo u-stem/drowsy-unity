@@ -52,7 +52,7 @@ namespace Drowsy.Application.Games.DrowZzz
         public CardId Card
         {
             get => _card;
-            init => _card = value ?? throw new ArgumentNullException(nameof(value));
+            init => _card = value ?? throw new ArgumentNullException(nameof(Card));
         }
     }
 
@@ -129,7 +129,7 @@ namespace Drowsy.Application.Games.DrowZzz
         public CardId Card
         {
             get => _card;
-            init => _card = value ?? throw new ArgumentNullException(nameof(value));
+            init => _card = value ?? throw new ArgumentNullException(nameof(Card));
         }
     }
 
@@ -168,14 +168,14 @@ namespace Drowsy.Application.Games.DrowZzz
         public CardId Counter
         {
             get => _counter;
-            init => _counter = value ?? throw new ArgumentNullException(nameof(value));
+            init => _counter = value ?? throw new ArgumentNullException(nameof(Counter));
         }
 
         /// <summary>無効化対象の相手プレイヤーがプレイした Field 上のカード。</summary>
         public CardId Target
         {
             get => _target;
-            init => _target = value ?? throw new ArgumentNullException(nameof(value));
+            init => _target = value ?? throw new ArgumentNullException(nameof(Target));
         }
     }
 

@@ -50,14 +50,14 @@ namespace Drowsy.Application.Games.DrowZzz
         public CardId CounterCard
         {
             get => _counterCard;
-            init => _counterCard = value ?? throw new ArgumentNullException(nameof(value));
+            init => _counterCard = value ?? throw new ArgumentNullException(nameof(CounterCard));
         }
 
         /// <summary>B によって無効化された元カード(= A)。</summary>
         public CardId OriginalCard
         {
             get => _originalCard;
-            init => _originalCard = value ?? throw new ArgumentNullException(nameof(value));
+            init => _originalCard = value ?? throw new ArgumentNullException(nameof(OriginalCard));
         }
 
         /// <summary>A の効果列(防御コピー済、順序保持)。</summary>

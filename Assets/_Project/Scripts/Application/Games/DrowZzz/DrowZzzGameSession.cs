@@ -79,28 +79,28 @@ namespace Drowsy.Application.Games.DrowZzz
             {
                 if (value is null)
                 {
-                    throw new ArgumentNullException(nameof(value));
+                    throw new ArgumentNullException(nameof(GameState));
                 }
                 // cross-field: 既に DP 群 / Influences が確定していれば、それぞれの PlayerId キー集合と新 GameState.Players が一致するか検証
                 if (_firstDrowsyPoints is not null)
                 {
-                    EnsureKeysMatchPlayers(_firstDrowsyPoints.Keys, value, nameof(value), keysetName: "FirstDrowsyPoints");
+                    EnsureKeysMatchPlayers(_firstDrowsyPoints.Keys, value, nameof(GameState), keysetName: "FirstDrowsyPoints");
                 }
                 if (_drawDrowsyPoints is not null)
                 {
-                    EnsureKeysMatchPlayers(_drawDrowsyPoints.Keys, value, nameof(value), keysetName: "DrawDrowsyPoints");
+                    EnsureKeysMatchPlayers(_drawDrowsyPoints.Keys, value, nameof(GameState), keysetName: "DrawDrowsyPoints");
                 }
                 if (_secondDrowsyPoints is not null)
                 {
-                    EnsureKeysMatchPlayers(_secondDrowsyPoints.Keys, value, nameof(value), keysetName: "SecondDrowsyPoints");
+                    EnsureKeysMatchPlayers(_secondDrowsyPoints.Keys, value, nameof(GameState), keysetName: "SecondDrowsyPoints");
                 }
                 if (_influences is not null)
                 {
-                    EnsureKeysMatchPlayers(_influences.Keys, value, nameof(value), keysetName: "Influences");
+                    EnsureKeysMatchPlayers(_influences.Keys, value, nameof(GameState), keysetName: "Influences");
                 }
                 if (_bedDamages is not null)
                 {
-                    EnsureKeysMatchPlayers(_bedDamages.Keys, value, nameof(value), keysetName: "BedDamages");
+                    EnsureKeysMatchPlayers(_bedDamages.Keys, value, nameof(GameState), keysetName: "BedDamages");
                 }
                 _gameState = value;
             }
@@ -118,7 +118,7 @@ namespace Drowsy.Application.Games.DrowZzz
                 var copied = ValidateAndCopyDp(value, dpName: "FirstDrowsyPoints");
                 if (_gameState is not null)
                 {
-                    EnsureKeysMatchPlayers(copied.Keys, _gameState, nameof(value), keysetName: "FirstDrowsyPoints");
+                    EnsureKeysMatchPlayers(copied.Keys, _gameState, nameof(FirstDrowsyPoints), keysetName: "FirstDrowsyPoints");
                 }
                 _firstDrowsyPoints = copied;
             }
@@ -139,7 +139,7 @@ namespace Drowsy.Application.Games.DrowZzz
                 var copied = ValidateAndCopyDp(value, dpName: "DrawDrowsyPoints");
                 if (_gameState is not null)
                 {
-                    EnsureKeysMatchPlayers(copied.Keys, _gameState, nameof(value), keysetName: "DrawDrowsyPoints");
+                    EnsureKeysMatchPlayers(copied.Keys, _gameState, nameof(DrawDrowsyPoints), keysetName: "DrawDrowsyPoints");
                 }
                 _drawDrowsyPoints = copied;
             }
@@ -159,7 +159,7 @@ namespace Drowsy.Application.Games.DrowZzz
                 var copied = ValidateAndCopyDp(value, dpName: "SecondDrowsyPoints");
                 if (_gameState is not null)
                 {
-                    EnsureKeysMatchPlayers(copied.Keys, _gameState, nameof(value), keysetName: "SecondDrowsyPoints");
+                    EnsureKeysMatchPlayers(copied.Keys, _gameState, nameof(SecondDrowsyPoints), keysetName: "SecondDrowsyPoints");
                 }
                 _secondDrowsyPoints = copied;
             }
@@ -172,7 +172,7 @@ namespace Drowsy.Application.Games.DrowZzz
         public DdpPool DdpPool
         {
             get => _ddpPool;
-            init => _ddpPool = value ?? throw new ArgumentNullException(nameof(value));
+            init => _ddpPool = value ?? throw new ArgumentNullException(nameof(DdpPool));
         }
 
         /// <summary>
@@ -192,7 +192,7 @@ namespace Drowsy.Application.Games.DrowZzz
                 var copied = ValidateAndCopyInfluences(value);
                 if (_gameState is not null)
                 {
-                    EnsureKeysMatchPlayers(copied.Keys, _gameState, nameof(value), keysetName: "Influences");
+                    EnsureKeysMatchPlayers(copied.Keys, _gameState, nameof(Influences), keysetName: "Influences");
                 }
                 _influences = copied;
             }
@@ -254,7 +254,7 @@ namespace Drowsy.Application.Games.DrowZzz
                 var copied = ValidateAndCopyBedDamages(value);
                 if (_gameState is not null)
                 {
-                    EnsureKeysMatchPlayers(copied.Keys, _gameState, nameof(value), keysetName: "BedDamages");
+                    EnsureKeysMatchPlayers(copied.Keys, _gameState, nameof(BedDamages), keysetName: "BedDamages");
                 }
                 _bedDamages = copied;
             }

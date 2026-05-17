@@ -41,7 +41,7 @@ namespace Drowsy.Application.Games.DrowZzz.Influences
         public IEffect TickEffect
         {
             get => _tickEffect;
-            init => _tickEffect = value ?? throw new ArgumentNullException(nameof(value));
+            init => _tickEffect = value ?? throw new ArgumentNullException(nameof(TickEffect));
         }
 
         /// <summary>残発動回数。1 以上必須。</summary>
@@ -51,7 +51,7 @@ namespace Drowsy.Application.Games.DrowZzz.Influences
             init => _remainingCount = value >= 1
                 ? value
                 : throw new ArgumentOutOfRangeException(
-                    nameof(value),
+                    nameof(RemainingCount),
                     $"RemainingCount は 1 以上である必要があります(0 到達時は除去されるため): {value}");
         }
     }

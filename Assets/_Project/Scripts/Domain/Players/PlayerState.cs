@@ -24,14 +24,14 @@ namespace Drowsy.Domain.Players
         public PlayerId Id
         {
             get => _id;
-            init => _id = value ?? throw new ArgumentNullException(nameof(value));
+            init => _id = value ?? throw new ArgumentNullException(nameof(Id));
         }
 
         /// <summary>プレイヤーの手札。</summary>
         public Hand Hand
         {
             get => _hand;
-            init => _hand = value ?? throw new ArgumentNullException(nameof(value));
+            init => _hand = value ?? throw new ArgumentNullException(nameof(Hand));
         }
 
         /// <summary>

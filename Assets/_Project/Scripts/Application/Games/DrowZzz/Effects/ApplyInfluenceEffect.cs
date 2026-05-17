@@ -26,7 +26,7 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
         public PlayerInfluence Influence
         {
             get => _influence;
-            init => _influence = value ?? throw new ArgumentNullException(nameof(value));
+            init => _influence = value ?? throw new ArgumentNullException(nameof(Influence));
         }
     }
 }

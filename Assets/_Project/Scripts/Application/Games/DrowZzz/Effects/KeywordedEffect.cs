@@ -47,14 +47,14 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
         public IReadOnlyList<Keyword> Keywords
         {
             get => _keywords;
-            init => _keywords = value ?? throw new ArgumentNullException(nameof(value));
+            init => _keywords = value ?? throw new ArgumentNullException(nameof(Keywords));
         }
 
         /// <summary>キーワードを付与する対象の効果(評価時に逐次 Apply される)。</summary>
         public IEffect Inner
         {
             get => _inner;
-            init => _inner = value ?? throw new ArgumentNullException(nameof(value));
+            init => _inner = value ?? throw new ArgumentNullException(nameof(Inner));
         }
 
         /// <exception cref="ArgumentNullException"><paramref name="keywords"/> または <paramref name="inner"/> が null</exception>

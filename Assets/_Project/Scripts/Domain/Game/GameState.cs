@@ -52,7 +52,7 @@ namespace Drowsy.Domain.Game
                 {
                     throw new ArgumentException(
                         $"Players ({newPlayers.Length} 人) が現在の Turn.CurrentPlayerIndex ({_turn.CurrentPlayerIndex}) の範囲外になります",
-                        nameof(value));
+                        nameof(Players));
                 }
                 _players = newPlayers;
             }
@@ -62,21 +62,21 @@ namespace Drowsy.Domain.Game
         public Pile Deck
         {
             get => _deck;
-            init => _deck = value ?? throw new ArgumentNullException(nameof(value));
+            init => _deck = value ?? throw new ArgumentNullException(nameof(Deck));
         }
 
         /// <summary>捨て札。</summary>
         public Pile Discard
         {
             get => _discard;
-            init => _discard = value ?? throw new ArgumentNullException(nameof(value));
+            init => _discard = value ?? throw new ArgumentNullException(nameof(Discard));
         }
 
         /// <summary>場(場を持たないゲームでは <see cref="Pile.Empty"/> を渡す)。</summary>
         public Pile Field
         {
             get => _field;
-            init => _field = value ?? throw new ArgumentNullException(nameof(value));
+            init => _field = value ?? throw new ArgumentNullException(nameof(Field));
         }
 
         /// <summary>ターン進行状態。</summary>
@@ -87,7 +87,7 @@ namespace Drowsy.Domain.Game
             {
                 if (value is null)
                 {
-                    throw new ArgumentNullException(nameof(value));
+                    throw new ArgumentNullException(nameof(Turn));
                 }
                 // GS-022: with { Turn = ... } 経由でも Players 範囲外を防ぐ。
                 // _players は MemberwiseClone (with 経由) または直前の Players init setter (コンストラクタ経由) で確定済み。
@@ -95,7 +95,7 @@ namespace Drowsy.Domain.Game
                 {
                     throw new ArgumentException(
                         $"Turn.CurrentPlayerIndex ({value.CurrentPlayerIndex}) が Players の範囲外です(Players.Count = {_players.Length})",
-                        nameof(value));
+                        nameof(Turn));
                 }
                 _turn = value;
             }
