@@ -4,9 +4,8 @@ using NUnit.Framework;
 using Drowsy.Application.Catalog;
 using Drowsy.Application.Games.DrowZzz;
 using Drowsy.Application.Games.DrowZzz.Effects;
-using Drowsy.Application.Games.DrowZzz.Influences;
+using Drowsy.Application.Tests.Stubs;
 using Drowsy.Domain.Cards;
-using Drowsy.Domain.Game;
 using Drowsy.Domain.Players;
 
 namespace Drowsy.Application.Tests.Games.DrowZzz
@@ -20,14 +19,15 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
     {
         // ===== ヘルパー =====
 
-        private static readonly DdpPool EmptyDdpPool = DdpPool.Empty;
-
         private static DrowZzzRule NewRule() =>
             new DrowZzzRule(
                 new InMemoryCardCatalog(new KeyValuePair<CardTypeId, CardData>[0]),
                 new EffectInterpreter());
 
-        // 現プレイヤー p1 が手札 2 枚(c1, c2)を持つ WaitingForPlay セッション
+        // 現プレイヤー p1 が手札 handCount 枚(c1, c2, ...)を持つ WaitingForPlay セッション。
+        // 2026-05-17 SessionFactory 統合 第 3 弾:内部実装を SessionFactory.NewSession 呼び出しに置換し
+        // FDP / DDP / SDP / Influences / BedDamages の dictionary 直接構築を排除した
+        // (呼び出し側 API は維持、handCount / bedP1 / sdpP1 引数のセマンティクスはそのまま)。
         private static DrowZzzGameSession NewSession(
             DrowZzzPhaseState phase = DrowZzzPhaseState.WaitingForPlay,
             int handCount = 2,
@@ -39,29 +39,12 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             {
                 p1HandCards[i] = CardId.Of(CardTypeId.Of($"c{i + 1}"), 0);
             }
-            var players = new[]
-            {
-                new PlayerState(PlayerId.Of("p1"), new Hand(p1HandCards)),
-                new PlayerState(PlayerId.Of("p2"), Hand.Empty),
-            };
-            var gs = new GameState(
-                players, Pile.Empty, Pile.Empty, Pile.Empty,
-                new TurnState(1, 0));
-            var fdp = new Dictionary<PlayerId, int> { [PlayerId.Of("p1")] = 0, [PlayerId.Of("p2")] = 0 };
-            var ddp = new Dictionary<PlayerId, int> { [PlayerId.Of("p1")] = 0, [PlayerId.Of("p2")] = 0 };
-            var sdp = new Dictionary<PlayerId, int> { [PlayerId.Of("p1")] = sdpP1, [PlayerId.Of("p2")] = 0 };
-            var influences = new Dictionary<PlayerId, IReadOnlyList<PlayerInfluence>>
-            {
-                [PlayerId.Of("p1")] = Array.Empty<PlayerInfluence>(),
-                [PlayerId.Of("p2")] = Array.Empty<PlayerInfluence>(),
-            };
-            var bed = new Dictionary<PlayerId, int>
-            {
-                [PlayerId.Of("p1")] = bedP1,
-                [PlayerId.Of("p2")] = 0,
-            };
-            return new DrowZzzGameSession(
-                gs, fdp, ddp, sdp, EmptyDdpPool, influences, phase, outcome: null, bedDamages: bed, System.Array.Empty<PendingCounteredEffect>());
+            return SessionFactory.NewSession(
+                phase: phase,
+                p0Hand: new Hand(p1HandCards),
+                fdp: SessionFactory.Dp(p1: 0, p2: 0),
+                sdp: SessionFactory.Dp(p1: sdpP1, p2: 0),
+                bedDamages: SessionFactory.Dp(p1: bedP1, p2: 0));
         }
 
         // ===== DZ-199: IsLegalMove の合法条件(WaitingForPlay + 手札 1 枚以上 + CardIndex 範囲内)=====

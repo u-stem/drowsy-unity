@@ -97,6 +97,8 @@ namespace Drowsy.Application.Tests.Stubs
             DrowZzzPhaseState phase = DrowZzzPhaseState.WaitingForDraw,
             int currentPlayerIndex = 0,
             Pile deck = null,
+            Pile discard = null,
+            Pile field = null,
             Hand p0Hand = null,
             Hand p1Hand = null,
             int turnNumber = 1,
@@ -112,8 +114,8 @@ namespace Drowsy.Application.Tests.Stubs
             var gs = new GameState(
                 new[] { p0, p1 },
                 deck ?? Pile.Empty,
-                Pile.Empty,
-                Pile.Empty,
+                discard ?? Pile.Empty,
+                field ?? Pile.Empty,
                 new TurnState(turnNumber, currentPlayerIndex));
             // 既存 fixture(`DrowZzzRuleTests` / `ApplyActionUseCaseTests` 等)互換のデフォルト fdp は `{p1: 0, p2: 10}`。
             // 新規 fixture で固有値が必要な場合は `fdp: Dp(p1: 100, p2: 0)` のように明示する。

@@ -56,35 +56,17 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
 
         // 相手プレイヤー p2 が CounterId を手札に持ち、p1 が target/frenzyTarget/plain を手札に持つセッション
         // p1 が currentPlayer。Field は空(PlayCard 直前の状態)、PhaseState は呼び出し側で指定。
+        // 2026-05-17 SessionFactory 統合 第 3 弾:内部実装を SessionFactory.NewSession 呼び出しに置換
+        // (SessionFactory.NewSession に `field` / `discard` 引数を追加して受け皿を整備済)。
         private static DrowZzzGameSession NewSession(
             DrowZzzPhaseState phase = DrowZzzPhaseState.WaitingForCounterResponse,
-            CardId fieldTop = null)
-        {
-            var players = new[]
-            {
-                new PlayerState(PlayerId.Of("p1"), new Hand(new[] { TargetId, FrenzyTargetId, PlainId })),
-                new PlayerState(PlayerId.Of("p2"), new Hand(new[] { CounterId })),
-            };
-            var field = fieldTop is null ? Pile.Empty : new Pile(new[] { fieldTop });
-            var gs = new GameState(
-                players, Pile.Empty, Pile.Empty, field,
-                new TurnState(1, 0));
-            var fdp = new Dictionary<PlayerId, int> { [PlayerId.Of("p1")] = 0, [PlayerId.Of("p2")] = 0 };
-            var ddp = new Dictionary<PlayerId, int> { [PlayerId.Of("p1")] = 0, [PlayerId.Of("p2")] = 0 };
-            var sdp = new Dictionary<PlayerId, int> { [PlayerId.Of("p1")] = 0, [PlayerId.Of("p2")] = 0 };
-            var influences = new Dictionary<PlayerId, IReadOnlyList<PlayerInfluence>>
-            {
-                [PlayerId.Of("p1")] = Array.Empty<PlayerInfluence>(),
-                [PlayerId.Of("p2")] = Array.Empty<PlayerInfluence>(),
-            };
-            var bed = new Dictionary<PlayerId, int>
-            {
-                [PlayerId.Of("p1")] = 0,
-                [PlayerId.Of("p2")] = 0,
-            };
-            return new DrowZzzGameSession(
-                gs, fdp, ddp, sdp, DdpPool.Empty, influences, phase, outcome: null, bedDamages: bed, System.Array.Empty<PendingCounteredEffect>());
-        }
+            CardId fieldTop = null) =>
+            Stubs.SessionFactory.NewSession(
+                phase: phase,
+                p0Hand: new Hand(new[] { TargetId, FrenzyTargetId, PlainId }),
+                p1Hand: new Hand(new[] { CounterId }),
+                field: fieldTop is null ? null : new Pile(new[] { fieldTop }),
+                fdp: Stubs.SessionFactory.Dp(p1: 0, p2: 0));
 
         // ===== DZ-215: PlayCardAction 後の PhaseState 分岐(相手手札に Counter 持ち → WaitingForCounterResponse)=====
 
