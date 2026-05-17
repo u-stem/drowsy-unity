@@ -580,11 +580,9 @@ namespace Drowsy.Application.Games.DrowZzz
             {
                 newPlayers[i] = i == currentIndex ? currentPlayer with { Hand = updatedHand } : session.GameState.Players[i];
             }
-            var newGameState = session.GameState with
-            {
-                Players = newPlayers,
-                Discard = newDiscard,
-            };
+            // post-Phase2 アルゴリズム最適化レビュー Top-2 残対応:複合 with を WithPlayersAndPilesUnchecked
+            // 1 段に集約し ValidateAndCopyPlayers の二重 alloc(PlayerState[N] + HashSet<PlayerId>)を排除。
+            var newGameState = session.GameState.WithPlayersAndPilesUnchecked(newPlayers, discard: newDiscard);
             var afterDiscard = session with
             {
                 GameState = newGameState,
@@ -656,11 +654,8 @@ namespace Drowsy.Application.Games.DrowZzz
                 newPlayers[i] = i == currentIndex ? updatedPlayer : gameState.Players[i];
             }
 
-            var newGameState = gameState with
-            {
-                Players = newPlayers,
-                Deck = remainingDeck,
-            };
+            // Top-2 残対応:複合 with を WithPlayersAndPilesUnchecked 1 段に集約
+            var newGameState = gameState.WithPlayersAndPilesUnchecked(newPlayers, deck: remainingDeck);
 
             return session with
             {
@@ -709,11 +704,8 @@ namespace Drowsy.Application.Games.DrowZzz
                 newPlayers[i] = i == currentIndex ? updatedPlayer : gameState.Players[i];
             }
 
-            var newGameState = gameState with
-            {
-                Players = newPlayers,
-                Field = newField,
-            };
+            // Top-2 残対応:複合 with を WithPlayersAndPilesUnchecked 1 段に集約
+            var newGameState = gameState.WithPlayersAndPilesUnchecked(newPlayers, field: newField);
 
             // M1-PR5 互換のプレイ後セッション(効果評価前)
             var afterPlay = session with
@@ -974,12 +966,9 @@ namespace Drowsy.Application.Games.DrowZzz
             {
                 newPlayers[i] = i == counterPlayerIndex ? updatedCounterPlayer : session.GameState.Players[i];
             }
-            var newGameState = session.GameState with
-            {
-                Players = newPlayers,
-                Field = newField,
-                Discard = newDiscard,
-            };
+            // Top-2 残対応:Players + Field + Discard の 3 フィールド複合 with を 1 段に集約
+            var newGameState = session.GameState.WithPlayersAndPilesUnchecked(
+                newPlayers, discard: newDiscard, field: newField);
             // (4) M3-PR5c: PendingCounteredEffects に (B, A, A の効果列) を末尾追加(遡及発動用、ADR-0011 §4.4)
             var existingPending = session.PendingCounteredEffects;
             var newPending = new PendingCounteredEffect[existingPending.Count + 1];
@@ -1044,11 +1033,8 @@ namespace Drowsy.Application.Games.DrowZzz
                 newPlayers[i] = i == currentIndex ? updatedCurrentPlayer : session.GameState.Players[i];
             }
             // (2) Field は変更しない(B / A はすでに Discard 済、経路 1 で移動済)
-            var newGameState = session.GameState with
-            {
-                Players = newPlayers,
-                Discard = newDiscard,
-            };
+            // Top-2 残対応:複合 with を WithPlayersAndPilesUnchecked 1 段に集約
+            var newGameState = session.GameState.WithPlayersAndPilesUnchecked(newPlayers, discard: newDiscard);
             // (3) PendingCounteredEffects から最後エントリを削除
             var newPending = new PendingCounteredEffect[pending.Count - 1];
             for (int i = 0; i < pending.Count - 1; i++)

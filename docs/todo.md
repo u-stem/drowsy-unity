@@ -240,21 +240,20 @@
     - ⬜ 切替後の Build success + 1MB セーブデータでフリーズしないことを実機確認
   - **Related**: post-Phase2 レビュー C-5 / D-WebGL、ADR-0016 §5.2、`DrowZzzGameSessionSerializer.cs:156, 176`
 
-- [ ] **`link.xml` の存在 + Newtonsoft.Json reflection 経路の preserve 粒度確認** `priority: low`
-  - **Why**: post-Phase2 アルゴリズム最適化レビュー D-WebGL(2026-05-16)で「link.xml の場所が Assets/ 直下 / Assets/_Project/ ともに不在」と指摘。実際は `Assets/_Project/Scripts/Infrastructure/link.xml` に存在するが、`Drowsy.Domain` / `Drowsy.Application` 配下の serialize 対象型(`PlayerId` / `PlayerInfluence` / `IEffect` 12 派生型等)の preserve 範囲を精査する必要がある
+- [ ] **`link.xml` の Newtonsoft.Json 経路 preserve 粒度を WebGL Build サイズ計測後に個別型へ絞る** `priority: low`
+  - **Why**: post-Phase2 アルゴリズム最適化レビュー D-WebGL(2026-05-16)起票後、2026-05-17 に存在確認 + 補強 コメント追加済(`Assets/_Project/Scripts/Infrastructure/link.xml`)。「Newtonsoft.Json 全保護は `com.unity.nuget.newtonsoft-json` パッケージ同梱 link.xml と二重保護の可能性」の疑義は `Library/PackageCache/com.unity.nuget.newtonsoft-json@*/link.xml` を確認した結果「パッケージ同梱は `System.ComponentModel.*` のみで Newtonsoft.Json 本体 assembly は対象外、drowsy-unity 側の preserve は必須」と判明済。残課題は「Build サイズ削減のための粒度調整」のみ
   - **Done when**:
-    - ⬜ `link.xml` の `preserve` 範囲が Newtonsoft.Json 経路で必要な全型を網羅しているか確認(IL2CPP stripping で reflection 型が落ちないか)
-    - ⬜ Build サイズ削減の観点で粒度を粗→細に詰める(現状 4 アセンブリ `preserve="all"`、特に Newtonsoft.Json 全保護は二重保護の可能性)
-  - **Related**: post-Phase2 レビュー D-WebGL / Infra W-6、ADR-0012、`Assets/_Project/Scripts/Infrastructure/link.xml`
+    - ⬜ M5-PR8 で計測済の WebGL Build サイズ(52.5 秒で `Result: Success`、`docs/architecture/webgl-il2cpp-verification.md`)を基準として、Newtonsoft.Json の `<assembly preserve="all">` を `<type fullname="JsonReader|JsonWriter|JObject|JToken|JsonSerializer|JsonConverter|StringEnumConverter">` 等の個別型 preserve に絞り Build サイズ削減を計測
+    - ⬜ Drowsy.Domain / Application / Infrastructure 側も「実 reflection 対象型のみ preserve」に絞れるかを `dotnet build` + Unity Build Report で確認
+    - ⬜ 削減効果が顕著(数 MB 以上)なら粒度調整版を適用、効果軽微なら現状維持 + 本 TODO を完了済みへ移動
+  - **Related**: post-Phase2 レビュー D-WebGL / Infra W-6、ADR-0012、`Assets/_Project/Scripts/Infrastructure/link.xml`、`docs/architecture/webgl-il2cpp-verification.md`、本 TODO 更新 PR(chore/post-phase2-allocation-followups、2026-05-17)
 
-- [ ] **`Properties/AssemblyInfo.cs` への `[assembly: InternalsVisibleTo]` 分離(衛生的整理)** `priority: low`
-  - **Why**: post-Phase2 アルゴリズム最適化レビュー Top-2 着手(2026-05-16)で `Drowsy.Domain` に `InternalsVisibleTo` を追加する際、Unity Editor の Auto-refresh で `Assets/_Project/Scripts/Domain/AssemblyInfo.cs` を csproj に取り込ませる時間を待たず、`GameState.cs` 冒頭に直接 `[assembly: InternalsVisibleTo(...)]` を書く暫定措置を採用。衛生的には `Properties/AssemblyInfo.cs` に分離するのが理想
-  - **Done when**:
-    - ⬜ `Assets/_Project/Scripts/Domain/Properties/AssemblyInfo.cs` を新規作成し `[assembly: InternalsVisibleTo(...)]` を移動
-    - ⬜ Unity Editor で Asset Auto-refresh を発火させて csproj に反映
-    - ⬜ `GameState.cs` 冒頭の assembly attribute を削除
-    - ⬜ dotnet build 0 警告 / 0 エラー確認
-  - **Related**: post-Phase2 レビュー Top-2 着手 PR、`GameState.cs:5-13`、Unity Editor Auto-refresh 制約(memory「Unity Auto-refresh requires Editor focus」)
+<!-- 「Properties/AssemblyInfo.cs への [assembly: InternalsVisibleTo] 分離(衛生的整理)」は
+     chore/post-phase2-allocation-followups PR(2026-05-17)で完全クローズ:
+     - Properties/AssemblyInfo.cs 新設
+     - Unity Editor focus → Auto-refresh → csproj 取り込み確認
+     - GameState.cs 冒頭の暫定 attribute 削除
+     - dotnet build 0 警告 / 0 エラー -->
 
 - [ ] **`ArgumentNullException` の `ParamName` 検証強化(init setter 例外メッセージ品質と連動)** `priority: low`
   - **Why**: post-Phase2 全体レビュー(2026-05-16)の Tests W-1 で「80 件超の `ArgumentNullException` テストが `ParamName` を検証していない → コンストラクタ引数順を入れ替えてもテストが通る」と指摘。ただし `DrowZzzGameSession` 等が init setter 経由で例外を投げる設計で `ParamName` が常に `"value"` 固定のため、`ParamName` assert を追加しても識別力が出ない。Domain W-5(`init => _x = value ?? throw new ArgumentNullException(nameof(value))` → `nameof(X)` に修正)を先行させてから Tests 側を強化する必要がある

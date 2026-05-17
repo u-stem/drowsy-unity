@@ -12,9 +12,20 @@
   - 本 PR (M4-PR5) で確定した serialize 経路は今後 M5 / Phase 3 でも継続的に拡張される
   - Domain / Application / Infrastructure 全体のサイズは現在小さく(数十 class)、
     全 preserve でビルドサイズに与える影響は限定的(Editor 計測 + 必要に応じて M4-PR7 で粒度調整)
+
+  post-Phase2 アルゴリズム最適化レビュー D 軸(2026-05-16)で「Newtonsoft.Json 全保護は
+  パッケージ同梱 link.xml と二重保護の可能性」と疑義が出たが、2026-05-17 の調査で
+  `Library/PackageCache/com.unity.nuget.newtonsoft-json@*/link.xml` を確認した結果、
+  パッケージ同梱 link.xml は `System.ComponentModel.TypeConverter` 系の保護のみで、
+  `Newtonsoft.Json` 本体 assembly は preserve されていない。つまり drowsy-unity 側の
+  `<assembly fullname="Newtonsoft.Json" preserve="all" />` は **二重保護ではなく必須の追加保護** で
+  あり、削除すると WebGL ビルドで JsonReader / JObject 等の reflection 経路が壊れるリスクがある。
+
+  粒度調整(個別型 preserve に絞る)は WebGL Build サイズ計測 + プロファイリング後に判断する。
+  todo.md「link.xml の preserve 粒度確認」を継続更新で追跡する。
 -->
 <linker>
-  <!-- Domain layer: CardId / PlayerId / Pile / Hand / GameState / TurnState / GameOutcome / WinnerOutcome / DrawOutcome 等 -->
+  <!-- Domain layer: CardId / CardTypeId / PlayerId / Pile / Hand / GameState / TurnState / GameOutcome / WinnerOutcome / DrawOutcome 等 -->
   <assembly fullname="Drowsy.Domain" preserve="all" />
 
   <!-- Application layer: DrowZzzGameSession / 12 IEffect 派生型 / PlayerInfluence / PendingCounteredEffect / DdpPool 等 -->
@@ -23,8 +34,10 @@
   <!-- Infrastructure layer: PersistedSessionV1 DTO / Converter 群(本 link.xml 同居) -->
   <assembly fullname="Drowsy.Infrastructure" preserve="all" />
 
-  <!-- Newtonsoft.Json: reflection ベース API は IL2CPP で部分的に剥がされる可能性があるため、
-       コア型を preserve する(`com.unity.nuget.newtonsoft-json` は基本的に IL2CPP 動作実績ありで
-       追加 link.xml 不要だが、JsonConverter / JObject 関連の reflection 経路を保証するため明示) -->
+  <!-- Newtonsoft.Json: reflection ベース API(JsonReader / JsonWriter / JObject / JsonConverter)が
+       IL2CPP linker で部分的に剥がされるのを防ぐ。`com.unity.nuget.newtonsoft-json` 同梱の
+       link.xml は System.ComponentModel.* のみ保護で Newtonsoft.Json 本体 assembly は不対象のため、
+       drowsy-unity 側で明示 preserve が必須(post-Phase2 レビュー D 軸 + 2026-05-17 調査確定)。
+       Build サイズ削減のため将来は `<type fullname="...">` 形式で必要型に絞る検討余地あり。 -->
   <assembly fullname="Newtonsoft.Json" preserve="all" />
 </linker>

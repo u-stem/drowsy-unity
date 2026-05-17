@@ -1,17 +1,9 @@
 using System;
 using System.Collections.Generic;
-using System.Runtime.CompilerServices;
 using Drowsy.Domain.Cards;
 using Drowsy.Domain.Players;
 
-// post-Phase2 アルゴリズム最適化レビュー Top-2 反映:
-// Drowsy.Application が GameState.WithPlayersUnchecked / internal ctor を呼べるよう InternalsVisibleTo を許可する。
-// 衛生的には Properties/AssemblyInfo.cs に分離するのが理想だが、Unity Editor の Auto-refresh が必要なため
-// 暫定措置として本 namespace ファイル内に同居させる(C# 文法上 assembly attribute は任意の .cs ファイルに置ける)。
-// 将来 Properties/AssemblyInfo.cs への移行は docs/todo.md で追跡。
-[assembly: InternalsVisibleTo("Drowsy.Application")]
-[assembly: InternalsVisibleTo("Drowsy.Domain.Tests")]
-[assembly: InternalsVisibleTo("Drowsy.Application.Tests")]
+// `[assembly: InternalsVisibleTo]` は Properties/AssemblyInfo.cs に集約済(2026-05-17 #5 post-Phase2 残対応)。
 
 namespace Drowsy.Domain.Game
 {
@@ -155,6 +147,37 @@ namespace Drowsy.Domain.Game
         /// <exception cref="ArgumentNullException"><paramref name="alreadyValidatedPlayers"/> が null</exception>
         /// <exception cref="ArgumentException">現 <see cref="Turn"/> の <see cref="TurnState.CurrentPlayerIndex"/> が <paramref name="alreadyValidatedPlayers"/> の範囲外になる場合(GS-022)</exception>
         internal GameState WithPlayersUnchecked(PlayerState[] alreadyValidatedPlayers)
+            => WithPlayersAndPilesUnchecked(alreadyValidatedPlayers);
+
+        /// <summary>
+        /// 既に検証済みの <paramref name="alreadyValidatedPlayers"/> 配列と、任意の <see cref="Pile"/> 差し替えを
+        /// 1 段で適用する。<paramref name="deck"/> / <paramref name="discard"/> / <paramref name="field"/> が
+        /// <c>null</c> の場合は現 <see cref="GameState"/> の対応フィールドを継承する。
+        /// </summary>
+        /// <remarks>
+        /// <b>post-Phase2 アルゴリズム最適化レビュー Top-2 残対応(複合 with)反映</b>:
+        /// <see cref="DrowZzzRule"/> の Apply 系には「Players + Deck」「Players + Field」「Players + Discard」
+        /// 「Players + Field + Discard」などの複合更新が 5-6 箇所あり、それぞれ <c>gameState with { Players = ..., Discard = ... }</c>
+        /// の形で <see cref="ValidateAndCopyPlayers"/> の二重 alloc を引き起こしていた。本 API は全パターンを
+        /// 1 つの internal ctor 呼び出しに集約し、<see cref="WithPlayersUnchecked"/> 経由の Players 単独差し替えと
+        /// 同じく <see cref="PlayerState"/>[] / <see cref="HashSet{T}"/> alloc を排除する。
+        /// <para>
+        /// 呼び出し側は名前付き引数で意図を明示する(例: <c>WithPlayersAndPilesUnchecked(newPlayers, discard: newDiscard)</c>)。
+        /// <see cref="Pile"/> 引数の <c>null</c> sentinel で「変更なし(既存値継承)」を表現する設計上、ADR-0015 で
+        /// NRT 非採用のため CS8625 等の警告は出ない。
+        /// </para>
+        /// </remarks>
+        /// <param name="alreadyValidatedPlayers">既に検証済みの <see cref="PlayerState"/> 配列</param>
+        /// <param name="deck">新 <see cref="Deck"/>(<c>null</c> なら現値継承)</param>
+        /// <param name="discard">新 <see cref="Discard"/>(<c>null</c> なら現値継承)</param>
+        /// <param name="field">新 <see cref="Field"/>(<c>null</c> なら現値継承)</param>
+        /// <exception cref="ArgumentNullException"><paramref name="alreadyValidatedPlayers"/> が null</exception>
+        /// <exception cref="ArgumentException">現 <see cref="Turn"/> の <see cref="TurnState.CurrentPlayerIndex"/> が範囲外になる場合(GS-022)</exception>
+        internal GameState WithPlayersAndPilesUnchecked(
+            PlayerState[] alreadyValidatedPlayers,
+            Pile deck = null,
+            Pile discard = null,
+            Pile field = null)
         {
             if (alreadyValidatedPlayers is null)
             {
@@ -166,9 +189,15 @@ namespace Drowsy.Domain.Game
                     $"alreadyValidatedPlayers ({alreadyValidatedPlayers.Length} 人) が現在の Turn.CurrentPlayerIndex ({_turn.CurrentPlayerIndex}) の範囲外になります",
                     nameof(alreadyValidatedPlayers));
             }
-            // internal unchecked ctor 経由で全フィールドを直接代入(init setter を経由しないため
-            // ValidateAndCopyPlayers / EnsureKeysMatchPlayers が走らない、PlayerState[] / HashSet alloc を回避)。
-            return new GameState(alreadyValidatedPlayers, _deck, _discard, _field, _turn, uncheckedMarker: default);
+            // null sentinel で「変更なし」を表現:non-null なら新値、null なら既存バッキングフィールドを継承。
+            // internal unchecked ctor 経由で全フィールド直接代入し ValidateAndCopyPlayers / 各 Pile init setter を回避。
+            return new GameState(
+                alreadyValidatedPlayers,
+                deck ?? _deck,
+                discard ?? _discard,
+                field ?? _field,
+                _turn,
+                uncheckedMarker: default);
         }
 
         // internal unchecked constructor for WithPlayersUnchecked.
