@@ -59,7 +59,7 @@ namespace Drowsy.Infrastructure.Tests.Persistence
         public void Given_JsonNullToken_When_Deserialize_Then_nullを返す()
         {
             // Given
-            var json = "null";
+            const string json = "null";
 
             // When
             var restored = JsonConvert.DeserializeObject<Hand>(json, Settings);
@@ -100,7 +100,7 @@ namespace Drowsy.Infrastructure.Tests.Persistence
         public void Given_重複CardId配列_When_Deserialize_Then_ArgumentException()
         {
             // Given(同じ `01#0` が 2 回出現)
-            var json = "[\"01#0\",\"01#0\"]";
+            const string json = "[\"01#0\",\"01#0\"]";
 
             // When / Then
             Assert.Throws<ArgumentException>(
@@ -113,7 +113,7 @@ namespace Drowsy.Infrastructure.Tests.Persistence
         public void Given_不正CardId_When_Deserialize_Then_JsonSerializationException()
         {
             // Given(`#` 欠如、ADR-0018 schema 違反)
-            var json = "[\"dream\"]";
+            const string json = "[\"dream\"]";
 
             // When / Then
             Assert.Throws<JsonSerializationException>(

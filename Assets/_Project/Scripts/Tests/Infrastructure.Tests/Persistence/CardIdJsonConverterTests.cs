@@ -63,7 +63,7 @@ namespace Drowsy.Infrastructure.Tests.Persistence
         public void Given_separator欠如_When_Deserialize_Then_JsonSerializationException()
         {
             // Given(`#` を含まない string)
-            var json = "\"dream\"";
+            const string json = "\"dream\"";
 
             // When / Then
             Assert.Throws<JsonSerializationException>(
@@ -101,7 +101,7 @@ namespace Drowsy.Infrastructure.Tests.Persistence
         public void Given_typeIdPart_空文字列_When_Deserialize_Then_JsonSerializationException()
         {
             // Given(`#` 左が空文字列)
-            var json = "\"#0\"";
+            const string json = "\"#0\"";
 
             // When / Then
             Assert.Throws<JsonSerializationException>(
@@ -114,7 +114,7 @@ namespace Drowsy.Infrastructure.Tests.Persistence
         public void Given_JsonNullToken_When_Deserialize_Then_nullを返す()
         {
             // Given(JSON literal null)
-            var json = "null";
+            const string json = "null";
 
             // When
             var restored = JsonConvert.DeserializeObject<CardId>(json, Settings);

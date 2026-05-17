@@ -16,7 +16,7 @@ namespace Drowsy.Domain.Tests.Cards
         public void Given_有効なnameと属性_When_コンストラクタ_Then_Nameが入力と同じ()
         {
             // Given
-            var name = "Joker";
+            const string name = "Joker";
             var attrs = new Dictionary<string, int> { ["power"] = 10, ["rarity"] = 3 };
             // When
             var card = new CardData(name, attrs);

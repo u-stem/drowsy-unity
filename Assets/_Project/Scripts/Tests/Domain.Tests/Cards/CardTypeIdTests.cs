@@ -50,7 +50,7 @@ namespace Drowsy.Domain.Tests.Cards
         public void Given_非空のstring_When_Ofを呼ぶ_Then_Valueに保持される()
         {
             // Given
-            var value = "dream";
+            const string value = "dream";
             // When
             var typeId = CardTypeId.Of(value);
             // Then

@@ -13,7 +13,7 @@ namespace Drowsy.Domain.Tests.Players
         public void Given_有効な値_When_Ofを呼ぶ_Then_インスタンスが生成され_Valueは入力と同じ()
         {
             // Given
-            var input = "p1";
+            const string input = "p1";
             // When
             var id = PlayerId.Of(input);
             // Then

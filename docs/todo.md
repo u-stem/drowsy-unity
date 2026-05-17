@@ -288,8 +288,10 @@
       - `RCS1192` 不要な逐語的文字列リテラル(`@"abc"` → `"abc"`):既存違反 0 件
       - `RCS1214` 不要な文字列補間(`$"abc"` → `"abc"`):既存違反 3 箇所(`EffectInterpreter.cs` L106/L107/L148)を同 PR 同時修正
       - `RCS1234` enum の重複値検出:既存違反 0 件
+    - **2026-05-17 第 4 弾(本 TODO 進行、chore/rcs1118-and-sessionfactory-4th PR)**: `RCS1118`(const にできるローカル変数)を `warning` 化(dotnet build 0 警告 / 0 エラー確認済):
+      - 既存違反 15 箇所(全 Persistence 系テストの JSON string + Domain Tests `CardDataTests` / `CardTypeIdTests` / `PlayerIdTests` の `var name = "..."` 形式)を同 PR で `var` → `const string` に機械置換
+      - 違反箇所はすべて `var x = "literal"` パターンで、awk で各行先頭の `var ` を `const string ` に置換するワンライナーで対応
     - **第 1 弾から除外したルール(後続検討)**:
-      - `RCS1118`(const にできるローカル変数):既存違反 15+ 箇所(Persistence 系テストの JSON string 等)あり、機械的修正可能だが本 PR スコープ外。次回 RCS PR で `const` 化 + 有効化を試みる
       - `RCS1213`(未使用 private メンバー):`OnEnable` / `OnValidate` / `Awake` / `Start` / `Update` 等の **Unity ライフサイクルメソッド**を Roslynator が認識せず false positive(`ScriptableObjectCardCatalog.cs:56,63` の 2 件で検証済)。Unity ライフサイクルメソッド名単位の suppression(`[UsedImplicitly]` 属性付与 / 個別 `#pragma warning disable` / EditorConfig section override 等)を別 PR で評価する
 
 ## 完了済み
