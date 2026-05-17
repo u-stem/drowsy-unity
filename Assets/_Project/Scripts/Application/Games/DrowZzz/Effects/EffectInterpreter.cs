@@ -100,6 +100,9 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
                 // ADR-0019 PR ②(No.04「静寂を纏う」):動的影響付与効果。context.TargetCardId.TypeId を使って
                 // PlayerInfluence(OwnPhaseStart, RestrictSpecificCardInfluenceEffect(typeId), RemainingCount) を Target に付与。
                 ApplyTargetedRestrictionEffect targetedRestriction => ApplyApplyTargetedRestriction(session, targetedRestriction, context),
+                // 2026-05-17 No.05「喧騒を纏う」:Source プレイヤーの手札から context.TargetCardId のカードを除去し
+                // 共通山札(Deck)の top に置く。次のターンの相手のドローを操作する戦術カード。
+                StackHandCardOnDeckTopEffect stack => ApplyStackHandCardOnDeckTop(session, stack, context),
                 // M3-PR5a: キーワード能力を inner effect に付与するラッパー(ADR-0011 §4)。Keywords 自体は判別用属性で
                 // 副作用を持たず、Inner effect を context 込みで再帰的に Apply するだけ。
                 // Instinct は AbandonAction.IsLegalMove で利用、Frenzy / Counter は M3-PR5b 以降で機構化。
@@ -257,6 +260,63 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
                 }
             }
             return session with { Influences = newInfluences };
+        }
+
+        // StackHandCardOnDeckTopEffect の評価: context.TargetCardId を Source プレイヤーの手札から除去し、共通山札の top に置く。
+        // 2026-05-17 No.05「喧騒を纏う」。context.TargetCardId が null / Source 手札に含まれない場合は IsLegalPlayCard で
+        // 事前防御済(ApplyTargetedRestrictionEffect と同パターン)だが、interpreter 内でも InvalidOperationException でフェイルファスト。
+        private static DrowZzzGameSession ApplyStackHandCardOnDeckTop(
+            DrowZzzGameSession session,
+            StackHandCardOnDeckTopEffect effect,
+            EffectContext context)
+        {
+            if (context.TargetCardId is null)
+            {
+                throw new InvalidOperationException(
+                    "StackHandCardOnDeckTopEffect 評価時に EffectContext.TargetCardId が null です。" +
+                    "本 effect を含むカードプレイ時の `PlayCardAction.TargetCardId` 指定漏れ " +
+                    "(IsLegalPlayCard で防御されているはずの経路)。");
+            }
+            var sourceId = ResolveTargetPlayerId(session, effect.Source);
+            var gameState = session.GameState;
+            int sourceIndex = -1;
+            for (int i = 0; i < gameState.Players.Count; i++)
+            {
+                if (gameState.Players[i].Id.Equals(sourceId))
+                {
+                    sourceIndex = i;
+                    break;
+                }
+            }
+            if (sourceIndex < 0)
+            {
+                throw new InvalidOperationException(
+                    $"内部不変条件違反: Source PlayerId {sourceId?.Value} が GameState.Players に見つかりません(cross-field 検証漏れ)");
+            }
+            var sourcePlayer = gameState.Players[sourceIndex];
+            if (!sourcePlayer.Hand.Contains(context.TargetCardId))
+            {
+                throw new InvalidOperationException(
+                    $"StackHandCardOnDeckTopEffect: Source プレイヤー {sourceId.Value} の手札に " +
+                    $"TargetCardId ({context.TargetCardId.Value}) が含まれません " +
+                    "(IsLegalPlayCard で防御されているはずの経路)。");
+            }
+            // (1) Source の Hand から TargetCardId を除去
+            var updatedSource = sourcePlayer with { Hand = sourcePlayer.Hand.Remove(context.TargetCardId) };
+            // (2) 共通山札の top に AddTop
+            var newDeck = gameState.Deck.AddTop(context.TargetCardId);
+            // Players 配列を新しい配列に置換(source プレイヤーのみ差し替え)
+            var newPlayers = new PlayerState[gameState.Players.Count];
+            for (int i = 0; i < newPlayers.Length; i++)
+            {
+                newPlayers[i] = i == sourceIndex ? updatedSource : gameState.Players[i];
+            }
+            var newGameState = gameState with
+            {
+                Players = newPlayers,
+                Deck = newDeck,
+            };
+            return session with { GameState = newGameState };
         }
 
         // ApplyInfluenceEffect の評価: Target が指す playerId の影響 list 末尾に effect.Influence を追加する。

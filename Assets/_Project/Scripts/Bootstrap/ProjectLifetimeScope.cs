@@ -57,12 +57,19 @@ namespace Drowsy.Bootstrap
         /// M5 動作確認用の簡易デッキで catalog 登録カード 1 種あたりに並べる枚数。
         /// </summary>
         /// <remarks>
-        /// catalog 登録カード(Phase 2 完結後 5 種:No.00 / No.01 / No.02 / No.03 / No.04)を各
+        /// catalog 登録カード(Phase 2 完結後 6 種:No.00 / No.01 / No.02 / No.03 / No.04 / No.05)を各
         /// <see cref="CopiesPerCardForM5Deck"/> 枚並べて <c>initialDeck</c> を組み立てる。
-        /// N=2 × MaxRound 21 × 1 Draw = 42 + 初期配布 10 = 52 枚を賄える値。5 種 × 20 枚 = 100 枚で余裕 48 枚。
+        /// N=2 × MaxRound 21 × 1 Draw = 42 + 初期配布 10 = 52 枚を賄える値。6 種 × 20 枚 = 120 枚で余裕 68 枚。
         /// 本物の 56 枚デッキ構成(<c>docs/specs/games/drowzzz/setup.md</c> §定数依存、カードごとの初期山札枚数を
         /// honor する形式)は Phase 3 でカードデータが揃った時点で別途実装する
-        /// (M5-PR4 着手時 JIT 確定 2026-05-14、Phase 2 完結後の新規カード追加で本数値関係を再確認 2026-05-17 PR ②)。
+        /// (M5-PR4 着手時 JIT 確定 2026-05-14、Phase 2 完結後の新規カード追加で本数値関係を再確認、
+        /// No.04 / No.05 各 2 枚情報追加 2026-05-17)。
+        /// <para>
+        /// <b>カード追加時のコメント更新コスト</b>:本コメントは catalog 登録カード列挙形式のため、新規カード追加
+        /// PR ごとに手動更新が必要(card-reviewer P-3 反映 2026-05-17、No.05 PR で 3 度目の同型更新)。Phase 3
+        /// の本物デッキ実装で「`registered.Count × CopiesPerCardForM5Deck`」の機械導出形式に置き換える方針
+        /// (Bootstrap 自体が Phase 3 で再実装されるため、本暫定実装の存続期間中は列挙形式を維持)。
+        /// </para>
         /// </remarks>
         private const int CopiesPerCardForM5Deck = 20;
 

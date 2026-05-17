@@ -42,6 +42,12 @@ MonoBehaviour:
     _effects:
     - rid: 8832664195353804920
     - rid: 8832664195353804923
+  - _cardIdValue: 05
+    _name: "\u55A7\u9A12\u3092\u7E8F\u3046"
+    _attributes: []
+    _effects:
+    - rid: 8832664195353804930
+    - rid: 8832664195353804935
   references:
     version: 2
     RefIds:
@@ -262,3 +268,36 @@ MonoBehaviour:
       data:
         _target: 1
         _delta: -8
+    - rid: 8832664195353804930
+      type: {class: TimeOfDayBranchEffectAsset, ns: Drowsy.Infrastructure.Games.DrowZzz.Effects, asm: Drowsy.Infrastructure}
+      data:
+        _nightEffects:
+        - rid: 8832664195353804931
+        - rid: 8832664195353804932
+        _morningEffects:
+        - rid: 8832664195353804933
+        - rid: 8832664195353804934
+    - rid: 8832664195353804931
+      type: {class: AdjustSdpEffectAsset, ns: Drowsy.Infrastructure.Games.DrowZzz.Effects, asm: Drowsy.Infrastructure}
+      data:
+        _target: 0
+        _delta: -8
+    - rid: 8832664195353804932
+      type: {class: AdjustSdpEffectAsset, ns: Drowsy.Infrastructure.Games.DrowZzz.Effects, asm: Drowsy.Infrastructure}
+      data:
+        _target: 1
+        _delta: -18
+    - rid: 8832664195353804933
+      type: {class: AdjustSdpEffectAsset, ns: Drowsy.Infrastructure.Games.DrowZzz.Effects, asm: Drowsy.Infrastructure}
+      data:
+        _target: 0
+        _delta: -4
+    - rid: 8832664195353804934
+      type: {class: AdjustSdpEffectAsset, ns: Drowsy.Infrastructure.Games.DrowZzz.Effects, asm: Drowsy.Infrastructure}
+      data:
+        _target: 1
+        _delta: 12
+    - rid: 8832664195353804935
+      type: {class: StackHandCardOnDeckTopEffectAsset, ns: Drowsy.Infrastructure.Games.DrowZzz.Effects, asm: Drowsy.Infrastructure}
+      data:
+        _source: 0

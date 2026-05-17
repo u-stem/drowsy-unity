@@ -154,6 +154,16 @@ namespace Drowsy.Infrastructure.Tests.Persistence
             Assert.That(RoundTrip(original), Is.EqualTo(original));
         }
 
+        // ===== INF-141: No.05「喧騒を纏う」追加 StackHandCardOnDeckTopEffect Round-Trip(2026-05-17)=====
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "INF-141")]
+        public void Given_StackHandCardOnDeckTopEffect_When_RoundTrip_Then_等価()
+        {
+            // Given(Source=Self の山札 top 押し込み効果、No.05 本体ユースケース)
+            var original = new StackHandCardOnDeckTopEffect(SdpTarget.Self);
+            Assert.That(RoundTrip(original), Is.EqualTo(original));
+        }
+
         // ===== INF-055: wrapper 再帰(KeywordedEffect (Choice (Keyworded (AdjustSdp))))=====
 
         [Test, Category("Medium"), Category("Normal"), Property("Requirement", "INF-055")]

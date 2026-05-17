@@ -321,6 +321,7 @@ namespace Drowsy.Application.Games.DrowZzz
             var effects = _catalog.GetEffects(action.Card.TypeId);
             bool hasUsageRestrictionMarker = false;
             bool hasApplyTargetedRestriction = false;
+            StackHandCardOnDeckTopEffect stackHandOnDeckEffect = null;
             foreach (var e in effects)
             {
                 if (e is ChoiceEffect ce)
@@ -350,6 +351,12 @@ namespace Drowsy.Application.Games.DrowZzz
                     // 「TargetCardId が指定されていること」のみ検証(時間帯別の効果有無は ApplyPlayCard で実行時判定)。
                     hasApplyTargetedRestriction = true;
                 }
+                else if (e is StackHandCardOnDeckTopEffect stack)
+                {
+                    // No.05「喧騒を纏う」系:プレイ時に action.TargetCardId が必須 + Source プレイヤーの手札所持検証
+                    // (2026-05-17 で導入)。Source は record フィールドのため後段の検証で参照する。
+                    stackHandOnDeckEffect = stack;
+                }
             }
             // 連想後使用制限チェック:カード側が marker を持ち、かつ自プレイヤーが該当 Influence を保有している時のみ illegal。
             // (marker 単独では illegal にしない。Influence 単独でも、対象カードに marker がなければ illegal にしない。
@@ -365,37 +372,65 @@ namespace Drowsy.Application.Games.DrowZzz
             {
                 return false;
             }
-            // ADR-0019 PR ②:ApplyTargetedRestrictionEffect 持ちカードプレイ時の追加検証:
-            //  (1) action.TargetCardId が指定されていること
-            //  (2) action.TargetCardId が相手プレイヤーの手札に含まれていること
-            //  (3) action.TargetCardId が session.AssociatedCardIds に含まれていないこと(連想由来は選択不可)
-            if (hasApplyTargetedRestriction)
+            // ADR-0019 PR ②:ApplyTargetedRestrictionEffect 持ちカードプレイ時の追加検証(相手手札を対象)。
+            if (hasApplyTargetedRestriction
+                && !IsLegalTargetCardId(session, action, sourceTarget: SdpTarget.Opponent, currentIndex))
             {
-                if (action.TargetCardId is null)
+                return false;
+            }
+            // No.05「喧騒を纏う」(2026-05-17):StackHandCardOnDeckTopEffect 持ちカードプレイ時の追加検証
+            // (Source プレイヤーの手札を対象、本カードでは Source=Self)。
+            if (stackHandOnDeckEffect != null
+                && !IsLegalTargetCardId(session, action, sourceTarget: stackHandOnDeckEffect.Source, currentIndex))
+            {
+                return false;
+            }
+            return true;
+        }
+
+        // TargetCardId 系効果の共通検証ヘルパー(2026-05-17 No.05 着手で共通化):
+        //  (1) action.TargetCardId が指定されている
+        //  (2) action.TargetCardId が action.Card と等しくない(プレイ中のカード自体を TargetCardId にしない、code-reviewer W-2 反映)
+        //  (3) action.TargetCardId が sourceTarget プレイヤー(Self or Opponent、N=2 想定)の手札に含まれる
+        //  (4) action.TargetCardId が session.AssociatedCardIds に含まれない(連想由来除外、ADR-0019)
+        // ADR-0019 §補足「N>2 拡張時の TargetCardId 解決」も同方針で sourceTarget enum 拡張で対応可能。
+        private static bool IsLegalTargetCardId(
+            DrowZzzGameSession session,
+            PlayCardAction action,
+            SdpTarget sourceTarget,
+            int currentIndex)
+        {
+            if (action.TargetCardId is null)
+            {
+                return false;
+            }
+            // No.05「喧騒を纏う」(Source=Self)では action.Card 自身を TargetCardId にすると ApplyPlayCard で
+            // action.Card → Hand.Remove → effect 評価で同 CardId を再度探して見つからず InvalidOperationException
+            // になる経路があった。仕様の暗黙解釈「プレイ中のカードと TargetCardId は別」を明示化(2026-05-17、
+            // code-reviewer W-2 反映、`commotion.md` / `sound-of-silence.md` の意味解釈と整合)。
+            if (action.TargetCardId.Equals(action.Card))
+            {
+                return false;
+            }
+            // N=2 想定:Source の解決(Self = current、Opponent = current 以外の唯一)
+            PlayerState sourcePlayer = null;
+            for (int i = 0; i < session.GameState.Players.Count; i++)
+            {
+                bool isCurrent = i == currentIndex;
+                if ((sourceTarget == SdpTarget.Self && isCurrent)
+                    || (sourceTarget == SdpTarget.Opponent && !isCurrent))
                 {
-                    return false;
+                    sourcePlayer = session.GameState.Players[i];
+                    break;
                 }
-                // N=2 想定:相手プレイヤーを current 以外の唯一の Player として解決(`ResolveTargetPlayerId` と同方針)。
-                // N>2 拡張時は「TargetCardId が複数プレイヤーの誰の手札にあるか?」の解決方法を別途設計が必要。
-                // 本 PR ② では N=2 前提で実装、N>2 拡張時の対応は ADR-0019 §補足「N>2 拡張時の TargetCardId 解決」で追跡
-                // (code-reviewer W-1 反映 2026-05-17、`docs/todo.md` 肥大化回避方針のため ADR 補足に集約)。
-                PlayerState opponentPlayer = null;
-                for (int i = 0; i < session.GameState.Players.Count; i++)
-                {
-                    if (i != currentIndex)
-                    {
-                        opponentPlayer = session.GameState.Players[i];
-                        break;
-                    }
-                }
-                if (opponentPlayer is null || !opponentPlayer.Hand.Contains(action.TargetCardId))
-                {
-                    return false;
-                }
-                if (session.IsAssociated(action.TargetCardId))
-                {
-                    return false;
-                }
+            }
+            if (sourcePlayer is null || !sourcePlayer.Hand.Contains(action.TargetCardId))
+            {
+                return false;
+            }
+            if (session.IsAssociated(action.TargetCardId))
+            {
+                return false;
             }
             return true;
         }
