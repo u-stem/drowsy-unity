@@ -334,19 +334,34 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             Assert.That(legal, Is.True);
         }
 
-        // ===== DZ-311: 本 Marker 保有時でも EndTurnAction は許可(進行不能化回避)=====
+        // ===== DZ-311: 本 Marker 保有時、EndTurnAction は WaitingForEndTurn / WaitingForPlay 両方で legal(ADR-0021 stuck 脱出弁)=====
 
         [Test, Category("Medium"), Category("Normal"), Property("Requirement", "DZ-311")]
         public void Given_p2が本Markerカウント1保有_When_p2がEndTurnActionでIsLegalMove_Then_true()
         {
-            // Given(p2 current、WaitingForEndTurn、本 Marker 保有)
+            // Given(p2 current、WaitingForEndTurn、本 Marker 保有、通常合法経路)
             var rule = NewRule(NewCatalogWithCardNine());
             var session = NewSessionWithP2Marker(
                 phase: DrowZzzPhaseState.WaitingForEndTurn,
                 currentPlayerIndex: 1);
             // When
             var legal = rule.IsLegalMove(session, new EndTurnAction());
-            // Then(本 Marker は EndTurnAction を illegal 化しない、進行不能化回避)
+            // Then
+            Assert.That(legal, Is.True);
+        }
+
+        [Test, Category("Medium"), Category("Normal"), Property("Requirement", "DZ-311")]
+        public void Given_p2が本Markerカウント1保有_WaitingForPlay_When_EndTurnAction_Then_stuck脱出弁で合法()
+        {
+            // Given(p2 current、WaitingForPlay、本 Marker 保有 = PlayCard/Abandon 両方禁止で stuck 化するフェーズ)
+            // ADR-0021:本 Marker は stuck 化 Marker のため、EndTurnAction は WaitingForPlay でも legal 化される
+            var rule = NewRule(NewCatalogWithCardNine());
+            var session = NewSessionWithP2Marker(
+                phase: DrowZzzPhaseState.WaitingForPlay,
+                currentPlayerIndex: 1);
+            // When
+            var legal = rule.IsLegalMove(session, new EndTurnAction());
+            // Then(ADR-0021:stuck 化 Marker 保有時の全フェーズ合法化、脱出弁が機能)
             Assert.That(legal, Is.True);
         }
 

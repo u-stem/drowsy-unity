@@ -122,6 +122,11 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
                 // IsLegalAbandon の 4 経路で本 marker を Influence walk(`HasUsageAndAbandonRestrictionInfluence`)で検出して行う。
                 // カウント1 でも自フェーズ全体で機能するのは ADR-0020 で減算タイミングを EndTurn 冒頭に移動した結果。
                 RestrictAllUsageAndAbandonInfluenceMarkerEffect _ => session,
+                // 2026-05-17 No.10「安直過ぎる一手」(ADR-0021 と同 PR):DrawCardAction を illegal 化する marker
+                // (PlayerInfluence.TickEffect 用)。session 不変返却(no-op)。
+                // 実際の illegal 化判定は DrowZzzRule.IsLegalMove の DrawCardAction 経路で
+                // `HasRestrictDrawCardInfluence` walk で検出。stuck 化回避は ADR-0021 の EndTurnAction 全フェーズ合法化で担保。
+                RestrictDrawCardInfluenceMarkerEffect _ => session,
                 // M3-PR5a: キーワード能力を inner effect に付与するラッパー(ADR-0011 §4)。Keywords 自体は判別用属性で
                 // 副作用を持たず、Inner effect を context 込みで再帰的に Apply するだけ。
                 // Instinct は AbandonAction.IsLegalMove で利用、Frenzy / Counter は M3-PR5b 以降で機構化。

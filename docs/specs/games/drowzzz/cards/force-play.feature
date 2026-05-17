@@ -65,11 +65,18 @@
     ならば 結果は true である(連想は明示禁止対象外、テキスト「使用や放棄」のみ)
 
   @DZ-311
-  シナリオ: 本 Marker 保有時でも EndTurnAction は許可(進行不能化回避)
+  シナリオ: 本 Marker 保有時、WaitingForEndTurn で EndTurnAction が legal(通常合法経路)
     前提 p2 が 本 Marker を 1 件保有
     かつ p2 が WaitingForEndTurn
     もし p2 が EndTurnAction で IsLegalMove を確認する
     ならば 結果は true である(進行不能化回避)
+
+  @DZ-311
+  シナリオ: 本 Marker 保有時、WaitingForPlay でも EndTurnAction が legal(ADR-0021 stuck 脱出弁)
+    前提 p2 が 本 Marker を 1 件保有(PlayCard / Abandon 両方禁止で stuck 化する)
+    かつ p2 が WaitingForPlay
+    もし p2 が EndTurnAction で IsLegalMove を確認する
+    ならば 結果は true である(ADR-0021:stuck 化 Marker 保有時の全フェーズ合法化、脱出弁)
 
   @DZ-312
   シナリオ: カウント 1 Marker は p2 フェーズ全体で機能(ADR-0020:Tick は count 不変)
