@@ -145,6 +145,10 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
                 // 指定 CardTypeId のカードを自動連想で追加する effect。Instance 番号を Hand 内で unique 採番、
                 // AssociatedCardIds にも記録(ADR-0019 と整合、No.04 「静寂を纏う」の連想由来除外対象になる)。
                 AssociateSpecificCardEffect e => ApplyAssociateSpecificCard(session, e),
+                // 2026-05-17 No.16「自分勝手な審判」:対象プレイヤーの Influences.Count で分岐し、
+                // Count <= Threshold なら InfluenceToApply を末尾追加、Count > Threshold なら全 Influence を一括除去。
+                // 両経路は排他(オーナー JIT:Clear パスは Apply と排他)。
+                ConditionalApplyOrClearInfluencesEffect e => ApplyConditionalApplyOrClearInfluences(session, e),
                 // M3-PR5a: キーワード能力を inner effect に付与するラッパー(ADR-0011 §4)。Keywords 自体は判別用属性で
                 // 副作用を持たず、Inner effect を context 込みで再帰的に Apply するだけ。
                 // Instinct は AbandonAction.IsLegalMove で利用、Frenzy / Counter は M3-PR5b 以降で機構化。
@@ -260,6 +264,53 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
             return session with { SecondDrowsyPoints = newSdp };
         }
 
+        // ConditionalApplyOrClearInfluencesEffect の評価(No.16「自分勝手な審判」、2026-05-17):
+        // 対象プレイヤーの Influences.Count で分岐:
+        //  - Count <= Threshold:InfluenceToApply を末尾追加(`ApplyInfluenceEffect` と同パターン)
+        //  - Count > Threshold:Target の Influences を空 list で置換(全 trigger / Marker 含めて一括除去)
+        // 両経路は排他(オーナー JIT:Clear パスは Apply と排他、Clear 後に Apply しない)。
+        private static DrowZzzGameSession ApplyConditionalApplyOrClearInfluences(
+            DrowZzzGameSession session,
+            ConditionalApplyOrClearInfluencesEffect effect)
+        {
+            var targetId = ResolveTargetPlayerId(session, effect.Target);
+            int influenceCount = session.Influences[targetId].Count;
+            var newDict = new Dictionary<PlayerId, IReadOnlyList<PlayerInfluence>>(session.Influences.Count);
+            if (influenceCount <= effect.Threshold)
+            {
+                // Apply 経路:既存 Influences の末尾に InfluenceToApply を追加
+                foreach (var kv in session.Influences)
+                {
+                    if (kv.Key.Equals(targetId))
+                    {
+                        var newList = new PlayerInfluence[kv.Value.Count + 1];
+                        for (int i = 0; i < kv.Value.Count; i++)
+                        {
+                            newList[i] = kv.Value[i];
+                        }
+                        newList[kv.Value.Count] = effect.InfluenceToApply;
+                        newDict[kv.Key] = newList;
+                    }
+                    else
+                    {
+                        newDict[kv.Key] = kv.Value;
+                    }
+                }
+            }
+            else
+            {
+                // Clear 経路:Target の Influences を空 list で置換
+                // (code-reviewer W-2 反映 2026-05-17:`using System;` 済のため `Array.Empty` で十分)
+                foreach (var kv in session.Influences)
+                {
+                    newDict[kv.Key] = kv.Key.Equals(targetId)
+                        ? Array.Empty<PlayerInfluence>()
+                        : kv.Value;
+                }
+            }
+            return session with { Influences = newDict };
+        }
+
         // AssociateSpecificCardEffect の評価(No.13/14/15「最後の砦Ⅰ/Ⅱ/Ⅲ」、2026-05-17):
         // current player の Hand に指定 CardTypeId のカードを自動連想で追加する。
         // - Instance 番号は Hand 内で unique になる最小値を採番(0 から順に試行、HAND-005 重複検出を構造的に回避)
@@ -273,9 +324,11 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
             int currentIndex = session.GameState.Turn.CurrentPlayerIndex;
             var currentPlayer = session.GameState.Players[currentIndex];
             // Hand 内で当該 TypeId の未使用 Instance 番号を採番(0 から順に試行)。
-            // 終了保証(code-reviewer P-1 反映 2026-05-17):上限を `Hand.Count + 1` で明示
-            // (Hand サイズ有限のため、最悪でも Count+1 回試行すれば必ず未使用 instance に到達)。
-            // 実用上は同 TypeId の枚数 k で O(k * Hand.Count)、k < 10 / Hand.Count < 60 想定で十分高速。
+            // 終了保証(code-reviewer P-1 / W-3 反映 2026-05-17):上限を `Hand.Count + 1` で明示。
+            // 証明(鳩の巣原理):候補 instance 0..Hand.Count(Count+1 個)に対して、
+            // 同 TypeId が Hand に占める枚数 k は最大 Hand.Count(歯抜けがあっても k <= Hand.Count)。
+            // 候補数 Hand.Count+1 > k なので、必ず未使用 instance が存在し for ループ内で break する。
+            // 実用上は k < 10 / Hand.Count < 60 想定で十分高速(O(k * Hand.Count) の線形時間)。
             int maxAttempts = currentPlayer.Hand.Count + 1;
             CardId newCardId = CardId.Of(effect.TargetCardTypeId, 0);
             for (int newInstance = 0; newInstance < maxAttempts; newInstance++)
