@@ -26,14 +26,14 @@
     ならば 結果は false である(Frenzy は反撃を受けない、ADR-0011 §4.5)
 
   @DZ-283
-  シナリオ: 2 倍化 Influence 保有時のベッド破損 Tick
+  シナリオ: 2 倍化 Influence 保有時のベッド破損 Tick(ADR-0020:count 不変)
     前提 p2 が PlayerInfluence(OwnPhaseStart, DoubleBedDamageSdpInfluenceMarkerEffect, 4) を 1 件保有
     かつ BedDamages[p2] = 40%
     かつ p1 が WaitingForEndTurn
     もし p1 が EndTurnAction を適用する
     ならば p2 が新しい current player になる
     かつ p2 の SDP が -16 になる(通常 40/5=8 → 2 倍化で 16)
-    かつ p2 の影響の RemainingCount が 3 になる
+    かつ p2 の影響の RemainingCount は 4 のまま(Tick は count 不変、p2 自身の EndTurn で -1)
 
   @DZ-284
   シナリオ: 2 倍化 Influence 非保有時の通常ベッド破損 Tick(非リグレッション)
@@ -45,8 +45,8 @@
     かつ p2 の SDP が -8 になる(通常計算経路、2 倍化なし)
 
   @DZ-285
-  シナリオ: カウント 1 から Tick で除去
+  シナリオ: カウント 1 Marker は p2 フェーズ全体で機能、p2 EndTurn で除去(ADR-0020)
     前提 p2 が PlayerInfluence(OwnPhaseStart, DoubleBedDamageSdpInfluenceMarkerEffect, 1) を 1 件保有
     かつ p1 が WaitingForEndTurn
     もし p1 が EndTurnAction を適用する
-    ならば p2 の Influences 件数が 0 になる
+    ならば p2 の Influences 件数が 1 のまま残る(RemainingCount=1、除去は p2 自身の EndTurn まで遅延)

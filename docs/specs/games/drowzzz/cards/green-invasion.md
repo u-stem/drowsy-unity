@@ -95,11 +95,14 @@ var GreenInvasionInfluence = new PlayerInfluence(
 
 - [DZ-175] When Card `"02"` is requested with `Choice == 2`(範囲外、Branches.Count == 2 のため)、`IsLegalMove` shall return `false`.
 
-## Tick 評価のシナリオ
+## Tick 評価のシナリオ(ADR-0020 後の仕様)
 
-- [DZ-176] When B holds `GreenInvasionInfluence(count=3)` and A's EndTurn rotates the current player to B, the resulting session shall reflect `SDP[B] -= 5` and B's influence shall have `RemainingCount == 2`.
-- [DZ-177] When B holds `GreenInvasionInfluence(count=1)` and A's EndTurn rotates current to B, the influence shall be removed (B's list becomes empty after the tick).
-- [DZ-178] When both A and B hold influences and A's EndTurn rotates current to B, only B's influence shall be ticked (A's `RemainingCount` is unchanged at 3).
+ADR-0020 で count -1 タイミングを `ApplyEndTurn` 冒頭(Turn.Next 前)に移動。Tick は `TickEffect` 適用のみ(count 不変)。
+
+- [DZ-176] When B holds `GreenInvasionInfluence(count=3)` and A's EndTurn rotates the current player to B, the resulting session shall reflect `SDP[B] -= 5` and B's influence shall have `RemainingCount == 3`(Tick で count は変わらない、B 自身の EndTurn まで残る).
+- [DZ-177] When B holds `GreenInvasionInfluence(count=1)` and A's EndTurn rotates current to B, the influence shall apply `SDP[B] -= 5` and remain with `RemainingCount == 1`(B 自身の EndTurn で count -1 → 0 で除去される).
+- [DZ-178] When both A and B hold influences and A's EndTurn rotates current to B, the resulting session shall reflect A's `RemainingCount == 2`(A's EndTurn 冒頭の Decrement で 3 → 2)と B's `RemainingCount == 3`(B Tick は count を変えない).
+- [DZ-179] When A holds an influence and A's EndTurn fires, the resulting session shall reflect A's `RemainingCount == 2`(A 自身の EndTurn 冒頭 Decrement で 3 → 2、ADR-0020 新規).
 
 ## 定数依存
 

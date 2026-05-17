@@ -204,10 +204,10 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_自フェーズTick後_When_夢のIsLegalMove_Then_true()
         {
             // Given:p1 が UsageRestriction Influence(RemainingCount=1)保有 / WaitingForEndTurn
-            // p1 が EndTurnAction → p2 current で WaitingForDraw → p2 が一連の行動 → 戻って p1 が WaitingForDraw に
-            // 復帰した時点で p1 の OwnPhaseStart Tick が発動し、Influence は RemainingCount 1→0 で除去される。
-            // 簡素化のため、Tick 後の状態を直接構築せず Apply 経路で再現する(EndTurnAction の Tick 経路は M2-PR5 で確立、
-            // 本テストでは Tick 後の最終フェーズ WaitingForPlay 段階の IsLegalMove のみを assertion)。
+            // ADR-0020 後:p1 が EndTurnAction → 冒頭で p1 Decrement(count 1→0 で除去)→ Turn.Next で p2 へ →
+            // p2 一連の行動 → p2 EndTurn → 戻って p1 自フェーズの WaitingForPlay 段階では Influence なし状態。
+            // 簡素化のため、Tick 後の状態を直接構築せず Apply 経路で再現する(M2-PR5 / ADR-0020 で Tick 経路を確立、
+            // 本テストでは UsageRestriction 消滅後の最終フェーズ WaitingForPlay 段階の IsLegalMove のみを assertion)。
             var catalog = NewCatalogWithDream();
             var rule = new DrowZzzRule(catalog, new EffectInterpreter());
             var session = NewSessionWithDreamInHand(

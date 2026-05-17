@@ -207,7 +207,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         }
 
         [Test, Category("Medium"), Category("Normal"), Property("Requirement", "DZ-176")]
-        public void Given_p2に影響カウント3_p1ターン終了_When_EndTurn_Then_p2のInfluenceカウントが2()
+        public void Given_p2に影響カウント3_p1ターン終了_When_EndTurn_Then_p2のInfluenceカウントは不変3()
         {
             // Given
             var rule = NewRule(NewCatalogWithCardTwo());
@@ -216,32 +216,33 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var session = sessionInPlay with { PhaseState = DrowZzzPhaseState.WaitingForEndTurn };
             // When
             var next = rule.Apply(session, new EndTurnAction());
-            // Then(Tick 後にカウントが -1 されて 2 になる、まだ list に残る)
-            Assert.That(next.Influences[PlayerId.Of("p2")][0].RemainingCount, Is.EqualTo(2));
+            // Then(ADR-0020 後:p2 Tick で TickEffect 適用のみ、count は p2 自身の EndTurn で -1 されるまで 3 のまま)
+            Assert.That(next.Influences[PlayerId.Of("p2")][0].RemainingCount, Is.EqualTo(3));
         }
 
-        // ===== DZ-177: カウント 1 から Tick で 0 → 除去 =====
+        // ===== DZ-177: カウント 1 でも次の自フェーズで 1 回機能、自フェーズ終了で除去(ADR-0020) =====
 
         [Test, Category("Medium"), Category("Normal"), Property("Requirement", "DZ-177")]
-        public void Given_p2に影響カウント1_p1ターン終了_When_EndTurn_Then_p2のInfluences件数が0()
+        public void Given_p2に影響カウント1_p1ターン終了_When_EndTurn_Then_p2のSDPがマイナス5かつカウント1残存()
         {
-            // Given(カウント 1 = 次 Tick で 0 到達 → 除去)
+            // Given(ADR-0020:カウント 1 でも p2 の Tick で TickEffect が 1 回機能、count は p2 自身の EndTurn まで残存)
             var rule = NewRule(NewCatalogWithCardTwo());
             var p2Inf = new PlayerInfluence(InfluenceTrigger.OwnPhaseStart, new AdjustSdpEffect(SdpTarget.Self, -5), 1);
             var sessionInPlay = NewSessionWithCardInHand(p2Influences: new[] { p2Inf });
             var session = sessionInPlay with { PhaseState = DrowZzzPhaseState.WaitingForEndTurn };
             // When
             var next = rule.Apply(session, new EndTurnAction());
-            // Then
-            Assert.That(next.Influences[PlayerId.Of("p2")].Count, Is.EqualTo(0));
+            // Then(SDP -5 が適用される + Influence は count=1 のまま残存。除去は p2 自身の EndTurn まで遅延)
+            Assert.That(next.SecondDrowsyPoints[PlayerId.Of("p2")], Is.EqualTo(-5));
+            Assert.That(next.Influences[PlayerId.Of("p2")][0].RemainingCount, Is.EqualTo(1));
         }
 
-        // ===== DZ-178: 他プレイヤーの影響は Tick されない =====
+        // ===== DZ-178: 他プレイヤーの影響は p1 EndTurn では変更されない(ADR-0020:p2 Tick は count 不変) =====
 
         [Test, Category("Medium"), Category("Normal"), Property("Requirement", "DZ-178")]
-        public void Given_p1とp2に各影響カウント3_p1ターン終了_When_EndTurn_Then_p1のInfluenceカウントは不変3()
+        public void Given_p1とp2に各影響カウント3_p1ターン終了_When_EndTurn_Then_p2のInfluenceカウントは不変3()
         {
-            // Given(EndTurn で current = p2 に rotate、p2 のみ Tick されるべき)
+            // Given(p1 current、p1 と p2 双方が影響保有。ADR-0020:p1 EndTurn 冒頭で p1 Decrement、Turn.Next 後 p2 Tick)
             var rule = NewRule(NewCatalogWithCardTwo());
             var p1Inf = new PlayerInfluence(InfluenceTrigger.OwnPhaseStart, new AdjustSdpEffect(SdpTarget.Self, -1), 3);
             var p2Inf = new PlayerInfluence(InfluenceTrigger.OwnPhaseStart, new AdjustSdpEffect(SdpTarget.Self, -5), 3);
@@ -249,8 +250,24 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var session = sessionInPlay with { PhaseState = DrowZzzPhaseState.WaitingForEndTurn };
             // When
             var next = rule.Apply(session, new EndTurnAction());
-            // Then(p1 の影響は Tick されず、カウント 3 のまま)
-            Assert.That(next.Influences[PlayerId.Of("p1")][0].RemainingCount, Is.EqualTo(3));
+            // Then(p2 の影響は Tick で TickEffect 適用のみ、count は p2 自身の EndTurn まで 3 のまま)
+            Assert.That(next.Influences[PlayerId.Of("p2")][0].RemainingCount, Is.EqualTo(3));
+        }
+
+        // ===== DZ-179: 自プレイヤーの影響は EndTurn 冒頭で count -1 される(ADR-0020 新規) =====
+
+        [Test, Category("Medium"), Category("Normal"), Property("Requirement", "DZ-179")]
+        public void Given_p1に影響カウント3_p1ターン終了_When_EndTurn_Then_p1のInfluenceカウントが2()
+        {
+            // Given(ADR-0020:p1 EndTurn 冒頭で p1 自身の Influences すべてに対して count -1)
+            var rule = NewRule(NewCatalogWithCardTwo());
+            var p1Inf = new PlayerInfluence(InfluenceTrigger.OwnPhaseStart, new AdjustSdpEffect(SdpTarget.Self, -1), 3);
+            var sessionInPlay = NewSessionWithCardInHand(p1Influences: new[] { p1Inf });
+            var session = sessionInPlay with { PhaseState = DrowZzzPhaseState.WaitingForEndTurn };
+            // When
+            var next = rule.Apply(session, new EndTurnAction());
+            // Then(p1 自身の影響は EndTurn 冒頭の Decrement で count 3→2)
+            Assert.That(next.Influences[PlayerId.Of("p1")][0].RemainingCount, Is.EqualTo(2));
         }
     }
 }

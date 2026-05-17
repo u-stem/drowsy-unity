@@ -275,12 +275,14 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             Assert.That(rule.IsLegalMove(session, new PlayCardAction(CardId.Of(TargetTypeId, 0))), Is.False);
         }
 
-        // ===== DZ-268: カウント 1 から Tick で除去 =====
+        // ===== DZ-268: カウント 1 Marker は p2 フェーズ全体で機能、p2 EndTurn で除去(ADR-0020)=====
 
         [Test, Category("Medium"), Category("Normal"), Property("Requirement", "DZ-268")]
-        public void Given_カウント1の使用禁止Influence_When_自フェーズTick_Then_Influence除去()
+        public void Given_カウント1の使用禁止Influence_When_自フェーズTick_Then_カウント1で残存()
         {
-            // Given(p2 が「Card "X" 使用禁止」Influence カウント 1 保有、p1 が WaitingForEndTurn → EndTurn で p2 自フェーズへ Tick)
+            // Given(p2 が「Card "X" 使用禁止」Influence カウント 1 保有、p1 が WaitingForEndTurn → EndTurn で p2 自フェーズへ)
+            // ADR-0020:p2 Tick で TickEffect (marker no-op) 適用、count 1 のまま。除去は p2 自身の EndTurn まで遅延。
+            // これにより p2 フェーズ中の IsLegalPlayCard が本 Influence を Walk して Card "X" を illegal 化できる。
             var rule = NewRule(NewCatalogWithCardFour());
             var influence = new PlayerInfluence(
                 InfluenceTrigger.OwnPhaseStart,
@@ -288,10 +290,11 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 1);
             var sessionInPlay = NewSession(turnNumber: 1, p2Influences: new[] { influence });
             var session = sessionInPlay with { PhaseState = DrowZzzPhaseState.WaitingForEndTurn };
-            // When(EndTurn で current=p2 に rotate、Influence の RemainingCount 1 → 0 で除去)
+            // When
             var next = rule.Apply(session, new EndTurnAction());
-            // Then
-            Assert.That(next.Influences[PlayerId.Of("p2")].Count, Is.EqualTo(0));
+            // Then(ADR-0020:count=1 marker は p2 フェーズで機能、count=1 のまま残存)
+            Assert.That(next.Influences[PlayerId.Of("p2")].Count, Is.EqualTo(1));
+            Assert.That(next.Influences[PlayerId.Of("p2")][0].RemainingCount, Is.EqualTo(1));
         }
     }
 }

@@ -61,8 +61,8 @@
     ならば 結果は false である
 
   @DZ-268
-  シナリオ: カウント 1 から Tick で除去
+  シナリオ: カウント 1 Marker は p2 フェーズ全体で機能、p2 EndTurn で除去(ADR-0020)
     前提 p2 が PlayerInfluence(OwnPhaseStart, RestrictSpecificCardInfluenceEffect("Y"), 1) を 1 件保有
     かつ p1 が WaitingForEndTurn
     もし p1 が EndTurnAction を適用する
-    ならば p2 の Influences 件数が 0 になる
+    ならば p2 の Influences 件数が 1 のまま残る(RemainingCount=1、除去は p2 自身の EndTurn まで遅延)
