@@ -194,7 +194,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         }
 
         [Test, Category("Medium"), Category("Normal"), Property("Requirement", "DZ-253")]
-        public void Given_p2が永続影響Plus4を保有_p1current_When_p1がEndTurnでp2フェーズへ_Then_p2の影響RemainingCountがPerpetualマイナス1()
+        public void Given_p2が永続影響Plus4を保有_p1current_When_p1がEndTurnでp2フェーズへ_Then_p2の影響RemainingCountは不変Perpetual()
         {
             // Given
             var rule = NewRule(NewCatalogWithCardThree());
@@ -248,7 +248,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         }
 
         [Test, Category("Medium"), Category("Normal"), Property("Requirement", "DZ-254")]
-        public void Given_p2が永続影響Minus6を保有_p1current_When_p1がEndTurnでp2フェーズへ_Then_p2の影響RemainingCountがPerpetualマイナス1()
+        public void Given_p2が永続影響Minus6を保有_p1current_When_p1がEndTurnでp2フェーズへ_Then_p2の影響RemainingCountは不変Perpetual()
         {
             // Given
             var rule = NewRule(NewCatalogWithCardThree());
@@ -256,8 +256,8 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var session = sessionInPlay with { PhaseState = DrowZzzPhaseState.WaitingForEndTurn };
             // When
             var next = rule.Apply(session, new EndTurnAction());
-            // Then
-            Assert.That(next.Influences[PlayerId.Of("p2")][0].RemainingCount, Is.EqualTo(InfluenceConstants.Perpetual - 1));
+            // Then(ADR-0020:p2 Tick で TickEffect 適用のみ、count は p2 自身の EndTurn まで Perpetual のまま)
+            Assert.That(next.Influences[PlayerId.Of("p2")][0].RemainingCount, Is.EqualTo(InfluenceConstants.Perpetual));
         }
     }
 }
