@@ -157,15 +157,17 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-007")]
         public void Given_GameStateにnull_When_DrowZzzGameSessionを生成_Then_ArgumentNullExceptionを投げる()
         {
-            Assert.Throws<ArgumentNullException>(() =>
+            var ex = Assert.Throws<ArgumentNullException>(() =>
                 new DrowZzzGameSession(null, Fdp(("p1", 0), ("p2", 10)), Ddp(), Sdp(), EmptyDdpPool, Inf(), DrowZzzPhaseState.WaitingForDraw, outcome: null, bedDamages: new Dictionary<PlayerId, int> { [PlayerId.Of("p1")] = 0, [PlayerId.Of("p2")] = 0 }, System.Array.Empty<PendingCounteredEffect>()));
+            Assert.That(ex!.ParamName, Is.EqualTo("GameState"));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-008")]
         public void Given_FirstDrowsyPointsにnull_When_DrowZzzGameSessionを生成_Then_ArgumentNullExceptionを投げる()
         {
-            Assert.Throws<ArgumentNullException>(() =>
+            var ex = Assert.Throws<ArgumentNullException>(() =>
                 new DrowZzzGameSession(NewGameState(), null, Ddp(), Sdp(), EmptyDdpPool, Inf(), DrowZzzPhaseState.WaitingForDraw, outcome: null, bedDamages: new Dictionary<PlayerId, int> { [PlayerId.Of("p1")] = 0, [PlayerId.Of("p2")] = 0 }, System.Array.Empty<PendingCounteredEffect>()));
+            Assert.That(ex!.ParamName, Is.EqualTo("FirstDrowsyPoints"));
         }
 
         // ===== DZ-009: cross-field 検証(キー集合不一致) =====
@@ -247,7 +249,8 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             // Given
             var session = NewSession();
             // When / Then
-            Assert.Throws<ArgumentNullException>(() => _ = session with { GameState = null });
+            var ex = Assert.Throws<ArgumentNullException>(() => _ = session with { GameState = null });
+            Assert.That(ex!.ParamName, Is.EqualTo("GameState"));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-015")]
@@ -256,7 +259,8 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             // Given
             var session = NewSession();
             // When / Then
-            Assert.Throws<ArgumentNullException>(() => _ = session with { FirstDrowsyPoints = null });
+            var ex = Assert.Throws<ArgumentNullException>(() => _ = session with { FirstDrowsyPoints = null });
+            Assert.That(ex!.ParamName, Is.EqualTo("FirstDrowsyPoints"));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-016")]
@@ -387,8 +391,9 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-101")]
         public void Given_SDPにnull_When_DrowZzzGameSessionを生成_Then_ArgumentNullExceptionを投げる()
         {
-            Assert.Throws<ArgumentNullException>(() =>
+            var ex = Assert.Throws<ArgumentNullException>(() =>
                 new DrowZzzGameSession(NewGameState(), Fdp(("p1", 0), ("p2", 10)), Ddp(), null, EmptyDdpPool, Inf(), DrowZzzPhaseState.WaitingForDraw, outcome: null, bedDamages: new Dictionary<PlayerId, int> { [PlayerId.Of("p1")] = 0, [PlayerId.Of("p2")] = 0 }, System.Array.Empty<PendingCounteredEffect>()));
+            Assert.That(ex!.ParamName, Is.EqualTo("SecondDrowsyPoints"));
         }
 
         // ===== DZ-102: SDP cross-field 検証(キー集合不一致)=====
@@ -464,7 +469,8 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             // Given
             var session = NewSession();
             // When / Then
-            Assert.Throws<ArgumentNullException>(() => _ = session with { SecondDrowsyPoints = null });
+            var ex = Assert.Throws<ArgumentNullException>(() => _ = session with { SecondDrowsyPoints = null });
+            Assert.That(ex!.ParamName, Is.EqualTo("SecondDrowsyPoints"));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-108")]
@@ -515,8 +521,9 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-131")]
         public void Given_DDPにnull_When_DrowZzzGameSessionを生成_Then_ArgumentNullExceptionを投げる()
         {
-            Assert.Throws<ArgumentNullException>(() =>
+            var ex = Assert.Throws<ArgumentNullException>(() =>
                 new DrowZzzGameSession(NewGameState(), Fdp(("p1", 0), ("p2", 10)), null, Sdp(), EmptyDdpPool, Inf(), DrowZzzPhaseState.WaitingForDraw, outcome: null, bedDamages: new Dictionary<PlayerId, int> { [PlayerId.Of("p1")] = 0, [PlayerId.Of("p2")] = 0 }, System.Array.Empty<PendingCounteredEffect>()));
+            Assert.That(ex!.ParamName, Is.EqualTo("DrawDrowsyPoints"));
         }
 
         // ===== DZ-132: DDP cross-field 検証(キー集合不一致)=====
@@ -537,8 +544,9 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-133")]
         public void Given_DdpPoolにnull_When_DrowZzzGameSessionを生成_Then_ArgumentNullExceptionを投げる()
         {
-            Assert.Throws<ArgumentNullException>(() =>
+            var ex = Assert.Throws<ArgumentNullException>(() =>
                 new DrowZzzGameSession(NewGameState(), Fdp(("p1", 0), ("p2", 10)), Ddp(), Sdp(), null, Inf(), DrowZzzPhaseState.WaitingForDraw, outcome: null, bedDamages: new Dictionary<PlayerId, int> { [PlayerId.Of("p1")] = 0, [PlayerId.Of("p2")] = 0 }, System.Array.Empty<PendingCounteredEffect>()));
+            Assert.That(ex!.ParamName, Is.EqualTo("DdpPool"));
         }
 
         // ===== DZ-134 / DZ-135: with 式経由 DDP の null / cross-field 検証 =====
@@ -549,7 +557,8 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             // Given
             var session = NewSession();
             // When / Then
-            Assert.Throws<ArgumentNullException>(() => _ = session with { DrawDrowsyPoints = null });
+            var ex = Assert.Throws<ArgumentNullException>(() => _ = session with { DrawDrowsyPoints = null });
+            Assert.That(ex!.ParamName, Is.EqualTo("DrawDrowsyPoints"));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-135")]
@@ -570,7 +579,8 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             // Given
             var session = NewSession();
             // When / Then
-            Assert.Throws<ArgumentNullException>(() => _ = session with { DdpPool = null });
+            var ex = Assert.Throws<ArgumentNullException>(() => _ = session with { DdpPool = null });
+            Assert.That(ex!.ParamName, Is.EqualTo("DdpPool"));
         }
 
         // ===== DZ-137: 負値 DDP も保持される(0 floor なし)=====
@@ -682,10 +692,11 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-179")]
         public void Given_Influencesにnull_When_DrowZzzGameSessionを生成_Then_ArgumentNullExceptionを投げる()
         {
-            Assert.Throws<ArgumentNullException>(() =>
+            var ex = Assert.Throws<ArgumentNullException>(() =>
                 new DrowZzzGameSession(
                     NewGameState(), Fdp(("p1", 0), ("p2", 10)), Ddp(), Sdp(),
                     EmptyDdpPool, null, DrowZzzPhaseState.WaitingForDraw, outcome: null, bedDamages: new Dictionary<PlayerId, int> { [PlayerId.Of("p1")] = 0, [PlayerId.Of("p2")] = 0 }, System.Array.Empty<PendingCounteredEffect>()));
+            Assert.That(ex!.ParamName, Is.EqualTo("Influences"));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-179")]
@@ -848,11 +859,12 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-198")]
         public void Given_BedDamagesにnull_When_DrowZzzGameSessionを生成_Then_ArgumentNullExceptionを投げる()
         {
-            Assert.Throws<ArgumentNullException>(() =>
+            var ex = Assert.Throws<ArgumentNullException>(() =>
                 new DrowZzzGameSession(
                     NewGameState(), Fdp(("p1", 0), ("p2", 10)), Ddp(), Sdp(),
                     EmptyDdpPool, Inf(), DrowZzzPhaseState.WaitingForDraw,
                     outcome: null, bedDamages: null, System.Array.Empty<PendingCounteredEffect>()));
+            Assert.That(ex!.ParamName, Is.EqualTo("BedDamages"));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-198")]

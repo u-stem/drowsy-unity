@@ -69,19 +69,22 @@ namespace Drowsy.Domain.Tests.Cards
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "PILE-010")]
         public void Given_AddTopにnull_When_実行_Then_ArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => Pile.Empty.AddTop(null));
+            var ex = Assert.Throws<ArgumentNullException>(() => Pile.Empty.AddTop(null));
+            Assert.That(ex!.ParamName, Is.EqualTo("card"));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "PILE-011")]
         public void Given_AddBottomにnull_When_実行_Then_ArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => Pile.Empty.AddBottom(null));
+            var ex = Assert.Throws<ArgumentNullException>(() => Pile.Empty.AddBottom(null));
+            Assert.That(ex!.ParamName, Is.EqualTo("card"));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "PILE-013")]
         public void Given_コンストラクタにnull_When_生成_Then_ArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new Pile(null));
+            var ex = Assert.Throws<ArgumentNullException>(() => new Pile(null));
+            Assert.That(ex!.ParamName, Is.EqualTo("cards"));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "PILE-018")]
@@ -122,7 +125,8 @@ namespace Drowsy.Domain.Tests.Cards
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "PILE-012")]
         public void Given_Shuffleにnull_When_実行_Then_ArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => Pile.Empty.Shuffle(null));
+            var ex = Assert.Throws<ArgumentNullException>(() => Pile.Empty.Shuffle(null));
+            Assert.That(ex!.ParamName, Is.EqualTo("rng"));
         }
 
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "PILE-003"), Property("Requirement", "PILE-004")]

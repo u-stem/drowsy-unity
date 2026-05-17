@@ -111,7 +111,8 @@ namespace Drowsy.Application.Tests.Catalog
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "APP-019")]
         public void Given_entriesにnull_When_InMemoryCardCatalogを生成_Then_ArgumentNullExceptionを投げる()
         {
-            Assert.Throws<ArgumentNullException>(() => new InMemoryCardCatalog(null));
+            var ex = Assert.Throws<ArgumentNullException>(() => new InMemoryCardCatalog(null));
+            Assert.That(ex!.ParamName, Is.EqualTo("entries"));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "APP-020")]

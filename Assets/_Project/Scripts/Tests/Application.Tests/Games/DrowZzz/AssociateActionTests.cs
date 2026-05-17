@@ -380,14 +380,16 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-204")]
         public void Given_null_When_AssociateActionを生成_Then_ArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new AssociateAction(Card: null));
+            var ex = Assert.Throws<ArgumentNullException>(() => new AssociateAction(Card: null));
+            Assert.That(ex!.ParamName, Is.EqualTo("Card"));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-204")]
         public void Given_AssociateActionにwith_Card_null_Then_ArgumentNullException()
         {
             var action = new AssociateAction(DreamCardId);
-            Assert.Throws<ArgumentNullException>(() => _ = action with { Card = null });
+            var ex = Assert.Throws<ArgumentNullException>(() => _ = action with { Card = null });
+            Assert.That(ex!.ParamName, Is.EqualTo("Card"));
         }
     }
 }

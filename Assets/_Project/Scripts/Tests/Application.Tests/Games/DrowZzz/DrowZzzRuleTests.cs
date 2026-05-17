@@ -215,7 +215,8 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_sessionにnull_When_IsLegalMoveを呼ぶ_Then_ArgumentNullExceptionを投げる()
         {
             var rule = NewRule();
-            Assert.Throws<ArgumentNullException>(() => rule.IsLegalMove(null, new DrawCardAction()));
+            var ex = Assert.Throws<ArgumentNullException>(() => rule.IsLegalMove(null, new DrawCardAction()));
+            Assert.That(ex!.ParamName, Is.EqualTo("session"));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-049")]
@@ -223,14 +224,16 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         {
             var rule = NewRule();
             var session = NewSession();
-            Assert.Throws<ArgumentNullException>(() => rule.IsLegalMove(session, null));
+            var ex = Assert.Throws<ArgumentNullException>(() => rule.IsLegalMove(session, null));
+            Assert.That(ex!.ParamName, Is.EqualTo("action"));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-050")]
         public void Given_sessionにnull_When_Applyを呼ぶ_Then_ArgumentNullExceptionを投げる()
         {
             var rule = NewRule();
-            Assert.Throws<ArgumentNullException>(() => rule.Apply(null, new DrawCardAction()));
+            var ex = Assert.Throws<ArgumentNullException>(() => rule.Apply(null, new DrawCardAction()));
+            Assert.That(ex!.ParamName, Is.EqualTo("session"));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-051")]
@@ -238,7 +241,8 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         {
             var rule = NewRule();
             var session = NewSession();
-            Assert.Throws<ArgumentNullException>(() => rule.Apply(session, null));
+            var ex = Assert.Throws<ArgumentNullException>(() => rule.Apply(session, null));
+            Assert.That(ex!.ParamName, Is.EqualTo("action"));
         }
 
         // ===== DZ-054〜056: IsLegalMove(PlayCardAction) =====

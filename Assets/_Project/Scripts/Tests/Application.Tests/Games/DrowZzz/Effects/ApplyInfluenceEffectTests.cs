@@ -75,7 +75,8 @@ namespace Drowsy.Application.Tests.Games.DrowZzz.Effects
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-158")]
         public void Given_Influenceにnull_When_ApplyInfluenceEffectを生成_Then_ArgumentNullExceptionを投げる()
         {
-            Assert.Throws<ArgumentNullException>(() => new ApplyInfluenceEffect(SdpTarget.Self, null));
+            var ex = Assert.Throws<ArgumentNullException>(() => new ApplyInfluenceEffect(SdpTarget.Self, null));
+            Assert.That(ex!.ParamName, Is.EqualTo("Influence"));
         }
 
         // ===== DZ-159: Target=Self で現プレイヤーの list 末尾に追加 =====

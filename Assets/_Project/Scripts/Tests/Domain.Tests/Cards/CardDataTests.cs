@@ -240,7 +240,8 @@ namespace Drowsy.Domain.Tests.Cards
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "CDATA-012")]
         public void Given_null_When_コンストラクタのattributes_Then_ArgumentNullExceptionを投げる()
         {
-            Assert.Throws<ArgumentNullException>(() => new CardData("X", null!));
+            var ex = Assert.Throws<ArgumentNullException>(() => new CardData("X", null!));
+            Assert.That(ex!.ParamName, Is.EqualTo("attributes"));
         }
 
         // ===== CDATA-013: attributes に null/空/空白キーを含む =====
@@ -284,7 +285,8 @@ namespace Drowsy.Domain.Tests.Cards
             // Given
             var card = new CardData("X", new Dictionary<string, int>());
             // When / Then
-            Assert.Throws<ArgumentNullException>(() => card.HasAttribute(null!));
+            var ex = Assert.Throws<ArgumentNullException>(() => card.HasAttribute(null!));
+            Assert.That(ex!.ParamName, Is.EqualTo("key"));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "CDATA-014")]
@@ -293,7 +295,8 @@ namespace Drowsy.Domain.Tests.Cards
             // Given
             var card = new CardData("X", new Dictionary<string, int>());
             // When / Then
-            Assert.Throws<ArgumentNullException>(() => card.GetAttribute(null!));
+            var ex = Assert.Throws<ArgumentNullException>(() => card.GetAttribute(null!));
+            Assert.That(ex!.ParamName, Is.EqualTo("key"));
         }
 
         // ===== CDATA-015: operator== / operator!= =====

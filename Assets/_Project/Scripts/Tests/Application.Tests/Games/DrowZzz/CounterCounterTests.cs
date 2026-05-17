@@ -118,24 +118,27 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_CounterCardがnull_When_PendingCounteredEffect生成_Then_ArgumentNullException()
         {
             // When / Then
-            Assert.Throws<ArgumentNullException>(() =>
+            var ex = Assert.Throws<ArgumentNullException>(() =>
                 new PendingCounteredEffect(null, CardAId, new IEffect[] { new AdjustSdpEffect(SdpTarget.Self, 10) }));
+            Assert.That(ex!.ParamName, Is.EqualTo("CounterCard"));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-222")]
         public void Given_OriginalCardがnull_When_PendingCounteredEffect生成_Then_ArgumentNullException()
         {
             // When / Then
-            Assert.Throws<ArgumentNullException>(() =>
+            var ex = Assert.Throws<ArgumentNullException>(() =>
                 new PendingCounteredEffect(CardBId, null, new IEffect[] { new AdjustSdpEffect(SdpTarget.Self, 10) }));
+            Assert.That(ex!.ParamName, Is.EqualTo("OriginalCard"));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-222")]
         public void Given_OriginalEffectsがnull_When_PendingCounteredEffect生成_Then_ArgumentNullException()
         {
             // When / Then
-            Assert.Throws<ArgumentNullException>(() =>
+            var ex = Assert.Throws<ArgumentNullException>(() =>
                 new PendingCounteredEffect(CardBId, CardAId, null));
+            Assert.That(ex!.ParamName, Is.EqualTo("OriginalEffects"));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-222")]
@@ -182,12 +185,13 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             };
             var bed = new Dictionary<PlayerId, int> { [PlayerId.Of("p1")] = 0, [PlayerId.Of("p2")] = 0 };
             // When / Then
-            Assert.Throws<ArgumentNullException>(() => new DrowZzzGameSession(
+            var ex = Assert.Throws<ArgumentNullException>(() => new DrowZzzGameSession(
                 gs, fdp, ddp, sdp, DdpPool.Empty, influences,
                 DrowZzzPhaseState.WaitingForEndTurn,
                 outcome: null,
                 bedDamages: bed,
                 pendingCounteredEffects: null));
+            Assert.That(ex!.ParamName, Is.EqualTo("PendingCounteredEffects"));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-223")]

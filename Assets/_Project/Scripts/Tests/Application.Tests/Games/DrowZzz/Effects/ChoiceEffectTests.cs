@@ -38,7 +38,8 @@ namespace Drowsy.Application.Tests.Games.DrowZzz.Effects
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-167")]
         public void Given_Branchesにnull_When_ChoiceEffectを生成_Then_ArgumentNullExceptionを投げる()
         {
-            Assert.Throws<ArgumentNullException>(() => new ChoiceEffect(null));
+            var ex = Assert.Throws<ArgumentNullException>(() => new ChoiceEffect(null));
+            Assert.That(ex!.ParamName, Is.EqualTo("Branches"));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-167")]
@@ -70,7 +71,8 @@ namespace Drowsy.Application.Tests.Games.DrowZzz.Effects
                 new IEffect[] { new AdjustSdpEffect(SdpTarget.Self, -1) },
                 null,
             };
-            Assert.Throws<ArgumentNullException>(() => new ChoiceEffect(branches));
+            var ex = Assert.Throws<ArgumentNullException>(() => new ChoiceEffect(branches));
+            Assert.That(ex!.ParamName, Is.EqualTo("branches"));
         }
 
         // ===== DZ-168: 値同値性(順序保持シーケンス同値)=====

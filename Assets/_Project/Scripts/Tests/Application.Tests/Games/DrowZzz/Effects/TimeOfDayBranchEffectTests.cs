@@ -116,16 +116,18 @@ namespace Drowsy.Application.Tests.Games.DrowZzz.Effects
         public void Given_NightEffectsにnull_When_生成_Then_ArgumentNullExceptionを投げる()
         {
             // When / Then
-            Assert.Throws<ArgumentNullException>(() =>
+            var ex = Assert.Throws<ArgumentNullException>(() =>
                 new TimeOfDayBranchEffect(null, Array.Empty<IEffect>()));
+            Assert.That(ex!.ParamName, Is.EqualTo("NightEffects"));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-124")]
         public void Given_MorningEffectsにnull_When_生成_Then_ArgumentNullExceptionを投げる()
         {
             // When / Then
-            Assert.Throws<ArgumentNullException>(() =>
+            var ex = Assert.Throws<ArgumentNullException>(() =>
                 new TimeOfDayBranchEffect(Array.Empty<IEffect>(), null));
+            Assert.That(ex!.ParamName, Is.EqualTo("MorningEffects"));
         }
 
         // ===== DZ-123 補足: list 内 null 要素を構築時に防御(code-reviewer W-2 反映)=====

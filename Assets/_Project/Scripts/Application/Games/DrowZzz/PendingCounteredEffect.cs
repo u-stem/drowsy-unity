@@ -44,7 +44,7 @@ namespace Drowsy.Application.Games.DrowZzz
         private readonly CardId _originalCard = OriginalCard ?? throw new ArgumentNullException(nameof(OriginalCard));
         // OriginalEffects は防御コピー + null 要素検出を伴うため、init setter 経路で正規化する
         // (positional ctor の初期化式は ValidateAndCopyEffects を呼んで _originalEffects に格納)
-        private readonly IReadOnlyList<IEffect> _originalEffects = ValidateAndCopyEffects(OriginalEffects);
+        private readonly IReadOnlyList<IEffect> _originalEffects = ValidateAndCopyEffects(OriginalEffects, nameof(OriginalEffects));
 
         /// <summary>A をカウンタした反撃カード(= B)。</summary>
         public CardId CounterCard
@@ -64,16 +64,17 @@ namespace Drowsy.Application.Games.DrowZzz
         public IReadOnlyList<IEffect> OriginalEffects
         {
             get => _originalEffects;
-            init => _originalEffects = ValidateAndCopyEffects(value);
+            init => _originalEffects = ValidateAndCopyEffects(value, nameof(OriginalEffects));
         }
 
         // 効果列の防御コピー + null 検証 + null 要素検出
         // 空 list は許容(理論上「効果なしのカードを反撃」は意味薄だが、本 record の責務外で許容)。
-        private static IReadOnlyList<IEffect> ValidateAndCopyEffects(IReadOnlyList<IEffect> source)
+        // paramName: 呼び出し元(init setter または ctor 初期化式)の Property 名(post-Phase2 #4 Phase A+B 第 2 弾)
+        private static IReadOnlyList<IEffect> ValidateAndCopyEffects(IReadOnlyList<IEffect> source, string paramName)
         {
             if (source is null)
             {
-                throw new ArgumentNullException(nameof(source), "OriginalEffects に null は渡せません(空 list は許容)");
+                throw new ArgumentNullException(paramName, "OriginalEffects に null は渡せません(空 list は許容)");
             }
             var arr = new IEffect[source.Count];
             for (int i = 0; i < source.Count; i++)
@@ -82,7 +83,7 @@ namespace Drowsy.Application.Games.DrowZzz
                 {
                     throw new ArgumentException(
                         $"OriginalEffects[{i}] に null 要素を含めることはできません",
-                        nameof(source));
+                        paramName);
                 }
                 arr[i] = source[i];
             }

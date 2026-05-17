@@ -56,15 +56,17 @@ namespace Drowsy.Application.Tests.Games.DrowZzz.Effects
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-210")]
         public void Given_Keywordsがnull_When_KeywordedEffect生成_Then_ArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() =>
+            var ex = Assert.Throws<ArgumentNullException>(() =>
                 _ = new KeywordedEffect(keywords: null, inner: new AssociatableMarkerEffect()));
+            Assert.That(ex!.ParamName, Is.EqualTo("Keywords"));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-210")]
         public void Given_Innerがnull_When_KeywordedEffect生成_Then_ArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() =>
+            var ex = Assert.Throws<ArgumentNullException>(() =>
                 _ = new KeywordedEffect(keywords: new[] { Keyword.Instinct }, inner: null));
+            Assert.That(ex!.ParamName, Is.EqualTo("Inner"));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-210")]
@@ -79,14 +81,16 @@ namespace Drowsy.Application.Tests.Games.DrowZzz.Effects
         public void Given_KeywordedEffectにwith_Keywords_null_Then_ArgumentNullException()
         {
             var effect = new KeywordedEffect(new[] { Keyword.Instinct }, new AssociatableMarkerEffect());
-            Assert.Throws<ArgumentNullException>(() => _ = effect with { Keywords = null });
+            var ex = Assert.Throws<ArgumentNullException>(() => _ = effect with { Keywords = null });
+            Assert.That(ex!.ParamName, Is.EqualTo("Keywords"));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-210")]
         public void Given_KeywordedEffectにwith_Inner_null_Then_ArgumentNullException()
         {
             var effect = new KeywordedEffect(new[] { Keyword.Instinct }, new AssociatableMarkerEffect());
-            Assert.Throws<ArgumentNullException>(() => _ = effect with { Inner = null });
+            var ex = Assert.Throws<ArgumentNullException>(() => _ = effect with { Inner = null });
+            Assert.That(ex!.ParamName, Is.EqualTo("Inner"));
         }
 
         // ===== DZ-211: HasKeyword 判定 =====

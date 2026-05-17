@@ -302,7 +302,8 @@ namespace Drowsy.Domain.Tests.Cards
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "HAND-015")]
         public void Given_null_When_コンストラクタ_Then_ArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new Hand(null));
+            var ex = Assert.Throws<ArgumentNullException>(() => new Hand(null));
+            Assert.That(ex!.ParamName, Is.EqualTo("cards"));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "HAND-016")]
@@ -322,7 +323,8 @@ namespace Drowsy.Domain.Tests.Cards
         public void Given_null_When_Add_Then_ArgumentNullException()
         {
             var hand = new Hand(Array.Empty<CardId>());
-            Assert.Throws<ArgumentNullException>(() => hand.Add(null));
+            var ex = Assert.Throws<ArgumentNullException>(() => hand.Add(null));
+            Assert.That(ex!.ParamName, Is.EqualTo("card"));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "HAND-019")]
@@ -337,7 +339,8 @@ namespace Drowsy.Domain.Tests.Cards
         public void Given_null_When_Remove_Then_ArgumentNullException()
         {
             var hand = new Hand(Array.Empty<CardId>());
-            Assert.Throws<ArgumentNullException>(() => hand.Remove(null));
+            var ex = Assert.Throws<ArgumentNullException>(() => hand.Remove(null));
+            Assert.That(ex!.ParamName, Is.EqualTo("card"));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "HAND-021")]
@@ -353,7 +356,8 @@ namespace Drowsy.Domain.Tests.Cards
             // Given: Add/Remove 経由ではなく Contains を直接呼ぶケース
             var hand = new Hand(new[] { CardId.Of(CardTypeId.Of("a"), 0) });
             // When / Then
-            Assert.Throws<ArgumentNullException>(() => hand.Contains(null));
+            var ex = Assert.Throws<ArgumentNullException>(() => hand.Contains(null));
+            Assert.That(ex!.ParamName, Is.EqualTo("card"));
         }
     }
 }

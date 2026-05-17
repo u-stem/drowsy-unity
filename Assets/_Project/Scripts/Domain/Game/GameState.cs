@@ -45,7 +45,7 @@ namespace Drowsy.Domain.Game
             get => _players;
             init
             {
-                var newPlayers = ValidateAndCopyPlayers(value);
+                var newPlayers = ValidateAndCopyPlayers(value, nameof(Players));
                 // GS-022: Players を縮小して既存 Turn が範囲外になる経路を防ぐ
                 // (with { Players = ... } 経由でも検証が走るよう init setter 内で完結させる)
                 if (_turn is not null && _turn.CurrentPlayerIndex >= newPlayers.Length)
@@ -216,11 +216,12 @@ namespace Drowsy.Domain.Game
         }
 
         // 防御コピー + null 要素 / 重複 PlayerId の検証
-        private static PlayerState[] ValidateAndCopyPlayers(IReadOnlyList<PlayerState> source)
+        // paramName: 呼び出し元(init setter または ctor)の Property 名(post-Phase2 #4 ParamName 強化 Phase A+B 第 2 弾)
+        private static PlayerState[] ValidateAndCopyPlayers(IReadOnlyList<PlayerState> source, string paramName)
         {
             if (source is null)
             {
-                throw new ArgumentNullException(nameof(source));
+                throw new ArgumentNullException(paramName);
             }
             var seen = new HashSet<PlayerId>();
             var buffer = new PlayerState[source.Count];
@@ -231,13 +232,13 @@ namespace Drowsy.Domain.Game
                 {
                     throw new ArgumentException(
                         "GameState の players に null 要素を含めることはできません",
-                        nameof(source));
+                        paramName);
                 }
                 if (!seen.Add(ps.Id))
                 {
                     throw new ArgumentException(
                         $"GameState の players に重複 PlayerId を含めることはできません: {ps.Id.Value}",
-                        nameof(source));
+                        paramName);
                 }
                 buffer[i] = ps;
             }

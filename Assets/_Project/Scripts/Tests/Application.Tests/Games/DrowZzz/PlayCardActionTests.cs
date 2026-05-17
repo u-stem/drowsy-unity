@@ -15,7 +15,8 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-053")]
         public void Given_PlayCardActionにnullCard_When_生成_Then_ArgumentNullExceptionを投げる()
         {
-            Assert.Throws<ArgumentNullException>(() => _ = new PlayCardAction(null));
+            var ex = Assert.Throws<ArgumentNullException>(() => _ = new PlayCardAction(null));
+            Assert.That(ex!.ParamName, Is.EqualTo("Card"));
         }
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-053")]
@@ -24,7 +25,8 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             // Given
             var action = new PlayCardAction(CardId.Of(CardTypeId.Of("c1"), 0));
             // When / Then
-            Assert.Throws<ArgumentNullException>(() => _ = action with { Card = null });
+            var ex = Assert.Throws<ArgumentNullException>(() => _ = action with { Card = null });
+            Assert.That(ex!.ParamName, Is.EqualTo("Card"));
         }
     }
 }
