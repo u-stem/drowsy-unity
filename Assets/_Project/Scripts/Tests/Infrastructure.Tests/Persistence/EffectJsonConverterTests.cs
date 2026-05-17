@@ -212,6 +212,16 @@ namespace Drowsy.Infrastructure.Tests.Persistence
             Assert.That(RoundTrip(original), Is.EqualTo(original));
         }
 
+        // ===== INF-152: No.11「機械仕掛けの冬将軍」追加 AdjustSdpByHandCountEffect Round-Trip(2026-05-17)=====
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "INF-152")]
+        public void Given_AdjustSdpByHandCountEffect_When_RoundTrip_Then_等価()
+        {
+            // Given(No.11 本体、フィールドなし、動的計算は EffectInterpreter 内で session から取得)
+            var original = new AdjustSdpByHandCountEffect();
+            Assert.That(RoundTrip(original), Is.EqualTo(original));
+        }
+
         // ===== INF-055: wrapper 再帰(KeywordedEffect (Choice (Keyworded (AdjustSdp))))=====
 
         [Test, Category("Medium"), Category("Normal"), Property("Requirement", "INF-055")]
