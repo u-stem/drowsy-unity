@@ -102,9 +102,9 @@ namespace Drowsy.Application.Games.DrowZzz
             return action switch
             {
                 StartGameAction => false, // ADR-0006 §Implementation Notes §StartGameUseCase の IsLegalMove 経由での扱い
-                DrawCardAction => session.PhaseState == DrowZzzPhaseState.WaitingForDraw,
+                DrawCardAction => IsLegalDraw(session),
                 PlayCardAction p => IsLegalPlayCard(session, p),
-                EndTurnAction => session.PhaseState == DrowZzzPhaseState.WaitingForEndTurn,
+                EndTurnAction => IsLegalEndTurn(session),
                 AbandonAction a => IsLegalAbandon(session, a),  // M3-PR3: 放棄(代替ターン行動)、ADR-0011 §2
                 AssociateAction a => IsLegalAssociate(session, a),  // M3-PR4: 連想(特殊ドロー)、ADR-0011 §1
                 CounterAction c => IsLegalCounter(session, c),  // M3-PR5b: 反撃、ADR-0011 §4.3
@@ -112,6 +112,49 @@ namespace Drowsy.Application.Games.DrowZzz
                 _ => throw new NotImplementedException(
                     $"DrowZzzRule.IsLegalMove ({action.GetType().Name}) は M1 範囲では到達不可。将来 DrowZzzAction 派生型を追加する PR で対応する"),
             };
+        }
+
+        // DrawCardAction の合法性(ADR-0021 で No.10「安直過ぎる一手」対応で追加):
+        // (1) PhaseState == WaitingForDraw
+        // (2) ADR-0021:現プレイヤーが RestrictDrawCardInfluenceMarkerEffect を保有していたら illegal
+        //     (山札からの手段ドロー禁止、進行不能化は EndTurnAction の全フェーズ合法化で回避)
+        private static bool IsLegalDraw(DrowZzzGameSession session)
+        {
+            if (session.PhaseState != DrowZzzPhaseState.WaitingForDraw)
+            {
+                return false;
+            }
+            int currentIndex = session.GameState.Turn.CurrentPlayerIndex;
+            var currentPlayerId = session.GameState.Players[currentIndex].Id;
+            if (HasRestrictDrawCardInfluence(session.Influences[currentPlayerId]))
+            {
+                return false;
+            }
+            return true;
+        }
+
+        // EndTurnAction の合法性(ADR-0021):
+        // (1) 通常合法経路:PhaseState == WaitingForEndTurn
+        // (2) stuck 化脱出弁:現プレイヤーが stuck 化 Marker(No.09 RestrictAllUsageAndAbandon / No.10 RestrictDrawCard)を保有
+        //     → PhaseState によらず合法化(WaitingForDraw / WaitingForPlay のいずれでも)
+        //     ただし WaitingForCounterResponse は対象外(相手ターン中の応答フェーズで PendingCounteredEffects を持つ可能性があり、
+        //     EndTurn による強制破棄を避ける、code-reviewer W-3 反映 2026-05-17)。
+        //     通常プレイ時は (2) が false で従来通り (1) のみ合法、ゲームバランス維持。
+        private static bool IsLegalEndTurn(DrowZzzGameSession session)
+        {
+            if (session.PhaseState == DrowZzzPhaseState.WaitingForEndTurn)
+            {
+                return true;
+            }
+            // WaitingForCounterResponse は相手ターン中の反撃応答フェーズ。current プレイヤーが stuck Marker を
+            // 保有していても EndTurn を許可しない(PendingCounteredEffects の強制破棄リスク回避、ADR-0021 §設計意図)。
+            if (session.PhaseState == DrowZzzPhaseState.WaitingForCounterResponse)
+            {
+                return false;
+            }
+            int currentIndex = session.GameState.Turn.CurrentPlayerIndex;
+            var currentPlayerId = session.GameState.Players[currentIndex].Id;
+            return HasAnyStuckCausingInfluence(session.Influences[currentPlayerId]);
         }
 
         // AssociateAction の合法性(M3-PR4、ADR-0011 §1、JIT 確定 2026-05-13):
@@ -514,6 +557,43 @@ namespace Drowsy.Application.Games.DrowZzz
             for (int i = 0; i < influences.Count; i++)
             {
                 if (influences[i].TickEffect is RestrictAllUsageAndAbandonInfluenceMarkerEffect)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // 対象プレイヤーの Influences に RestrictDrawCardInfluenceMarkerEffect を TickEffect として持つものが
+        // あるかを判定する(No.10「安直過ぎる一手」、2026-05-17 / ADR-0021 と同 PR)。
+        // DrawCardAction の IsLegalMove 経路で current player の influences を walk する用途。
+        private static bool HasRestrictDrawCardInfluence(IReadOnlyList<PlayerInfluence> influences)
+        {
+            for (int i = 0; i < influences.Count; i++)
+            {
+                if (influences[i].TickEffect is RestrictDrawCardInfluenceMarkerEffect)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // 現プレイヤーが「stuck 化を引き起こす Marker」を 1 つでも保有しているかを判定する(ADR-0021)。
+        // PhaseState の遷移経路を構造的にブロックする Marker(現状 2 種類):
+        //  - RestrictAllUsageAndAbandonInfluenceMarkerEffect(No.09):WaitingForPlay 脱出経路を両方封鎖
+        //  - RestrictDrawCardInfluenceMarkerEffect(No.10):WaitingForDraw 脱出経路を封鎖
+        // 本ヘルパーが true を返す状態のとき、EndTurnAction を全フェーズで合法化することで stuck を回避する(脱出弁)。
+        // 判定軸は PlayerInfluence.TickEffect の具体型(is チェック、ホワイトリスト方式)。
+        // 将来 stuck 化 Marker が TickEffect ではなく別フィールドや別 effect 階層で表現されるケースが出た場合は、
+        // 本 is チェック + ADR-0021 §「stuck 化を引き起こす Marker」リストを同時に更新する(code-reviewer S-5 反映 2026-05-17)。
+        private static bool HasAnyStuckCausingInfluence(IReadOnlyList<PlayerInfluence> influences)
+        {
+            for (int i = 0; i < influences.Count; i++)
+            {
+                var e = influences[i].TickEffect;
+                if (e is RestrictAllUsageAndAbandonInfluenceMarkerEffect
+                    || e is RestrictDrawCardInfluenceMarkerEffect)
                 {
                     return true;
                 }
@@ -1276,11 +1356,12 @@ namespace Drowsy.Application.Games.DrowZzz
         // (InfluenceTrigger.OwnPhaseStart、ADR-0007 §1.5)。
         private DrowZzzGameSession ApplyEndTurn(DrowZzzGameSession session)
         {
-            // 防御的 IsLegalMove 検証
-            if (session.PhaseState != DrowZzzPhaseState.WaitingForEndTurn)
+            // 防御的 IsLegalMove 検証(ADR-0021:IsLegalEndTurn と整合、stuck 化 Marker 保有時は全フェーズで合法)
+            if (!IsLegalEndTurn(session))
             {
                 throw new InvalidOperationException(
-                    $"EndTurnAction は WaitingForEndTurn フェーズでのみ合法です (現フェーズ: {session.PhaseState})");
+                    "EndTurnAction は WaitingForEndTurn フェーズ、または stuck 化 Marker(No.09/No.10)保有時のみ合法です " +
+                    $"(現フェーズ: {session.PhaseState}、ADR-0021)");
             }
 
             // M3-PR5c: PendingCounteredEffects の未消化エントリを自ターン終了時に一括破棄(ADR-0011 §4.4 / JIT 確定 2026-05-12)。

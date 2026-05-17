@@ -75,6 +75,13 @@ MonoBehaviour:
     - rid: 8832664195353804970
     - rid: 8832664195353804971
     - rid: 8832664195353804972
+  - _cardIdValue: 10
+    _name: "\u5B89\u76F4\u904E\u304E\u308B\u4E00\u624B"
+    _attributes: []
+    _effects:
+    - rid: 8832664195353804980
+    - rid: 8832664195353804981
+    - rid: 8832664195353804982
   references:
     version: 2
     RefIds:
@@ -466,4 +473,26 @@ MonoBehaviour:
           _remainingCount: 1
     - rid: 8832664195353804973
       type: {class: RestrictAllUsageAndAbandonInfluenceMarkerEffectAsset, ns: Drowsy.Infrastructure.Games.DrowZzz.Effects, asm: Drowsy.Infrastructure}
+      data:
+    - rid: 8832664195353804980
+      type: {class: AdjustSdpEffectAsset, ns: Drowsy.Infrastructure.Games.DrowZzz.Effects, asm: Drowsy.Infrastructure}
+      data:
+        _target: 0
+        _delta: -10
+    - rid: 8832664195353804981
+      type: {class: DamageBedEffectAsset, ns: Drowsy.Infrastructure.Games.DrowZzz.Effects, asm: Drowsy.Infrastructure}
+      data:
+        _target: 1
+        _percent: 30
+    - rid: 8832664195353804982
+      type: {class: ApplyInfluenceEffectAsset, ns: Drowsy.Infrastructure.Games.DrowZzz.Effects, asm: Drowsy.Infrastructure}
+      data:
+        _target: 1
+        _influence:
+          _trigger: 0
+          _tickEffect:
+            rid: 8832664195353804983
+          _remainingCount: 1
+    - rid: 8832664195353804983
+      type: {class: RestrictDrawCardInfluenceMarkerEffectAsset, ns: Drowsy.Infrastructure.Games.DrowZzz.Effects, asm: Drowsy.Infrastructure}
       data:
