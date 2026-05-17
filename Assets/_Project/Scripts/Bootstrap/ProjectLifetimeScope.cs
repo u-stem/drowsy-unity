@@ -57,10 +57,12 @@ namespace Drowsy.Bootstrap
         /// M5 動作確認用の簡易デッキで catalog 登録カード 1 種あたりに並べる枚数。
         /// </summary>
         /// <remarks>
-        /// catalog 登録カード(M4 時点で 3 種)を各 <see cref="CopiesPerCardForM5Deck"/> 枚並べて
-        /// <c>initialDeck</c> を組み立てる。N=2 × MaxRound 21 × 1 Draw = 42 + 初期配布 10 = 52 枚を賄える値。
-        /// 本物の 56 枚デッキ構成(<c>docs/specs/games/drowzzz/setup.md</c> §定数依存)は Phase 3 で
-        /// カードデータが揃った時点で別途実装する(M5-PR4 着手時 JIT 確定 2026-05-14)。
+        /// catalog 登録カード(Phase 2 完結後 4 種:No.00 / No.01 / No.02 / No.03)を各
+        /// <see cref="CopiesPerCardForM5Deck"/> 枚並べて <c>initialDeck</c> を組み立てる。
+        /// N=2 × MaxRound 21 × 1 Draw = 42 + 初期配布 10 = 52 枚を賄える値。4 種 × 20 枚 = 80 枚で余裕 28 枚。
+        /// 本物の 56 枚デッキ構成(<c>docs/specs/games/drowzzz/setup.md</c> §定数依存、カードごとの初期山札枚数を
+        /// honor する形式)は Phase 3 でカードデータが揃った時点で別途実装する
+        /// (M5-PR4 着手時 JIT 確定 2026-05-14、Phase 2 完結後の新規カード追加で本数値関係を再確認 2026-05-17)。
         /// </remarks>
         private const int CopiesPerCardForM5Deck = 20;
 
