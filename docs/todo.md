@@ -248,14 +248,12 @@
     - ⬜ 削減効果が顕著(数 MB 以上)なら粒度調整版を適用、効果軽微なら現状維持 + 本 TODO を完了済みへ移動
   - **Related**: post-Phase2 レビュー D-WebGL / Infra W-6、ADR-0012、`Assets/_Project/Scripts/Infrastructure/link.xml`、`docs/architecture/webgl-il2cpp-verification.md`、本 TODO 更新 PR(chore/post-phase2-allocation-followups、2026-05-17)
 
-- [ ] **`Properties/AssemblyInfo.cs` への `[assembly: InternalsVisibleTo]` 分離(衛生的整理)** `priority: low`
-  - **Why**: post-Phase2 アルゴリズム最適化レビュー Top-2 着手(2026-05-16)で `Drowsy.Domain` に `InternalsVisibleTo` を追加する際、Unity Editor の Auto-refresh で `Assets/_Project/Scripts/Domain/AssemblyInfo.cs` を csproj に取り込ませる時間を待たず、`GameState.cs` 冒頭に直接 `[assembly: InternalsVisibleTo(...)]` を書く暫定措置を採用。衛生的には `Properties/AssemblyInfo.cs` に分離するのが理想
-  - **Done when**:
-    - ⬜ `Assets/_Project/Scripts/Domain/Properties/AssemblyInfo.cs` を新規作成し `[assembly: InternalsVisibleTo(...)]` を移動
-    - ⬜ Unity Editor で Asset Auto-refresh を発火させて csproj に反映
-    - ⬜ `GameState.cs` 冒頭の assembly attribute を削除
-    - ⬜ dotnet build 0 警告 / 0 エラー確認
-  - **Related**: post-Phase2 レビュー Top-2 着手 PR、`GameState.cs:5-13`、Unity Editor Auto-refresh 制約(memory「Unity Auto-refresh requires Editor focus」)
+<!-- 「Properties/AssemblyInfo.cs への [assembly: InternalsVisibleTo] 分離(衛生的整理)」は
+     chore/post-phase2-allocation-followups PR(2026-05-17)で完全クローズ:
+     - Properties/AssemblyInfo.cs 新設
+     - Unity Editor focus → Auto-refresh → csproj 取り込み確認
+     - GameState.cs 冒頭の暫定 attribute 削除
+     - dotnet build 0 警告 / 0 エラー -->
 
 - [ ] **`ArgumentNullException` の `ParamName` 検証強化(init setter 例外メッセージ品質と連動)** `priority: low`
   - **Why**: post-Phase2 全体レビュー(2026-05-16)の Tests W-1 で「80 件超の `ArgumentNullException` テストが `ParamName` を検証していない → コンストラクタ引数順を入れ替えてもテストが通る」と指摘。ただし `DrowZzzGameSession` 等が init setter 経由で例外を投げる設計で `ParamName` が常に `"value"` 固定のため、`ParamName` assert を追加しても識別力が出ない。Domain W-5(`init => _x = value ?? throw new ArgumentNullException(nameof(value))` → `nameof(X)` に修正)を先行させてから Tests 側を強化する必要がある

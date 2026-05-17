@@ -1,17 +1,9 @@
 using System;
 using System.Collections.Generic;
-using System.Runtime.CompilerServices;
 using Drowsy.Domain.Cards;
 using Drowsy.Domain.Players;
 
-// post-Phase2 アルゴリズム最適化レビュー Top-2 反映:
-// Drowsy.Application が GameState.WithPlayersUnchecked / internal ctor を呼べるよう InternalsVisibleTo を許可する。
-// 衛生的には Properties/AssemblyInfo.cs に分離するのが理想だが、Unity Editor の Auto-refresh が必要なため
-// 暫定措置として本 namespace ファイル内に同居させる(C# 文法上 assembly attribute は任意の .cs ファイルに置ける)。
-// 将来 Properties/AssemblyInfo.cs への移行は docs/todo.md で追跡。
-[assembly: InternalsVisibleTo("Drowsy.Application")]
-[assembly: InternalsVisibleTo("Drowsy.Domain.Tests")]
-[assembly: InternalsVisibleTo("Drowsy.Application.Tests")]
+// `[assembly: InternalsVisibleTo]` は Properties/AssemblyInfo.cs に集約済(2026-05-17 #5 post-Phase2 残対応)。
 
 namespace Drowsy.Domain.Game
 {

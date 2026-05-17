@@ -28,8 +28,11 @@ for file in "$@"; do
 
   # 例外: Compat/ は BCL 不足を補う互換 polyfill 置き場のため仕様駆動の対象外
   # (採用根拠: docs/adr/0004-init-setter-polyfill.md)
+  # 例外: Properties/ は assembly attribute(InternalsVisibleTo 等)置き場のため仕様駆動の対象外
+  # (post-Phase2 #5 残対応で Properties/AssemblyInfo.cs を追加した際に整理、2026-05-17)
   case "$file" in
     Assets/_Project/Scripts/Domain/Compat/*) continue ;;
+    Assets/_Project/Scripts/Domain/Properties/*) continue ;;
   esac
 
   # 例: Assets/_Project/Scripts/Domain/Cards/Pile.cs → docs/specs/domain/cards/
