@@ -1,6 +1,6 @@
 using System.Linq;
-using NUnit.Framework;
 using Drowsy.Application.Games.DrowZzz;
+using NUnit.Framework;
 
 namespace Drowsy.Application.Tests.Stubs
 {

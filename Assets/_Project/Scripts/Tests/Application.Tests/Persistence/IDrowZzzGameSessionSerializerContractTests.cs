@@ -2,10 +2,10 @@ using System;
 using System.IO;
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using NUnit.Framework;
 using Drowsy.Application.Games.DrowZzz;
 using Drowsy.Application.Persistence;
 using Drowsy.Application.Tests.Stubs;
+using NUnit.Framework;
 using static Drowsy.Application.Tests.Stubs.SessionFactory;
 
 namespace Drowsy.Application.Tests.Persistence

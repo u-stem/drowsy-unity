@@ -1,6 +1,6 @@
 using System;
-using Newtonsoft.Json;
 using Drowsy.Domain.Players;
+using Newtonsoft.Json;
 
 namespace Drowsy.Infrastructure.Persistence.Converters
 {

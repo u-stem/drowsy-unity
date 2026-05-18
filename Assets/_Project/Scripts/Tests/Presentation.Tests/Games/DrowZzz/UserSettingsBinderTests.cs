@@ -1,8 +1,8 @@
 using System;
-using NUnit.Framework;
-using UnityEngine.UIElements;
 using Drowsy.Domain.Configuration;
 using Drowsy.Presentation.Games.DrowZzz;
+using NUnit.Framework;
+using UnityEngine.UIElements;
 
 namespace Drowsy.Presentation.Tests.Games.DrowZzz
 {

@@ -1,11 +1,11 @@
 using System.Collections.Generic;
-using NUnit.Framework;
-using UnityEngine;
 using Drowsy.Application.Catalog;
 using Drowsy.Application.Games.DrowZzz.Effects;
 using Drowsy.Domain.Cards;
 using Drowsy.Infrastructure.Games.DrowZzz;
 using Drowsy.Infrastructure.Games.DrowZzz.Effects;
+using NUnit.Framework;
+using UnityEngine;
 // NUnit と UnityEngine の双方が PropertyAttribute を提供するため曖昧参照を回避する type alias
 // (M4-PR1 で確立、両 using 必須、`csharp-nunit-unityengine-property-conflict` memory 永続化済)
 using Property = NUnit.Framework.PropertyAttribute;

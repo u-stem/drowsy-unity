@@ -1,14 +1,14 @@
 using System;
 using System.Collections.Generic;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using NUnit.Framework;
 using Drowsy.Application.Games.DrowZzz;
 using Drowsy.Application.Games.DrowZzz.Influences;
 using Drowsy.Domain.Game;
 using Drowsy.Domain.Players;
 using Drowsy.Infrastructure.Persistence;
 using Drowsy.Infrastructure.Persistence.Models;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using NUnit.Framework;
 
 namespace Drowsy.Infrastructure.Tests.Persistence
 {

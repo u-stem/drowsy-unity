@@ -1,12 +1,12 @@
 using System.Collections.Generic;
-using NUnit.Framework;
-using UnityEngine;
 using Drowsy.Application.Catalog;
 using Drowsy.Application.Games.DrowZzz;
 using Drowsy.Application.Games.DrowZzz.Effects;
 using Drowsy.Domain.Cards;
 using Drowsy.Infrastructure.Games.DrowZzz;
 using Drowsy.Infrastructure.Games.DrowZzz.Effects;
+using NUnit.Framework;
+using UnityEngine;
 using Property = NUnit.Framework.PropertyAttribute;
 
 namespace Drowsy.Infrastructure.Tests.Games.DrowZzz.Cards

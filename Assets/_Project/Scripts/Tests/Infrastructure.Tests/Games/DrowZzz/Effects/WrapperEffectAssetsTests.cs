@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
-using NUnit.Framework;
-using UnityEngine;
 using Drowsy.Application.Games.DrowZzz.Effects;
 using Drowsy.Infrastructure.Games.DrowZzz.Effects;
+using NUnit.Framework;
+using UnityEngine;
 using Property = NUnit.Framework.PropertyAttribute;
 
 namespace Drowsy.Infrastructure.Tests.Games.DrowZzz.Effects

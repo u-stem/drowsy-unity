@@ -1,6 +1,6 @@
 using System;
-using NUnit.Framework;
 using Drowsy.Domain.Game;
+using NUnit.Framework;
 
 namespace Drowsy.Domain.Tests.Game
 {

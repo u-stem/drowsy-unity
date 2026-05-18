@@ -1,8 +1,8 @@
 using System;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using Drowsy.Domain.Game;
 using Drowsy.Domain.Players;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Drowsy.Infrastructure.Persistence.Converters
 {

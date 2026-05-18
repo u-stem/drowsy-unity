@@ -1,7 +1,7 @@
-using NUnit.Framework;
-using Newtonsoft.Json;
 using Drowsy.Application.Games.DrowZzz;
 using Drowsy.Infrastructure.Persistence;
+using Newtonsoft.Json;
+using NUnit.Framework;
 
 namespace Drowsy.Infrastructure.Tests.Persistence
 {

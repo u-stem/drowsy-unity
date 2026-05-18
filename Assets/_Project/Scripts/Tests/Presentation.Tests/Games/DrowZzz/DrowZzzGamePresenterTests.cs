@@ -1,12 +1,12 @@
 using System;
 using System.Linq;
-using NUnit.Framework;
 using Drowsy.Application.Games.DrowZzz;
 using Drowsy.Application.Tests.Stubs;
 using Drowsy.Domain.Cards;
 using Drowsy.Domain.Game;
 using Drowsy.Domain.Players;
 using Drowsy.Presentation.Games.DrowZzz;
+using NUnit.Framework;
 using static Drowsy.Application.Tests.Stubs.SessionFactory;
 
 namespace Drowsy.Presentation.Tests.Games.DrowZzz

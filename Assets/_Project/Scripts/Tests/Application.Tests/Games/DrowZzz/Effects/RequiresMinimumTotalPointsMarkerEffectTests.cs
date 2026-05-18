@@ -1,8 +1,8 @@
 using System;
-using NUnit.Framework;
 using Drowsy.Application.Games.DrowZzz;
 using Drowsy.Application.Games.DrowZzz.Effects;
 using Drowsy.Application.Tests.Stubs;
+using NUnit.Framework;
 
 namespace Drowsy.Application.Tests.Games.DrowZzz.Effects
 {

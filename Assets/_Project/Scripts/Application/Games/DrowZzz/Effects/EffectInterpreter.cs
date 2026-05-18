@@ -77,7 +77,7 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
                 // M2-PR3: 夜・朝で効果列を切り替えるラッパー(ADR-0008 §8 JIT 確定)
                 TimeOfDayBranchEffect branch => ApplyTimeOfDayBranch(session, branch, context),
                 // M2-PR5: 継続影響(ADR-0007 §1.5)の付与 / 除去
-                ApplyInfluenceEffect apply => ApplyApplyInfluence(session, apply),
+                ApplyInfluenceEffect apply => ApplyApplyInfluence(session, apply, context),
                 RemoveInfluenceEffect remove => ApplyRemoveInfluence(session, remove, context),
                 // M3-PR1: 早期勝利トリガー(ADR-0010 §5、夜 + 持ち点 ≥ 100 で WinnerOutcome 設定)
                 EarlyWinTriggerEffect _ => ApplyEarlyWinTrigger(session),
@@ -148,7 +148,7 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
                 // 2026-05-17 No.16「自分勝手な審判」:対象プレイヤーの Influences.Count で分岐し、
                 // Count <= Threshold なら InfluenceToApply を末尾追加、Count > Threshold なら全 Influence を一括除去。
                 // 両経路は排他(オーナー JIT:Clear パスは Apply と排他)。
-                ConditionalApplyOrClearInfluencesEffect e => ApplyConditionalApplyOrClearInfluences(session, e),
+                ConditionalApplyOrClearInfluencesEffect e => ApplyConditionalApplyOrClearInfluences(session, e, context),
                 // M3-PR5a: キーワード能力を inner effect に付与するラッパー(ADR-0011 §4)。Keywords 自体は判別用属性で
                 // 副作用を持たず、Inner effect を context 込みで再帰的に Apply するだけ。
                 // Instinct は AbandonAction.IsLegalMove で利用、Frenzy / Counter は M3-PR5b 以降で機構化。
@@ -156,6 +156,11 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
                 // Inner を実行する」暫定挙動を取る。M3-PR5b で PlayCardAction.Apply 側で Counter 付き効果を skip する機構を
                 // 追加した時点で、本 case はそのまま継続(skip 判定は呼び出し側の責務、interpreter は意味論上 Inner を Apply)。
                 KeywordedEffect kw => Apply(session, kw.Inner, context),
+
+                // ADR-0023 / No.18「対抗手段」:Echo 効果のマーカー。実評価は `DrowZzzRule.ApplyPlayCard` の
+                // 専用ヘルパー(ApplyEchoReuse)で行うため、interpreter 経由では no-op。
+                // Reuse 中の OriginEffects 再評価で本 effect を踏んでも何も起きない(再帰防止を兼ねる、ADR-0023 §5)。
+                ReuseInfluenceSourceEffect _ => session,
 
                 _ => throw new NotImplementedException(
                     $"EffectInterpreter.Apply ({effect.GetType().Name}) は本実装範囲では到達不可。" +
@@ -271,14 +276,19 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
         // 両経路は排他(オーナー JIT:Clear パスは Apply と排他、Clear 後に Apply しない)。
         private static DrowZzzGameSession ApplyConditionalApplyOrClearInfluences(
             DrowZzzGameSession session,
-            ConditionalApplyOrClearInfluencesEffect effect)
+            ConditionalApplyOrClearInfluencesEffect effect,
+            EffectContext context)
         {
             var targetId = ResolveTargetPlayerId(session, effect.Target);
             int influenceCount = session.Influences[targetId].Count;
             var newDict = new Dictionary<PlayerId, IReadOnlyList<PlayerInfluence>>(session.Influences.Count);
             if (influenceCount <= effect.Threshold)
             {
-                // Apply 経路:既存 Influences の末尾に InfluenceToApply を追加
+                // Apply 経路:既存 Influences の末尾に InfluenceToApply を追加(ADR-0023 OriginEffects 動的注入)
+                var influenceToAdd = effect.InfluenceToApply with
+                {
+                    OriginEffects = context.CurrentCardEffects ?? Array.Empty<IEffect>(),
+                };
                 foreach (var kv in session.Influences)
                 {
                     if (kv.Key.Equals(targetId))
@@ -288,7 +298,7 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
                         {
                             newList[i] = kv.Value[i];
                         }
-                        newList[kv.Value.Count] = effect.InfluenceToApply;
+                        newList[kv.Value.Count] = influenceToAdd;
                         newDict[kv.Key] = newList;
                     }
                     else
@@ -471,10 +481,13 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
                     "(IsLegalPlayCard で防御されているはずの経路)。");
             }
             var targetId = ResolveTargetPlayerId(session, effect.Target);
+            // ADR-0023 OriginEffects 動的注入:context.CurrentCardEffects を新規 Influence の OriginEffects に詰める
+            // (context.CurrentCardEffects が null = Tick / Reactive / Reuse 経路なら空 list で連鎖防止)
             var restrictionInfluence = new Drowsy.Application.Games.DrowZzz.Influences.PlayerInfluence(
                 Drowsy.Application.Games.DrowZzz.Influences.InfluenceTrigger.OwnPhaseStart,
                 new RestrictSpecificCardInfluenceEffect(context.TargetCardId.TypeId),
-                effect.RemainingCount);
+                effect.RemainingCount,
+                context.CurrentCardEffects ?? Array.Empty<IEffect>());
             var newInfluences = new Dictionary<PlayerId, IReadOnlyList<Drowsy.Application.Games.DrowZzz.Influences.PlayerInfluence>>(session.Influences.Count);
             foreach (var kv in session.Influences)
             {
@@ -556,9 +569,16 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
 
         // ApplyInfluenceEffect の評価: Target が指す playerId の影響 list 末尾に effect.Influence を追加する。
         // M2-PR5、ADR-0007 §1.5「継続影響」JIT 確定。重複付与許容(同じ影響を 2 回付与すると 2 件の独立インスタンスになる)。
-        private static DrowZzzGameSession ApplyApplyInfluence(DrowZzzGameSession session, ApplyInfluenceEffect effect)
+        // ADR-0023 で OriginEffects 動的注入を追加:context.CurrentCardEffects(=現在評価中のカードの効果列スナップショット)を
+        // 影響の OriginEffects に詰める。Tick / Reactive / Reuse 経路など context.CurrentCardEffects が null の場合は空 list 注入
+        // (No.18 Reuse からの連鎖を防止)。
+        private static DrowZzzGameSession ApplyApplyInfluence(DrowZzzGameSession session, ApplyInfluenceEffect effect, EffectContext context)
         {
             var targetId = ResolveTargetPlayerId(session, effect.Target);
+            var influenceToAdd = effect.Influence with
+            {
+                OriginEffects = context.CurrentCardEffects ?? Array.Empty<IEffect>(),
+            };
             var newInfluences = new Dictionary<PlayerId, IReadOnlyList<PlayerInfluence>>(session.Influences.Count);
             foreach (var kv in session.Influences)
             {
@@ -570,7 +590,7 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
                     {
                         newList[i] = kv.Value[i];
                     }
-                    newList[kv.Value.Count] = effect.Influence;
+                    newList[kv.Value.Count] = influenceToAdd;
                     newInfluences[kv.Key] = newList;
                 }
                 else

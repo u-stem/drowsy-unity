@@ -1,8 +1,8 @@
 using System.Collections.Generic;
-using NUnit.Framework;
 using Drowsy.Application;
 using Drowsy.Application.Games.DrowZzz.Effects;
 using Drowsy.Domain.Cards;
+using NUnit.Framework;
 
 namespace Drowsy.Application.Tests
 {

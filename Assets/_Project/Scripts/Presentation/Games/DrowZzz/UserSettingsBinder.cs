@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
+using Drowsy.Domain.Configuration;
 using R3;
 using UnityEngine.UIElements;
-using Drowsy.Domain.Configuration;
 
 namespace Drowsy.Presentation.Games.DrowZzz
 {

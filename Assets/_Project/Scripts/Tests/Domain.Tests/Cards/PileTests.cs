@@ -1,8 +1,8 @@
 using System;
 using System.Linq;
-using NUnit.Framework;
 using Drowsy.Domain.Cards;
 using Drowsy.Domain.Random;
+using NUnit.Framework;
 
 namespace Drowsy.Domain.Tests.Cards
 {

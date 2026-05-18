@@ -1,8 +1,5 @@
 using System;
 using System.Collections.Generic;
-using UnityEngine;
-using VContainer;
-using VContainer.Unity;
 using Drowsy.Application;
 using Drowsy.Application.Games.DrowZzz;
 using Drowsy.Application.Games.DrowZzz.Effects;
@@ -15,6 +12,9 @@ using Drowsy.Infrastructure.Configuration;
 using Drowsy.Infrastructure.Games.DrowZzz;
 using Drowsy.Infrastructure.Persistence;
 using Drowsy.Infrastructure.Settings;
+using UnityEngine;
+using VContainer;
+using VContainer.Unity;
 
 namespace Drowsy.Bootstrap
 {
@@ -57,13 +57,13 @@ namespace Drowsy.Bootstrap
         /// M5 動作確認用の簡易デッキで catalog 登録カード 1 種あたりに並べる枚数。
         /// </summary>
         /// <remarks>
-        /// catalog 登録カード(Phase 2 完結後 18 種:No.00 / No.01 / No.02 / No.03 / No.04 / No.05 / No.06 / No.07 / No.08 / No.09 / No.10 / No.11 / No.12 / No.13 / No.14 / No.15 / No.16 / No.17)を各
+        /// catalog 登録カード(Phase 2 完結後 19 種:No.00 / No.01 / No.02 / No.03 / No.04 / No.05 / No.06 / No.07 / No.08 / No.09 / No.10 / No.11 / No.12 / No.13 / No.14 / No.15 / No.16 / No.17 / No.18)を各
         /// <see cref="CopiesPerCardForM5Deck"/> 枚並べて <c>initialDeck</c> を組み立てる。
-        /// N=2 × MaxRound 21 × 1 Draw = 42 + 初期配布 10 = 52 枚を賄える値。18 種 × 20 枚 = 360 枚で余裕 308 枚。
+        /// N=2 × MaxRound 21 × 1 Draw = 42 + 初期配布 10 = 52 枚を賄える値。19 種 × 20 枚 = 380 枚で余裕 328 枚。
         /// 本物の 56 枚デッキ構成(<c>docs/specs/games/drowzzz/setup.md</c> §定数依存、カードごとの初期山札枚数を
         /// honor する形式)は Phase 3 でカードデータが揃った時点で別途実装する
         /// (M5-PR4 着手時 JIT 確定 2026-05-14、Phase 2 完結後の新規カード追加で本数値関係を再確認、
-        /// No.04 / No.05 各 2 枚 2026-05-17、No.06 = 1 枚 2026-05-17、No.07 = 1 枚 / No.08 = 3 枚 2026-05-17、No.09 = 2 枚 2026-05-17、No.10 = 2 枚 2026-05-17、No.11 = 1 枚 2026-05-17、No.12 = 2 枚 2026-05-17、No.13 / No.14 / No.15 各 2 枚 2026-05-17、No.16 = 1 枚 2026-05-17、No.17 = 3 枚 2026-05-18)。
+        /// No.04 / No.05 各 2 枚 2026-05-17、No.06 = 1 枚 2026-05-17、No.07 = 1 枚 / No.08 = 3 枚 2026-05-17、No.09 = 2 枚 2026-05-17、No.10 = 2 枚 2026-05-17、No.11 = 1 枚 2026-05-17、No.12 = 2 枚 2026-05-17、No.13 / No.14 / No.15 各 2 枚 2026-05-17、No.16 = 1 枚 2026-05-17、No.17 = 3 枚 2026-05-18、No.18 = 3 枚 2026-05-18)。
         /// <para>
         /// <b>カード追加時のコメント更新コスト</b>:本コメントは catalog 登録カード列挙形式のため、新規カード追加
         /// PR ごとに手動更新が必要(card-reviewer P-3 反映 2026-05-17、No.05 PR で 3 度目の同型更新)。Phase 3

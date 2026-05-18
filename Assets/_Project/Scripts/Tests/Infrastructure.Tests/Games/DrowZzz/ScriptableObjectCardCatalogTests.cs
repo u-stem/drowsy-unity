@@ -1,12 +1,12 @@
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
-using NUnit.Framework;
-using UnityEngine;
-using UnityEngine.TestTools;
 using Drowsy.Application.Games.DrowZzz.Effects;
 using Drowsy.Domain.Cards;
 using Drowsy.Infrastructure.Games.DrowZzz;
 using Drowsy.Infrastructure.Games.DrowZzz.Effects;
+using NUnit.Framework;
+using UnityEngine;
+using UnityEngine.TestTools;
 // NUnit と UnityEngine の双方が PropertyAttribute を提供するため曖昧参照を回避する type alias
 // (Application.Tests / Domain.Tests は UnityEngine を import しないため不要だったが、本 Infrastructure.Tests は
 // Drowsy.Infrastructure 経由で UnityEngine が transitive に入ってくる + 直接 ScriptableObject / Debug / LogType を

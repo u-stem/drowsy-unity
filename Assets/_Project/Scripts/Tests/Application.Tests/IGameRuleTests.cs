@@ -1,7 +1,7 @@
 using System;
-using NUnit.Framework;
 using Drowsy.Application;
 using Drowsy.Domain.Players;
+using NUnit.Framework;
 
 namespace Drowsy.Application.Tests
 {

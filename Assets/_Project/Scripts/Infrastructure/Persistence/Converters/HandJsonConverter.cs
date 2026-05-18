@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
-using Newtonsoft.Json;
 using Drowsy.Domain.Cards;
+using Newtonsoft.Json;
 
 namespace Drowsy.Infrastructure.Persistence.Converters
 {

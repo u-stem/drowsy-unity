@@ -1,5 +1,5 @@
-using NUnit.Framework;
 using Drowsy.Domain.Configuration;
+using NUnit.Framework;
 
 namespace Drowsy.Domain.Tests.Configuration
 {

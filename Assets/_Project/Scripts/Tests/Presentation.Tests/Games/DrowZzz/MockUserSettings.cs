@@ -1,6 +1,6 @@
 using System;
-using R3;
 using Drowsy.Domain.Configuration;
+using R3;
 
 namespace Drowsy.Presentation.Tests.Games.DrowZzz
 {

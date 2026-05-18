@@ -4,11 +4,11 @@
 // NUnit.Framework.PropertyAttribute / UnityEngine.PropertyAttribute の CS1614 を回避。
 using System;
 using System.Collections.Generic;
+using Drowsy.Domain.Configuration;
+using Drowsy.Infrastructure.Settings;
 using NUnit.Framework;
 using R3;
 using UnityEngine;
-using Drowsy.Domain.Configuration;
-using Drowsy.Infrastructure.Settings;
 using Property = NUnit.Framework.PropertyAttribute;
 
 namespace Drowsy.Infrastructure.Tests.Settings
