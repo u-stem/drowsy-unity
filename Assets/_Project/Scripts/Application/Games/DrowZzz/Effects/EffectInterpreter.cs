@@ -167,6 +167,12 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
                 // 等と同パターン)。本 marker 持ちカードは Bootstrap.BuildInitialDeck からも除外される(共通山札 0 枚)。
                 AssociateToFirstPlayerOnGameStartEffect _ => session,
 
+                // ADR-0025 / No.20「至上の喜び」:プレイ時 / 放棄時を分岐する wrapper。実評価は
+                // `DrowZzzRule.ApplyPlayCard`(PlayEffects unwrap)+ `DrowZzzRule.ApplyAbandon`(AbandonEffects unwrap)の
+                // 2 評価層で行うため、interpreter 経由では no-op(`ChoiceEffect` / `TimeOfDayBranchEffect` と同じ
+                // 「rule 評価層で unwrap される wrapper」パターン)。
+                PlayOrAbandonBranchEffect _ => session,
+
                 _ => throw new NotImplementedException(
                     $"EffectInterpreter.Apply ({effect.GetType().Name}) は本実装範囲では到達不可。" +
                     "ChoiceEffect は DrowZzzRule.ApplyPlayCard で unwrap されるため interpreter には届かない設計。" +

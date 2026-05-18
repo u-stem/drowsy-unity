@@ -362,6 +362,24 @@ namespace Drowsy.Infrastructure.Tests.Persistence
         }
 
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "INF-050")]
+        public void Given_PlayOrAbandonBranchEffect_When_RoundTrip_Then_等価()
+        {
+            // No.20「至上の喜び」(ADR-0025):TimeOfDayBranchEffect と同パターンの 2 list wrapper round-trip
+            var original = new PlayOrAbandonBranchEffect(
+                playEffects: new IEffect[]
+                {
+                    new AdjustSdpEffect(SdpTarget.Self, +20),
+                    new AdjustSdpEffect(SdpTarget.Opponent, -20),
+                },
+                abandonEffects: new IEffect[]
+                {
+                    new AdjustSdpEffect(SdpTarget.Self, +4),
+                    new AdjustSdpEffect(SdpTarget.Opponent, +6),
+                });
+            Assert.That(RoundTrip(original), Is.EqualTo(original));
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "INF-050")]
         public void Given_ApplyInfluenceEffectでOriginEffectsあり_When_RoundTrip_Then_OriginEffectsも復元される()
         {
             // Given:Influence の OriginEffects に AdjustSdpEffect 1 件を持たせる(ADR-0023、PlayerInfluenceJsonConverter 経路)
