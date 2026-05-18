@@ -883,15 +883,33 @@ namespace Drowsy.Application.Games.DrowZzz
                     $"DrowZzzRule.ApplyAbandon: 未知の AbandonChoice ({action.Choice})、将来 enum 拡張時に case 追加"),
             };
 
+            // (3) ADR-0025:放棄したカードに `PlayOrAbandonBranchEffect` が含まれていれば AbandonEffects を追加発動
+            // (AbandonChoice 適用後の累積モデル、AbandonChoice を上書きしない)。
+            // 走査スコープは最上位 effects のみ(wrapper 内側は再帰しない、ADR-0024 と同方針)。
+            // context は EffectContext.Default(=CurrentCardEffects=null)で、放棄時付与の Influence は OriginEffects 空 list
+            // (ADR-0023 連鎖 Reuse 防止と同方針、放棄時の Reuse はカード仕様として想定外)。
+            var afterAbandonEffects = afterChoice;
+            var abandonedEffects = _catalog.GetEffects(discardCard.TypeId);
+            foreach (var effect in abandonedEffects)
+            {
+                if (effect is PlayOrAbandonBranchEffect po)
+                {
+                    foreach (var inner in po.AbandonEffects)
+                    {
+                        afterAbandonEffects = _interpreter.Apply(afterAbandonEffects, inner, EffectContext.Default);
+                    }
+                }
+            }
+
             // ADR-0022:Reactive Tick walk(`OnOwnAbandonAfter` トリガー)。
             // preInfluencesSnapshot に対して walk するため、本 Abandon で新規付与された影響は対象外。
             // 終了済 session(将来 Abandon 経路で Outcome 確定が入った場合のリグレッション防御、
             // code-reviewer W-2 反映 2026-05-17、`ApplyPlayCard` と対称)。
-            if (afterChoice.IsTerminated)
+            if (afterAbandonEffects.IsTerminated)
             {
-                return afterChoice;
+                return afterAbandonEffects;
             }
-            return ApplyReactiveInfluencesAfter(afterChoice, preInfluencesSnapshot, InfluenceTrigger.OnOwnAbandonAfter);
+            return ApplyReactiveInfluencesAfter(afterAbandonEffects, preInfluencesSnapshot, InfluenceTrigger.OnOwnAbandonAfter);
         }
 
         // AbandonChoice.GainSdp の処理: 現プレイヤーの SDP を AbandonSdpGain(+5) だけ増やす
@@ -1031,6 +1049,15 @@ namespace Drowsy.Application.Games.DrowZzz
                     // 本プレイヤー Self 起点で再 EffectInterpreter + 選択 Influence を除去。
                     // IsLegalMove で範囲チェック済(本カード No.18 をプレイする時点で Influences 空 / Choice 範囲外は illegal)。
                     currentSession = ApplyEchoReuse(currentSession, currentIndex, action.Choice);
+                }
+                else if (effect is PlayOrAbandonBranchEffect po)
+                {
+                    // ADR-0025:プレイ時 / 放棄時の分岐 wrapper。プレイ経路では PlayEffects のみ unwrap して逐次評価。
+                    // AbandonEffects は ApplyAbandon 経路で別途処理される(本ループでは無視)。
+                    foreach (var inner in po.PlayEffects)
+                    {
+                        currentSession = _interpreter.Apply(currentSession, inner, context);
+                    }
                 }
                 else if (effect is ChoiceEffect ce)
                 {

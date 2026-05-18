@@ -47,6 +47,7 @@ namespace Drowsy.Infrastructure.Persistence.Converters
     /// <item><c>ConditionalApplyOrClearInfluences</c>(<see cref="ConditionalApplyOrClearInfluencesEffect"/>、No.16「自分勝手な審判」2026-05-17)</item>
     /// <item><c>ReuseInfluenceSource</c>(<see cref="ReuseInfluenceSourceEffect"/>、No.18「対抗手段」2026-05-18、ADR-0023 Echo キーワード初導入)</item>
     /// <item><c>AssociateToFirstPlayerOnGameStart</c>(<see cref="AssociateToFirstPlayerOnGameStartEffect"/>、No.19「絶対障壁」2026-05-18、ADR-0024 ゲーム開始時自動連想 marker)</item>
+    /// <item><c>PlayOrAbandonBranch</c>(<see cref="PlayOrAbandonBranchEffect"/>、No.20「至上の喜び」2026-05-18、ADR-0025 プレイ時 / 放棄時分岐 wrapper)</item>
     /// </list>
     /// </para>
     /// <para>
@@ -250,6 +251,15 @@ namespace Drowsy.Infrastructure.Persistence.Converters
                     writer.WriteValue("AssociateToFirstPlayerOnGameStart");
                     break;
 
+                case PlayOrAbandonBranchEffect e:
+                    // ADR-0025 / No.20「至上の喜び」:プレイ時 / 放棄時の分岐 wrapper(TimeOfDayBranch と同パターン)。
+                    writer.WriteValue("PlayOrAbandonBranch");
+                    writer.WritePropertyName("playEffects");
+                    WriteEffectList(writer, e.PlayEffects, serializer);
+                    writer.WritePropertyName("abandonEffects");
+                    WriteEffectList(writer, e.AbandonEffects, serializer);
+                    break;
+
                 default:
                     throw new JsonSerializationException(
                         $"未対応の IEffect 派生型: {value.GetType().FullName}。新しい派生型は EffectJsonConverter に case 追加が必要");
@@ -358,6 +368,10 @@ namespace Drowsy.Infrastructure.Persistence.Converters
                 "ReuseInfluenceSource" => new ReuseInfluenceSourceEffect(),
 
                 "AssociateToFirstPlayerOnGameStart" => new AssociateToFirstPlayerOnGameStartEffect(),
+
+                "PlayOrAbandonBranch" => new PlayOrAbandonBranchEffect(
+                    ReadEffectList(jo["playEffects"], serializer, fieldName: "playEffects"),
+                    ReadEffectList(jo["abandonEffects"], serializer, fieldName: "abandonEffects")),
 
                 _ => throw new JsonSerializationException(
                     $"未知の IEffect 'type' discriminator: '{typeName}'。EffectJsonConverter に case 追加が必要"),
