@@ -387,6 +387,7 @@ namespace Drowsy.Application.Games.DrowZzz
             var effects = _catalog.GetEffects(action.Card.TypeId);
             bool hasUsageRestrictionMarker = false;
             bool hasApplyTargetedRestriction = false;
+            bool hasReuseEffect = false;
             StackHandCardOnDeckTopEffect stackHandOnDeckEffect = null;
             foreach (var e in effects)
             {
@@ -422,6 +423,27 @@ namespace Drowsy.Application.Games.DrowZzz
                     // No.05「喧騒を纏う」系:プレイ時に action.TargetCardId が必須 + Source プレイヤーの手札所持検証
                     // (2026-05-17 で導入)。Source は record フィールドのため後段の検証で参照する。
                     stackHandOnDeckEffect = stack;
+                }
+                else if (IsReuseEffectMarker(e))
+                {
+                    // ADR-0023 / No.18「対抗手段」:Echo 効果は現プレイヤーの保有 Influence を選択して再使用するため、
+                    // (1) 現プレイヤーの Influences が空でないこと
+                    // (2) action.Choice が Influences の範囲内であること
+                    // を必須とする。本 flag を立てて後段でまとめて検証(Influences[currentPlayerId] の一回参照に集約)。
+                    hasReuseEffect = true;
+                }
+            }
+            // ADR-0023:Echo 効果カード(No.18 等)の追加検証
+            if (hasReuseEffect)
+            {
+                var currentInfluences = session.Influences[currentPlayerId];
+                if (currentInfluences.Count == 0)
+                {
+                    return false;  // 無対象なら使えない
+                }
+                if (action.Choice < 0 || action.Choice >= currentInfluences.Count)
+                {
+                    return false;  // Choice 範囲外
                 }
             }
             // 連想後使用制限チェック:カード側が marker を持ち、かつ自プレイヤーが該当 Influence を保有している時のみ illegal。
@@ -998,11 +1020,19 @@ namespace Drowsy.Application.Games.DrowZzz
             //         EffectContext(InfluenceRemovalIndex) を interpreter に thread し、RemoveInfluenceEffect に届ける。
             // 2026-05-17 PR ②: TargetCardId を context に thread し、ApplyTargetedRestrictionEffect に届ける(No.04「静寂を纏う」)。
             var rawEffects = _catalog.GetEffects(action.Card.TypeId);
-            var context = new EffectContext(action.InfluenceRemovalIndex, action.TargetCardId);
+            // ADR-0023:CurrentCardEffects を context に詰めて、Influence 付与経路で OriginEffects を動的注入する。
+            var context = new EffectContext(action.InfluenceRemovalIndex, action.TargetCardId, rawEffects);
             var currentSession = afterPlay;
             foreach (var effect in rawEffects)
             {
-                if (effect is ChoiceEffect ce)
+                if (IsReuseEffectMarker(effect))
+                {
+                    // ADR-0023:Echo 解決経路。現プレイヤーの保有 Influence[action.Choice] の OriginEffects を
+                    // 本プレイヤー Self 起点で再 EffectInterpreter + 選択 Influence を除去。
+                    // IsLegalMove で範囲チェック済(本カード No.18 をプレイする時点で Influences 空 / Choice 範囲外は illegal)。
+                    currentSession = ApplyEchoReuse(currentSession, currentIndex, action.Choice);
+                }
+                else if (effect is ChoiceEffect ce)
                 {
                     // IsLegalMove で範囲チェック済。防御的に再検証して範囲外は InvalidOperationException で明示
                     if (action.Choice < 0 || action.Choice >= ce.Branches.Count)
@@ -1050,6 +1080,105 @@ namespace Drowsy.Application.Games.DrowZzz
                 return currentSession;
             }
             return ApplyReactiveInfluencesAfter(currentSession, preInfluencesSnapshot, InfluenceTrigger.OnOwnPlayCardAfter);
+        }
+
+        // ADR-0023:Echo 効果マーカー判別(直接 or `KeywordedEffect` 越し)。
+        // 本カード No.18「対抗手段」は `KeywordedEffect([Echo], ReuseInfluenceSourceEffect)` 構造で、
+        // 効果列 walk 内で本判別が true なら通常 EffectInterpreter ではなく `ApplyEchoReuse` を呼ぶ。
+        private static bool IsReuseEffectMarker(IEffect effect)
+        {
+            return effect is ReuseInfluenceSourceEffect
+                || (effect is KeywordedEffect kw && IsReuseEffectMarker(kw.Inner));
+        }
+
+        // ADR-0023:Echo 解決ヘルパー。
+        // (1) 現プレイヤーの保有 Influence[choice] を取得
+        // (2) その OriginEffects を Self 起点(= current = 本カード使用者)で再 EffectInterpreter
+        //     - `ChoiceEffect` → `Branches[0]` 固定
+        //     - `KeywordedEffect` → Inner 再帰
+        //     - `ReuseInfluenceSourceEffect` → no-op(再帰防止)
+        //     - その他 → 通常 EffectInterpreter.Apply(context.CurrentCardEffects = null で連鎖 Reuse 防止)
+        // (3) 現プレイヤーの Influences から index の影響を除去(consume、再使用しなくても 1 回限り)
+        // 防御:range check は `IsLegalPlayCard` で済の前提だが、ここでも InvalidOperationException で明示。
+        private DrowZzzGameSession ApplyEchoReuse(DrowZzzGameSession session, int currentIndex, int choice)
+        {
+            var currentId = session.GameState.Players[currentIndex].Id;
+            var influences = session.Influences.TryGetValue(currentId, out var infs)
+                ? infs
+                : System.Array.Empty<PlayerInfluence>();
+            if (choice < 0 || choice >= influences.Count)
+            {
+                throw new InvalidOperationException(
+                    $"ApplyEchoReuse: PlayCardAction.Choice ({choice}) は Influences (count={influences.Count}) の範囲外です " +
+                    "(IsLegalPlayCard で防御されているはずの経路、ADR-0023 §6)");
+            }
+            var selected = influences[choice];
+            // OriginEffects を Reuse 評価(CurrentCardEffects = null で連鎖 Reuse 防止、ADR-0023 §5)
+            var reuseContext = EffectContext.Default;
+            var current = session;
+            foreach (var origin in selected.OriginEffects)
+            {
+                current = ApplyReuseEffect(current, origin, reuseContext);
+            }
+            // 選択 Influence を除去(Reuse 評価で新規 Influence が末尾追加されている可能性があるため、
+            // 除去対象 list は Reuse 後の current.Influences[currentId] から取る。
+            // 末尾追加 invariant により、元 index `choice` の要素は Reuse 後も同じ index に位置する)
+            // **将来の保守**:OriginEffects 内に `RemoveInfluenceEffect(Self)` が含まれると(現カード No.02 等の
+            // `RemoveInfluenceEffect(Opponent)` 経路は影響なしだが)前置除去で index が前にシフトし、本除去が
+            // 別の Influence を消す経路が発生する。Phase 3 以降で `RemoveInfluenceEffect(Self)` を直接
+            // OriginEffects に持つカードが追加された時点で、選択 Influence の参照保持 + 参照同等性比較に切り替え要(ADR-0023 §「Phase 3 候補」)。
+            var currentInfluencesAfterReuse = current.Influences.TryGetValue(currentId, out var afterInfs)
+                ? afterInfs
+                : System.Array.Empty<PlayerInfluence>();
+            int afterRemovalCount = currentInfluencesAfterReuse.Count - 1;
+            var newList = afterRemovalCount == 0
+                ? (IReadOnlyList<PlayerInfluence>)System.Array.Empty<PlayerInfluence>()
+                : new PlayerInfluence[afterRemovalCount];
+            if (afterRemovalCount > 0)
+            {
+                int dst = 0;
+                for (int i = 0; i < currentInfluencesAfterReuse.Count; i++)
+                {
+                    if (i == choice)
+                    {
+                        continue;
+                    }
+                    ((PlayerInfluence[])newList)[dst++] = currentInfluencesAfterReuse[i];
+                }
+            }
+            var newInfluences = new Dictionary<PlayerId, IReadOnlyList<PlayerInfluence>>(current.Influences.Count);
+            foreach (var kv in current.Influences)
+            {
+                newInfluences[kv.Key] = kv.Key.Equals(currentId) ? newList : kv.Value;
+            }
+            return current with { Influences = newInfluences };
+        }
+
+        // ADR-0023:Reuse 中の単一 effect 評価(再帰)。
+        // `ChoiceEffect` は `Branches[0]` 固定、`KeywordedEffect` は Inner 再帰、`ReuseInfluenceSourceEffect` は no-op。
+        // それ以外は通常 EffectInterpreter.Apply に委譲(reuseContext.CurrentCardEffects = null で連鎖 Reuse 防止)。
+        private DrowZzzGameSession ApplyReuseEffect(DrowZzzGameSession session, IEffect effect, EffectContext reuseContext)
+        {
+            switch (effect)
+            {
+                case ReuseInfluenceSourceEffect _:
+                    return session;
+                case ChoiceEffect ce:
+                    {
+                        var current = session;
+                        // Reuse 中の ChoiceEffect は Branches[0] 固定(ADR-0023 §5 簡素化、Phase 3 候補で再評価)。
+                        // 構築時に Branches.Count >= 2 が保証されているため Branches[0] 参照は常に安全。
+                        foreach (var inner in ce.Branches[0])
+                        {
+                            current = ApplyReuseEffect(current, inner, reuseContext);
+                        }
+                        return current;
+                    }
+                case KeywordedEffect kw:
+                    return ApplyReuseEffect(session, kw.Inner, reuseContext);
+                default:
+                    return _interpreter.Apply(session, effect, reuseContext);
+            }
         }
 
         // ADR-0022:Reactive Influence Tick walk。

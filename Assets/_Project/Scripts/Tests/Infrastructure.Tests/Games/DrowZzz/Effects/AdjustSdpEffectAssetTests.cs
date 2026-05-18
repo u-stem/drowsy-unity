@@ -1,7 +1,7 @@
-using NUnit.Framework;
-using UnityEngine;
 using Drowsy.Application.Games.DrowZzz.Effects;
 using Drowsy.Infrastructure.Games.DrowZzz.Effects;
+using NUnit.Framework;
+using UnityEngine;
 // NUnit と UnityEngine の双方が PropertyAttribute を提供するため曖昧参照を回避する type alias
 // (M4-PR1 で確立、`csharp-nunit-unityengine-property-conflict` memory 永続化済)。
 // 注:`using UnityEngine;` を直接書かないと CS1614(`[Property(...)]` の `Attribute` suffix 補完で

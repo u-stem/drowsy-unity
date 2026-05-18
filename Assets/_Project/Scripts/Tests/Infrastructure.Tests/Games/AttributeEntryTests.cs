@@ -1,5 +1,5 @@
-using NUnit.Framework;
 using Drowsy.Infrastructure.Games.DrowZzz;
+using NUnit.Framework;
 
 namespace Drowsy.Infrastructure.Tests.Games
 {

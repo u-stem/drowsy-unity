@@ -1,7 +1,7 @@
 using System;
+using Drowsy.Domain.Configuration;
 using R3;
 using UnityEngine;
-using Drowsy.Domain.Configuration;
 
 // InternalsVisibleTo("Drowsy.Infrastructure.Tests") は Infrastructure/AssemblyInfo.cs に
 // 集約済(M4-PR4 確立)、本ファイルでの重複定義は不要。

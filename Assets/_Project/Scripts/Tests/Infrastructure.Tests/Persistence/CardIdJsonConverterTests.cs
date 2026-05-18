@@ -1,7 +1,7 @@
-using NUnit.Framework;
-using Newtonsoft.Json;
 using Drowsy.Domain.Cards;
 using Drowsy.Infrastructure.Persistence;
+using Newtonsoft.Json;
+using NUnit.Framework;
 // 本ファイルは UnityEngine を import しない(ScriptableObject 等の依存なし)。
 // `using Property = NUnit.Framework.PropertyAttribute` alias も不採用
 // (`EffectJsonConverterTests.cs` 冒頭コメントと同じ理由、CS1614 を避ける)。

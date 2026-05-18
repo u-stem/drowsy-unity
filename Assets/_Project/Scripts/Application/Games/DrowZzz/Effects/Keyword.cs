@@ -39,5 +39,13 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
         /// (`CounterAction` / `WaitingForCounterResponse` PhaseState 追加)。
         /// </summary>
         Counter,
+
+        /// <summary>
+        /// Echo(反響):「受けている影響を 1 つ選び、その発生源カードを再使用する」効果属性(ADR-0023、No.18 で初導入)。
+        /// 判別用属性で評価時は副作用なし(<see cref="KeywordedEffect"/> 経由で <c>Inner</c> を逐次評価するのみ)。
+        /// 本 enum 値は将来同種カード追加時の汎用判別用に <c>HasKeywordInEffects(effects, Echo)</c> で利用可能。
+        /// 実際の Reuse 動作は <see cref="ReuseInfluenceSourceEffect"/> + <c>DrowZzzRule.ApplyPlayCard</c> の専用ヘルパーで実装。
+        /// </summary>
+        Echo,
     }
 }

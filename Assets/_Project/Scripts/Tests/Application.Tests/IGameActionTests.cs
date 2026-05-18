@@ -1,5 +1,5 @@
-using NUnit.Framework;
 using Drowsy.Application;
+using NUnit.Framework;
 
 namespace Drowsy.Application.Tests
 {

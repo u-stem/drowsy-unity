@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using NUnit.Framework;
 using Drowsy.Application.Games.DrowZzz;
 using Drowsy.Application.Tests.Stubs;
 using Drowsy.Domain.Cards;
@@ -9,6 +8,7 @@ using Drowsy.Domain.Configuration;
 using Drowsy.Domain.Game;
 using Drowsy.Domain.Players;
 using Drowsy.Domain.Random;
+using NUnit.Framework;
 
 namespace Drowsy.Application.Tests.Games.DrowZzz
 {

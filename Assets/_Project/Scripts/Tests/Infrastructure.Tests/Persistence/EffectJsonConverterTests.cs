@@ -1,11 +1,11 @@
 using System.Collections.Generic;
-using NUnit.Framework;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using Drowsy.Application.Games.DrowZzz.Effects;
 using Drowsy.Application.Games.DrowZzz.Influences;
 using Drowsy.Domain.Cards;
 using Drowsy.Infrastructure.Persistence;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using NUnit.Framework;
 // 本ファイルは UnityEngine を import しない(ScriptableObject 等の依存なし、code-reviewer W-1 反映)。
 // `using Property = NUnit.Framework.PropertyAttribute` alias は不採用:
 // alias と `using NUnit.Framework;` 経由で import される `NUnit.Framework.Property`(class)が
@@ -341,6 +341,53 @@ namespace Drowsy.Infrastructure.Tests.Persistence
             Assert.That(
                 () => JsonConvert.DeserializeObject<IEffect>(json, Settings),
                 Throws.TypeOf<JsonSerializationException>().With.Message.Contains("nightEffects"));
+        }
+
+        // ===== INF-050(ADR-0023 追加分):ReuseInfluenceSourceEffect + PlayerInfluence(OriginEffects あり)=====
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "INF-050")]
+        public void Given_ReuseInfluenceSourceEffect_When_RoundTrip_Then_等価()
+        {
+            // No.18「対抗手段」(ADR-0023):フィールドなし marker、`{"type":"ReuseInfluenceSource"}` の最小 JSON
+            var original = new ReuseInfluenceSourceEffect();
+            Assert.That(RoundTrip(original), Is.EqualTo(original));
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "INF-050")]
+        public void Given_ApplyInfluenceEffectでOriginEffectsあり_When_RoundTrip_Then_OriginEffectsも復元される()
+        {
+            // Given:Influence の OriginEffects に AdjustSdpEffect 1 件を持たせる(ADR-0023、PlayerInfluenceJsonConverter 経路)
+            var originEffects = new IEffect[] { new AdjustSdpEffect(SdpTarget.Self, +7) };
+            var original = new ApplyInfluenceEffect(
+                Target: SdpTarget.Self,
+                Influence: new PlayerInfluence(
+                    Trigger: InfluenceTrigger.OwnPhaseStart,
+                    TickEffect: new AdjustSdpEffect(SdpTarget.Self, 1),
+                    RemainingCount: 3,
+                    OriginEffects: originEffects));
+
+            // When
+            var restored = (ApplyInfluenceEffect)RoundTrip(original);
+
+            // Then(Equals は OriginEffects 対象外なので等値だけでは検証不十分、OriginEffects.Count と中身を直接 assert)
+            Assert.That(restored, Is.EqualTo(original));  // Trigger/TickEffect/RemainingCount 一致
+            Assert.That(restored.Influence.OriginEffects.Count, Is.EqualTo(1));
+            Assert.That(restored.Influence.OriginEffects[0], Is.EqualTo(originEffects[0]));
+        }
+
+        [Test, Category("Small"), Category("SemiNormal"), Property("Requirement", "INF-050")]
+        public void Given_PlayerInfluenceでOriginEffectsキー欠落の旧JSON_When_Deserialize_Then_OriginEffects空list()
+        {
+            // Given:旧 v1 JSON (OriginEffects キー欠落)を直接 deserialize(ADR-0023 §8 後方互換)
+            const string json = "{\"type\": \"ApplyInfluence\", \"target\": \"Self\", \"influence\": "
+                + "{\"Trigger\": \"OwnPhaseStart\", \"TickEffect\": {\"type\": \"AdjustSdp\", \"target\": \"Self\", \"delta\": 1}, "
+                + "\"RemainingCount\": 3}}";
+
+            // When
+            var restored = (ApplyInfluenceEffect)JsonConvert.DeserializeObject<IEffect>(json, Settings);
+
+            // Then(OriginEffects は Array.Empty フォールバック)
+            Assert.That(restored.Influence.OriginEffects.Count, Is.EqualTo(0));
         }
     }
 }

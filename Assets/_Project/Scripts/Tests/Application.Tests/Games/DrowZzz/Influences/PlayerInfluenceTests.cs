@@ -1,7 +1,7 @@
 using System;
-using NUnit.Framework;
 using Drowsy.Application.Games.DrowZzz.Effects;
 using Drowsy.Application.Games.DrowZzz.Influences;
+using NUnit.Framework;
 
 namespace Drowsy.Application.Tests.Games.DrowZzz.Influences
 {

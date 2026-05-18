@@ -1,7 +1,7 @@
-using NUnit.Framework;
 using Drowsy.Application.Games.DrowZzz;
 using Drowsy.Application.Games.DrowZzz.Effects;
 using Drowsy.Domain.Players;
+using NUnit.Framework;
 using static Drowsy.Application.Tests.Stubs.SessionFactory;
 
 namespace Drowsy.Application.Tests.Games.DrowZzz.Effects

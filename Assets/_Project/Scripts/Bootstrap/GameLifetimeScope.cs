@@ -1,7 +1,7 @@
-using VContainer;
-using VContainer.Unity;
 using Drowsy.Application.Games.DrowZzz;
 using Drowsy.Presentation.Games.DrowZzz;
+using VContainer;
+using VContainer.Unity;
 
 namespace Drowsy.Bootstrap
 {

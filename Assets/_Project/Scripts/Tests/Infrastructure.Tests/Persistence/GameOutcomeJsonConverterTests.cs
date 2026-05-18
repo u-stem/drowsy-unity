@@ -1,8 +1,8 @@
-using NUnit.Framework;
-using Newtonsoft.Json;
 using Drowsy.Domain.Game;
 using Drowsy.Domain.Players;
 using Drowsy.Infrastructure.Persistence;
+using Newtonsoft.Json;
+using NUnit.Framework;
 // 本ファイルは UnityEngine を import しない(ScriptableObject 等の依存なし、code-reviewer W-1 反映)。
 // `using Property = NUnit.Framework.PropertyAttribute` alias は不採用:
 // alias と `using NUnit.Framework;` 経由で import される `NUnit.Framework.Property`(class)が

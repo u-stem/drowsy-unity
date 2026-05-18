@@ -119,6 +119,11 @@ MonoBehaviour:
     _attributes: []
     _effects:
     - rid: 8832664195353805300
+  - _cardIdValue: 18
+    _name: "\u5BFE\u6297\u624B\u6BB5"
+    _attributes: []
+    _effects:
+    - rid: 8832664195353805400
   references:
     version: 2
     RefIds:
@@ -791,3 +796,12 @@ MonoBehaviour:
       data:
         _target: 0
         _delta: 0
+    - rid: 8832664195353805400
+      type: {class: KeywordedEffectAsset, ns: Drowsy.Infrastructure.Games.DrowZzz.Effects, asm: Drowsy.Infrastructure}
+      data:
+        _keywords: 03000000
+        _inner:
+          rid: 8832664195353805401
+    - rid: 8832664195353805401
+      type: {class: ReuseInfluenceSourceEffectAsset, ns: Drowsy.Infrastructure.Games.DrowZzz.Effects, asm: Drowsy.Infrastructure}
+      data: {}

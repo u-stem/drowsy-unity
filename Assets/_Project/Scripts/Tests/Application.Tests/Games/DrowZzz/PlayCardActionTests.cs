@@ -1,7 +1,7 @@
 using System;
-using NUnit.Framework;
 using Drowsy.Application.Games.DrowZzz;
 using Drowsy.Domain.Cards;
+using NUnit.Framework;
 
 namespace Drowsy.Application.Tests.Games.DrowZzz
 {

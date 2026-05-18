@@ -1,10 +1,10 @@
 using System;
 using System.Reflection;
+using Drowsy.Application.Games.DrowZzz;
+using Drowsy.Infrastructure.Configuration;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
-using Drowsy.Application.Games.DrowZzz;
-using Drowsy.Infrastructure.Configuration;
 // NUnit と UnityEngine の双方が PropertyAttribute を提供するため曖昧参照を回避する type alias
 // (M4-PR1 で確立、両 using 必須、`csharp-nunit-unityengine-property-conflict` memory 永続化済)
 using Property = NUnit.Framework.PropertyAttribute;

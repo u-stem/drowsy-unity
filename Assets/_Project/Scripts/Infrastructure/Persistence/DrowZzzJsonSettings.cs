@@ -1,7 +1,7 @@
+using Drowsy.Infrastructure.Persistence.Converters;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Serialization;
-using Drowsy.Infrastructure.Persistence.Converters;
 
 namespace Drowsy.Infrastructure.Persistence
 {
@@ -25,8 +25,10 @@ namespace Drowsy.Infrastructure.Persistence
     /// カスタム JsonConverter で plain string / array 化(JSON 容量と可読性を優先)</item>
     /// <item>enum(<c>DrowZzzPhaseState</c> / <c>InfluenceTrigger</c> / <c>SdpTarget</c> / <c>Keyword</c>)は
     /// <see cref="StringEnumConverter"/> で名前 serialize(後方互換性 + 可読性)</item>
-    /// <item>record (<c>TurnState</c> / <c>PlayerState</c> / <c>GameState</c> / <c>PlayerInfluence</c> / <c>PendingCounteredEffect</c> /
+    /// <item>record (<c>TurnState</c> / <c>PlayerState</c> / <c>GameState</c> / <c>PendingCounteredEffect</c> /
     /// 12 IEffect 派生型 / <c>PersistedSessionV1</c>)は positional ctor の自動解決 + PascalCase property 名で round-trip</item>
+    /// <item><c>PlayerInfluence</c> は専用 <c>PlayerInfluenceJsonConverter</c> 経由(ADR-0023、OriginEffects 追加で複数 ctor になり
+    /// Newtonsoft 自動 ctor 選択が失敗するため、専用 converter で PascalCase schema + 旧 v1 JSON 後方互換を制御)</item>
     /// </list>
     /// </para>
     /// </remarks>
@@ -62,6 +64,9 @@ namespace Drowsy.Infrastructure.Persistence
             settings.Converters.Add(new PileJsonConverter());
             settings.Converters.Add(new HandJsonConverter());
             settings.Converters.Add(new DdpPoolJsonConverter());
+
+            // PlayerInfluence の専用 converter(ADR-0023、複数 ctor で Newtonsoft 標準経路が ctor 自動選択に失敗する問題の解消)
+            settings.Converters.Add(new PlayerInfluenceJsonConverter());
 
             // polymorphic 型 converter(discriminator 方式)
             settings.Converters.Add(new EffectJsonConverter());
