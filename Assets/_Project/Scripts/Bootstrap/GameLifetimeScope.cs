@@ -17,8 +17,8 @@ namespace Drowsy.Bootstrap
     /// <para>
     /// <b>登録対象</b>(ADR-0016 §2 登録対象表):
     /// <list type="bullet">
-    /// <item><see cref="StartGameUseCase"/> — Game Singleton、ADR-0014 で 2 引数 ctor 化済
-    /// (<c>IRandomSource</c> / <c>IGameConfig</c> は Project スコープから解決)</item>
+    /// <item><see cref="StartGameUseCase"/> — Game Singleton、ADR-0014 で 2 引数 ctor 化 → ADR-0024 で 3 引数 ctor に再拡張
+    /// (<c>IRandomSource</c> / <c>IGameConfig</c> / <c>ICardCatalog&lt;IEffect&gt;</c> は Project スコープから解決)</item>
     /// <item><see cref="ApplyActionUseCase"/> — Game Singleton、ctor で <see cref="DrowZzzRule"/> を Project から解決</item>
     /// <item><see cref="DrowZzzGamePresenter"/> — Game Singleton、<c>AsImplementedInterfaces()</c> で
     /// <c>IStartable</c>(Boot 時 <c>Start()</c> 自動起動)/ <c>IDisposable</c>(スコープ Dispose 時解放)として登録、

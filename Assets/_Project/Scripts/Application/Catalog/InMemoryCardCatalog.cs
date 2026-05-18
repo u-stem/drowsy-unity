@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Drowsy.Application.Games.DrowZzz.Effects;
 using Drowsy.Domain.Cards;
 
@@ -120,5 +121,14 @@ namespace Drowsy.Application.Catalog
             }
             return _effects.TryGetValue(typeId, out var list) ? list : EmptyEffects;
         }
+
+        /// <inheritdoc />
+        /// <remarks>
+        /// ADR-0024 で追加。`_store` の Keys を防御コピーした immutable collection を返す
+        /// (`_store` 変更後も外部の enumerator が壊れないように `ToList` でスナップショット化)。
+        /// 順序は entries の登録順(Dictionary 挿入順、.NET の Dictionary は挿入順保持を契約していないが
+        /// 実用上安定、テストでは順序非依存に書くこと)。
+        /// </remarks>
+        public IReadOnlyCollection<CardTypeId> RegisteredCardTypeIds => _store.Keys.ToList();
     }
 }

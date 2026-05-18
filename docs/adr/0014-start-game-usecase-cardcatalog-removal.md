@@ -107,3 +107,4 @@ ADR-0001 で確立した Status 語彙(`Proposed` / `Accepted` / `Rejected` / `W
 - 起点: [`docs/todo.md`](../todo.md)「`StartGameUseCase` から未使用の `ICardCatalog` 依存削除を検討する」(本 ADR で完了処理)
 - 関連: [`Assets/_Project/Scripts/Application/Games/DrowZzz/StartGameUseCase.cs`](../../Assets/_Project/Scripts/Application/Games/DrowZzz/StartGameUseCase.cs) — 実装本体
 - 関連: [ADR-0005 Phase 2 Roadmap](0005-phase2-roadmap-drowzzz.md) — M5 Bootstrap で DI 統合時に本 ADR の 2 引数 constructor を直接利用
+- 関連: [ADR-0024](./0024-associate-to-first-player-on-game-start.md) — 本 ADR を **部分的に覆す**(ゲーム開始時自動連想 marker `AssociateToFirstPlayerOnGameStartEffect` 導入により `ICardCatalog<IEffect>` 依存を再追加、2026-05-18)。本 ADR §「将来 `StartGameUseCase` がカード情報を必要とする変更が発生した場合のリスク」で予告した再評価条件に該当。本 ADR の Status は **Accepted のまま維持**(精神=dead 依存の排除 は維持される、ADR-0024 で再追加された catalog は live 依存になるため)

@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Drowsy.Application;
+using Drowsy.Application.Games.DrowZzz.Effects;
 using Drowsy.Application.Games.DrowZzz.Influences;
 using Drowsy.Domain.Cards;
 using Drowsy.Domain.Configuration;
@@ -26,8 +28,10 @@ namespace Drowsy.Application.Games.DrowZzz
     /// </list>
     /// <para>
     /// ADR-0014 で <c>ICardCatalog&lt;IEffect&gt;</c> 依存を削除(M4 完了時の再評価で ADR-0006 §3 / ADR-0007 §3 を更新)。
-    /// 本 UseCase は <see cref="CardId"/> の移動のみ扱い <see cref="CardData"/> / <c>IEffect</c> を一切参照しないため、
-    /// constructor injection から外し dead 依存を解消した。
+    /// その後 ADR-0024(2026-05-18、No.19「絶対障壁」)で <c>ICardCatalog&lt;IEffect&gt;</c> 依存を **再追加**。
+    /// 「ゲーム開始時、先行プレイヤーへの自動連想」(<see cref="AssociateToFirstPlayerOnGameStartEffect"/> marker)を
+    /// 検出するため catalog 全 entry の最上位 effects 列を scan する必要が生じたため(ADR-0014 §「再評価条件」の妥当な契機、
+    /// ADR-0024 §「ADR-0014 との関係」)。
     /// </para>
     /// </remarks>
     public sealed class StartGameUseCase
@@ -39,12 +43,14 @@ namespace Drowsy.Application.Games.DrowZzz
 
         private readonly IRandomSource _rng;
         private readonly IGameConfig _config;
+        private readonly ICardCatalog<IEffect> _catalog;
 
         /// <exception cref="ArgumentNullException">いずれかの引数が null</exception>
-        public StartGameUseCase(IRandomSource rng, IGameConfig config)
+        public StartGameUseCase(IRandomSource rng, IGameConfig config, ICardCatalog<IEffect> catalog)
         {
             _rng = rng ?? throw new ArgumentNullException(nameof(rng));
             _config = config ?? throw new ArgumentNullException(nameof(config));
+            _catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
         }
 
         /// <summary>
@@ -88,6 +94,23 @@ namespace Drowsy.Application.Games.DrowZzz
                     var (drawn, remaining) = deck.Draw();
                     hands[i] = hands[i].Add(drawn);
                     deck = remaining;
+                }
+            }
+
+            // 3.5. ADR-0024:ゲーム開始時自動連想(先行プレイヤー= shuffledPlayers[0] へ)。
+            // catalog 全 entry の最上位 effects 列を scan して `AssociateToFirstPlayerOnGameStartEffect` を持つカードを抽出、
+            // CardId.Of(typeId, 0) で先行プレイヤーの Hand に Add し、AssociatedCardIds(ADR-0019)にも記録。
+            // 重複検出は Hand.Add の HAND-005 不変条件で自動防御(本経路は instance=0 固定、初期配布で同 typeId が
+            // 配られていても TypeId が同じだけで instance が異なるため衝突しない、ADR-0018 整合)。
+            var initialAssociatedCardIds = new HashSet<CardId>();
+            foreach (var typeId in _catalog.RegisteredCardTypeIds)
+            {
+                var effects = _catalog.GetEffects(typeId);
+                if (HasFirstPlayerAssociationEffectInTopLevel(effects))
+                {
+                    var newCardId = CardId.Of(typeId, 0);
+                    hands[0] = hands[0].Add(newCardId);
+                    initialAssociatedCardIds.Add(newCardId);
                 }
             }
 
@@ -137,7 +160,24 @@ namespace Drowsy.Application.Games.DrowZzz
                 // M3-PR1: 新規セッションは未終了(ADR-0010 §3)
                 outcome: null,
                 // M3-PR2: 全プレイヤーの BedDamages を 0% で初期化(ADR-0011 §3)
-                bedDamages: bedDamagesDict, System.Array.Empty<PendingCounteredEffect>());
+                bedDamages: bedDamagesDict, System.Array.Empty<PendingCounteredEffect>(),
+                // ADR-0024: ゲーム開始時自動連想されたカード ID(ADR-0019 連想由来記録、空でも明示的に渡す)
+                associatedCardIds: initialAssociatedCardIds);
+        }
+
+        // ADR-0024 ヘルパー:カードの最上位 effects 列に `AssociateToFirstPlayerOnGameStartEffect` が含まれるか。
+        // wrapper 内側(KeywordedEffect.Inner / TimeOfDayBranchEffect.Night|MorningEffects / ChoiceEffect.Branches)は
+        // 走査しない(`AssociatableMarkerEffect` / `RequiresMinimumTotalPointsMarkerEffect` と同方針、ADR-0024 §2)。
+        private static bool HasFirstPlayerAssociationEffectInTopLevel(IReadOnlyList<IEffect> effects)
+        {
+            for (int i = 0; i < effects.Count; i++)
+            {
+                if (effects[i] is AssociateToFirstPlayerOnGameStartEffect)
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         // 引数検証を 1 メソッドに集約(out で fdpPool を返し本体ロジックの再アクセスを省略)

@@ -354,6 +354,14 @@ namespace Drowsy.Infrastructure.Tests.Persistence
         }
 
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "INF-050")]
+        public void Given_AssociateToFirstPlayerOnGameStartEffect_When_RoundTrip_Then_等価()
+        {
+            // No.19「絶対障壁」(ADR-0024):フィールドなし marker、`{"type":"AssociateToFirstPlayerOnGameStart"}` の最小 JSON
+            var original = new AssociateToFirstPlayerOnGameStartEffect();
+            Assert.That(RoundTrip(original), Is.EqualTo(original));
+        }
+
+        [Test, Category("Small"), Category("Normal"), Property("Requirement", "INF-050")]
         public void Given_ApplyInfluenceEffectでOriginEffectsあり_When_RoundTrip_Then_OriginEffectsも復元される()
         {
             // Given:Influence の OriginEffects に AdjustSdpEffect 1 件を持たせる(ADR-0023、PlayerInfluenceJsonConverter 経路)

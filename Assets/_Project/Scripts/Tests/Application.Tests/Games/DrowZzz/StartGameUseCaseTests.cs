@@ -1,7 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Drowsy.Application;
+using Drowsy.Application.Catalog;
 using Drowsy.Application.Games.DrowZzz;
+using Drowsy.Application.Games.DrowZzz.Effects;
 using Drowsy.Application.Tests.Stubs;
 using Drowsy.Domain.Cards;
 using Drowsy.Domain.Configuration;
@@ -32,14 +35,37 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             return new Pile(cards);
         }
 
-        // ADR-0014: StartGameUseCase の ICardCatalog<IEffect> 依存削除に伴い catalog 引数を除去。
+        // ADR-0014: ICardCatalog<IEffect> 依存削除 → ADR-0024 で再追加(2026-05-18、No.19「絶対障壁」の開始時自動連想機構)。
+        // テスト用にデフォルトでは空 InMemoryCardCatalog を渡し、AssociateToFirstPlayerOnGameStartEffect は発動しない。
+        // 開始時連想を検証するテスト(DZ-390〜393)では catalog 引数に専用 catalog を渡す。
         private static StartGameUseCase NewUseCase(
             IRandomSource rng = null,
-            IGameConfig config = null)
+            IGameConfig config = null,
+            ICardCatalog<IEffect> catalog = null)
         {
             return new StartGameUseCase(
                 rng ?? new XorShiftRandom(DefaultSeed),
-                config ?? new StubGameConfig());
+                config ?? new StubGameConfig(),
+                catalog ?? new InMemoryCardCatalog(Array.Empty<KeyValuePair<CardTypeId, CardData>>()));
+        }
+
+        // ADR-0024 開始時連想検証用:catalog に Card "19"(AssociateToFirstPlayerOnGameStartEffect 持ち)を含むヘルパー
+        private static InMemoryCardCatalog NewCatalogWithCard19()
+        {
+            var typeId = CardTypeId.Of("19");
+            var entries = new[]
+            {
+                new KeyValuePair<CardTypeId, CardData>(typeId, new CardData("絶対障壁", new Dictionary<string, int>())),
+            };
+            var effects = new[]
+            {
+                new KeyValuePair<CardTypeId, IReadOnlyList<IEffect>>(typeId, (IReadOnlyList<IEffect>)new IEffect[]
+                {
+                    new KeywordedEffect(new[] { Keyword.Counter, Keyword.Frenzy }, new AdjustSdpEffect(SdpTarget.Self, 0)),
+                    new AssociateToFirstPlayerOnGameStartEffect(),
+                }),
+            };
+            return new InMemoryCardCatalog(entries, effects);
         }
 
         // ===== DZ-019: Players 数 =====
@@ -347,6 +373,56 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var expectedSorted = config.DdpPool.OrderBy(v => v).ToArray();
             var actualSorted = session.DdpPool.Values.OrderBy(v => v).ToArray();
             Assert.That(actualSorted, Is.EqualTo(expectedSorted));
+        }
+
+        // ===== DZ-390〜393: ADR-0024 ゲーム開始時自動連想(No.19「絶対障壁」)=====
+
+        [Test, Category("Medium"), Category("Normal"), Property("Requirement", "DZ-390")]
+        public void Given_Card19登録catalog_When_StartGameUseCaseExecute_Then_先行プレイヤーHandに含まれる()
+        {
+            // Given
+            var useCase = NewUseCase(catalog: NewCatalogWithCard19());
+            // When(p1 / p2 を渡し、Fisher-Yates 後の shuffledPlayers[0] = 先行プレイヤー)
+            var session = useCase.Execute(NewPlayers("p1", "p2"), NewDeck(20));
+            // Then:先行プレイヤー(GameState.Players[0]、StartGameUseCase 内で Shuffle 後の最初)の Hand に Card "19" が含まれる
+            var firstPlayer = session.GameState.Players[0];
+            Assert.That(firstPlayer.Hand.Contains(CardId.Of(CardTypeId.Of("19"), 0)), Is.True);
+        }
+
+        [Test, Category("Medium"), Category("Normal"), Property("Requirement", "DZ-391")]
+        public void Given_Card19登録catalog_When_StartGameUseCaseExecute_Then_AssociatedCardIdsに含まれる()
+        {
+            // Given
+            var useCase = NewUseCase(catalog: NewCatalogWithCard19());
+            // When
+            var session = useCase.Execute(NewPlayers("p1", "p2"), NewDeck(20));
+            // Then:session.AssociatedCardIds に CardId.Of("19", 0) 含まれる(ADR-0019 連想由来記録)
+            Assert.That(session.AssociatedCardIds, Has.Member(CardId.Of(CardTypeId.Of("19"), 0)));
+        }
+
+        [Test, Category("Medium"), Category("Normal"), Property("Requirement", "DZ-392")]
+        public void Given_Card19なしcatalog_When_StartGameUseCaseExecute_Then_先行プレイヤーHand_AssociatedCardIds共にCard19なし()
+        {
+            // Given:default = 空 catalog(AssociateToFirstPlayerOnGameStartEffect なし)
+            var useCase = NewUseCase();
+            // When
+            var session = useCase.Execute(NewPlayers("p1", "p2"), NewDeck(20));
+            // Then:先行プレイヤー Hand / AssociatedCardIds 共に Card "19" なし(marker なしカードは自動連想されない)
+            var card19 = CardId.Of(CardTypeId.Of("19"), 0);
+            Assert.That(session.GameState.Players[0].Hand.Contains(card19), Is.False);
+            Assert.That(session.AssociatedCardIds, Has.No.Member(card19));
+        }
+
+        [Test, Category("Medium"), Category("Normal"), Property("Requirement", "DZ-393")]
+        public void Given_Card19登録catalog_When_StartGameUseCaseExecute_Then_後手プレイヤーHandに含まれない()
+        {
+            // Given
+            var useCase = NewUseCase(catalog: NewCatalogWithCard19());
+            // When
+            var session = useCase.Execute(NewPlayers("p1", "p2"), NewDeck(20));
+            // Then:後手プレイヤー(GameState.Players[1])の Hand に Card "19" は含まれない(先行限定)
+            var secondPlayer = session.GameState.Players[1];
+            Assert.That(secondPlayer.Hand.Contains(CardId.Of(CardTypeId.Of("19"), 0)), Is.False);
         }
     }
 }

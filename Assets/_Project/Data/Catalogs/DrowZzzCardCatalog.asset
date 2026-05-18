@@ -124,6 +124,12 @@ MonoBehaviour:
     _attributes: []
     _effects:
     - rid: 8832664195353805400
+  - _cardIdValue: 19
+    _name: "\u7D76\u5BFE\u969C\u58C1"
+    _attributes: []
+    _effects:
+    - rid: 8832664195353805500
+    - rid: 8832664195353805502
   references:
     version: 2
     RefIds:
@@ -804,4 +810,18 @@ MonoBehaviour:
           rid: 8832664195353805401
     - rid: 8832664195353805401
       type: {class: ReuseInfluenceSourceEffectAsset, ns: Drowsy.Infrastructure.Games.DrowZzz.Effects, asm: Drowsy.Infrastructure}
+      data: {}
+    - rid: 8832664195353805500
+      type: {class: KeywordedEffectAsset, ns: Drowsy.Infrastructure.Games.DrowZzz.Effects, asm: Drowsy.Infrastructure}
+      data:
+        _keywords: 0200000000000000
+        _inner:
+          rid: 8832664195353805501
+    - rid: 8832664195353805501
+      type: {class: AdjustSdpEffectAsset, ns: Drowsy.Infrastructure.Games.DrowZzz.Effects, asm: Drowsy.Infrastructure}
+      data:
+        _target: 0
+        _delta: 0
+    - rid: 8832664195353805502
+      type: {class: AssociateToFirstPlayerOnGameStartEffectAsset, ns: Drowsy.Infrastructure.Games.DrowZzz.Effects, asm: Drowsy.Infrastructure}
       data: {}

@@ -626,6 +626,9 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 GetEffectsCalledWith.Add(typeId);
                 return Empty;
             }
+
+            // ADR-0024:`RegisteredCardTypeIds` インターフェース追加に伴う spy 実装(本テストでは未使用、空 list 返却)。
+            public IReadOnlyCollection<CardTypeId> RegisteredCardTypeIds => System.Array.Empty<CardTypeId>();
         }
 
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-083")]
