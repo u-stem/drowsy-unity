@@ -1,6 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
+using Drowsy.Application.Catalog;
 using Drowsy.Application.Games.DrowZzz;
+using Drowsy.Application.Games.DrowZzz.Effects;
 using Drowsy.Application.Tests.Stubs;
 using Drowsy.Domain.Cards;
 using Drowsy.Domain.Game;
@@ -76,7 +79,7 @@ namespace Drowsy.Presentation.Tests.Games.DrowZzz
         /// </remarks>
         private static PresenterContext NewContext(string savePath = "path/a")
         {
-            var startGameUseCase = new StartGameUseCase(new IdentityRandom(), new StubGameConfig());
+            var startGameUseCase = new StartGameUseCase(new IdentityRandom(), new StubGameConfig(), new InMemoryCardCatalog(Array.Empty<KeyValuePair<CardTypeId, CardData>>()));
             var applyActionUseCase = new ApplyActionUseCase(NewRule());
             var view = new MockDrowZzzGameView();
             var serializer = new MockDrowZzzGameSessionSerializer();
@@ -157,7 +160,7 @@ namespace Drowsy.Presentation.Tests.Games.DrowZzz
         public void Given_applyActionUseCaseNull_When_Ctor_Then_ArgumentNullException()
         {
             using var userSettings = new MockUserSettings();
-            var startGameUseCase = new StartGameUseCase(new IdentityRandom(), new StubGameConfig());
+            var startGameUseCase = new StartGameUseCase(new IdentityRandom(), new StubGameConfig(), new InMemoryCardCatalog(Array.Empty<KeyValuePair<CardTypeId, CardData>>()));
 
             Assert.That(
                 () => new DrowZzzGamePresenter(
@@ -170,7 +173,7 @@ namespace Drowsy.Presentation.Tests.Games.DrowZzz
         public void Given_viewNull_When_Ctor_Then_ArgumentNullException()
         {
             using var userSettings = new MockUserSettings();
-            var startGameUseCase = new StartGameUseCase(new IdentityRandom(), new StubGameConfig());
+            var startGameUseCase = new StartGameUseCase(new IdentityRandom(), new StubGameConfig(), new InMemoryCardCatalog(Array.Empty<KeyValuePair<CardTypeId, CardData>>()));
             var applyActionUseCase = new ApplyActionUseCase(NewRule());
 
             Assert.That(
@@ -184,7 +187,7 @@ namespace Drowsy.Presentation.Tests.Games.DrowZzz
         public void Given_serializerNull_When_Ctor_Then_ArgumentNullException()
         {
             using var userSettings = new MockUserSettings();
-            var startGameUseCase = new StartGameUseCase(new IdentityRandom(), new StubGameConfig());
+            var startGameUseCase = new StartGameUseCase(new IdentityRandom(), new StubGameConfig(), new InMemoryCardCatalog(Array.Empty<KeyValuePair<CardTypeId, CardData>>()));
             var applyActionUseCase = new ApplyActionUseCase(NewRule());
 
             Assert.That(
@@ -197,7 +200,7 @@ namespace Drowsy.Presentation.Tests.Games.DrowZzz
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "PRES-006")]
         public void Given_userSettingsNull_When_Ctor_Then_ArgumentNullException()
         {
-            var startGameUseCase = new StartGameUseCase(new IdentityRandom(), new StubGameConfig());
+            var startGameUseCase = new StartGameUseCase(new IdentityRandom(), new StubGameConfig(), new InMemoryCardCatalog(Array.Empty<KeyValuePair<CardTypeId, CardData>>()));
             var applyActionUseCase = new ApplyActionUseCase(NewRule());
 
             Assert.That(
@@ -211,7 +214,7 @@ namespace Drowsy.Presentation.Tests.Games.DrowZzz
         public void Given_savePathNull_When_Ctor_Then_ArgumentNullException()
         {
             using var userSettings = new MockUserSettings();
-            var startGameUseCase = new StartGameUseCase(new IdentityRandom(), new StubGameConfig());
+            var startGameUseCase = new StartGameUseCase(new IdentityRandom(), new StubGameConfig(), new InMemoryCardCatalog(Array.Empty<KeyValuePair<CardTypeId, CardData>>()));
             var applyActionUseCase = new ApplyActionUseCase(NewRule());
 
             Assert.That(
@@ -227,7 +230,7 @@ namespace Drowsy.Presentation.Tests.Games.DrowZzz
         public void Given_savePathInvalid_When_Ctor_Then_ArgumentException(string savePath)
         {
             using var userSettings = new MockUserSettings();
-            var startGameUseCase = new StartGameUseCase(new IdentityRandom(), new StubGameConfig());
+            var startGameUseCase = new StartGameUseCase(new IdentityRandom(), new StubGameConfig(), new InMemoryCardCatalog(Array.Empty<KeyValuePair<CardTypeId, CardData>>()));
             var applyActionUseCase = new ApplyActionUseCase(NewRule());
 
             // ArgumentException 厳密一致(ArgumentNullException は savePath = null 経路のみ)
@@ -242,7 +245,7 @@ namespace Drowsy.Presentation.Tests.Games.DrowZzz
         public void Given_rosterNull_When_Ctor_Then_ArgumentNullException()
         {
             using var userSettings = new MockUserSettings();
-            var startGameUseCase = new StartGameUseCase(new IdentityRandom(), new StubGameConfig());
+            var startGameUseCase = new StartGameUseCase(new IdentityRandom(), new StubGameConfig(), new InMemoryCardCatalog(Array.Empty<KeyValuePair<CardTypeId, CardData>>()));
             var applyActionUseCase = new ApplyActionUseCase(NewRule());
 
             Assert.That(
@@ -256,7 +259,7 @@ namespace Drowsy.Presentation.Tests.Games.DrowZzz
         public void Given_initialDeckNull_When_Ctor_Then_ArgumentNullException()
         {
             using var userSettings = new MockUserSettings();
-            var startGameUseCase = new StartGameUseCase(new IdentityRandom(), new StubGameConfig());
+            var startGameUseCase = new StartGameUseCase(new IdentityRandom(), new StubGameConfig(), new InMemoryCardCatalog(Array.Empty<KeyValuePair<CardTypeId, CardData>>()));
             var applyActionUseCase = new ApplyActionUseCase(NewRule());
 
             Assert.That(

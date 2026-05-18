@@ -162,6 +162,11 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
                 // Reuse 中の OriginEffects 再評価で本 effect を踏んでも何も起きない(再帰防止を兼ねる、ADR-0023 §5)。
                 ReuseInfluenceSourceEffect _ => session,
 
+                // ADR-0024 / No.19「絶対障壁」:ゲーム開始時自動連想 marker。実評価は `StartGameUseCase.Execute` の
+                // catalog scan で行うため、interpreter 経由では no-op(`AssociatableMarkerEffect` / `UsageRestrictionMarkerEffect`
+                // 等と同パターン)。本 marker 持ちカードは Bootstrap.BuildInitialDeck からも除外される(共通山札 0 枚)。
+                AssociateToFirstPlayerOnGameStartEffect _ => session,
+
                 _ => throw new NotImplementedException(
                     $"EffectInterpreter.Apply ({effect.GetType().Name}) は本実装範囲では到達不可。" +
                     "ChoiceEffect は DrowZzzRule.ApplyPlayCard で unwrap されるため interpreter には届かない設計。" +

@@ -59,5 +59,16 @@ namespace Drowsy.Application
         /// (M1 互換、ADR-0007 §3 末尾)。
         /// </remarks>
         IReadOnlyList<TEffect> GetEffects(CardTypeId typeId);
+
+        /// <summary>
+        /// 登録済の全 <see cref="CardTypeId"/> の列挙(ADR-0024、2026-05-18 で追加)。
+        /// </summary>
+        /// <remarks>
+        /// 既存 `ScriptableObjectCardCatalog.RegisteredCardTypeIds` の責務を interface 化したもの。
+        /// `StartGameUseCase` のゲーム開始時 catalog 全 entry scan(`AssociateToFirstPlayerOnGameStartEffect` 検出)
+        /// および `Bootstrap.BuildInitialDeck` の共通山札構築で利用される。
+        /// 順序は実装依存(`InMemoryCardCatalog` は登録順、`ScriptableObjectCardCatalog` は entries の宣言順)。
+        /// </remarks>
+        IReadOnlyCollection<CardTypeId> RegisteredCardTypeIds { get; }
     }
 }

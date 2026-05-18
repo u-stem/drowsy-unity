@@ -29,6 +29,9 @@ namespace Drowsy.Application.Tests
 
             public IReadOnlyList<IEffect> GetEffects(CardTypeId typeId) =>
                 _effects.TryGetValue(typeId, out var list) ? list : System.Array.Empty<IEffect>();
+
+            // ADR-0024:`RegisteredCardTypeIds` インターフェース追加に伴うダミー実装(`_store.Keys` 防御コピー)。
+            public IReadOnlyCollection<CardTypeId> RegisteredCardTypeIds => System.Linq.Enumerable.ToList(_store.Keys);
         }
 
         private static CardData NewData(string name) =>

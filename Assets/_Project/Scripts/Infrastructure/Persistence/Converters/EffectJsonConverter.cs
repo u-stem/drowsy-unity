@@ -46,6 +46,7 @@ namespace Drowsy.Infrastructure.Persistence.Converters
     /// <item><c>AssociateSpecificCard</c>(<see cref="AssociateSpecificCardEffect"/>、No.13/14/15「最後の砦Ⅰ/Ⅱ/Ⅲ」2026-05-17)</item>
     /// <item><c>ConditionalApplyOrClearInfluences</c>(<see cref="ConditionalApplyOrClearInfluencesEffect"/>、No.16「自分勝手な審判」2026-05-17)</item>
     /// <item><c>ReuseInfluenceSource</c>(<see cref="ReuseInfluenceSourceEffect"/>、No.18「対抗手段」2026-05-18、ADR-0023 Echo キーワード初導入)</item>
+    /// <item><c>AssociateToFirstPlayerOnGameStart</c>(<see cref="AssociateToFirstPlayerOnGameStartEffect"/>、No.19「絶対障壁」2026-05-18、ADR-0024 ゲーム開始時自動連想 marker)</item>
     /// </list>
     /// </para>
     /// <para>
@@ -244,6 +245,11 @@ namespace Drowsy.Infrastructure.Persistence.Converters
                     writer.WriteValue("ReuseInfluenceSource");
                     break;
 
+                case AssociateToFirstPlayerOnGameStartEffect _:
+                    // ADR-0024 / No.19「絶対障壁」:ゲーム開始時自動連想マーカー。フィールドなし。
+                    writer.WriteValue("AssociateToFirstPlayerOnGameStart");
+                    break;
+
                 default:
                     throw new JsonSerializationException(
                         $"未対応の IEffect 派生型: {value.GetType().FullName}。新しい派生型は EffectJsonConverter に case 追加が必要");
@@ -350,6 +356,8 @@ namespace Drowsy.Infrastructure.Persistence.Converters
                     RequireToken(jo, "influenceToApply", typeName).ToObject<PlayerInfluence>(serializer)),
 
                 "ReuseInfluenceSource" => new ReuseInfluenceSourceEffect(),
+
+                "AssociateToFirstPlayerOnGameStart" => new AssociateToFirstPlayerOnGameStartEffect(),
 
                 _ => throw new JsonSerializationException(
                     $"未知の IEffect 'type' discriminator: '{typeName}'。EffectJsonConverter に case 追加が必要"),
