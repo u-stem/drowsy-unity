@@ -10,7 +10,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz.Effects
     /// <summary>
     /// <see cref="KeywordedEffect"/> の構造的不変条件(null / empty 防御、HasKeyword 判定)と
     /// <see cref="EffectInterpreter.Apply"/> 経路での意味論(inner を逐次評価、Keywords は副作用なし)を検証する
-    /// (DZ-210 / DZ-211 / DZ-212)。ADR-0011 §4 / M3-PR5a で導入。
+    /// (DZ-210 / DZ-211 / DZ-212)。
     /// </summary>
     [TestFixture]
     public sealed class KeywordedEffectTests
@@ -47,7 +47,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz.Effects
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-210")]
         public void Given_空Keywords_When_KeywordedEffect生成_Then_ArgumentException()
         {
-            // 1 件以上必須(空 list での wrap は無意味、ADR-0011 §4)
+            // 1 件以上必須(空 list での wrap は無意味)
             Assert.Throws<ArgumentException>(() =>
                 _ = new KeywordedEffect(keywords: Array.Empty<Keyword>(), inner: new AssociatableMarkerEffect()));
         }

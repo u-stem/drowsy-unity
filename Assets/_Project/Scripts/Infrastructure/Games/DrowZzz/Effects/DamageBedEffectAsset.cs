@@ -5,8 +5,8 @@ using UnityEngine;
 namespace Drowsy.Infrastructure.Games.DrowZzz.Effects
 {
     /// <summary>
-    /// <see cref="DamageBedEffect"/>(M3-PR2、ADR-0011 §3)を Unity SO で表現する POCO
-    /// (M4-PR3 で導入、INF-031 / INF-032)。<see cref="SdpTarget"/> + <see cref="int"/> の 2 フィールド。
+    /// <see cref="DamageBedEffect"/> を Unity SO で表現する POCO(INF-031 / INF-032)。
+    /// <see cref="SdpTarget"/> + <see cref="int"/> の 2 フィールド。
     /// </summary>
     /// <remarks>
     /// <see cref="DamageBedEffect"/> record は <c>Percent</c> の 5 の倍数 / 正値検証を ctor / init で行う。

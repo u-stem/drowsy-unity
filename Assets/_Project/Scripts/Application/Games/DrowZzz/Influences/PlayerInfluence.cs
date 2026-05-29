@@ -13,20 +13,18 @@ namespace Drowsy.Application.Games.DrowZzz.Influences
     /// <param name="TickEffect">Tick 時に <see cref="EffectInterpreter"/> 経由で適用される効果。<see cref="SdpTarget.Self"/> は影響保有者自身を指す</param>
     /// <param name="RemainingCount">残発動回数(1 以上必須、0 になったら除去)</param>
     /// <param name="OriginEffects">
-    /// 本影響を生成したカードの効果列のスナップショット(ADR-0023)。No.18「対抗手段」の Reuse 経路で、
+    /// 本影響を生成したカードの効果列のスナップショット(No.18「対抗手段」の Reuse 経路用)。
     /// プレイヤーが本影響を選択したときに再 EffectInterpreter される元データ。
     /// 空 list 許容(連鎖 Reuse 防止 / 旧 JSON 後方互換用)、null 不可。
     /// 既存カード(No.02/04/06/07/08/09/10/11/12 等)は本フィールドをカタログ側で渡さず、
     /// <see cref="EffectInterpreter"/> が <c>EffectContext.CurrentCardEffects</c> から動的に詰める(循環参照回避)。
     /// </param>
     /// <remarks>
-    /// ADR-0007 §1.5「継続影響(Influence)」JIT 確定の核心型として M2-PR5 で導入。
-    /// <see cref="DrowZzzGameSession.Influences"/> の各プレイヤー list に格納される(空 list 可)。
+    /// 継続影響(Influence)の核心型。<see cref="DrowZzzGameSession.Influences"/> の各プレイヤー list に格納される(空 list 可)。
     /// <para>
-    /// ADR-0023 で <see cref="OriginEffects"/> フィールドを追加(2026-05-18、No.18「対抗手段」)。
-    /// 4 フィールド化により内部 <see cref="IReadOnlyList{T}"/> プロパティを持つようになるため、
-    /// record auto-equals が参照同値で値同値を壊す。順序保持シーケンス同値で
-    /// <see cref="Equals(PlayerInfluence)"/> / <see cref="GetHashCode"/> を override
+    /// <see cref="OriginEffects"/> フィールドは No.18「対抗手段」の Reuse 機構のために追加。
+    /// 内部 <see cref="IReadOnlyList{T}"/> プロパティを持つため、record auto-equals が参照同値で値同値を壊す。
+    /// 順序保持シーケンス同値で <see cref="Equals(PlayerInfluence)"/> / <see cref="GetHashCode"/> を override
     /// (<see cref="ChoiceEffect"/> / <see cref="KeywordedEffect"/> / <see cref="TimeOfDayBranchEffect"/> と同パターン)。
     /// </para>
     /// <para>
@@ -35,7 +33,7 @@ namespace Drowsy.Application.Games.DrowZzz.Influences
     /// </para>
     /// <para>
     /// <see cref="RemainingCount"/> の不変条件: ストア時は常に 1 以上。0 に到達した影響は保有者の list から
-    /// 直ちに除去される(<c>DrowZzzRule.TickInfluences</c> 内)ため、本値オブジェクト自体が 0 を持つことはない。
+    /// 直ちに除去されるため、本値オブジェクト自体が 0 を持つことはない。
     /// 構築時 / <c>with</c> 式の両経路で <see cref="ArgumentOutOfRangeException"/> を投げる二重ガード。
     /// </para>
     /// </remarks>
@@ -67,7 +65,7 @@ namespace Drowsy.Application.Games.DrowZzz.Influences
         }
 
         /// <summary>
-        /// 本影響を生成したカードの効果列スナップショット(ADR-0023)。常に non-null の <see cref="IReadOnlyList{T}"/>
+        /// 本影響を生成したカードの効果列スナップショット。常に non-null の <see cref="IReadOnlyList{T}"/>
         /// (内部で空 list に正規化)。<c>init</c> セッターは null を <see cref="Array.Empty{T}"/> にフォールバックする
         /// (旧 v1 JSON 後方互換、Newtonsoft default 経路で 4 引数 ctor が null を渡しても安全に動作する)。
         /// </summary>
@@ -97,7 +95,7 @@ namespace Drowsy.Application.Games.DrowZzz.Influences
                 : throw new ArgumentOutOfRangeException(
                     nameof(RemainingCount),
                     $"RemainingCount は 1 以上である必要があります(0 到達時は除去されるため): {RemainingCount}");
-            // 旧 v1 JSON 後方互換:null は空 list にフォールバック(ADR-0023 §8)
+            // 旧 v1 JSON 後方互換:null は空 list にフォールバック
             _originEffects = OriginEffects ?? Array.Empty<IEffect>();
             // OriginEffects 内の null 要素を構築時に検出(ChoiceEffect / TimeOfDayBranchEffect と同パターン)
             for (int i = 0; i < _originEffects.Count; i++)
@@ -113,9 +111,7 @@ namespace Drowsy.Application.Games.DrowZzz.Influences
 
         /// <summary>
         /// Trigger / TickEffect / RemainingCount の 3 フィールドで比較する。<see cref="OriginEffects"/> は
-        /// Reuse 用の補助データで Influence の本質的アイデンティティではないため equality 対象外
-        /// (ADR-0023 §「Equals は OriginEffects を対象外」、既存 PlayerInfluence 依存テスト 40+ 箇所の
-        /// 破壊回避と振る舞い的同値性の両立)。
+        /// Reuse 用の補助データで Influence の本質的アイデンティティではないため equality 対象外。
         /// </summary>
         public bool Equals(PlayerInfluence other)
         {
@@ -134,7 +130,7 @@ namespace Drowsy.Application.Games.DrowZzz.Influences
 
         public override int GetHashCode()
         {
-            // OriginEffects は equality 対象外なので hash にも含めない(ADR-0023)
+            // OriginEffects は equality 対象外なので hash にも含めない
             return HashCode.Combine(Trigger, _tickEffect, _remainingCount);
         }
     }

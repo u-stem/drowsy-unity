@@ -14,7 +14,7 @@ namespace Drowsy.Infrastructure.Tests.Persistence
     /// </summary>
     /// <remarks>
     /// 非同期 API は M5-PR1 で「同期 <c>Save</c> / <c>Load</c> を <c>UniTask.RunOnThreadPool</c> ラップ」として
-    /// 実装済(ADR-0016 §5.2 初期推奨)。本テストはその round-trip と例外契約が同期版と等価であることを確認する。
+    /// 実装済。本テストはその round-trip と例外契約が同期版と等価であることを確認する。
     /// <para>
     /// <b>NUnit + UniTask の EditMode 実行(M5-PR5 で <c>[UnityTest]</c> へ修正)</b>:
     /// 実 <see cref="DrowZzzGameSessionSerializer"/> の <c>SaveAsync</c> / <c>LoadAsync</c> は

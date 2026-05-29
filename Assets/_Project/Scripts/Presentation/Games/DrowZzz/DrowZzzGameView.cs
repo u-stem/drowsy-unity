@@ -14,28 +14,25 @@ namespace Drowsy.Presentation.Games.DrowZzz
     /// DrowZzz ゲームの View 実装(UI Toolkit ベース MonoBehaviour)。
     /// </summary>
     /// <remarks>
-    /// ADR-0016 §3.1「View interface」+ §6「シーン構成」+ §11 で確定。
-    /// M5-PR3 で骨格、M5-PR4 で <see cref="Render"/> 本実装、M5-PR6 で <see cref="IUserSettings"/> の
-    /// 設定 UI バインディング、M5-PR7 で <see cref="RenderOutcome"/> 本実装 + Outcome 確定後の入力 disable を追加。
+    /// UI Toolkit ベースの <see cref="IDrowZzzGameView"/> 実装。
     /// <list type="bullet">
     /// <item><see cref="Render"/>:Round / 現プレイヤー / TurnPhase / 山札・場札・捨て札枚数 / FDP・DDP・SDP・Total /
-    /// 現プレイヤー手札を各 Label に反映(M5-PR4)</item>
-    /// <item>Play ボタン押下時に直近 <see cref="Render"/> の現プレイヤー手札先頭カードを <see cref="OnPlayClicked"/> で発火(M5-PR4)</item>
+    /// 現プレイヤー手札を各 Label に反映</item>
+    /// <item>Play ボタン押下時に直近 <see cref="Render"/> の現プレイヤー手札先頭カードを <see cref="OnPlayClicked"/> で発火</item>
     /// <item><see cref="IUserSettings"/> を VContainer <c>[Inject]</c> で直接注入し、<see cref="UserSettingsBinder"/> で
-    /// 設定 UI(BGM/SE Slider + Language Dropdown)と双方向バインド(M5-PR6)</item>
+    /// 設定 UI(BGM/SE Slider + Language Dropdown)と双方向バインド</item>
     /// <item><see cref="RenderOutcome"/>:ゲーム終了結果(Winner / Draw)を <c>outcome-label</c> に表示し、
-    /// Draw / Play / EndTurn の 3 ボタンを <c>SetEnabled(false)</c> で disable(M5-PR7、ADR-0016 §11 M5-PR7、
-    /// JIT 確定「View ボタン disable + Presenter event 無視」の多層防御の View 側)</item>
+    /// Draw / Play / EndTurn の 3 ボタンを <c>SetEnabled(false)</c> で disable(「View ボタン disable + Presenter event 無視」の多層防御の View 側)</item>
     /// </list>
     /// <para>
     /// <b>イベント / バインダのライフサイクル</b>:button.clicked の配線・解除は <see cref="OnEnable"/> /
     /// <see cref="OnDisable"/> の対称運用。<see cref="UserSettingsBinder"/> は <c>[Inject]</c> 注入された
     /// <see cref="IUserSettings"/> を必要とするため <see cref="Start"/> で生成し <see cref="OnDestroy"/> で Dispose する
-    /// (button.clicked の <c>OnEnable</c> 配線とは非対称だが、依存注入タイミングの都合、M5-PR6)。
+    /// (button.clicked の <c>OnEnable</c> 配線とは非対称だが、依存注入タイミングの都合による)。
     /// </para>
     /// <para>
     /// <b>VContainer 注入</b>:本 MonoBehaviour は <c>RegisterComponentInHierarchy&lt;DrowZzzGameView&gt;()</c>
-    /// で Game スコープに登録される(ADR-0016 §2)。Presenter は <c>SessionStream</c> を Subscribe して
+    /// で Game スコープに登録される。Presenter は <c>SessionStream</c> を Subscribe して
     /// 本 View の <see cref="Render"/> / <see cref="RenderOutcome"/> を呼ぶ。<see cref="IUserSettings"/> は
     /// <c>[Inject]</c> メソッド <see cref="Construct"/> で受け取る。
     /// </para>
@@ -214,7 +211,7 @@ namespace Drowsy.Presentation.Games.DrowZzz
         {
             if (session is null)
             {
-                // IDrowZzzGameView.Render は non-null 契約(ADR-0015)。null が来たら描画せず明示的に記録する。
+                // IDrowZzzGameView.Render は non-null 契約。null が来たら描画せず明示的に記録する。
                 Debug.LogError("[DrowZzzGameView] Render: session が null です(non-null 契約違反)");
                 return;
             }
@@ -266,7 +263,7 @@ namespace Drowsy.Presentation.Games.DrowZzz
         {
             if (outcome is null)
             {
-                // IDrowZzzGameView.RenderOutcome は non-null 契約(ADR-0015)。null は描画せず明示的に記録する。
+                // IDrowZzzGameView.RenderOutcome は non-null 契約。null は描画せず明示的に記録する。
                 Debug.LogError("[DrowZzzGameView] RenderOutcome: outcome が null です(non-null 契約違反)");
                 return;
             }
@@ -280,7 +277,7 @@ namespace Drowsy.Presentation.Games.DrowZzz
                 return;
             }
 
-            // GameOutcome は abstract record(WinnerOutcome / DrawOutcome の 2 派生、ADR-0010 §3 / §4)。
+            // GameOutcome は abstract record(WinnerOutcome / DrawOutcome の 2 派生)。
             // 将来の派生追加に備えて switch の _ ケースを残す。
             _outcomeLabel.text = outcome switch
             {

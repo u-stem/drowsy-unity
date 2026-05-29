@@ -7,7 +7,7 @@ using UnityEngine;
 namespace Drowsy.Infrastructure.Configuration
 {
     /// <summary>
-    /// <see cref="IGameConfig"/> の <see cref="ScriptableObject"/> 実装(M4-PR7 で導入、ADR-0012 §3)。
+    /// <see cref="IGameConfig"/> の <see cref="ScriptableObject"/> 実装。
     /// Designer が Unity Editor 上で <see cref="_fdpPool"/> / <see cref="_ddpPool"/> を編集することで
     /// DrowZzz のゲームバランス調整可能値を管理する。
     /// </summary>
@@ -16,14 +16,12 @@ namespace Drowsy.Infrastructure.Configuration
     /// 本 SO は CLAUDE.md §9 階層モデル L3(ゲームバランス調整可能値)に該当する 2 プロパティ
     /// <see cref="FdpPool"/> / <see cref="DdpPool"/> を <see cref="ScriptableObject"/> として
     /// Inspector 編集可能にする。L1 / L2(<see cref="DdpPoolConstants"/> / <see cref="DrowZzzClockConstants"/>
-    /// / <see cref="DrowZzzVictoryConstants"/>)は本 SO の編集対象外で、各 const クラスが単一情報源
-    /// (ADR-0010 §8 / §9)。
+    /// / <see cref="DrowZzzVictoryConstants"/>)は本 SO の編集対象外で、各 const クラスが単一情報源。
     /// </para>
     /// <para>
-    /// Asset 配置:<c>Assets/_Project/Data/Configuration/DrowZzzGameConfig.asset</c> 1 個固定
-    /// (ADR-0016 §7.1、M4-PR7 で実 .asset を配置)。新規 .asset 作成時は Unity が <see cref="Reset"/>
-    /// を呼んで本 SO のデフォルト値(ADR-0006 §M1 の FdpPool + <see cref="DdpPoolConstants.BuildDefaultPool"/>
-    /// の DdpPool)を自動投入する。
+    /// Asset 配置:<c>Assets/_Project/Data/Configuration/DrowZzzGameConfig.asset</c> 1 個固定。
+    /// 新規 .asset 作成時は Unity が <see cref="Reset"/> を呼んで本 SO のデフォルト値
+    /// (<see cref="DdpPoolConstants.BuildDefaultPool"/> の DdpPool を含む)を自動投入する。
     /// </para>
     /// <para>
     /// テストは <see cref="ScriptableObject.CreateInstance{T}"/> + <c>internal SetPoolsForTest</c> で
@@ -31,7 +29,7 @@ namespace Drowsy.Infrastructure.Configuration
     /// <c>InternalsVisibleTo("Drowsy.Infrastructure.Tests")</c>)。
     /// </para>
     /// <para>
-    /// <see cref="StubGameConfig"/>(Application.Tests 内 Stub)との関係(ADR-0012 §5):
+    /// <see cref="StubGameConfig"/>(Application.Tests 内 Stub)との関係:
     /// Application.Tests は Pure C# 維持のため <c>StubGameConfig</c> を継続利用、本番経路と Infrastructure.Tests は
     /// 本 SO を使用する Ports &amp; Adapters パターン。
     /// </para>
@@ -43,9 +41,8 @@ namespace Drowsy.Infrastructure.Configuration
     /// Serialize された値がそのまま読み取れる。
     /// </para>
     /// <para>
-    /// <b>ADR-0012 §4 検証の縮退</b>(M4-PR7 code-reviewer W-3 反映):ADR-0012 §4「Designer 検証(OnValidate、初期推奨)」
-    /// が挙げる 3 件のうち、本 M4-PR7 第 1 弾では「null / 空」検出(INF-078 / INF-079)のみを実装。
-    /// 以下は <c>docs/todo.md</c>(M5 以降)で追跡:
+    /// <b>OnValidate 検証の縮退</b>:現時点では「null / 空」検出のみを実装。
+    /// 以下は <c>docs/todo.md</c> で追跡:
     /// <list type="bullet">
     /// <item><c>_fdpPool.Length &gt;= プレイヤー数 N</c>(現状 N=2 想定)</item>
     /// <item><c>_fdpPool</c> 重複なし(<see cref="Drowsy.Application.Games.DrowZzz.StartGameUseCase"/> が重複なし抽選を要求)</item>
@@ -56,7 +53,7 @@ namespace Drowsy.Infrastructure.Configuration
     [CreateAssetMenu(menuName = "Drowsy/DrowZzz/Game Config", fileName = "DrowZzzGameConfig")]
     public sealed class DrowZzzGameConfigAsset : ScriptableObject, IGameConfig
     {
-        // ADR-0006 §M1 で確定した本物 FdpPool:N=2 では 2 / 10 = 20% の組み合わせをカバーする 10 要素の不均等間隔プール
+        // N=2 では 2 / 10 = 20% の組み合わせをカバーする 10 要素の不均等間隔プール
         private static readonly int[] DefaultFdpPool =
             new[] { 0, 10, 20, 30, 35, 40, 45, 50, 55, 60 };
 
@@ -64,14 +61,14 @@ namespace Drowsy.Infrastructure.Configuration
         [SerializeField] private int[] _ddpPool;
 
         /// <summary>
-        /// First Drowsy Point 抽選プール(ADR-0006 §1.4 / ADR-0009)。<c>null</c> や空配列なら
+        /// First Drowsy Point 抽選プール。<c>null</c> や空配列なら
         /// <see cref="Array.Empty{T}"/> を返す(<see cref="OnValidate"/> で Designer に <see cref="Debug.LogError"/>
         /// 通知、本番経路 <see cref="Drowsy.Application.Games.DrowZzz.StartGameUseCase"/> は空プールを `ArgumentException` で弾く)。
         /// </summary>
         public IReadOnlyList<int> FdpPool => _fdpPool ?? Array.Empty<int>();
 
         /// <summary>
-        /// Draw Drowsy Point 共有プール(ADR-0009 §「DDP プールの構造」)。<c>null</c> や空配列なら
+        /// Draw Drowsy Point 共有プール。<c>null</c> や空配列なら
         /// <see cref="Array.Empty{T}"/> を返す(同上 graceful 動作)。
         /// </summary>
         public IReadOnlyList<int> DdpPool => _ddpPool ?? Array.Empty<int>();

@@ -5,9 +5,7 @@ using NUnit.Framework;
 namespace Drowsy.Domain.Tests.Cards
 {
     /// <summary>
-    /// <see cref="CardId"/>(ADR-0018 で `(CardTypeId TypeId, int Instance)` 複合 record に refactor 済)の単体テスト。
-    /// 旧 Phase 1 設計の <c>CardId.Of(string)</c> 単純文字列 API は削除されたため、本 fixture は新 API に対応した
-    /// テスト集合に全面差し替え(ADR-0018 §2)。
+    /// <see cref="CardId"/>(`(CardTypeId TypeId, int Instance)` 複合 record)の単体テスト。
     /// </summary>
     [TestFixture]
     public sealed class CardIdTests

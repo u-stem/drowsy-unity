@@ -18,19 +18,17 @@ namespace Drowsy.Presentation.Games.DrowZzz
     /// DrowZzz ゲームの Presenter(MVP の P、Pure C#)。
     /// </summary>
     /// <remarks>
-    /// ADR-0016 §3.2「Presenter」+ §8「Session 自動セーブ / 自動復元」で確定。M5-PR2 で骨格、M5-PR4 で
-    /// Handler / 新規対戦経路、M5-PR5 で Auto-save、M5-PR7 で Outcome 反映 + Auto-save Final を実装した。
+    /// MVP の Presenter(Pure C#)。Session 自動セーブ / 自動復元を担う。
     /// <list type="bullet">
     /// <item>Handler 3 種(<see cref="HandleDrawClicked"/> / <see cref="HandlePlayClicked"/> /
     /// <see cref="HandleEndTurnClicked"/>)は <see cref="TryApplyAction"/> 経由で <see cref="ApplyActionUseCase"/>
     /// に Action を適用する</item>
     /// <item><see cref="BootAsync"/> はセーブファイルがあれば <c>LoadAsync</c> で復元、なければ
     /// <see cref="StartGameUseCase"/>.<c>Execute(players, initialDeck)</c> で新規対戦を開始する</item>
-    /// <item><see cref="TryApplyAction"/> は EndTurn 成功時(ADR-0016 §8)または Outcome 確定時(Game 終了)に
-    /// <see cref="AutoSaveAsync"/> で自動セーブする。EndTurn で終了した場合も Auto-save は 1 回に集約される
-    /// (M5-PR7 で Auto-save 判定を <see cref="TryApplyAction"/> 内に集約、M5-PR5 の bool 返却を void に戻した)</item>
+    /// <item><see cref="TryApplyAction"/> は EndTurn 成功時または Outcome 確定時(Game 終了)に
+    /// <see cref="AutoSaveAsync"/> で自動セーブする。EndTurn で終了した場合も Auto-save は 1 回に集約される</item>
     /// <item><see cref="Start"/> の <c>SessionStream</c> 購読は <c>Render</c> に加え、<c>IsTerminated</c> なら
-    /// <c>RenderOutcome</c> も呼ぶ(M5-PR7)。<see cref="TryApplyAction"/> は <c>_current.IsTerminated</c> なら
+    /// <c>RenderOutcome</c> も呼ぶ。<see cref="TryApplyAction"/> は <c>_current.IsTerminated</c> なら
     /// 入力を無視する(Outcome 確定後の入力 disable の Presenter 側、View 側ボタン disable との多層防御)</item>
     /// </list>
     /// <para>
@@ -40,17 +38,17 @@ namespace Drowsy.Presentation.Games.DrowZzz
     /// </para>
     /// <para>
     /// <b>状態公開</b>:<see cref="SessionStream"/> は <c>Subject&lt;DrowZzzGameSession&gt;</c> ベースで
-    /// Boot 完了後のみ <c>OnNext</c> が発火する。ADR-0015 NRT 不採用方針整合のため nullable 注釈を避ける。
+    /// Boot 完了後のみ <c>OnNext</c> が発火する。NRT 不採用方針のため nullable 注釈を避ける。
     /// </para>
     /// <para>
     /// <b>不合法手 / 終了後入力の扱い</b>:<see cref="ApplyActionUseCase.Execute"/> は <c>IsLegalMove</c> false で
-    /// <see cref="InvalidOperationException"/> を投げる(<c>DrowZzzRule.Apply</c> 内部の山札枯渇等も同型)。M5 範囲では
+    /// <see cref="InvalidOperationException"/> を投げる(<c>DrowZzzRule.Apply</c> 内部の山札枯渇等も同型)。
     /// 握りつぶして <c>Debug.LogWarning</c> 記録のみ(無反応)。Boot 未完了 / Outcome 確定後の入力も同様に無反応 + 警告ログ。
     /// </para>
     /// <para>
     /// <b>Auto-save の失敗</b>:<see cref="AutoSaveAsync"/> は <c>UniTaskVoid</c> + <c>Forget</c> の fire-and-forget。
     /// <see cref="OperationCanceledException"/>(Dispose 中)は握りつぶし、それ以外の例外は <c>Debug.LogError</c> 記録のみで
-    /// ゲームプレイは継続する(M5-PR5 着手時 JIT 確定)。
+    /// ゲームプレイは継続する。
     /// </para>
     /// </remarks>
     public sealed class DrowZzzGamePresenter : IStartable, IDisposable
@@ -83,9 +81,9 @@ namespace Drowsy.Presentation.Games.DrowZzz
         /// </summary>
         /// <remarks>
         /// <b>消費側の注意</b>:本プロパティを参照する前に <see cref="IsReady"/> が true であることを必ず確認すること。
-        /// ADR-0015 NRT 不採用方針下では戻り値型に nullable 注釈を付けないため、ガードなしで使うと
+        /// NRT 不採用方針のため戻り値型に nullable 注釈を付けないため、ガードなしで使うと
         /// <see cref="NullReferenceException"/> を起こす。Phase 3 で消費側の null チェック責務が広がった場合は
-        /// internal 化または別 readonly 型の導入を別 ADR で検討する。
+        /// internal 化または別 readonly 型の導入を検討する。
         /// </remarks>
         public DrowZzzGameSession Current => _current;
 
@@ -98,13 +96,13 @@ namespace Drowsy.Presentation.Games.DrowZzz
         /// <param name="startGameUseCase">新規対戦開始(<see cref="BootAsync"/> 内から呼び出し)</param>
         /// <param name="applyActionUseCase">Action 適用(Handler 内から呼び出し)</param>
         /// <param name="view">View 抽象(MockDrowZzzGameView または DrowZzzGameView MonoBehaviour)</param>
-        /// <param name="serializer">永続化 serializer(ADR-0016 §5.2)</param>
-        /// <param name="userSettings">ユーザー設定(M5-PR6 で View バインディング)</param>
+        /// <param name="serializer">永続化 serializer</param>
+        /// <param name="userSettings">ユーザー設定(View バインディング)</param>
         /// <param name="savePath">セーブパス(<c>DrowZzzGameSessionSerializer.DefaultSavePath()</c> 経由で Bootstrap が解決)</param>
-        /// <param name="roster">新規対戦のプレイヤー roster(Bootstrap が <see cref="PlayerRoster"/> wrapper として構築、
-        /// ADR-0017 で確定 — VContainer 1.x の <c>CollectionInstanceProvider</c> が <c>IReadOnlyList&lt;T&gt;</c> を
+        /// <param name="roster">新規対戦のプレイヤー roster(Bootstrap が <see cref="PlayerRoster"/> wrapper として構築。
+        /// VContainer 1.x の <c>CollectionInstanceProvider</c> が <c>IReadOnlyList&lt;T&gt;</c> を
         /// 予約型として扱う問題への対処)。</param>
-        /// <param name="initialDeck">新規対戦の初期山札(Bootstrap が catalog から構築、ADR-0016 §3.2 / M5-PR4 着手時 JIT 確定)</param>
+        /// <param name="initialDeck">新規対戦の初期山札(Bootstrap が catalog から構築)</param>
         /// <exception cref="ArgumentNullException">いずれかの参照型引数が null</exception>
         /// <exception cref="ArgumentException"><paramref name="savePath"/> が空白のみ</exception>
         public DrowZzzGamePresenter(
@@ -131,7 +129,7 @@ namespace Drowsy.Presentation.Games.DrowZzz
                 throw new ArgumentException("savePath は空・空白のみにできません", nameof(savePath));
             }
             _savePath = savePath;
-            // PlayerRoster ctor 側で null + 空配列検証済(ROSTER-002 / ROSTER-003、ADR-0017)。
+            // PlayerRoster ctor 側で null + 空配列検証済(ROSTER-002 / ROSTER-003)。
             // ここでは roster 自体の null のみ早期検出する。players の重複 / null 要素検査は引き続き
             // StartGameUseCase.Execute に委譲する。
             if (roster is null) throw new ArgumentNullException(nameof(roster));
@@ -226,14 +224,13 @@ namespace Drowsy.Presentation.Games.DrowZzz
         /// </summary>
         /// <remarks>
         /// 入力を無視する条件:Boot 未完了(<see cref="_current"/> が null)/ Outcome 確定済み
-        /// (<c>_current.IsTerminated</c>、M5-PR7、View ボタン disable との多層防御の Presenter 側)。
+        /// (<c>_current.IsTerminated</c>、View ボタン disable との多層防御の Presenter 側)。
         /// <see cref="ApplyActionUseCase.Execute"/> の <see cref="InvalidOperationException"/>(IsLegalMove false /
         /// Apply 内部の山札枯渇等)は握りつぶして <c>Debug.LogWarning</c> 記録のみ。
         /// <para>
-        /// <b>Auto-save の集約</b>:適用成功後、<c>action is EndTurnAction</c>(ADR-0016 §8「Auto-save は EndTurn 後」)
-        /// または <c>next.IsTerminated</c>(Game 終了時の Auto-save Final、ADR-0016 §8)なら <see cref="AutoSaveAsync"/> を
-        /// 1 回トリガーする。EndTurn で Game が終了した場合も両条件を OR で評価するため Auto-save は 1 回に集約される
-        /// (M5-PR7 で M5-PR5 の bool 返却 + Handler 側 Auto-save 判定を本メソッド内に集約、void に戻した)。
+        /// <b>Auto-save の集約</b>:適用成功後、<c>action is EndTurnAction</c>(Auto-save は EndTurn 後)
+        /// または <c>next.IsTerminated</c>(Game 終了時の Auto-save Final)なら <see cref="AutoSaveAsync"/> を
+        /// 1 回トリガーする。EndTurn で Game が終了した場合も両条件を OR で評価するため Auto-save は 1 回に集約される。
         /// </para>
         /// </remarks>
         private void TryApplyAction(DrowZzzAction action)
@@ -257,7 +254,7 @@ namespace Drowsy.Presentation.Games.DrowZzz
                 var next = _applyActionUseCase.Execute(_current, action);
                 _current = next;
                 _sessionSubject.OnNext(next);
-                // Auto-save:EndTurn 後(ADR-0016 §8)+ Game 終了時(Outcome 確定)。
+                // Auto-save:EndTurn 後 + Game 終了時(Outcome 確定)。
                 // EndTurn で終了しても両条件を OR 評価するため Auto-save は 1 回に集約される。
                 // DrawCardAction / PlayCardAction は EndTurnAction でなく、合法手の適用後に IsTerminated にも
                 // ならない正常ケースでは Auto-save しない(PRES-021、Auto-save は EndTurn 後 / 終了時のみ)。
@@ -280,15 +277,15 @@ namespace Drowsy.Presentation.Games.DrowZzz
         /// 現セッションを <see cref="_savePath"/> へ非同期に自動セーブする(EndTurn 成功後 / Game 終了時に呼ばれる)。
         /// </summary>
         /// <remarks>
-        /// ADR-0016 §8。<c>UniTaskVoid</c> + <c>Forget</c> の fire-and-forget で、<see cref="Dispose"/> 時に
+        /// <c>UniTaskVoid</c> + <c>Forget</c> の fire-and-forget で、<see cref="Dispose"/> 時に
         /// <see cref="_cts"/> 経由でキャンセルされる。Game 終了時(Outcome 確定)も保存先はメイン path 上書きのみ
-        /// (別名 backup は Phase 3、M5-PR7 着手時 JIT 確定 2026-05-14)。<see cref="OperationCanceledException"/> は
+        /// (別名 backup は Phase 3)。<see cref="OperationCanceledException"/> は
         /// 握りつぶし、それ以外の例外は <c>Debug.LogError</c> 記録のみでゲームプレイは継続する。
         /// <para>
-        /// Pres W-3 post-Phase2 レビュー — Auto-save の逆順書き込み race について:
+        /// Auto-save の逆順書き込み race について:
         /// EndTurn が連打されると複数の AutoSaveAsync が並行 fire-and-forget され、
-        /// 後発が先発より早く完了して古い session で上書きされる理論可能性がある。M5(N=2 ホットシート、
-        /// 1 ターン 1 EndTurn 想定)では UI 経路上発生しないが、Phase 3 で複数同時 EndTurn が入る場合は
+        /// 後発が先発より早く完了して古い session で上書きされる理論可能性がある。N=2 ホットシートでは
+        /// UI 経路上発生しないが、Phase 3 で複数同時 EndTurn が入る場合は
         /// 序列化(SemaphoreSlim or 「実行中なら次の save を予約 1 件だけ保持」のスロット制御)に切り替えること。
         /// </para>
         /// </remarks>

@@ -103,7 +103,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz.Effects
             // When(再評価で current=p1 に基づき Outcome を再設定)
             var next = interpreter.Apply(session, new EarlyWinTriggerEffect());
             // Then(条件成立で WinnerOutcome(p1) に上書き、これは設計上想定挙動 = DrowZzzRule.IsLegalMove が
-            // 終了済 session への Action を全て illegal 化するので通常経路では再評価されない、ADR-0010 §6)
+            // 終了済 session への Action を全て illegal 化するので通常経路では再評価されない)
             Assert.That(next.Outcome, Is.EqualTo(new WinnerOutcome(PlayerId.Of("p1"))));
         }
     }

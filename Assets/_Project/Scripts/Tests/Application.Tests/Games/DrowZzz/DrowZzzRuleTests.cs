@@ -601,9 +601,9 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             Assert.Throws<InvalidOperationException>(() => rule.Apply(session, new EndTurnAction()));
         }
 
-        // ===== DZ-083 / DZ-084: 効果メカニズム (M2-PR1)、ADR-0007 §3 =====
+        // ===== DZ-083 / DZ-084: 効果メカニズム =====
 
-        // spy catalog: GetEffects 呼び出しを記録する(ADR-0018:catalog API は CardTypeId base)
+        // spy catalog: GetEffects 呼び出しを記録する(catalog API は CardTypeId base)
         private sealed class SpyCatalog : ICardCatalog<IEffect>
         {
             private static readonly IReadOnlyList<IEffect> Empty = System.Array.Empty<IEffect>();
@@ -627,7 +627,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 return Empty;
             }
 
-            // ADR-0024:`RegisteredCardTypeIds` インターフェース追加に伴う spy 実装(本テストでは未使用、空 list 返却)。
+            // `RegisteredCardTypeIds` インターフェース追加に伴う spy 実装(本テストでは未使用、空 list 返却)。
             public IReadOnlyCollection<CardTypeId> RegisteredCardTypeIds => System.Array.Empty<CardTypeId>();
         }
 
@@ -655,7 +655,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var session = NewSession(phase: DrowZzzPhaseState.WaitingForPlay, p0Hand: p0Hand);
             // When
             rule.Apply(session, new PlayCardAction(CardId.Of(CardTypeId.Of("c1"), 0)));
-            // Then(catalog.GetEffects の呼び出し引数 CardTypeId が PlayCardAction.Card.TypeId と一致する、ADR-0018)
+            // Then(catalog.GetEffects の呼び出し引数 CardTypeId が PlayCardAction.Card.TypeId と一致する)
             Assert.That(spy.GetEffectsCalledWith, Is.EqualTo(new[] { CardTypeId.Of("c1") }));
         }
 
@@ -910,7 +910,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-189")]
         public void Given_終了済Session_When_Applyを直接呼ぶ_Then_InvalidOperationExceptionを投げる()
         {
-            // Given(IsLegalMove を通さずに Apply を直接呼ぶ防御的検証、ADR-0006 §3 / ADR-0010 §6)
+            // Given(IsLegalMove を通さずに Apply を直接呼ぶ防御的検証)
             var rule = NewRule();
             var baseSession = NewSession(phase: DrowZzzPhaseState.WaitingForEndTurn);
             var session = baseSession with { Outcome = new WinnerOutcome(PlayerId.Of("p1")) };
@@ -953,7 +953,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         [Test, Category("Medium"), Category("Normal"), Property("Requirement", "DZ-190")]
         public void Given_Round21最終フェーズで両者同点_When_EndTurnでRound22到達_Then_OutcomeはDraw()
         {
-            // Given(両者同点 SDP=10、ADR-0010 §7 tiebreaker なし)
+            // Given(両者同点 SDP=10、引き分けは tiebreaker なし)
             //   NewSession のデフォルト FDP は { p1: 0, p2: 10 } で同点にならないため、FDP も 0/0 に上書き。
             //   TotalPoints p1=0+0+10=10、p2=0+0+10=10 で完全同点 → DrawOutcome
             var rule = NewRule();
@@ -997,7 +997,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             Assert.That(next.Outcome, Is.Null);
         }
 
-        // ===== DZ-197: 自フェーズ開始時のベッド破損ダメージ計算(M3-PR2、ADR-0011 §3 / §5)=====
+        // ===== DZ-197: 自フェーズ開始時のベッド破損ダメージ計算 =====
 
         [Test, Category("Medium"), Category("Normal"), Property("Requirement", "DZ-197")]
         public void Given_p2ベッド破損20_When_p1のEndTurnでp2にローテート_Then_p2のSDPがマイナス4()

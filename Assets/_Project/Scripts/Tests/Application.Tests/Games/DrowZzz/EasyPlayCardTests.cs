@@ -12,10 +12,10 @@ using NUnit.Framework;
 namespace Drowsy.Application.Tests.Games.DrowZzz
 {
     /// <summary>
-    /// カード No.10「安直過ぎる一手」の統合テスト(DZ-314 〜 DZ-322、2026-05-17 で導入、ADR-0021 と同 PR)。
+    /// カード No.10「安直過ぎる一手」の統合テスト(DZ-314 〜 DZ-322)。
     /// 御業(自己コスト SDP -10)+ 相手のベッド 30% 破損 + カウント 1 の `RestrictDrawCardInfluenceMarkerEffect` を相手に付与し、
     /// 相手の次の自フェーズで `DrawCardAction` を illegal 化する戦術カード。
-    /// ADR-0021 で `EndTurnAction` を全フェーズ合法化することで進行不能化(stuck)を回避する初の consumer。
+    /// stuck 化 Marker 保有時は `EndTurnAction` が全フェーズで合法化され進行不能化を回避する。
     /// </summary>
     [TestFixture]
     public sealed class EasyPlayCardTests
@@ -144,7 +144,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             Assert.That(rule.IsLegalMove(session, new DrawCardAction()), Is.False);
         }
 
-        // ===== DZ-319: 本 Marker 保有時、全フェーズで EndTurnAction が legal(ADR-0021、3 件分割)=====
+        // ===== DZ-319: 本 Marker 保有時、全フェーズで EndTurnAction が legal(3 件分割)=====
 
         [Test, Category("Medium"), Category("Normal"), Property("Requirement", "DZ-319")]
         public void Given_p2が本Markerカウント1保有_WaitingForDraw_When_p2がEndTurnActionでIsLegalMove_Then_true()
@@ -156,15 +156,15 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 currentPlayerIndex: 1);
             // When
             var legal = rule.IsLegalMove(session, new EndTurnAction());
-            // Then(ADR-0021:stuck 化 Marker 保有時の全フェーズ合法化、脱出弁)
+            // Then(stuck 化 Marker 保有時の全フェーズ合法化、脱出弁)
             Assert.That(legal, Is.True);
         }
 
         [Test, Category("Medium"), Category("Normal"), Property("Requirement", "DZ-319")]
         public void Given_p2が本Markerカウント1保有_WaitingForPlay_When_p2がEndTurnActionでIsLegalMove_Then_true()
         {
-            // Given(p2 が current、WaitingForPlay、本 Marker 保有 = ADR-0021「全フェーズ合法化」の対象)
-            // No.10 単独では WaitingForPlay は stuck ではないが、ADR-0021 のホワイトリスト方式は「Marker 保有時は
+            // Given(p2 が current、WaitingForPlay、本 Marker 保有)
+            // No.10 単独では WaitingForPlay は stuck ではないが、ホワイトリスト方式は「Marker 保有時は
             // PhaseState 問わず合法化」する設計のため、本フェーズでも EndTurnAction は合法でなければならない。
             var rule = NewRule(NewCatalogWithCardTen());
             var session = NewSessionWithP2Marker(
@@ -172,7 +172,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 currentPlayerIndex: 1);
             // When
             var legal = rule.IsLegalMove(session, new EndTurnAction());
-            // Then(ADR-0021:Marker 保有時は WaitingForEndTurn / WaitingForPlay / WaitingForDraw すべてで合法)
+            // Then(Marker 保有時は WaitingForEndTurn / WaitingForPlay / WaitingForDraw すべてで合法)
             Assert.That(legal, Is.True);
         }
 
@@ -196,7 +196,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             Assert.That(rule.IsLegalMove(session, new PlayCardAction(anyCard)), Is.True);
         }
 
-        // ===== DZ-321: カウント 1 Marker は p2 フェーズ全体で機能、count 不変(ADR-0020)=====
+        // ===== DZ-321: カウント 1 Marker は p2 フェーズ全体で機能、count 不変 =====
 
         [Test, Category("Medium"), Category("Normal"), Property("Requirement", "DZ-321")]
         public void Given_p2が本Markerカウント1保有_p1current_When_p1EndTurnでp2フェーズへ_Then_p2のInfluencesはカウント1で残存()
@@ -206,24 +206,24 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var session = NewSessionWithP2Marker(
                 phase: DrowZzzPhaseState.WaitingForEndTurn,
                 currentPlayerIndex: 0);
-            // When(ADR-0020:p1 EndTurn → p1 Decrement(no-op、p1 影響なし)→ Turn.Next で p2 → p2 Tick(marker no-op、count 不変))
+            // When(p1 EndTurn → p1 Decrement(no-op、p1 影響なし)→ Turn.Next で p2 → p2 Tick(marker no-op、count 不変))
             var next = rule.Apply(session, new EndTurnAction());
             // Then(p2 Influence は count=1 のまま残存)
             Assert.That(next.Influences[PlayerId.Of("p2")].Count, Is.EqualTo(1));
             Assert.That(next.Influences[PlayerId.Of("p2")][0].RemainingCount, Is.EqualTo(1));
         }
 
-        // ===== DZ-322: p2 自身の EndTurn 冒頭で Marker が除去される(ADR-0020 の Decrement、2 経路で対称検証)=====
+        // ===== DZ-322: p2 自身の EndTurn 冒頭で Marker が除去される(Decrement、2 経路で対称検証)=====
 
         [Test, Category("Medium"), Category("Normal"), Property("Requirement", "DZ-322")]
         public void Given_p2が本Markerカウント1保有_p2current_WaitingForDraw_When_p2EndTurn_Then_p2のInfluences件数が0()
         {
-            // Given(p2 current、WaitingForDraw、本 Marker 保有 = ADR-0021 stuck 脱出弁での EndTurn 経路)
+            // Given(p2 current、WaitingForDraw、本 Marker 保有 = stuck 脱出弁での EndTurn 経路)
             var rule = NewRule(NewCatalogWithCardTen());
             var session = NewSessionWithP2Marker(
                 phase: DrowZzzPhaseState.WaitingForDraw,
                 currentPlayerIndex: 1);
-            // When(ADR-0021:WaitingForDraw でも stuck Marker 保有時は EndTurn 合法、ADR-0020:p2 EndTurn 冒頭で Decrement で 1→0 除去)
+            // When(WaitingForDraw でも stuck Marker 保有時は EndTurn 合法、p2 EndTurn 冒頭で Decrement で 1→0 除去)
             var next = rule.Apply(session, new EndTurnAction());
             // Then(p2 Influences 件数 = 0)
             Assert.That(next.Influences[PlayerId.Of("p2")].Count, Is.EqualTo(0));
@@ -238,7 +238,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var session = NewSessionWithP2Marker(
                 phase: DrowZzzPhaseState.WaitingForEndTurn,
                 currentPlayerIndex: 1);
-            // When(ADR-0020:WaitingForEndTurn でも Decrement で 1→0 除去)
+            // When(WaitingForEndTurn でも Decrement で 1→0 除去)
             var next = rule.Apply(session, new EndTurnAction());
             // Then(p2 Influences 件数 = 0)
             Assert.That(next.Influences[PlayerId.Of("p2")].Count, Is.EqualTo(0));

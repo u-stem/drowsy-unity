@@ -211,7 +211,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 TargetCardId: CardId.Of(TargetTypeId, 0))), Is.False);
         }
 
-        // ===== DZ-276: AssociatedCardIds 含有 → illegal(ADR-0019、PR ① consumer 2 件目)=====
+        // ===== DZ-276: AssociatedCardIds 含有 → illegal =====
 
         [Test, Category("Medium"), Category("Abnormal"), Property("Requirement", "DZ-276")]
         public void Given_AssociatedCardIds含有のTargetCardId_When_Card05をIsLegalMove_Then_false()
@@ -221,7 +221,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var session = NewSession(
                 turnNumber: 1,
                 associatedCardIds: new[] { CardId.Of(TargetTypeId, 0) });
-            // When / Then(連想由来は選択不可、ADR-0019)
+            // When / Then(連想由来は選択不可)
             Assert.That(rule.IsLegalMove(session, new PlayCardAction(
                 CardId.Of(CommotionTypeId, 0),
                 TargetCardId: CardId.Of(TargetTypeId, 0))), Is.False);

@@ -15,10 +15,10 @@ namespace Drowsy.Application.Games.DrowZzz
     /// <summary>
     /// セッションを新規生成する特殊 UseCase。
     /// セッション未生成状態からゲームを開始するため、<see cref="IGameRule{TAction, TSession}.Apply"/> 系統とは
-    /// 独立した API として提供する(ADR-0006 §3 / §M1-PR3)。
+    /// 独立した API として提供する。
     /// </summary>
     /// <remarks>
-    /// 構築手順(M1 範囲):
+    /// 構築手順:
     /// <list type="number">
     /// <item>引数検証(<c>players</c> null → <c>initialDeck</c> null → <c>players</c> empty → null 要素/重複 PlayerId → FdpPool 数 → 山札枚数 の順)</item>
     /// <item>先後ランダム決定: <see cref="IRandomSource"/> で <c>players</c> を Fisher-Yates シャッフル</item>
@@ -27,18 +27,15 @@ namespace Drowsy.Application.Games.DrowZzz
     /// <item><see cref="DrowZzzGameSession"/> 構築 (<see cref="DrowZzzPhaseState.WaitingForDraw"/>)</item>
     /// </list>
     /// <para>
-    /// ADR-0014 で <c>ICardCatalog&lt;IEffect&gt;</c> 依存を削除(M4 完了時の再評価で ADR-0006 §3 / ADR-0007 §3 を更新)。
-    /// その後 ADR-0024(2026-05-18、No.19「絶対障壁」)で <c>ICardCatalog&lt;IEffect&gt;</c> 依存を **再追加**。
-    /// 「ゲーム開始時、先行プレイヤーへの自動連想」(<see cref="AssociateToFirstPlayerOnGameStartEffect"/> marker)を
-    /// 検出するため catalog 全 entry の最上位 effects 列を scan する必要が生じたため(ADR-0014 §「再評価条件」の妥当な契機、
-    /// ADR-0024 §「ADR-0014 との関係」)。
+    /// <c>ICardCatalog&lt;IEffect&gt;</c> 依存を保持:「ゲーム開始時、先行プレイヤーへの自動連想」
+    /// (<see cref="AssociateToFirstPlayerOnGameStartEffect"/> marker)を検出するため、
+    /// catalog 全 entry の最上位 effects 列を scan する。
     /// </para>
     /// </remarks>
     public sealed class StartGameUseCase
     {
-        // 初期手札枚数 (DrowZzz の最小ルール、ADR-0006 §M1)。
-        // L2 定数として UseCase 内に直接埋め込み。M1 範囲では IGameConfig への移管は見送り、Phase 2 後半で要検討
-        // (定数管理方針は CLAUDE.md §9 / docs/architecture/constants-management.md)。
+        // 初期手札枚数 (DrowZzz の最小ルール)。
+        // L2 定数として UseCase 内に直接埋め込み。
         private const int InitialHandSize = 5;
 
         private readonly IRandomSource _rng;
@@ -97,11 +94,11 @@ namespace Drowsy.Application.Games.DrowZzz
                 }
             }
 
-            // 3.5. ADR-0024:ゲーム開始時自動連想(先行プレイヤー= shuffledPlayers[0] へ)。
+            // 3.5. ゲーム開始時自動連想(先行プレイヤー= shuffledPlayers[0] へ)。
             // catalog 全 entry の最上位 effects 列を scan して `AssociateToFirstPlayerOnGameStartEffect` を持つカードを抽出、
-            // CardId.Of(typeId, 0) で先行プレイヤーの Hand に Add し、AssociatedCardIds(ADR-0019)にも記録。
+            // CardId.Of(typeId, 0) で先行プレイヤーの Hand に Add し、AssociatedCardIds にも記録。
             // 重複検出は Hand.Add の HAND-005 不変条件で自動防御(本経路は instance=0 固定、初期配布で同 typeId が
-            // 配られていても TypeId が同じだけで instance が異なるため衝突しない、ADR-0018 整合)。
+            // 配られていても TypeId が同じだけで instance が異なるため衝突しない)。
             var initialAssociatedCardIds = new HashSet<CardId>();
             foreach (var typeId in _catalog.RegisteredCardTypeIds)
             {
@@ -121,13 +118,13 @@ namespace Drowsy.Application.Games.DrowZzz
                 playerStates[i] = new PlayerState(shuffledPlayers[i], hands[i]);
             }
 
-            // 5. SDP / DDP / BedDamages 初期化(全プレイヤー 0、ADR-0009 §「DP 種別」/ ADR-0011 §3)
-            // SDP: M2-PR3 で追加、初期値 0(公開情報)
-            // DDP: M2-PR4 で追加、初期値 0(隠し情報、Turn 5/9/13/17/21 開始時に DdpPool から累積)
-            // BedDamages: M3-PR2 で追加、初期値 0%(全プレイヤーが破損 0% のベッドからスタート、ADR-0011 §3)
+            // 5. SDP / DDP / BedDamages 初期化(全プレイヤー 0)
+            // SDP: 初期値 0(公開情報)
+            // DDP: 初期値 0(隠し情報、Turn 5/9/13/17/21 開始時に DdpPool から累積)
+            // BedDamages: 初期値 0%(全プレイヤーが破損 0% のベッドからスタート)
             var sdpDict = new Dictionary<PlayerId, int>(shuffledPlayers.Count);
             var ddpDict = new Dictionary<PlayerId, int>(shuffledPlayers.Count);
-            // M2-PR5: Influences 初期化(全プレイヤー空 list、ADR-0007 §1.5)
+            // Influences 初期化(全プレイヤー空 list)
             var influencesDict = new Dictionary<PlayerId, IReadOnlyList<PlayerInfluence>>(shuffledPlayers.Count);
             var bedDamagesDict = new Dictionary<PlayerId, int>(shuffledPlayers.Count);
             for (int i = 0; i < shuffledPlayers.Count; i++)
@@ -138,7 +135,7 @@ namespace Drowsy.Application.Games.DrowZzz
                 bedDamagesDict[shuffledPlayers[i]] = 0;
             }
 
-            // 6. DdpPool 初期化(IGameConfig.DdpPool を Fisher-Yates Shuffle、ADR-0009 §3 / DZ-140)
+            // 6. DdpPool 初期化(IGameConfig.DdpPool を Fisher-Yates Shuffle)
             var ddpPool = new DdpPool(_config.DdpPool).Shuffle(_rng);
 
             // 7. GameState + DrowZzzGameSession 構築
@@ -157,17 +154,17 @@ namespace Drowsy.Application.Games.DrowZzz
                 ddpPool,
                 influencesDict,
                 DrowZzzPhaseState.WaitingForDraw,
-                // M3-PR1: 新規セッションは未終了(ADR-0010 §3)
+                // 新規セッションは未終了
                 outcome: null,
-                // M3-PR2: 全プレイヤーの BedDamages を 0% で初期化(ADR-0011 §3)
+                // 全プレイヤーの BedDamages を 0% で初期化
                 bedDamages: bedDamagesDict, System.Array.Empty<PendingCounteredEffect>(),
-                // ADR-0024: ゲーム開始時自動連想されたカード ID(ADR-0019 連想由来記録、空でも明示的に渡す)
+                // ゲーム開始時自動連想されたカード ID(連想由来記録、空でも明示的に渡す)
                 associatedCardIds: initialAssociatedCardIds);
         }
 
-        // ADR-0024 ヘルパー:カードの最上位 effects 列に `AssociateToFirstPlayerOnGameStartEffect` が含まれるか。
+        // カードの最上位 effects 列に `AssociateToFirstPlayerOnGameStartEffect` が含まれるかを確認するヘルパー。
         // wrapper 内側(KeywordedEffect.Inner / TimeOfDayBranchEffect.Night|MorningEffects / ChoiceEffect.Branches)は
-        // 走査しない(`AssociatableMarkerEffect` / `RequiresMinimumTotalPointsMarkerEffect` と同方針、ADR-0024 §2)。
+        // 走査しない(`AssociatableMarkerEffect` / `RequiresMinimumTotalPointsMarkerEffect` と同方針)。
         private static bool HasFirstPlayerAssociationEffectInTopLevel(IReadOnlyList<IEffect> effects)
         {
             for (int i = 0; i < effects.Count; i++)

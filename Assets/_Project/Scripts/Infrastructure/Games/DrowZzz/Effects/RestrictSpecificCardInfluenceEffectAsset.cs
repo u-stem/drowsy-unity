@@ -6,7 +6,7 @@ using UnityEngine;
 namespace Drowsy.Infrastructure.Games.DrowZzz.Effects
 {
     /// <summary>
-    /// <see cref="RestrictSpecificCardInfluenceEffect"/>(ADR-0019 PR ②、No.04「静寂を纏う」)を Unity SO で表現する POCO。
+    /// <see cref="RestrictSpecificCardInfluenceEffect"/>(No.04「静寂を纏う」)を Unity SO で表現する POCO。
     /// </summary>
     /// <remarks>
     /// `PlayerInfluence.TickEffect` として保有され、`IsLegalPlayCard` で <see cref="TargetCardTypeId"/> 一致のカードプレイを

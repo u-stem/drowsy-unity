@@ -15,38 +15,30 @@ namespace Drowsy.Application.Games.DrowZzz
     /// <see cref="DdpPool"/> / <see cref="Influences"/> / <see cref="PhaseState"/>)を保持する。
     /// </summary>
     /// <remarks>
-    /// <c>record class</c> + <c>init</c> setter + バッキングフィールド + <c>value ?? throw</c> パターン
-    /// (ADR-0004 polyfill 前提、Phase 1 <see cref="GameState"/> と同パターン)。
+    /// <c>record class</c> + <c>init</c> setter + バッキングフィールド + <c>value ?? throw</c> パターン(Phase 1 <see cref="GameState"/> と同パターン)。
     /// コンストラクタおよび <c>with</c> 式の両経路で null 検証 + cross-field 検証
     /// (FDP / DDP / SDP / Influences のキー集合が <see cref="GameState"/>.Players の <see cref="PlayerId"/> 集合と一致するか)
-    /// が走る。詳細は ADR-0006 §2.2 / ADR-0009 §「DP 種別」§「DDP プールの構造」/ ADR-0007 §1.5「継続影響」を参照。
-    /// 各プレイヤー視点での隠し情報フィルタは Presentation 層 (M5) で実装し、本クラスは完全可視オラクルとする。
+    /// が走る。
+    /// 各プレイヤー視点での隠し情報フィルタは Presentation 層で実装し、本クラスは完全可視オラクルとする。
     /// <para>
     /// <see cref="Equals(DrowZzzGameSession)"/> / <see cref="GetHashCode"/> は record の auto-generated を上書きする。
-    /// 内部 DP 群(<see cref="_firstDrowsyPoints"/> / <see cref="_drawDrowsyPoints"/> / <see cref="_secondDrowsyPoints"/>)
-    /// が <see cref="Dictionary{TKey, TValue}"/> のため auto-equals は参照同値にフォールバックして値同値が壊れる
-    /// (<see cref="GameState"/> と同じ判断軸、ADR-0002)。順序非依存マルチセット同値で比較する。
+    /// 内部 DP 群が <see cref="Dictionary{TKey, TValue}"/> のため auto-equals は参照同値にフォールバックして値同値が壊れる。
+    /// 順序非依存マルチセット同値で比較する。
     /// <see cref="DdpPool"/> は順序付きシーケンス同値(<see cref="DdpPool"/>.Equals)。
     /// <see cref="Influences"/> はキー順は問わず、各プレイヤーの影響 list は順序保持シーケンス同値で比較する
     /// (list の順序は FIFO Tick 規約上意味を持つため)。
     /// </para>
     /// <para>
-    /// M2-PR3 で <see cref="SecondDrowsyPoints"/>(SDP、公開情報・初期値 0・行動で変動)を追加。
-    /// M2-PR4 で <see cref="DrawDrowsyPoints"/>(DDP、隠し情報・累積式・Turn 5/9/13/17/21 開始時に共有プールから抽選)
-    /// + <see cref="DdpPool"/>(残 DDP プール、プレイヤー間共有)を追加(ADR-0009 §「DP 種別」§「DDP プールの構造」)。
-    /// M2-PR5 で <see cref="Influences"/>(継続影響、プレイヤーごとに 0+ 件保有、Tick 評価は <c>DrowZzzRule.ApplyEndTurn</c>)
-    /// を追加(ADR-0007 §1.5)。
-    /// M3-PR1 で <see cref="Outcome"/>(ゲーム終了状態、<c>GameOutcome?</c>、null = 未終了)を追加
-    /// (ADR-0010 §3)。
-    /// M3-PR2 で <see cref="BedDamages"/>(プレイヤーごとのベッド破損率、0〜100%)を追加
-    /// (ADR-0011 §3)。コンストラクタは 9 引数 (gameState, fdp, ddp, sdp, ddpPool, influences, phaseState, outcome, bedDamages)
-    /// に拡張(breaking change、既存テスト全件修正)。<see cref="TotalPoints"/> は FDP + DDP + SDP の 3 項合計を維持
-    /// (ベッド破損は SDP に間接寄与:自ターン開始時に `bedDamage / 5` の SDP マイナスが入る、ADR-0011 §3 / §5)。
+    /// 保持フィールド:
+    /// <see cref="SecondDrowsyPoints"/>(SDP、公開情報・初期値 0・行動で変動)、
+    /// <see cref="DrawDrowsyPoints"/>(DDP、隠し情報・累積式・Turn 5/9/13/17/21 開始時に共有プールから抽選)、
+    /// <see cref="DdpPool"/>(残 DDP プール、プレイヤー間共有)、
+    /// <see cref="Influences"/>(継続影響、プレイヤーごとに 0+ 件保有、Tick 評価は <c>DrowZzzRule.ApplyEndTurn</c>)、
+    /// <see cref="Outcome"/>(ゲーム終了状態、<c>GameOutcome?</c>、null = 未終了)、
+    /// <see cref="BedDamages"/>(プレイヤーごとのベッド破損率、0〜100%)、
+    /// <see cref="PendingCounteredEffects"/>(「無効化された効果」の遡及発動保留 list)。
+    /// <see cref="TotalPoints"/> は FDP + DDP + SDP の 3 項合計(ベッド破損は SDP に間接寄与:自ターン開始時に `bedDamage / 5` の SDP マイナスが入る)。
     /// <see cref="IsTerminated"/> は <see cref="Outcome"/> != null の薄い computed プロパティ。
-    /// M3-PR5c で <see cref="PendingCounteredEffects"/>(「無効化された効果」の遡及発動保留 list、ADR-0011 §4.4)を追加。
-    /// コンストラクタは 10 引数 (gameState, fdp, ddp, sdp, ddpPool, influences, phaseState, outcome, bedDamages, pendingCounteredEffects)
-    /// に拡張(breaking change、既存テスト全件修正)。Players キー集合との独立性を持つ(プレイヤー単位ではなく
-    /// セッション単位の保留情報、N=2 想定で同時 Pending は最大数件、自ターン終了時に未消化分を一括破棄)。
     /// </para>
     /// </remarks>
     public sealed record DrowZzzGameSession
@@ -61,20 +53,19 @@ namespace Drowsy.Application.Games.DrowZzz
         // IReadOnlyList で揃えることで getter の dict 再構築が不要になる(構築時にコピー、以降は immutable な扱い)。
         private readonly Dictionary<PlayerId, IReadOnlyList<PlayerInfluence>> _influences;
         private readonly DrowZzzPhaseState _phaseState;
-        // _outcome は null = 未終了、非 null = ゲーム終了状態(WinnerOutcome / DrawOutcome)。M3-PR1 で追加(ADR-0010 §3)。
+        // _outcome は null = 未終了、非 null = ゲーム終了状態(WinnerOutcome / DrawOutcome)。
         private readonly GameOutcome _outcome;
-        // _bedDamages は各プレイヤーのベッド破損率(0〜100%)。M3-PR2 で追加(ADR-0011 §3)。
+        // _bedDamages は各プレイヤーのベッド破損率(0〜100%)。
         // FDP / DDP / SDP と同パターン: Dictionary<PlayerId, int> を防御コピーで保持、cross-field 検証で Players キーと一致。
         private readonly Dictionary<PlayerId, int> _bedDamages;
-        // _pendingCounteredEffects は「無効化された効果」の遡及発動保留 list。M3-PR5c で追加(ADR-0011 §4.4)。
+        // _pendingCounteredEffects は「無効化された効果」の遡及発動保留 list。
         // Influences と同パターン: 配列(PendingCounteredEffect[])を防御コピーで保持、IReadOnlyList で公開。
         // Players キー集合とは独立(セッション単位の保留情報)、末尾追加・末尾取り出しの LIFO セマンティクスで意味を持つ
         // (経路 2 で最後エントリの CounterCard を照合 / 削除、Influences の FIFO Tick とは異なる扱い)。
         private readonly IReadOnlyList<PendingCounteredEffect> _pendingCounteredEffects;
-        // _associatedCardIds は AssociateAction で連想された CardId の永続記録(ADR-0019、PR ①)。
+        // _associatedCardIds は AssociateAction で連想された CardId の永続記録。
         // Players キー集合と独立(セッション単位の集合)、Add only / Remove なし、HashSet 内部表現で IReadOnlySet 公開。
-        // 後続 PR ② で No.04「静寂を纏う」が「連想由来は選択不可」検証に利用する。
-        // PR ① 単独では「ApplyAssociate で記録するが consumer 不在」状態(意図的、レビュー粒度のための先行整備)。
+        // No.04「静寂を纏う」が「連想由来は選択不可」検証に利用する。
         private readonly HashSet<CardId> _associatedCardIds;
 
         /// <summary>Domain ルート集約。</summary>
@@ -132,10 +123,9 @@ namespace Drowsy.Application.Games.DrowZzz
 
         /// <summary>
         /// 各プレイヤーの DDP (Draw Drowsy Point)。プレイヤーごとに隠し情報、初期値 0、
-        /// Turn 5/9/13/17/21 開始時に <see cref="DdpPool"/> から抽選した値が累積される
-        /// (ADR-0009 §「DP 種別」§「DDP 抽選タイミング」、M2-PR4 で導入)。
+        /// Turn 5/9/13/17/21 開始時に <see cref="DdpPool"/> から抽選した値が累積される。
         /// キー集合は <see cref="GameState"/>.Players の <see cref="PlayerId"/> 集合と完全一致する必要がある。
-        /// 値は負値も許容する(0 floor なし、ADR-0009 「持ち点低い方が勝ち」と整合、DZ-137)。
+        /// 値は負値も許容する(0 floor なし、「持ち点低い方が勝ち」と整合)。
         /// </summary>
         public IReadOnlyDictionary<PlayerId, int> DrawDrowsyPoints
         {
@@ -152,10 +142,9 @@ namespace Drowsy.Application.Games.DrowZzz
         }
 
         /// <summary>
-        /// 各プレイヤーの SDP (Second Drowsy Point)。プレイヤーごとに公開情報、初期値 0、各プレイヤーの行動で変動する
-        /// (ADR-0009 §「DP 種別」、M2-PR3 で導入)。
+        /// 各プレイヤーの SDP (Second Drowsy Point)。プレイヤーごとに公開情報、初期値 0、各プレイヤーの行動で変動する。
         /// キー集合は <see cref="GameState"/>.Players の <see cref="PlayerId"/> 集合と完全一致する必要がある。
-        /// 値は負値も許容する(0 floor なし、ADR-0009 「持ち点低い方が勝ち」と整合、DZ-109)。
+        /// 値は負値も許容する(0 floor なし、「持ち点低い方が勝ち」と整合)。
         /// </summary>
         public IReadOnlyDictionary<PlayerId, int> SecondDrowsyPoints
         {
@@ -173,7 +162,7 @@ namespace Drowsy.Application.Games.DrowZzz
 
         /// <summary>
         /// 残 DDP プール。プレイヤー間で共有され、Turn 5/9/13/17/21 開始時に先頭から N (= player count) 枚が
-        /// 抽選されてプールから除外される(ADR-0009 §「DDP プールの構造」、M2-PR4 で導入)。
+        /// 抽選されてプールから除外される。
         /// </summary>
         public DdpPool DdpPool
         {
@@ -184,7 +173,7 @@ namespace Drowsy.Application.Games.DrowZzz
         /// <summary>
         /// 各プレイヤーが保有する継続影響(<see cref="PlayerInfluence"/>)の list。
         /// キー集合は <see cref="GameState"/>.Players の <see cref="PlayerId"/> 集合と完全一致する必要があり、
-        /// 各 list は 0 件(空 list)以上を許容する。M2-PR5 で導入(ADR-0007 §1.5)。
+        /// 各 list は 0 件(空 list)以上を許容する。
         /// </summary>
         /// <remarks>
         /// list の順序は FIFO Tick 規約(先頭から評価)で意味を持つため、順序保持シーケンス同値で扱う。
@@ -213,10 +202,9 @@ namespace Drowsy.Application.Games.DrowZzz
 
         /// <summary>
         /// ゲーム終了状態(<c>null</c> = 未終了、<see cref="WinnerOutcome"/> = 勝者あり、<see cref="DrawOutcome"/> = 引き分け)。
-        /// M3-PR1 で追加(ADR-0010 §3)。
         /// </summary>
         /// <remarks>
-        /// 設定経路は 2 つ(ADR-0010 §4):
+        /// 設定経路は 2 つ:
         /// <list type="bullet">
         /// <item>早期勝利: <see cref="Drowsy.Application.Games.DrowZzz.Effects.EarlyWinTriggerEffect"/> 評価時、
         /// 夜 + 持ち点 ≥ <see cref="DrowZzzVictoryConstants.EarlyWinScoreThreshold"/> で
@@ -224,7 +212,7 @@ namespace Drowsy.Application.Games.DrowZzz
         /// <item>終了時勝利: <c>DrowZzzRule.ApplyEndTurn</c> 内、Round 21 完了検出時に <see cref="TotalPoints"/> 比較で
         /// 低い方を <see cref="WinnerOutcome"/>、等値なら <see cref="DrawOutcome"/></item>
         /// </list>
-        /// <c>Outcome != null</c> の session に対する <c>Action</c> はすべて illegal(<c>DrowZzzRule.IsLegalMove</c> で防御、ADR-0010 §6)。
+        /// <c>Outcome != null</c> の session に対する <c>Action</c> はすべて illegal(<c>DrowZzzRule.IsLegalMove</c> で防御)。
         /// </remarks>
         public GameOutcome Outcome
         {
@@ -234,18 +222,17 @@ namespace Drowsy.Application.Games.DrowZzz
 
         /// <summary>
         /// ゲームが終了済かどうか(<see cref="Outcome"/> != null の computed プロパティ)。
-        /// M3-PR1 で追加(ADR-0010 §3)。
         /// </summary>
         public bool IsTerminated => _outcome is not null;
 
         /// <summary>
-        /// 各プレイヤーのベッド破損率(0〜100%)。M3-PR2 で追加(ADR-0011 §3)。
+        /// 各プレイヤーのベッド破損率(0〜100%)。
         /// </summary>
         /// <remarks>
         /// プレイヤーごとに「自分のベッド」を持ち、自ターン開始時に <c>bedDamage / 5</c>(整数除算)の SDP マイナスが入る
-        /// (ADR-0011 §3、<see cref="DrowZzzBedConstants.BedDamageRatePerSdp"/>)。
-        /// 破損率の増加は <see cref="Effects.DamageBedEffect"/>(M3-PR2 で導入、5 の倍数のみ)で行う。
-        /// 修繕は M3-PR3 の <c>AbandonAction(AbandonChoice.RepairBed)</c> で -20%(下限 0%)。
+        /// (<see cref="DrowZzzBedConstants.BedDamageRatePerSdp"/>)。
+        /// 破損率の増加は <see cref="Effects.DamageBedEffect"/>(5 の倍数のみ)で行う。
+        /// 修繕は <c>AbandonAction(AbandonChoice.RepairBed)</c> で -20%(下限 0%)。
         /// <para>
         /// FDP / DDP / SDP と同パターン: 値は <c>[<see cref="DrowZzzBedConstants.MinBedDamagePercent"/>(0),
         /// <see cref="DrowZzzBedConstants.MaxBedDamagePercent"/>(100)]</c> の範囲、cross-field 検証で
@@ -267,7 +254,7 @@ namespace Drowsy.Application.Games.DrowZzz
         }
 
         /// <summary>
-        /// 「無効化された効果」の遡及発動保留 list(M3-PR5c で追加、ADR-0011 §4.4)。
+        /// 「無効化された効果」の遡及発動保留 list。
         /// 反撃カード B が元カード A をカウンタした時点で <see cref="PendingCounteredEffect"/>(B, A, A の効果列)が追加され、
         /// 「反撃の反撃」C が B を打ち消した時点で対応するエントリを取り出して A の効果列を遡及発動する。
         /// </summary>
@@ -275,7 +262,7 @@ namespace Drowsy.Application.Games.DrowZzz
         /// <para>
         /// list は末尾追加・末尾取り出しの LIFO セマンティクス(経路 2 で最後エントリの CounterCard を照合 / 削除)。
         /// 同時保留は N=2 想定で 1〜数件、自ターン終了時に未消化分が一括破棄される
-        /// (<c>DrowZzzRule.ApplyEndTurn</c> で空 list 上書き、ADR-0011 §4.4 / M3-PR5c JIT 確定)。
+        /// (<c>DrowZzzRule.ApplyEndTurn</c> で空 list 上書き)。
         /// <see cref="Influences"/> の FIFO Tick(先頭から評価)とはセマンティクスが異なるので注意。
         /// </para>
         /// <para>
@@ -291,12 +278,12 @@ namespace Drowsy.Application.Games.DrowZzz
         }
 
         /// <summary>
-        /// <see cref="AssociateAction"/> で連想された <see cref="CardId"/> の永続記録(ADR-0019、PR ①)。
+        /// <see cref="AssociateAction"/> で連想された <see cref="CardId"/> の永続記録。
         /// </summary>
         /// <remarks>
         /// <para>
         /// Add only / Remove なしの永続セマンティクス:一度連想された CardId は手札から Discard / Field に
-        /// 移動しても本集合に残り続け、ゲーム終了まで「連想由来」属性を保持する。後続 PR ② で
+        /// 移動しても本集合に残り続け、ゲーム終了まで「連想由来」属性を保持する。
         /// No.04「静寂を纏う」が「連想由来は選択不可」検証に利用する。null 入力は空集合へ正規化される
         /// (後方互換性 + Persistence v1 で欠落 → 空集合復元のため)。
         /// </para>
@@ -315,7 +302,7 @@ namespace Drowsy.Application.Games.DrowZzz
 
         /// <summary>
         /// <see cref="AssociatedCardIds"/> に <paramref name="card"/> が含まれているかを O(1) で判定する
-        /// (ADR-0019、内部 <see cref="HashSet{CardId}"/> 経由)。
+        /// (内部 <see cref="HashSet{CardId}"/> 経由)。
         /// </summary>
         /// <param name="card">判定対象の <see cref="CardId"/>(null 不可)</param>
         /// <returns>連想記録に含まれていれば true</returns>
@@ -330,14 +317,13 @@ namespace Drowsy.Application.Games.DrowZzz
         }
 
         /// <summary>
-        /// DrowZzz のゲーム内時計。Phase 1 <c>TurnNumber</c> から DrowZzz 用語(ターン =
-        /// ラウンド、N=2 想定)への変換を担う唯一の情報源(ADR-0008 §2 案 X、計算式集約点)。
+        /// DrowZzz のゲーム内時計。<c>TurnNumber</c> から DrowZzz 用語(ターン = ラウンド、N=2 想定)への変換を担う唯一の情報源。
         /// </summary>
         /// <remarks>
         /// 真の単一情報源は <c>TurnState.TurnNumber</c>。本プロパティで
         /// <c>(TurnNumber + 1) / 2</c> 計算を実行し、以降の <see cref="CurrentRound"/> /
         /// <see cref="DrowZzzClock.RoundNumber"/> / <c>Hour</c> / <c>Minute</c> はすべて
-        /// 本プロパティ経由で参照される。N&gt;2 拡張は Phase 3 候補(ADR-0006 §Negative)。
+        /// 本プロパティ経由で参照される。N&gt;2 拡張は Phase 3 候補。
         /// 詳細は <c>docs/specs/games/drowzzz/clock.md</c> を参照。
         /// </remarks>
         public DrowZzzClock Clock => new DrowZzzClock((_gameState.Turn.TurnNumber + 1) / 2);
@@ -347,10 +333,7 @@ namespace Drowsy.Application.Games.DrowZzz
         /// <see cref="Clock"/>.<see cref="DrowZzzClock.RoundNumber"/> への委譲。
         /// </summary>
         /// <remarks>
-        /// 後方互換のため Property API として維持。計算式の真の単一情報源は
-        /// <see cref="Clock"/> プロパティ。設計判断は ADR-0008 §3 +
-        /// `docs/todo.md`「`DrowZzzGameSession.CurrentRound` を `Clock.RoundNumber`
-        /// 経由に整理」(2026-05-13 完了済み)を参照。
+        /// 後方互換のため Property API として維持。計算式の真の単一情報源は <see cref="Clock"/> プロパティ。
         /// </remarks>
         public int CurrentRound => Clock.RoundNumber;
 
@@ -377,8 +360,7 @@ namespace Drowsy.Application.Games.DrowZzz
         {
             // 順序が重要: GameState を先に確定 → 各 DP / Influences / BedDamages の init setter で _gameState を参照して cross-field 検証。
             // (GameState init setter 時点では DP 群 / Influences / BedDamages が null なので cross-field はスキップされる)
-            // PendingCounteredEffects は Players キー集合と独立のため cross-field 検証なし(セッション単位の保留情報、M3-PR5c)。
-            // AssociatedCardIds も Players キー集合と独立(セッション単位の永続記録、ADR-0019)、null は空 set へ正規化。
+            // PendingCounteredEffects / AssociatedCardIds は Players キー集合と独立(セッション単位の情報)、null は空 set へ正規化。
             GameState = gameState;
             FirstDrowsyPoints = firstDrowsyPoints;
             DrawDrowsyPoints = drawDrowsyPoints;
@@ -393,7 +375,7 @@ namespace Drowsy.Application.Games.DrowZzz
         }
 
         /// <summary>
-        /// 指定プレイヤーの持ち点(= FDP + DDP + SDP)を計算する(ADR-0009 §「持ち点」、M2-PR4 で 3 項合計に拡張)。
+        /// 指定プレイヤーの持ち点(= FDP + DDP + SDP)を計算する。
         /// </summary>
         /// <param name="playerId">対象プレイヤー</param>
         /// <returns>FDP + DDP + SDP の合計</returns>
@@ -445,7 +427,7 @@ namespace Drowsy.Application.Games.DrowZzz
             return buffer;
         }
 
-        // BedDamages の防御コピー + null 検証 + 範囲検証(0〜100%、ADR-0011 §3)
+        // BedDamages の防御コピー + null 検証 + 範囲検証(0〜100%)
         // paramName: 呼び出し元 init setter の Property 名(post-Phase2 #4 ParamName 強化 Phase A+B 第 2 弾)
         private static Dictionary<PlayerId, int> ValidateAndCopyBedDamages(
             IReadOnlyDictionary<PlayerId, int> source,
@@ -497,12 +479,12 @@ namespace Drowsy.Application.Games.DrowZzz
             return arr;
         }
 
-        // AssociatedCardIds の防御コピー + null 正規化(ADR-0019)。
+        // AssociatedCardIds の防御コピー + null 正規化。
         // - null は空 HashSet へ正規化(後方互換性:Persistence v1 で欠落 → 空集合復元の経路と整合、ctor 引数 optional default 経路と整合)
         // - 入力は IReadOnlyCollection<CardId>(netstandard2.1 に IReadOnlySet<T> が無いため Collection で受ける)、
         //   内部は HashSet<CardId> で保持(IsAssociated の O(1) 検索 + 入力に重複 CardId が混ざっても自動排除)
         // - 個々の CardId 要素は null 不可(Pile 等と同パターン、CardId 自体が non-null record)
-        // - paramName: 呼び出し元 init setter / ctor 引数名(post-Phase2 #4 ParamName 強化と整合、code-reviewer P-1 反映 2026-05-17)
+        // - paramName: 呼び出し元 init setter / ctor 引数名
         private static HashSet<CardId> ValidateAndCopyAssociatedCardIds(
             IReadOnlyCollection<CardId> source,
             string paramName)
@@ -685,7 +667,7 @@ namespace Drowsy.Application.Games.DrowZzz
             {
                 return false;
             }
-            // ADR-0019: AssociatedCardIds の値同値性。順序非依存集合同値(HashSet<CardId>.SetEquals)。
+            // AssociatedCardIds の値同値性。順序非依存集合同値(HashSet<CardId>.SetEquals)。
             // 永続記録セマンティクスのため Count 比較 + SetEquals で十分(順序情報を持たない設計)。
             if (!_associatedCardIds.SetEquals(other._associatedCardIds))
             {
@@ -762,8 +744,8 @@ namespace Drowsy.Application.Games.DrowZzz
 
         /// <summary>
         /// 順序非依存ハッシュ。<see cref="_gameState"/> / <see cref="_phaseState"/> / <see cref="_ddpPool"/> および
-        /// FDP / DDP / SDP / Influences の各ペアハッシュを XOR 合成する(CardData と同じパターン、ADR-0002)。
-        /// 4 つのキー dict は seed 整数(0 / 1 / 2 / 3)を組み合わせて XOR 衝突を回避する。
+        /// FDP / DDP / SDP / Influences の各ペアハッシュを XOR 合成する。
+        /// 各 dict は seed 整数(0 / 1 / 2 / 3)を組み合わせて XOR 衝突を回避する。
         /// </summary>
         public override int GetHashCode()
         {
@@ -808,7 +790,7 @@ namespace Drowsy.Application.Games.DrowZzz
             {
                 hash = HashCode.Combine(hash, _pendingCounteredEffects[i], i, 5);
             }
-            // ADR-0019: AssociatedCardIds を順序非依存で合成(set のため、各要素の hash XOR で順序非依存性を担保)。
+            // AssociatedCardIds を順序非依存で合成(set のため、各要素の hash XOR で順序非依存性を担保)。
             // seed 6 で他フィールドとの XOR 衝突を回避。各要素は CardId.GetHashCode(record 自動生成)を利用。
             foreach (var id in _associatedCardIds)
             {

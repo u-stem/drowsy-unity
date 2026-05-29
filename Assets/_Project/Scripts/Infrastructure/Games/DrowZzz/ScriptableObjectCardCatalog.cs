@@ -10,23 +10,22 @@ namespace Drowsy.Infrastructure.Games.DrowZzz
 {
     /// <summary>
     /// DrowZzz 向け <see cref="ICardCatalog{TEffect}"/>(<c>TEffect = IEffect</c>)の
-    /// <see cref="ScriptableObject"/> 実装(M4-PR1 骨格、ADR-0012 §2)。
+    /// <see cref="ScriptableObject"/> 実装。
     /// Designer が Unity Editor 上で <see cref="CardEntryAsset"/> 配列を編集することで
     /// カードデータを管理する。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// 本 PR(M4-PR1)範囲は **骨格** として以下に限定:
+    /// 機能概要:
     /// <list type="bullet">
     /// <item>カードデータ(<see cref="CardData"/>)の登録と取得(<see cref="Get"/> / <see cref="TryGet"/>)</item>
     /// <item>重複 <see cref="CardEntryAsset.CardIdValue"/> の <see cref="OnValidate"/> 検出
-    /// (<see cref="Debug.LogError(object, UnityEngine.Object)"/>、JIT 確定 2026-05-14)</item>
-    /// <item><see cref="GetEffects"/> は **本 PR 範囲では空配列固定**
-    /// (<see cref="Array.Empty{T}"/>)。効果列対応は M4-PR2(初の SO 化対象 <c>AdjustSdpEffect</c>)/ PR3(全 11 派生型)で拡張(ADR-0012 §3 / §9、INF-008 は Optional マーカーで本 PR トレーサビリティ免除)</item>
+    /// (<see cref="Debug.LogError(object, UnityEngine.Object)"/>)</item>
+    /// <item><see cref="GetEffects"/> は <see cref="EffectAsset"/> を通じて効果列を返す</item>
     /// </list>
     /// </para>
     /// <para>
-    /// <b>引数型(ADR-0018)</b>:本 catalog の lookup key は <see cref="CardTypeId"/> である。<see cref="CardEntryAsset.CardIdValue"/>
+    /// <b>引数型</b>:本 catalog の lookup key は <see cref="CardTypeId"/> である。<see cref="CardEntryAsset.CardIdValue"/>
     /// が SerializeField の string を保持し、本 catalog の <see cref="RebuildCache"/> で <see cref="CardTypeId.Of"/> を
     /// 通して構築する。<see cref="CardEntryAsset.CardIdValue"/> プロパティ名は SerializeField の互換性維持のため
     /// 旧名を残しているが、保持される文字列の意味は「種別 ID(<see cref="CardTypeId.Value"/>)」である。
@@ -36,7 +35,7 @@ namespace Drowsy.Infrastructure.Games.DrowZzz
     /// JIT 確定 2026-05-14)。本番経路の <c>AssetReference</c> / <c>Addressables</c> は M5 Bootstrap で確定。
     /// </para>
     /// <para>
-    /// <see cref="InMemoryCardCatalog"/> との関係(ADR-0012 §5):Application.Tests は <see cref="InMemoryCardCatalog"/>(Pure C#、
+    /// <see cref="InMemoryCardCatalog"/> との関係:Application.Tests は <see cref="InMemoryCardCatalog"/>(Pure C#、
     /// テスト独立性維持)を継続利用、Infrastructure.Tests は本 SO を <see cref="ScriptableObject.CreateInstance{T}"/> 経由で
     /// テスト、本番経路は本 SO を Asset 読み込みで使用する Ports &amp; Adapters パターン。
     /// </para>
@@ -49,8 +48,8 @@ namespace Drowsy.Infrastructure.Games.DrowZzz
 
         [SerializeField] private CardEntryAsset[] _entries;
 
-        // 構築済キャッシュ(同じ typeId を複数回 Get したときに毎回 ToCardData / ToDomain を呼ばないため)
-        // ADR-0018 で lookup key を CardId → CardTypeId に変更(catalog の責務「種別 → CardData」を型で明示)。
+        // 構築済キャッシュ(同じ typeId を複数回 Get したときに毎回 ToCardData / ToDomain を呼ばないため)。
+        // lookup key は CardTypeId(catalog の責務「種別 → CardData」を型で明示)。
         private Dictionary<CardTypeId, CardData> _cache;
         // M4-PR2 で追加:CardTypeId → IEffect[] の効果列キャッシュ(INF-017)。EffectAsset[].ToDomain() を
         // RebuildCache 時に集計、GetEffects は本キャッシュから取得して返す。
@@ -209,12 +208,12 @@ namespace Drowsy.Infrastructure.Games.DrowZzz
         }
 
         /// <summary>
-        /// 登録済(キャッシュ構築済)の全 <see cref="CardTypeId"/> を返す(ADR-0018 で <c>CardId</c> → <c>CardTypeId</c> に変更)。
+        /// 登録済(キャッシュ構築済)の全 <see cref="CardTypeId"/> を返す。
         /// </summary>
         /// <remarks>
-        /// M5-PR4 で追加(ADR-0016 §3.2 / §11 M5-PR4)。Bootstrap(<c>ProjectLifetimeScope</c>)が
-        /// 新規対戦の <c>initialDeck</c> を組み立てるために本 catalog の登録カード種別を列挙する用途で利用する。
-        /// <see cref="ICardCatalog{TEffect}"/> interface(ADR-0007 で確定)には追加せず、 SO 具象クラス専用の
+        /// Bootstrap(<c>ProjectLifetimeScope</c>)が新規対戦の <c>initialDeck</c> を組み立てるために
+        /// 本 catalog の登録カード種別を列挙する用途で利用する。
+        /// <see cref="ICardCatalog{TEffect}"/> interface には追加せず、SO 具象クラス専用の
         /// 拡張 API とする(interface の汎用性を保ち、列挙が必要な consumer は具象型に依存する設計)。
         /// 戻り値は <see cref="RebuildCache"/> の重複「後勝ち」/ 不正 entry skip ロジック適用後のキー集合。
         /// <para>
@@ -269,9 +268,8 @@ namespace Drowsy.Infrastructure.Games.DrowZzz
         /// </summary>
         /// <remarks>
         /// M4-PR1 では <c>InMemoryCardCatalog.GetEffects</c> と同様、空配列固定の骨格実装だった(INF-008 Optional)。
-        /// M4-PR2 で <see cref="EffectAsset"/> 基底 + <see cref="AdjustSdpEffectAsset"/>(最初の派生型)を
-        /// 導入し、本メソッドが SO ベースで効果列を返却する経路に拡張(ADR-0012 §3 案 (a))。
-        /// 残り 11 派生型は M4-PR3 で順次対応。
+        /// <see cref="EffectAsset"/> 基底 + 各派生型の <see cref="EffectAsset.ToDomain"/> を呼んで
+        /// SO ベースで効果列を返却する。
         /// </remarks>
         public IReadOnlyList<IEffect> GetEffects(CardTypeId typeId)
         {
@@ -288,7 +286,7 @@ namespace Drowsy.Infrastructure.Games.DrowZzz
         /// (<see cref="RebuildCache"/> + <see cref="DetectDuplicateIds"/>)を実行する。
         /// 本番経路では Unity Inspector が <see cref="SerializeField"/> private field を直接初期化するため、
         /// 本メソッドは <c>internal</c> でテスト asmdef からのみアクセス可能(<see cref="AssemblyInfo"/> の
-        /// <c>InternalsVisibleTo</c>、ADR-0012 §5)。
+        /// <c>InternalsVisibleTo</c> 経由)。
         /// </summary>
         internal void SetEntriesForTest(CardEntryAsset[] entries)
         {

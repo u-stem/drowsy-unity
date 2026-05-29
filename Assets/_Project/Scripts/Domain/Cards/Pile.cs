@@ -16,8 +16,7 @@ namespace Drowsy.Domain.Cards
     /// 全変更操作は新しい配列を割り当てて新 Pile を返す純関数として実装する。
     ///
     /// 等値性は順序付きシーケンス同値で <see cref="Equals(Pile)"/> / <see cref="GetHashCode"/> /
-    /// <see cref="op_Equality"/> / <see cref="op_Inequality"/> を override する
-    /// (設計判断は ADR-0002 §「Domain 集合型の値同値性方針」、Hand と同じパターン)。
+    /// <see cref="op_Equality"/> / <see cref="op_Inequality"/> を override する(<see cref="Hand"/> と同じパターン)。
     /// </remarks>
     public sealed class Pile : IEquatable<Pile>
     {

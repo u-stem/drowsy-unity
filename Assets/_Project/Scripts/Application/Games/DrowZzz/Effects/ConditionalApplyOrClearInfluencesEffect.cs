@@ -16,20 +16,19 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
     /// <list type="number">
     /// <item>`Target` プレイヤーの `Influences.Count` を取得</item>
     /// <item>`Count <= Threshold` なら `InfluenceToApply` を末尾追加(既存 `ApplyInfluenceEffect` と同パターン)</item>
-    /// <item>`Count > Threshold` なら Target プレイヤーの Influences を空 list で置換(全消滅、ADR-0007 §1.5 と整合)</item>
+    /// <item>`Count > Threshold` なら Target プレイヤーの Influences を空 list で置換(全消滅)</item>
     /// </list>
-    /// 両経路は排他(オーナー JIT 2026-05-17:「Clear と Apply は排他、3 以上で消滅したら本カードの影響も付与されない」)。
+    /// 両経路は排他(「Clear と Apply は排他、3 以上で消滅したら本カードの影響も付与されない」)。
     /// </para>
     /// <para>
-    /// **カウントタイミング**:本 effect 評価時点の `session.Influences[Target].Count` を見る(snapshot 不要、
-    /// 本 effect を含むカードの他 effect が Influences を変動させない前提)。No.16 では SDP 変動 effect 2 件 + 本 effect 1 件で
-    /// SDP 変動は Influences に影響しないため、PlayCardAction 開始時の Influences 件数と本 effect 評価時の件数は同じ。
+    /// <b>カウントタイミング</b>:本 effect 評価時点の `session.Influences[Target].Count` を見る(snapshot 不要、
+    /// 本 effect を含むカードの他 effect が Influences を変動させない前提)。
     /// 将来「同一カード内で先に Influences を変動させる effect」が追加される場合は本前提を再評価。
     /// </para>
     /// <para>
-    /// **Clear の範囲**:対象プレイヤーの **全 Influence**(全 trigger:`OwnPhaseStart` / `OnOwnPlayCardAfter` /
+    /// <b>Clear の範囲</b>:対象プレイヤーの全 Influence(全 trigger:`OwnPhaseStart` / `OnOwnPlayCardAfter` /
     /// `OnOwnAbandonAfter`)を一括除去。Marker 系 Influence(`RestrictAllUsageAndAbandon` 等)も含めて全消滅
-    /// (オーナー JIT:「受けている影響をすべて消滅」)。
+    /// (「受けている影響をすべて消滅」)。
     /// </para>
     /// </remarks>
     public sealed record ConditionalApplyOrClearInfluencesEffect(
@@ -37,14 +36,13 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
         int Threshold,
         PlayerInfluence InfluenceToApply) : IEffect
     {
-        // null 防御の二重ガード(`IEffect.cs` §「二重ガードパターン」参照、`RestrictSpecificCardInfluenceEffect` 同パターン)
+        // null 防御の二重ガード(`RestrictSpecificCardInfluenceEffect` 同パターン)
         private readonly PlayerInfluence _influenceToApply = InfluenceToApply
             ?? throw new ArgumentNullException(nameof(InfluenceToApply));
 
-        // Threshold 範囲ガード(positional ctor 経由、code-reviewer P-1 反映 2026-05-17):
+        // Threshold 範囲ガード(positional ctor 経由):
         // 負値が許容されると `Count(>=0) <= Threshold(<0)` が常に false で「常に Clear」という直感に反した挙動になるため、
-        // ArgumentOutOfRangeException で fail-fast。No.16 は Threshold=2 固定で実害ないが将来再利用時の罠を防ぐ。
-        // `RequiresMinimumTotalPointsMarkerEffect` の Threshold ガード同パターン。
+        // ArgumentOutOfRangeException で fail-fast。`RequiresMinimumTotalPointsMarkerEffect` の Threshold ガード同パターン。
         private readonly int _threshold = Threshold >= 0
             ? Threshold
             : throw new ArgumentOutOfRangeException(

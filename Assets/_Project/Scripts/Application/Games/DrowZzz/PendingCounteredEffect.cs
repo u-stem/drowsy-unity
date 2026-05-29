@@ -6,20 +6,18 @@ using Drowsy.Domain.Cards;
 namespace Drowsy.Application.Games.DrowZzz
 {
     /// <summary>
-    /// 「無効化された効果」遡及発動のための保留情報(M3-PR5c、ADR-0011 §4.4)。
+    /// 「無効化された効果」遡及発動のための保留情報。
     /// 反撃カード B が元カード A をカウンタした際、A の効果列を本 record として保留する。
     /// 後続の「反撃の反撃」C が B を打ち消した時点で A の効果列(<see cref="OriginalEffects"/>)を
-    /// <see cref="Effects.EffectInterpreter.Apply"/> で遡及評価する設計(JIT 確定 2026-05-12)。
+    /// <see cref="Effects.EffectInterpreter.Apply"/> で遡及評価する設計。
     /// </summary>
     /// <param name="CounterCard">A をカウンタした反撃カード(= B)。C の <c>Target</c> がこの値に一致する経路 2 で合法。</param>
     /// <param name="OriginalCard">B によって無効化された元カード(= A)。遡及発動時の logging / Presentation 表示用途で保持。</param>
     /// <param name="OriginalEffects">A の効果列(catalog から取得した参照を防御コピー)。C 成立で <see cref="Effects.EffectInterpreter"/> によって評価される。</param>
     /// <remarks>
     /// <para>
-    /// ADR §312 で示された候補例 <c>(CardId Card, IReadOnlyList&lt;IEffect&gt; Effects)</c> は 2 フィールド構成だったが、
-    /// 本実装では C の <c>Target</c> 照合に「無効化した B カード」が必要なため <see cref="CounterCard"/> を追加し
-    /// 3 フィールド record に拡張する(ADR-0011 §4.4 の意図を満たしつつ「B 識別」の責務を構造に持たせる設計、
-    /// JIT 確定 2026-05-12 / M3-PR5c 着手時に 3 フィールド構成を採用)。
+    /// C の <c>Target</c> 照合に「無効化した B カード」が必要なため <see cref="CounterCard"/> を追加し
+    /// 3 フィールド record として構成する(「B 識別」の責務を構造に持たせる設計)。
     /// </para>
     /// <para>
     /// null 防御の二重ガード(<see cref="PlayCardAction.Card"/> と同パターン):

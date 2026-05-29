@@ -8,19 +8,16 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
     /// 異なる効果列を持つことを表す効果ラッパー record。
     /// </summary>
     /// <remarks>
-    /// ADR-0008 §8「Clock を参照する効果の最初の登場時に JIT 確定」の確定形として M2-PR3 で導入。
     /// 「コップ一杯の脅威」(No.01)のような **夜と朝で完全に違う効果列を持つカード** を 1 ストラクチャで表現する
-    /// (個別 record `WhenNightEffect` / `WhenMorningEffect` に分けない、ICardCatalog 動的返却にもしない、
-    /// `docs/specs/games/drowzzz/effects/time-of-day-branch.md` §「採用理由」参照)。
+    /// (個別 record `WhenNightEffect` / `WhenMorningEffect` に分けない設計)。
     /// <para>
     /// 評価は <see cref="EffectInterpreter.Apply"/> 内で <see cref="DrowZzzGameSession.Clock"/> を見て
     /// `IsNight` なら <see cref="NightEffects"/> を、`IsMorning` なら <see cref="MorningEffects"/> を
-    /// 左から順に <c>Aggregate</c> で逐次評価する。両方 `false`(`RoundNumber > 21` 過渡的範囲、ADR-0008 §5)
-    /// は no-op(session 変化なし、DZ-122)。
+    /// 左から順に <c>Aggregate</c> で逐次評価する。両方 `false`(`RoundNumber > 21` 過渡的範囲)は no-op。
     /// </para>
     /// <para>
     /// 内部 <see cref="IReadOnlyList{T}"/> プロパティを持つため、record auto-equals は参照同値で値同値を壊す
-    /// (ADR-0002 / <see cref="DrowZzzGameSession"/> 同パターン)。Equals/GetHashCode を順序保持シーケンス同値で override。
+    /// (<see cref="DrowZzzGameSession"/> 同パターン)。Equals/GetHashCode を順序保持シーケンス同値で override。
     /// 「夜効果は [A, B, C]」と「夜効果は [A, C, B]」は順序が違うため非等値 = カードデータ設計上、効果順序は意味を持つ。
     /// </para>
     /// </remarks>

@@ -5,8 +5,8 @@ using UnityEngine;
 namespace Drowsy.Infrastructure.Games.DrowZzz.Effects
 {
     /// <summary>
-    /// <see cref="AdjustSdpAfterAbandonEffect"/>(ADR-0022 / No.12「偽りの太陽」、2026-05-17 で導入)を
-    /// Unity SO で表現する POCO。<see cref="Delta"/> int フィールド 1 件。
+    /// <see cref="AdjustSdpAfterAbandonEffect"/>(No.12「偽りの太陽」)を Unity SO で表現する POCO。
+    /// <see cref="Delta"/> int フィールド 1 件。
     /// </summary>
     [Serializable]
     public sealed class AdjustSdpAfterAbandonEffectAsset : EffectAsset

@@ -117,7 +117,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         {
             var rule = NewRule(NewCatalogWithCard17Only());
             var next = rule.Apply(NewPlayCardSession(), new PlayCardAction(CardId.Of(FacadeBarrierTypeId, 0)));
-            // Hand から Remove、Field 先頭に AddTop(PlayCardAction 直後の中間状態、ADR-0006 §M1-PR5)
+            // Hand から Remove、Field 先頭に AddTop(PlayCardAction 直後の中間状態)
             Assert.That(next.GameState.Players[0].Hand.Contains(CardId.Of(FacadeBarrierTypeId, 0)), Is.False);
             Assert.That(next.GameState.Field.Cards[0], Is.EqualTo(CardId.Of(FacadeBarrierTypeId, 0)));
         }
@@ -141,7 +141,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var rule = NewRule(NewCatalogWithCard17AndTarget(targetIsFrenzy: true));
             var legal = rule.IsLegalMove(NewCounterSessionWithCard17InP2Hand(),
                 new CounterAction(CardId.Of(FacadeBarrierTypeId, 0), CardId.Of(DummyTargetTypeId, 0)));
-            // Frenzy 持ち Target には反撃不可、ADR-0011 §4.5
+            // Frenzy 持ち Target には反撃不可
             Assert.That(legal, Is.False);
         }
 

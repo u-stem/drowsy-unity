@@ -8,12 +8,10 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
     /// 効果列だけが適用される(他の選択肢は無視される)。
     /// </summary>
     /// <remarks>
-    /// ADR-0007 §1.5「継続影響」追記と同梱で M2-PR5 で導入。カード No.02「緑の侵攻」は「選択1 / 選択2」の
-    /// 2 択を持つ最初の選択式カードで、本 record で表現する。
+    /// カード No.02「緑の侵攻」は「選択1 / 選択2」の 2 択を持つ最初の選択式カードで、本 record で表現する。
     /// <para>
     /// 評価は <c>DrowZzzRule.ApplyPlayCard</c> で行い、<see cref="EffectInterpreter"/> には届かない(unwrapping は
-    /// PlayCardAction 評価層の責務、<see cref="TimeOfDayBranchEffect"/> が interpreter で unwrap される対称設計に
-    /// 対し、選択肢解決は action 由来文脈なので action 評価層で行う方が筋)。<see cref="EffectInterpreter.Apply"/> に
+    /// PlayCardAction 評価層の責務)。<see cref="EffectInterpreter.Apply"/> に
     /// 直接渡された場合は <c>NotImplementedException</c> を投げる(rule 経由のみで利用される設計の保証)。
     /// </para>
     /// <para>

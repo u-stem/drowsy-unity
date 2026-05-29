@@ -146,7 +146,7 @@ namespace Drowsy.Infrastructure.Tests.Persistence
             Assert.That(ex.Message, Does.Contain("PendingCounteredEffects"));
         }
 
-        // ===== INF-134: AssociatedCardIds round-trip(ADR-0019、PR ①)=====
+        // ===== INF-134: AssociatedCardIds round-trip =====
 
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "INF-134")]
         public void Given_AssociatedCardIdsを含むsession_When_FromDomainからToDomain_Then_含まれるCardIdが保存される()
@@ -190,7 +190,7 @@ namespace Drowsy.Infrastructure.Tests.Persistence
             // When(EnsureNotNull 対象外 + ToDomain 内で `?? Array.Empty<CardId>()` 経由で空集合に正規化)
             var restored = dto.ToDomain();
 
-            // Then(空集合復元、例外なし、schemaVersion bump 不要の後方互換性経路、ADR-0019)
+            // Then(空集合復元、例外なし、schemaVersion bump 不要の後方互換性経路)
             Assert.That(restored.AssociatedCardIds.Count, Is.EqualTo(0));
         }
 

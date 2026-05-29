@@ -174,7 +174,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var legal = rule.IsLegalMove(
                 session,
                 new CounterAction(CardId.Of(CardTypeId.Of("c_counter"), 0), CardId.Of(WinterGeneralTypeId, 0)));
-            // Then(Card "11" は Frenzy 持ち → 反撃を受けない、illegal、ADR-0011 §4.5)
+            // Then(Card "11" は Frenzy 持ち → 反撃を受けない、illegal)
             Assert.That(legal, Is.False);
         }
 
@@ -269,7 +269,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             Assert.That(next.SecondDrowsyPoints[PlayerId.Of("p2")], Is.EqualTo(-5));
         }
 
-        // ===== DZ-330: ADR-0020 — Tick は count 不変、Perpetual は実質除去されない =====
+        // ===== DZ-330: Tick は count 不変、Perpetual は実質除去されない =====
 
         [Test, Category("Medium"), Category("Normal"), Property("Requirement", "DZ-330")]
         public void Given_p2が本Influence保有_p1current_When_p1EndTurnでp2フェーズへ_Then_p2のInfluenceRemainingCountは不変Perpetual()
@@ -278,7 +278,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var rule = NewRule(NewCatalogWithCardEleven());
             var p2Hand = new[] { CardId.Of(CardTypeId.Of("X"), 0) };
             var session = NewSessionForTick(p2Hand: p2Hand, p2Influences: new[] { WinterGeneralInfluence() });
-            // When(ADR-0020:p2 Tick で TickEffect 適用のみ、count 不変)
+            // When(p2 Tick で TickEffect 適用のみ、count 不変)
             var next = rule.Apply(session, new EndTurnAction());
             // Then(Influence の RemainingCount は Perpetual のまま、p2 自身の EndTurn で -1 されるが Perpetual は実質除去されない)
             Assert.That(next.Influences[PlayerId.Of("p2")][0].RemainingCount, Is.EqualTo(InfluenceConstants.Perpetual));

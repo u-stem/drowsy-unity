@@ -12,10 +12,10 @@ using NUnit.Framework;
 namespace Drowsy.Application.Tests.Games.DrowZzz
 {
     /// <summary>
-    /// カード No.09「強引過ぎる一手」の統合テスト(DZ-303 〜 DZ-313、2026-05-17 で導入、ADR-0020 と同 PR)。
+    /// カード No.09「強引過ぎる一手」の統合テスト(DZ-303 〜 DZ-313)。
     /// 御業(高火力 SDP 変動 -10/+10)+ カウント 1 の `RestrictAllUsageAndAbandonInfluenceMarkerEffect` を相手に付与し、
     /// 相手の次の自フェーズで `PlayCardAction` / `CounterAction` / `AbandonAction` の 3 アクションを illegal 化する戦術カード。
-    /// ADR-0020 で count -1 タイミングを EndTurn 冒頭に移動した結果、count=1 Marker が初めて正しく機能する初の consumer。
+    /// count -1 タイミングは EndTurn 冒頭のため、count=1 Marker が自フェーズ中は正しく機能する。
     /// </summary>
     [TestFixture]
     public sealed class ForcePlayCardTests
@@ -226,7 +226,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         {
             // Given:p2 が currentPlayerIndex=1、WaitingForEndTurn(自フェーズ中)。p2 が本 Marker 保有 + 反撃の反撃を打つ立場。
             // PendingCounteredEffects に 1 件のエントリ(CounterCard = "c_counter_b"、OriginalCard = "target_a")を入れて
-            // p2 が「c_counter_b」を打ち消す反撃の反撃を試みるシナリオ(ADR-0011 §4.4、`IsLegalCounterAsCounterCounter` 経路)。
+            // p2 が「c_counter_b」を打ち消す反撃の反撃を試みるシナリオ(`IsLegalCounterAsCounterCounter` 経路)。
             var counterB = new CardData("c_counter_b", new Dictionary<string, int>());
             var counterA = new CardData("c_counter_a", new Dictionary<string, int>());
             var targetA = new CardData("target_a", new Dictionary<string, int>());
@@ -334,7 +334,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             Assert.That(legal, Is.True);
         }
 
-        // ===== DZ-311: 本 Marker 保有時、EndTurnAction は WaitingForEndTurn / WaitingForPlay 両方で legal(ADR-0021 stuck 脱出弁)=====
+        // ===== DZ-311: 本 Marker 保有時、EndTurnAction は WaitingForEndTurn / WaitingForPlay 両方で legal(stuck 脱出弁)=====
 
         [Test, Category("Medium"), Category("Normal"), Property("Requirement", "DZ-311")]
         public void Given_p2が本Markerカウント1保有_When_p2がEndTurnActionでIsLegalMove_Then_true()
@@ -354,14 +354,14 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_p2が本Markerカウント1保有_WaitingForPlay_When_EndTurnAction_Then_stuck脱出弁で合法()
         {
             // Given(p2 current、WaitingForPlay、本 Marker 保有 = PlayCard/Abandon 両方禁止で stuck 化するフェーズ)
-            // ADR-0021:本 Marker は stuck 化 Marker のため、EndTurnAction は WaitingForPlay でも legal 化される
+            // 本 Marker は stuck 化 Marker のため、EndTurnAction は WaitingForPlay でも legal 化される
             var rule = NewRule(NewCatalogWithCardNine());
             var session = NewSessionWithP2Marker(
                 phase: DrowZzzPhaseState.WaitingForPlay,
                 currentPlayerIndex: 1);
             // When
             var legal = rule.IsLegalMove(session, new EndTurnAction());
-            // Then(ADR-0021:stuck 化 Marker 保有時の全フェーズ合法化、脱出弁が機能)
+            // Then(stuck 化 Marker 保有時の全フェーズ合法化、脱出弁が機能)
             Assert.That(legal, Is.True);
         }
 
@@ -375,7 +375,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var session = NewSessionWithP2Marker(
                 phase: DrowZzzPhaseState.WaitingForEndTurn,
                 currentPlayerIndex: 0);
-            // When(ADR-0020:p1 EndTurn → p1 Decrement(no-op、p1 影響なし)→ Turn.Next で p2 → p2 Tick(marker no-op、count 不変))
+            // When(p1 EndTurn → p1 Decrement(no-op、p1 影響なし)→ Turn.Next で p2 → p2 Tick(marker no-op、count 不変))
             var next = rule.Apply(session, new EndTurnAction());
             // Then(p2 Influence は count=1 のまま残存)
             Assert.That(next.Influences[PlayerId.Of("p2")].Count, Is.EqualTo(1));
@@ -392,7 +392,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var session = NewSessionWithP2Marker(
                 phase: DrowZzzPhaseState.WaitingForEndTurn,
                 currentPlayerIndex: 1);
-            // When(ADR-0020:p2 EndTurn 冒頭で p2 Decrement → count 1→0 で除去)
+            // When(p2 EndTurn 冒頭で p2 Decrement → count 1→0 で除去)
             var next = rule.Apply(session, new EndTurnAction());
             // Then(p2 Influences 件数 = 0)
             Assert.That(next.Influences[PlayerId.Of("p2")].Count, Is.EqualTo(0));

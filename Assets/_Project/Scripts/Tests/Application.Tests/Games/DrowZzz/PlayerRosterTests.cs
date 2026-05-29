@@ -12,7 +12,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
     /// 本 fixture は防御要件と Players プロパティの順序保持を検証する。
     /// </summary>
     /// <remarks>
-    /// ADR-0017 で確定した PlayerRoster wrapper の不変条件(ctor で null + 空の早期検出)を網羅する。
+    /// PlayerRoster wrapper の不変条件(ctor で null + 空の早期検出)を網羅する。
     /// </remarks>
     [TestFixture]
     public sealed class PlayerRosterTests

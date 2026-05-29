@@ -14,7 +14,7 @@ namespace Drowsy.Application.Tests
 
         private sealed record DummySession(int Counter, bool Terminated = false, PlayerId Winner = null);
 
-        // M3-PR1 で IGameRule に IsTerminated / GetWinner を追加(ADR-0010 §1)。
+        // IGameRule に IsTerminated / GetWinner を追加した。
         // DummyRule は session.Terminated を IsTerminated として、session.Winner を GetWinner として返す薄い実装。
         private sealed class DummyRule : IGameRule<DummyAction, DummySession>
         {

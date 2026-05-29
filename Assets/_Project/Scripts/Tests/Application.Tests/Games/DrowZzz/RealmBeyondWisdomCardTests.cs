@@ -209,7 +209,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var legal = rule.IsLegalMove(
                 session,
                 new CounterAction(CardId.Of(CardTypeId.Of("c_counter"), 0), CardId.Of(RealmBeyondTypeId, 0)));
-            // Then(Card "07" は Frenzy 持ち → 反撃を受けない、illegal、ADR-0011 §4.5)
+            // Then(Card "07" は Frenzy 持ち → 反撃を受けない、illegal)
             Assert.That(legal, Is.False);
         }
     }

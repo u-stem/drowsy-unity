@@ -5,9 +5,9 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
 {
     /// <summary>
     /// <see cref="DrowZzzClock"/> の単体テスト。
-    /// ADR-0008 §1 で確定した実装案 (`record class DrowZzzClock(int RoundNumber)`、
-    /// `Hour` / `Minute` / `IsNight` / `IsMorning` の computed プロパティ) を境界値で網羅する。
-    /// 用語規約 (ADR-0009 §「用語規約」) に従い、コメント内では「ターン (30 分単位)」と表現する。
+    /// `record class DrowZzzClock(int RoundNumber)` の
+    /// `Hour` / `Minute` / `IsNight` / `IsMorning` computed プロパティを境界値で網羅する。
+    /// コメント内では「ターン (30 分単位)」と表現する。
     /// </summary>
     [TestFixture]
     public sealed class DrowZzzClockTests
@@ -168,8 +168,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         }
 
         // ===== DZ-098: RoundNumber > 21 での過渡的防御値 =====
-        // M3 で IGameRule.IsTerminated / EndTurnAction.Apply のガードを実装するまでの過渡的挙動
-        // (ADR-0008 §5 / ADR-0009 §6)。時計仕様上 07:30 (Round 22 相当) は存在しないが、
+        // 時計仕様上 07:30 (Round 22 相当) は存在しないが、
         // computed プロパティとして数学的計算結果は返るため、夜・朝判定は両方 false を返すことで誤読を防ぐ。
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "DZ-098")]
@@ -192,7 +191,6 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
 
         // ===== DZ-089: record の auto-generated Equals / GetHashCode 構造保証の regression guard =====
         // positional record `DrowZzzClock(int RoundNumber)` の値同値性は C# 言語仕様で構造的に保証されるが、
-        // ADR-0008 §4 スコープ表で「Equals / GetHashCode の単体テスト」を明示しているため、
         // 将来 `DrowZzzClock` が positional から手動 Equals 実装に変わるケースの regression guard を 2 件残す。
 
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-089")]

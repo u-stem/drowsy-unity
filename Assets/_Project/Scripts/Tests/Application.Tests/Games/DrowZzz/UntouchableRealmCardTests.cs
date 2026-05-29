@@ -157,7 +157,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var session = sessionInPlay with { PhaseState = DrowZzzPhaseState.WaitingForEndTurn };
             // When
             var next = rule.Apply(session, new EndTurnAction());
-            // Then(ADR-0020:p2 Tick で TickEffect 適用のみ、count は p2 自身の EndTurn で -1 されるまで 4 のまま)
+            // Then(p2 Tick で TickEffect 適用のみ、count は p2 自身の EndTurn で -1 されるまで 4 のまま)
             Assert.That(next.Influences[PlayerId.Of("p2")][0].RemainingCount, Is.EqualTo(4));
         }
 
@@ -183,7 +183,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         {
             // Given(WaitingForCounterResponse、p1 の Card "06" を Field に出した直後、p2 が Counter キーワード持ちカードを保有)
             // 簡素化のため、Counter キーワード持ちダミーカード c_counter を catalog に登録し、p2 の手札に保持する
-            // (DreamCardTests DZ-237 と同パターン、ADR-0011 §4.3 / M3-PR5b)。
+            // (DreamCardTests DZ-237 と同パターン)。
             var untouchable = new CardData("牙の届かぬ領域", new Dictionary<string, int>());
             var counterCard = new CardData("c_counter", new Dictionary<string, int>());
             var entries = new[]
@@ -223,17 +223,17 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var legal = rule.IsLegalMove(
                 session,
                 new CounterAction(CardId.Of(CardTypeId.Of("c_counter"), 0), CardId.Of(UntouchableTypeId, 0)));
-            // Then(Card "06" は Frenzy 持ち → 反撃を受けない、illegal、ADR-0011 §4.5)
+            // Then(Card "06" は Frenzy 持ち → 反撃を受けない、illegal)
             Assert.That(legal, Is.False);
         }
 
-        // ===== DZ-285: カウント 1 Marker は p2 フェーズ全体で機能、p2 EndTurn で除去(ADR-0020) =====
+        // ===== DZ-285: カウント 1 Marker は p2 フェーズ全体で機能、p2 EndTurn で除去 =====
 
         [Test, Category("Medium"), Category("Normal"), Property("Requirement", "DZ-285")]
         public void Given_p2が2xInfluenceカウント1保有_p1current_When_p1EndTurnでp2フェーズへ_Then_p2のInfluencesはカウント1で残存()
         {
             // Given(p2 が 2 倍化 Influence カウント 1、p1 WaitingForEndTurn → EndTurn で p2 自フェーズへ)
-            // ADR-0020 後:p1 EndTurn 冒頭で p1 Decrement(no-op、p1 影響なし)→ Turn.Next で p2 へ →
+            // p1 EndTurn 冒頭で p1 Decrement(no-op、p1 影響なし)→ Turn.Next で p2 へ →
             // ApplyBedDamageToCurrentPlayer で marker 検出して 2 倍化(BedDamage 0% なので結果も 0)→
             // p2 Tick で TickEffect (marker no-op) 適用、count 1 のまま残存。除去は p2 自身の EndTurn まで遅延。
             var rule = NewRule(NewCatalogWithCardSix());
@@ -245,7 +245,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var session = sessionInPlay with { PhaseState = DrowZzzPhaseState.WaitingForEndTurn };
             // When
             var next = rule.Apply(session, new EndTurnAction());
-            // Then(ADR-0020:count=1 marker は p2 フェーズで機能、count=1 のまま残存)
+            // Then(count=1 marker は p2 フェーズで機能、count=1 のまま残存)
             Assert.That(next.Influences[PlayerId.Of("p2")].Count, Is.EqualTo(1));
             Assert.That(next.Influences[PlayerId.Of("p2")][0].RemainingCount, Is.EqualTo(1));
         }

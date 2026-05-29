@@ -7,16 +7,14 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
     /// <see cref="Percent"/> だけ増加させる効果。
     /// </summary>
     /// <param name="Target">破損を与える対象プレイヤー</param>
-    /// <param name="Percent">破損率の増加幅(常に <see cref="DrowZzzBedConstants.BedDamageRatePerSdp"/> の正の倍数、ADR-0011 §3 JIT 確定 2026-05-12)</param>
+    /// <param name="Percent">破損率の増加幅(常に <see cref="DrowZzzBedConstants.BedDamageRatePerSdp"/> の正の倍数)</param>
     /// <remarks>
-    /// ADR-0011 §3「破損率増加トリガー」JIT 確定の効果 record として M3-PR2 で導入。
-    /// 「特定のカードによって破損率は増加します、パーセンテージはカード固有ですが、常に 5 の倍数です」
-    /// (プロジェクトオーナー JIT 共有 2026-05-12)に基づき、本 record は <see cref="Percent"/> が
-    /// 5 の倍数かつ正値であることを positional ctor で検証する。
+    /// 「特定のカードによって破損率は増加します、パーセンテージはカード固有ですが、常に 5 の倍数です」に基づき、
+    /// 本 record は <see cref="Percent"/> が 5 の倍数かつ正値であることを positional ctor で検証する。
     /// <para>
     /// 評価は <see cref="EffectInterpreter.Apply"/> で行う。対象プレイヤーの <c>BedDamages</c> を
     /// <see cref="Percent"/> 分増加させ、<see cref="DrowZzzBedConstants.MaxBedDamagePercent"/>(100%)で上限クランプ。
-    /// 修繕は <c>AbandonAction(AbandonChoice.RepairBed)</c>(M3-PR3 で実装予定)で別途行う。
+    /// 修繕は <c>AbandonAction(AbandonChoice.RepairBed)</c> で別途行う。
     /// </para>
     /// <para>
     /// 値型 <see cref="int"/> は record の二重ガード null 防御の対象外だが、<see cref="Percent"/> の
@@ -30,7 +28,7 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
         /// <summary>破損を与える対象プレイヤー。</summary>
         public SdpTarget Target { get; init; }
 
-        /// <summary>破損率の増加幅(常に 5 の正の倍数、ADR-0011 §3 JIT 確定)。</summary>
+        /// <summary>破損率の増加幅(常に 5 の正の倍数)。</summary>
         public int Percent
         {
             get => _percent;
@@ -60,7 +58,7 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
             if (value % DrowZzzBedConstants.BedDamageRatePerSdp != 0)
             {
                 throw new ArgumentException(
-                    $"DamageBedEffect.Percent は {DrowZzzBedConstants.BedDamageRatePerSdp} の倍数である必要があります(現在: {value}、ADR-0011 §3 JIT 確定)",
+                    $"DamageBedEffect.Percent は {DrowZzzBedConstants.BedDamageRatePerSdp} の倍数である必要があります(現在: {value})",
                     nameof(Percent));
             }
             return value;

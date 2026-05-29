@@ -13,7 +13,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
 {
     /// <summary>
     /// <see cref="AssociateAction"/> の合法性判定(`IsLegalMove`)と状態遷移(`Apply`)を検証する
-    /// (DZ-205 / DZ-206)。ADR-0011 §1 / M3-PR4 で導入。
+    /// (DZ-205 / DZ-206)。
     /// </summary>
     [TestFixture]
     public sealed class AssociateActionTests
@@ -216,14 +216,14 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-206")]
         public void Given_Apply完了_When_Outcomeを取得_Then_null維持()
         {
-            // 連想は Outcome を設定しない(早期勝利は EarlyWinTriggerEffect 経路、終了判定は ApplyEndTurn 経路、ADR-0010)
+            // 連想は Outcome を設定しない(早期勝利は EarlyWinTriggerEffect 経路、終了判定は ApplyEndTurn 経路)
             var rule = NewRuleWithAssociatable();
             var session = NewSession(fdpP1: 80);
             var next = rule.Apply(session, new AssociateAction(DreamCardId));
             Assert.That(next.Outcome, Is.Null);
         }
 
-        // W-3 反映:DZ-205 仕様「terminated sessions は all actions illegal(ADR-0010 §6)」の検証
+        // W-3 反映:DZ-205 仕様「terminated sessions は all actions illegal」の検証
         // 実装上は DrowZzzRule.IsLegalMove L89 で session.IsTerminated チェックが IsLegalAssociate の手前で
         // 行われる構造的保証。本テストはその保証が連想にも適用されることを明示。
 
@@ -232,7 +232,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         {
             var rule = NewRuleWithAssociatable();
             var baseSession = NewSession(fdpP1: 80);
-            // p1 を勝者として確定した終了済 session(早期勝利を直接模倣、ADR-0010 §5)
+            // p1 を勝者として確定した終了済 session(早期勝利を直接模倣)
             var session = baseSession with { Outcome = new WinnerOutcome(PlayerId.Of("p1")) };
             Assert.That(rule.IsLegalMove(session, new AssociateAction(DreamCardId)), Is.False);
         }
@@ -336,7 +336,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             Assert.That(ex!.ParamName, Is.EqualTo("Card"));
         }
 
-        // ===== DZ-256: ApplyAssociate で AssociatedCardIds に card が追加される(ADR-0019、PR ①)=====
+        // ===== DZ-256: ApplyAssociate で AssociatedCardIds に card が追加される =====
 
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-256")]
         public void Given_AssociateAction_When_ApplyAssociate_Then_AssociatedCardIdsにcardが追加される()

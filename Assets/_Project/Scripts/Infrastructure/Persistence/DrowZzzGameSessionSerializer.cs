@@ -14,8 +14,7 @@ namespace Drowsy.Infrastructure.Persistence
     /// <see cref="DrowZzzGameSession"/> を JSON ファイルに保存 / 読み込みする serializer。
     /// </summary>
     /// <remarks>
-    /// ADR-0012 §7「`DrowZzzGameSession` JSON 永続化(サブスコープ、M4-PR5)」+
-    /// JIT 確定(2026-05-13 ユーザー):
+    /// <see cref="DrowZzzGameSession"/> を JSON ファイルに保存 / 読み込みする実装方針:
     /// <list type="bullet">
     /// <item>Serializer: Newtonsoft.Json(<c>com.unity.nuget.newtonsoft-json</c>)</item>
     /// <item>Discriminator: カスタム JsonConverter で <c>"type"</c> 明示(<see cref="Converters.EffectJsonConverter"/> /
@@ -32,18 +31,15 @@ namespace Drowsy.Infrastructure.Persistence
     /// を使う想定。
     /// </para>
     /// <para>
-    /// <b>WebGL/IL2CPP (AOT)</b>: ADR-0012 §「M4-PR5 着手時の JIT 確認項目」確定通り、本 PR は EditMode round-trip
-    /// テスト + <c>link.xml</c> 設定までを完成基準とし、WebGL build 実機検証は M4-PR7(M4 完成 PR)に送る
-    /// (2026-05-13 ユーザー JIT 確定)。link.xml は <see cref="Drowsy.Domain"/> / <see cref="Drowsy.Application"/>
+    /// <b>WebGL/IL2CPP (AOT)</b>: link.xml は <see cref="Drowsy.Domain"/> / <see cref="Drowsy.Application"/>
     /// 配下の serialize 対象型を <c>preserve="all"</c> で保持する。
     /// </para>
     /// <para>
-    /// <b>M5-PR1 改修</b>: ADR-0016 §5.2 で確定した <see cref="IDrowZzzGameSessionSerializer"/> を実装し、
-    /// 非同期 API(<see cref="SaveAsync"/> / <see cref="LoadAsync"/>)を追加した。初期実装は ADR-0016 §5.2
-    /// の「初期推奨」通り同期版を <c>UniTask.RunOnThreadPool</c> ラップする(WebGL では Main Thread fallback、
-    /// 必要なら M5-PR5 で <c>UniTask.Yield</c> 挿入や <c>StreamReader.ReadToEndAsync</c> 再実装に切替)。
-    /// 同期 API(<see cref="Save"/> / <see cref="Load"/>)は M4-PR5 時点の 43 テストとの後方互換のため
-    /// シグネチャ・挙動を完全維持する。
+    /// <b>非同期 API</b>: <see cref="IDrowZzzGameSessionSerializer"/> を実装し、
+    /// 非同期 API(<see cref="SaveAsync"/> / <see cref="LoadAsync"/>)は同期版を <c>UniTask.RunOnThreadPool</c>
+    /// ラップする(WebGL では Main Thread fallback、必要なら <c>UniTask.Yield</c> 挿入や
+    /// <c>StreamReader.ReadToEndAsync</c> 再実装に切替)。
+    /// 同期 API(<see cref="Save"/> / <see cref="Load"/>)はシグネチャ・挙動を完全維持する。
     /// </para>
     /// </remarks>
     public sealed class DrowZzzGameSessionSerializer : IDrowZzzGameSessionSerializer
@@ -136,9 +132,9 @@ namespace Drowsy.Infrastructure.Persistence
         /// <param name="path">保存先 path</param>
         /// <param name="ct">キャンセル要求</param>
         /// <remarks>
-        /// ADR-0016 §5.2「初期推奨は同期版を <c>UniTask.RunOnThreadPool</c> ラップ」確定通り。
+        /// 同期版を <c>UniTask.RunOnThreadPool</c> でラップする。
         /// WebGL は ThreadPool が Main Thread fallback になるため、I/O ブロックが UI フリーズを
-        /// 引き起こす場合は M5-PR5 で <c>UniTask.Yield</c> 挿入 / <c>StreamReader.ReadToEndAsync</c>
+        /// 引き起こす場合は <c>UniTask.Yield</c> 挿入 / <c>StreamReader.ReadToEndAsync</c>
         /// 再実装等への切替を検討する。引数 null / 空白の検査は同期チェックで先に行い、ThreadPool
         /// 内では <see cref="Save"/> の検査と二重に走らないよう注意(検査結果は同じ例外型なので、外側で
         /// 早期 throw して呼び出し側の <c>try/catch</c> を素直に書けるようにする)。
@@ -163,7 +159,7 @@ namespace Drowsy.Infrastructure.Persistence
         /// <param name="ct">キャンセル要求</param>
         /// <returns>復元された <see cref="DrowZzzGameSession"/>(non-null、ファイル不在は <see cref="FileNotFoundException"/>)</returns>
         /// <remarks>
-        /// ADR-0016 §5.2 + ADR-0015 NRT 不採用方針により、戻り値は non-null。ファイル不在 / JSON 破損 /
+        /// 戻り値は non-null。ファイル不在 / JSON 破損 /
         /// schemaVersion 不一致は <see cref="Load"/> 同様の例外で表現する(同期版と非同期版で例外契約を
         /// 完全一致させる方が、Presenter <c>try/catch</c> 経路で同期版と非同期版を入れ替えても等価)。
         /// </remarks>
@@ -181,9 +177,8 @@ namespace Drowsy.Infrastructure.Persistence
         /// </summary>
         /// <param name="fileName">セーブファイル名(default = <c>session.json</c>)</param>
         /// <remarks>
-        /// ADR-0012 §「M4-PR5 着手時の JIT 確認項目」確定通り、<c>Application.persistentDataPath/drowzzz/</c>
-        /// サブディレクトリを採用(2026-05-13 ユーザー JIT 確定)。multi-slot save / replay log の追加時にも
-        /// <c>drowzzz/</c> サブディレクトリ配下で namespace 分離可能。
+        /// セーブ先は <c>Application.persistentDataPath/drowzzz/</c> サブディレクトリ。
+        /// multi-slot save / replay log の追加時にも <c>drowzzz/</c> サブディレクトリ配下で namespace 分離可能。
         /// <para>
         /// 本 method は <c>UnityEngine.Application.persistentDataPath</c> に依存するため、テストでは使わず
         /// <see cref="Save"/> / <see cref="Load"/> に <c>Path.Combine(Path.GetTempPath(), ...)</c> を直接渡す。

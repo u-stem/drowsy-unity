@@ -12,19 +12,16 @@ namespace Drowsy.Application.Catalog
     /// </summary>
     /// <remarks>
     /// <para>
-    /// M1〜M2 のテスト・skeleton 用途で利用する。永続化と一緒に判断する M4 で
-    /// <c>Drowsy.Infrastructure.Games.DrowZzz.ScriptableObjectCardCatalog</c> 系の追加を検討する
-    /// (ADR-0007 §5 / §M2-PR1。ADR-0006 §1.3 の「M2 で SO 化」記載は ADR-0007 §5 で M4 に変更済)。
+    /// テスト・skeleton 用途で利用する。本番環境では
+    /// <c>Drowsy.Infrastructure.Games.DrowZzz.ScriptableObjectCardCatalog</c> 系を使う。
     /// </para>
     /// <para>
-    /// M2-PR1 段階では <see cref="GetEffects(CardTypeId)"/> は常に空列を返す stub。M2-PR3 で 2 段 constructor
-    /// に拡張し、`(entries)` 単独呼び出しは効果なし(M1〜M2-PR2 後方互換)、`(entries, effects)` で
-    /// 効果列を明示登録できる(本 PR で「コップ一杯の脅威」を登録するため、APP-039 / APP-040)。
+    /// <c>(entries)</c> 単独呼び出しは効果なし(後方互換)、<c>(entries, effects)</c> で
+    /// 効果列を明示登録できる。
     /// </para>
     /// <para>
-    /// <b>引数型(ADR-0018)</b>:本 catalog の lookup key は <see cref="CardTypeId"/> である(catalog は
-    /// 「種別 ID → CardData / Effect 列」の mapping)。<see cref="CardId"/> は instance unique な ID として
-    /// Pile / Hand / Field / Discard が保持する別概念で、本 catalog の API には現れない。
+    /// <b>引数型</b>:本 catalog の lookup key は <see cref="CardTypeId"/>(種別 ID)。<see cref="CardId"/> は
+    /// instance unique な ID として Pile / Hand / Field / Discard が保持する別概念で、本 catalog の API には現れない。
     /// </para>
     /// </remarks>
     public sealed class InMemoryCardCatalog : ICardCatalog<IEffect>
@@ -47,7 +44,7 @@ namespace Drowsy.Application.Catalog
         }
 
         /// <summary>
-        /// 効果列込みカタログを生成する(M2-PR3 で追加、APP-039)。
+        /// 効果列込みカタログを生成する。
         /// </summary>
         /// <param name="entries">登録する (CardTypeId, CardData) の列</param>
         /// <param name="effects">登録する (CardTypeId, 効果列) の列。null 可(全カード効果なし扱い)。同一キー後勝ち</param>
@@ -106,9 +103,8 @@ namespace Drowsy.Application.Catalog
 
         /// <inheritdoc />
         /// <remarks>
-        /// M2-PR3 で登録効果列を返すように拡張(APP-040)。
         /// 未登録 CardTypeId / 効果列を登録していない CardTypeId に対しては空列(<see cref="Array.Empty{T}"/>)を返す
-        /// (例外を投げない、<c>PlayCardAction.Apply</c> 内の <c>Aggregate</c> に自然に乗る、ADR-0007 §3)。
+        /// (例外を投げない、<c>PlayCardAction.Apply</c> 内の <c>Aggregate</c> に自然に乗る)。
         /// </remarks>
         /// <exception cref="ArgumentNullException"><paramref name="typeId"/> が null(App W-3 post-Phase2 レビュー反映)</exception>
         public IReadOnlyList<IEffect> GetEffects(CardTypeId typeId)
@@ -124,7 +120,7 @@ namespace Drowsy.Application.Catalog
 
         /// <inheritdoc />
         /// <remarks>
-        /// ADR-0024 で追加。`_store` の Keys を防御コピーした immutable collection を返す
+        /// `_store` の Keys を防御コピーした immutable collection を返す
         /// (`_store` 変更後も外部の enumerator が壊れないように `ToList` でスナップショット化)。
         /// 順序は entries の登録順(Dictionary 挿入順、.NET の Dictionary は挿入順保持を契約していないが
         /// 実用上安定、テストでは順序非依存に書くこと)。

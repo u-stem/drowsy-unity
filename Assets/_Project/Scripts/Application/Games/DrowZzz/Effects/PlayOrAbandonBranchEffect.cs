@@ -5,7 +5,7 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
 {
     /// <summary>
     /// プレイ時(<c>PlayCardAction</c>)と放棄時(<c>AbandonAction</c>)で発動する効果列を分岐表現する wrapper record
-    /// (ADR-0025、No.20「至上の喜び」で初導入)。
+    /// (No.20「至上の喜び」で初導入)。
     /// </summary>
     /// <remarks>
     /// 構造は <see cref="TimeOfDayBranchEffect"/> と対称(2 list を carrier、評価は rule 評価層で unwrap、
@@ -17,7 +17,7 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
     /// <see cref="EffectInterpreter.Apply"/> 連鎖</item>
     /// <item><c>DrowZzzRule.ApplyAbandon</c>:既存 <c>AbandonChoice</c> 適用(GainSdp = SDP+5 / RepairBed = Bed-20%)の
     /// **後** に、放棄したカードの最上位 effects から本 effect を検出したら <see cref="AbandonEffects"/> のみを
-    /// <see cref="EffectInterpreter.Apply"/> 連鎖(AbandonChoice を上書きせず、累積モデル、ADR-0025 §「AbandonChoice との関係」)</item>
+    /// <see cref="EffectInterpreter.Apply"/> 連鎖(AbandonChoice を上書きせず、累積モデル)</item>
     /// </list>
     /// </para>
     /// <para>
@@ -67,7 +67,7 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
             if (list.Count == 0)
             {
                 throw new ArgumentException(
-                    $"{paramName} は 1 件以上必要です(空 list での wrap は無意味、ADR-0025)",
+                    $"{paramName} は 1 件以上必要です(空 list での wrap は無意味)",
                     paramName);
             }
         }

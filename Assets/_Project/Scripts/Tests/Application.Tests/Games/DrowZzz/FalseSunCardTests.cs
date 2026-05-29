@@ -12,7 +12,7 @@ using NUnit.Framework;
 namespace Drowsy.Application.Tests.Games.DrowZzz
 {
     /// <summary>
-    /// カード No.12「偽りの太陽」の統合テスト(DZ-334 〜 DZ-344、2026-05-17 で導入、ADR-0022 と同 PR)。
+    /// カード No.12「偽りの太陽」の統合テスト(DZ-334 〜 DZ-344)。
     /// Reactive Influence(アクション後発動型)の初導入で、夜に使うと永続的に
     /// 「PlayCard 後 SDP-10 / Abandon 後 SDP+5」の影響を保有者(自分)に背負わせる戦術カード。
     /// 朝に使うと即時 SDP -4 / +18 のみ(影響付与なし)。
@@ -228,7 +228,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             };
             var bedDamages = new Dictionary<PlayerId, int>
             {
-                [PlayerId.Of("p1")] = 30,  // RepairBed 合法条件(> 0% 必須、ADR-0011 §2)
+                [PlayerId.Of("p1")] = 30,  // RepairBed 合法条件(> 0% 必須)
                 [PlayerId.Of("p2")] = 0,
             };
             var session = SessionFactory.NewSession(
@@ -255,7 +255,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var session = NewSessionWithCardInHand(turnNumber: 1);
             // When(本カードプレイ → 即時効果 -4 + Reactive 影響 2 件付与、ただし本 PlayCard には Reactive は適用されない)
             var next = rule.Apply(session, new PlayCardAction(CardId.Of(FalseSunTypeId, 0)));
-            // Then(SDP は -4 のみ、本 Reactive SDP-10 は適用されない、ADR-0022 §4 snapshot ベース walk)
+            // Then(SDP は -4 のみ、本 Reactive SDP-10 は適用されない = snapshot ベース walk で対象外)
             Assert.That(next.SecondDrowsyPoints[PlayerId.Of("p1")], Is.EqualTo(-4));
             // 付与は完了している(検証は DZ-337 の責務だが本テストでも確認)
             Assert.That(next.Influences[PlayerId.Of("p1")].Count, Is.EqualTo(2));

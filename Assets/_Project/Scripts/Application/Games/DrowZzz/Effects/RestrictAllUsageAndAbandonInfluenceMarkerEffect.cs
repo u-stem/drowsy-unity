@@ -3,7 +3,7 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
     /// <summary>
     /// <see cref="Drowsy.Application.Games.DrowZzz.Influences.PlayerInfluence.TickEffect"/> として保有時、
     /// 影響保有者の以下 3 アクションを <see cref="DrowZzzRule.IsLegalMove"/> で illegal 化する marker
-    /// (No.09「強引過ぎる一手」、2026-05-17 で導入、ADR-0020 と同 PR)。
+    /// (No.09「強引過ぎる一手」)。
     /// </summary>
     /// <remarks>
     /// <para>
@@ -34,9 +34,9 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
     /// 実際の illegal 化判定は <see cref="DrowZzzRule"/> 内の Influence walk(`HasUsageAndAbandonRestrictionInfluence`)で行う。
     /// </para>
     /// <para>
-    /// <see cref="PlayerInfluence.RemainingCount"/> の減算は ADR-0020 で <c>DrowZzzRule.ApplyEndTurn</c> 冒頭の
+    /// <see cref="PlayerInfluence.RemainingCount"/> の減算は <c>DrowZzzRule.ApplyEndTurn</c> 冒頭の
     /// `DecrementInfluencesForCurrentPlayer` に統一移管されており、本 effect 自体は影響しない。
-    /// カウント1 でも自フェーズ全体で機能するのは ADR-0020 の核心動機(本 effect が初の consumer)。
+    /// カウント1 でも自フェーズ全体で機能する。
     /// </para>
     /// </remarks>
     public sealed record RestrictAllUsageAndAbandonInfluenceMarkerEffect : IEffect;

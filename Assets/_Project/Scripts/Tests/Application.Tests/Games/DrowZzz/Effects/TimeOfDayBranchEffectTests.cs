@@ -64,7 +64,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz.Effects
         [Test, Category("Small"), Category("SemiNormal"), Property("Requirement", "DZ-122")]
         public void Given_Round22のClock_When_Apply_Then_sessionが変化しない()
         {
-            // Given(TurnNumber=43 → Round=22、IsNight=IsMorning=false の過渡的範囲、ADR-0008 §5)
+            // Given(TurnNumber=43 → Round=22、IsNight=IsMorning=false の過渡的範囲)
             var interpreter = new EffectInterpreter();
             var session = NewSession(turnNumber: 43, sdpP1: 0);
             var effect = new TimeOfDayBranchEffect(

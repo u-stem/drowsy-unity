@@ -136,7 +136,7 @@ namespace Drowsy.Infrastructure.Tests.Persistence
             Assert.That(RoundTrip(original), Is.EqualTo(original));
         }
 
-        // ===== INF-139: ADR-0019 PR ② 追加 2 effect の Persistence Round-Trip(code-reviewer P-4 反映 2026-05-17)=====
+        // ===== INF-139: 追加 2 effect の Persistence Round-Trip =====
 
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "INF-139")]
         public void Given_RestrictSpecificCardInfluenceEffect_When_RoundTrip_Then_等価()
@@ -193,7 +193,7 @@ namespace Drowsy.Infrastructure.Tests.Persistence
             Assert.That(RoundTrip(original), Is.EqualTo(original));
         }
 
-        // ===== INF-148: No.09「強引過ぎる一手」追加 RestrictAllUsageAndAbandonInfluenceMarkerEffect Round-Trip(2026-05-17、ADR-0020 と同 PR)=====
+        // ===== INF-148: No.09「強引過ぎる一手」追加 RestrictAllUsageAndAbandonInfluenceMarkerEffect Round-Trip =====
 
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "INF-148")]
         public void Given_RestrictAllUsageAndAbandonInfluenceMarkerEffect_When_RoundTrip_Then_等価()
@@ -203,7 +203,7 @@ namespace Drowsy.Infrastructure.Tests.Persistence
             Assert.That(RoundTrip(original), Is.EqualTo(original));
         }
 
-        // ===== INF-150: No.10「安直過ぎる一手」追加 RestrictDrawCardInfluenceMarkerEffect Round-Trip(2026-05-17、ADR-0021 と同 PR)=====
+        // ===== INF-150: No.10「安直過ぎる一手」追加 RestrictDrawCardInfluenceMarkerEffect Round-Trip =====
 
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "INF-150")]
         public void Given_RestrictDrawCardInfluenceMarkerEffect_When_RoundTrip_Then_等価()
@@ -223,7 +223,7 @@ namespace Drowsy.Infrastructure.Tests.Persistence
             Assert.That(RoundTrip(original), Is.EqualTo(original));
         }
 
-        // ===== INF-154 / 155: No.12「偽りの太陽」追加 AdjustSdpAfterPlayCard / AfterAbandon Round-Trip(2026-05-17、ADR-0022 と同 PR)=====
+        // ===== INF-154 / 155: No.12「偽りの太陽」追加 AdjustSdpAfterPlayCard / AfterAbandon Round-Trip =====
 
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "INF-154")]
         public void Given_AdjustSdpAfterPlayCardEffect_When_RoundTrip_Then_等価()
@@ -343,12 +343,12 @@ namespace Drowsy.Infrastructure.Tests.Persistence
                 Throws.TypeOf<JsonSerializationException>().With.Message.Contains("nightEffects"));
         }
 
-        // ===== INF-050(ADR-0023 追加分):ReuseInfluenceSourceEffect + PlayerInfluence(OriginEffects あり)=====
+        // ===== INF-050: ReuseInfluenceSourceEffect + PlayerInfluence(OriginEffects あり)=====
 
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "INF-050")]
         public void Given_ReuseInfluenceSourceEffect_When_RoundTrip_Then_等価()
         {
-            // No.18「対抗手段」(ADR-0023):フィールドなし marker、`{"type":"ReuseInfluenceSource"}` の最小 JSON
+            // No.18「対抗手段」:フィールドなし marker、`{"type":"ReuseInfluenceSource"}` の最小 JSON
             var original = new ReuseInfluenceSourceEffect();
             Assert.That(RoundTrip(original), Is.EqualTo(original));
         }
@@ -356,7 +356,7 @@ namespace Drowsy.Infrastructure.Tests.Persistence
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "INF-050")]
         public void Given_AssociateToFirstPlayerOnGameStartEffect_When_RoundTrip_Then_等価()
         {
-            // No.19「絶対障壁」(ADR-0024):フィールドなし marker、`{"type":"AssociateToFirstPlayerOnGameStart"}` の最小 JSON
+            // No.19「絶対障壁」:フィールドなし marker、`{"type":"AssociateToFirstPlayerOnGameStart"}` の最小 JSON
             var original = new AssociateToFirstPlayerOnGameStartEffect();
             Assert.That(RoundTrip(original), Is.EqualTo(original));
         }
@@ -364,7 +364,7 @@ namespace Drowsy.Infrastructure.Tests.Persistence
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "INF-050")]
         public void Given_PlayOrAbandonBranchEffect_When_RoundTrip_Then_等価()
         {
-            // No.20「至上の喜び」(ADR-0025):TimeOfDayBranchEffect と同パターンの 2 list wrapper round-trip
+            // No.20「至上の喜び」:TimeOfDayBranchEffect と同パターンの 2 list wrapper round-trip
             var original = new PlayOrAbandonBranchEffect(
                 playEffects: new IEffect[]
                 {
@@ -382,7 +382,7 @@ namespace Drowsy.Infrastructure.Tests.Persistence
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "INF-050")]
         public void Given_ApplyInfluenceEffectでOriginEffectsあり_When_RoundTrip_Then_OriginEffectsも復元される()
         {
-            // Given:Influence の OriginEffects に AdjustSdpEffect 1 件を持たせる(ADR-0023、PlayerInfluenceJsonConverter 経路)
+            // Given:Influence の OriginEffects に AdjustSdpEffect 1 件を持たせる(PlayerInfluenceJsonConverter 経路)
             var originEffects = new IEffect[] { new AdjustSdpEffect(SdpTarget.Self, +7) };
             var original = new ApplyInfluenceEffect(
                 Target: SdpTarget.Self,
@@ -404,7 +404,7 @@ namespace Drowsy.Infrastructure.Tests.Persistence
         [Test, Category("Small"), Category("SemiNormal"), Property("Requirement", "INF-050")]
         public void Given_PlayerInfluenceでOriginEffectsキー欠落の旧JSON_When_Deserialize_Then_OriginEffects空list()
         {
-            // Given:旧 v1 JSON (OriginEffects キー欠落)を直接 deserialize(ADR-0023 §8 後方互換)
+            // Given:旧 v1 JSON (OriginEffects キー欠落)を直接 deserialize(後方互換)
             const string json = "{\"type\": \"ApplyInfluence\", \"target\": \"Self\", \"influence\": "
                 + "{\"Trigger\": \"OwnPhaseStart\", \"TickEffect\": {\"type\": \"AdjustSdp\", \"target\": \"Self\", \"delta\": 1}, "
                 + "\"RemainingCount\": 3}}";

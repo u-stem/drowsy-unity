@@ -6,7 +6,7 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
     /// プレイ時に <see cref="PlayCardAction.TargetCardId"/> を読んで <see cref="Target"/> プレイヤーに
     /// <see cref="Drowsy.Application.Games.DrowZzz.Influences.PlayerInfluence"/>(`OwnPhaseStart`,
     /// <see cref="RestrictSpecificCardInfluenceEffect"/>(TargetCardId.TypeId), <see cref="RemainingCount"/>)
-    /// を付与する効果(ADR-0019 / No.04「静寂を纏う」、PR ② で導入)。
+    /// を付与する効果(No.04「静寂を纏う」)。
     /// </summary>
     /// <param name="Target">影響を付与する対象プレイヤー(No.04 では <see cref="SdpTarget.Opponent"/>)</param>
     /// <param name="RemainingCount">付与する影響の残発動回数(1 以上必須、No.04 では 2)</param>
@@ -22,7 +22,7 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
     /// <c>new RestrictSpecificCardInfluenceEffect(typeId)</c> を <see cref="Drowsy.Application.Games.DrowZzz.Influences.PlayerInfluence"/>
     /// の TickEffect として包んで Target プレイヤーに付与する。<see cref="EffectContext.TargetCardId"/> が null の場合は
     /// プレイ時の <see cref="DrowZzzRule.IsLegalMove"/> で事前防御されている前提だが、interpreter 内でも
-    /// <see cref="InvalidOperationException"/> でフェイルファストする(防御的設計、`ApplyAssociate` 内 ArgumentException 二重ガードと同パターン)。
+    /// <see cref="InvalidOperationException"/> でフェイルファストする(防御的設計)。
     /// </para>
     /// </remarks>
     public sealed record ApplyTargetedRestrictionEffect(SdpTarget Target, int RemainingCount) : IEffect

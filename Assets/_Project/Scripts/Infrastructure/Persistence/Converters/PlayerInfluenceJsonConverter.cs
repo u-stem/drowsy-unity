@@ -8,11 +8,11 @@ using Newtonsoft.Json.Linq;
 namespace Drowsy.Infrastructure.Persistence.Converters
 {
     /// <summary>
-    /// <see cref="PlayerInfluence"/> の専用 JsonConverter(ADR-0023、2026-05-18 で導入)。
+    /// <see cref="PlayerInfluence"/> の専用 JsonConverter。
     /// </summary>
     /// <remarks>
-    /// ADR-0023 で <see cref="PlayerInfluence.OriginEffects"/> フィールドが追加され、コンストラクタが
-    /// 3 引数 / 4 引数の 2 種類存在するようになった。Newtonsoft 標準 reflection 経路では複数 ctor + 引数なし ctor
+    /// <see cref="PlayerInfluence.OriginEffects"/> フィールド追加によりコンストラクタが
+    /// 3 引数 / 4 引数の 2 種類存在する。Newtonsoft 標準 reflection 経路では複数 ctor + 引数なし ctor
     /// 不在 + <c>[JsonConstructor]</c> 属性不在の組み合わせで「Unable to find a constructor to use」エラーが
     /// 発生する(`PersistedSessionV1.Influences` deserialize 経路で再現)。
     /// <para>
@@ -31,7 +31,7 @@ namespace Drowsy.Infrastructure.Persistence.Converters
     /// }
     /// </code>
     /// 旧 v1 JSON 後方互換:<c>OriginEffects</c> キー欠落時は <see cref="Array.Empty{T}"/> フォールバック
-    /// (ADR-0023 §8、ADR-0019 `AssociatedCardIds` と同パターン)。
+    /// (`AssociatedCardIds` と同パターン)。
     /// </para>
     /// </remarks>
     internal sealed class PlayerInfluenceJsonConverter : JsonConverter<PlayerInfluence>
@@ -85,7 +85,7 @@ namespace Drowsy.Infrastructure.Persistence.Converters
             var tickEffect = tickEffectToken.ToObject<IEffect>(serializer);
             int remainingCount = remainingCountToken.Value<int>();
 
-            // OriginEffects は nullable + 空 list フォールバック(旧 v1 JSON 後方互換、ADR-0023 §8)
+            // OriginEffects は nullable + 空 list フォールバック(旧 v1 JSON 後方互換)
             var originEffectsToken = jo["OriginEffects"];
             IReadOnlyList<IEffect> originEffects;
             if (originEffectsToken is null || originEffectsToken.Type == JTokenType.Null)

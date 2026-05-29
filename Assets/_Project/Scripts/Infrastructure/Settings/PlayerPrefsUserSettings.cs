@@ -9,8 +9,7 @@ using UnityEngine;
 namespace Drowsy.Infrastructure.Settings
 {
     /// <summary>
-    /// <see cref="IUserSettings"/> の PlayerPrefs 実装(ADR-0012 §8 + M4-PR6
-    /// 着手時の JIT 確定 2026-05-13 に基づく)。
+    /// <see cref="IUserSettings"/> の PlayerPrefs 実装。
     /// </summary>
     /// <remarks>
     /// <para>

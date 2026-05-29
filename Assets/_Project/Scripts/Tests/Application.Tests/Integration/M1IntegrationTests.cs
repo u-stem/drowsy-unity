@@ -13,7 +13,7 @@ namespace Drowsy.Application.Tests.Integration
     /// <summary>
     /// M1 完成シナリオの end-to-end 統合テスト。
     /// <c>StartGameUseCase</c> → <c>ApplyActionUseCase</c> の連鎖を Draw → Play → EndTurn → Draw → ...
-    /// で N=2 数ラウンド回し、組み合わせの正しさと累積の正しさを検証する(ADR-0006 §M1-PR7、ADR-0005 §M1 Definition of Done)。
+    /// で N=2 数ラウンド回し、組み合わせの正しさと累積の正しさを検証する。
     /// </summary>
     [TestFixture]
     public sealed class M1IntegrationTests
@@ -38,7 +38,7 @@ namespace Drowsy.Application.Tests.Integration
 
         // (StartGameUseCase, ApplyActionUseCase) のペアを生成
         // M2-PR1: DrowZzzRule の依存追加 (catalog / interpreter) に追従。
-        // ADR-0014: StartGameUseCase は ICardCatalog<IEffect> 依存を削除済 → ADR-0024 で再追加(catalog は DrowZzzRule + StartGameUseCase 両方が受け取る、本テストは空 catalog で AssociateToFirstPlayerOnGameStartEffect 非発動)。
+        // StartGameUseCase は ICardCatalog<IEffect> 依存を持つ(catalog は DrowZzzRule + StartGameUseCase 両方が受け取る)。本テストは空 catalog で AssociateToFirstPlayerOnGameStartEffect 非発動。
         private static (StartGameUseCase start, ApplyActionUseCase apply) NewUseCases(IRandomSource rng = null)
         {
             rng ??= new IdentityRandom();

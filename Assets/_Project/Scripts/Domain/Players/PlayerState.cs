@@ -11,7 +11,7 @@ namespace Drowsy.Domain.Players
     /// <see cref="Hand"/>(<see cref="Cards.Hand"/>:<see cref="IEquatable{T}"/> 実装)それぞれの値同値性を呼ぶことで
     /// 全体として値同値となる。<see cref="CardData"/> / <see cref="Cards.Hand"/> / <see cref="Cards.Pile"/> が内部辞書 / 配列のため
     /// <c>sealed class + IEquatable</c> を要したのとは異なり、<see cref="PlayerState"/> は内部に値同値が壊れる
-    /// フィールドを持たないため <c>record</c> で安全(設計判断は ADR-0002 / 本機能の <c>player-state.md</c>)。
+    /// フィールドを持たないため <c>record</c> で安全。
     /// 状態更新は <c>with</c> 式(例: <c>state with { Hand = newHand }</c>)で行う。
     /// <c>init</c> setter にも null 検証を入れることで <c>with</c> 式での null 渡しも防御する。
     /// </remarks>

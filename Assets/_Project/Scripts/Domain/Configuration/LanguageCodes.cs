@@ -3,8 +3,7 @@ using System.Collections.Generic;
 namespace Drowsy.Domain.Configuration
 {
     /// <summary>
-    /// サポートする言語コード定数。本格 i18n は Phase 3 で別途検討する
-    /// (ADR-0012 §8「最小項目(JIT 確認待ち、初期推奨)」)。
+    /// サポートする言語コード定数。本格 i18n は Phase 3 で別途検討する。
     /// </summary>
     /// <remarks>
     /// 値は ISO 639-1 形式 2 文字 lowercase に揃える。M4-PR6 では `ja` / `en` のみ。

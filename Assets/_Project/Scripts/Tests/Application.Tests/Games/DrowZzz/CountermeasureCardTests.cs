@@ -13,7 +13,7 @@ using NUnit.Framework;
 namespace Drowsy.Application.Tests.Games.DrowZzz
 {
     /// <summary>
-    /// カード No.18「対抗手段」の統合テスト(DZ-377 〜 DZ-388、ADR-0023、2026-05-18 で導入)。
+    /// カード No.18「対抗手段」の統合テスト(DZ-377 〜 DZ-388)。
     /// Echo キーワード機構の初導入カード。受けている影響から 1 つを選び発生源カードを再使用 + 選択影響は除去。
     /// </summary>
     [TestFixture]
@@ -262,7 +262,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var after = rule.Apply(session, action);
 
             // Then:p1 の Influences は (元 inf 除去後) + (Reuse 中に付与された newInf) = 1 件
-            // その新規 Influence の OriginEffects は空 list(連鎖 Reuse 防止、ADR-0023 §5)
+            // その新規 Influence の OriginEffects は空 list(連鎖 Reuse 防止のため空で付与する)
             var p1Influences = after.Influences[PlayerId.Of("p1")];
             Assert.That(p1Influences.Count, Is.EqualTo(1));
             Assert.That(p1Influences[0].OriginEffects.Count, Is.EqualTo(0));

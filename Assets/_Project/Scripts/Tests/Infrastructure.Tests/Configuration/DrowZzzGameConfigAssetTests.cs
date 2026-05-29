@@ -12,7 +12,7 @@ using Property = NUnit.Framework.PropertyAttribute;
 namespace Drowsy.Infrastructure.Tests.Configuration
 {
     /// <summary>
-    /// <see cref="DrowZzzGameConfigAsset"/> SO の最小契約テスト(M4-PR7、ADR-0012 §3)。
+    /// <see cref="DrowZzzGameConfigAsset"/> SO の最小契約テスト。
     /// <see cref="ScriptableObject.CreateInstance{T}"/> 経由で構築し、
     /// <c>internal SetPoolsForTest</c> + reflection 経由の <c>Reset</c> / <c>OnValidate</c> 呼び出しで
     /// Inspector 経路を経由せず検証する(M4-PR1 で確立した <see cref="ScriptableObjectCardCatalog"/> パターン継承)。
@@ -81,7 +81,7 @@ namespace Drowsy.Infrastructure.Tests.Configuration
             var so = ScriptableObject.CreateInstance<DrowZzzGameConfigAsset>();
             // When
             InvokeReset(so);
-            // Then(ADR-0006 §M1 で確定した本物 FdpPool)
+            // Then(本物 FdpPool)
             Assert.That(so.FdpPool, Is.EqualTo(new[] { 0, 10, 20, 30, 35, 40, 45, 50, 55, 60 }));
         }
 

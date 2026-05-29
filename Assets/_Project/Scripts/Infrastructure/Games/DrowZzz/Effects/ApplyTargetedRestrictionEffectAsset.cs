@@ -5,7 +5,7 @@ using UnityEngine;
 namespace Drowsy.Infrastructure.Games.DrowZzz.Effects
 {
     /// <summary>
-    /// <see cref="ApplyTargetedRestrictionEffect"/>(ADR-0019 PR ②、No.04「静寂を纏う」)を Unity SO で表現する POCO。
+    /// <see cref="ApplyTargetedRestrictionEffect"/>(No.04「静寂を纏う」)を Unity SO で表現する POCO。
     /// </summary>
     /// <remarks>
     /// プレイ時に <c>PlayCardAction.TargetCardId</c> を読んで <see cref="Target"/> プレイヤーに動的影響を付与する効果。

@@ -8,7 +8,7 @@ namespace Drowsy.Application.Games.DrowZzz
     /// DrowZzz の対戦に参加するプレイヤー Id 列を表す不変 wrapper(VContainer collection rule 回避用)。
     /// </summary>
     /// <remarks>
-    /// ADR-0017 で確定。VContainer 1.17.0 の <c>CollectionInstanceProvider.Match</c> は
+    /// VContainer 1.17.0 の <c>CollectionInstanceProvider.Match</c> は
     /// <c>IEnumerable&lt;&gt;</c> / <c>IReadOnlyList&lt;&gt;</c> を予約型として扱い、
     /// <c>RegisterInstance&lt;IReadOnlyList&lt;PlayerId&gt;&gt;(...)</c> による明示登録を実質的に上書きして
     /// 要素型(<see cref="PlayerId"/>)の registration を集めた空配列を返す。
@@ -29,10 +29,9 @@ namespace Drowsy.Application.Games.DrowZzz
     {
         /// <summary>プレイヤー Id 列(順序保持、空ではない)。</summary>
         /// <remarks>
-        /// <c>init</c> setter は採用しない(ADR-0017 / code-reviewer P-1 反映)。`record` の <c>with</c> 式で
+        /// <c>init</c> setter は採用しない。`record` の <c>with</c> 式で
         /// <c>new PlayerRoster(...) with { Players = Array.Empty&lt;PlayerId&gt;() }</c> を許すと ctor 検証
-        /// (null / empty)をバイパスできるため。M5 範囲で <c>with</c> 利用予定がなく、安全側に倒す。
-        /// Phase 3 で <c>with</c> 経由の immutable 更新が必要になった場合は別 ADR で再評価する。
+        /// (null / empty)をバイパスできるため安全側に倒す。
         /// </remarks>
         public IReadOnlyList<PlayerId> Players { get; }
 

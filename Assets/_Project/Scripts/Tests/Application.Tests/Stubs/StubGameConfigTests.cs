@@ -57,7 +57,7 @@ namespace Drowsy.Application.Tests.Stubs
             var config = new StubGameConfig();
             // When
             var min = config.DdpPool.Min();
-            // Then(ADR-0009 §「DDP プールの構造」: -30 〜 +30 の下限)
+            // Then(DDP プールの構造: -30 〜 +30 の下限)
             Assert.That(min, Is.EqualTo(-30));
         }
 
@@ -68,7 +68,7 @@ namespace Drowsy.Application.Tests.Stubs
             var config = new StubGameConfig();
             // When
             var max = config.DdpPool.Max();
-            // Then(ADR-0009 §「DDP プールの構造」: -30 〜 +30 の上限)
+            // Then(DDP プールの構造: -30 〜 +30 の上限)
             Assert.That(max, Is.EqualTo(30));
         }
     }

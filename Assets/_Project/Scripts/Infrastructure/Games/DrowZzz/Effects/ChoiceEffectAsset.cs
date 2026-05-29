@@ -6,8 +6,8 @@ using UnityEngine;
 namespace Drowsy.Infrastructure.Games.DrowZzz.Effects
 {
     /// <summary>
-    /// <see cref="ChoiceEffect"/>(M2-PR5、ADR-0007 §1.5)を Unity SO で表現する POCO
-    /// (M4-PR3 で導入、INF-041 / INF-042)。wrapper effect、2 次元配列を中間型 <see cref="EffectBranchAsset"/> で表現。
+    /// <see cref="ChoiceEffect"/> を Unity SO で表現する POCO(INF-041 / INF-042)。
+    /// wrapper effect、2 次元配列を中間型 <see cref="EffectBranchAsset"/> で表現。
     /// </summary>
     /// <remarks>
     /// 「緑の侵攻」(No.02)の選択肢式効果に使用。<see cref="Branches"/> は <see cref="EffectBranchAsset"/>[] として

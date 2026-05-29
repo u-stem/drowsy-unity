@@ -14,7 +14,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
     /// <summary>
     /// <see cref="CounterAction"/> / <see cref="PassCounterAction"/> + WaitingForCounterResponse PhaseState +
     /// <see cref="DrowZzzRule.ApplyPlayCard"/> 後の PhaseState 分岐を検証する
-    /// (DZ-214 / DZ-215 / DZ-216 / DZ-217 / DZ-218 / DZ-219 / DZ-220 / DZ-221)。ADR-0011 §4.3 / M3-PR5b で導入。
+    /// (DZ-214 / DZ-215 / DZ-216 / DZ-217 / DZ-218 / DZ-219 / DZ-220 / DZ-221)。
     /// </summary>
     [TestFixture]
     public sealed class CounterActionTests

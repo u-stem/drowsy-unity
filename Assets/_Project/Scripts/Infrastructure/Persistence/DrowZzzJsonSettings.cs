@@ -10,8 +10,7 @@ namespace Drowsy.Infrastructure.Persistence
     /// `DrowZzzGameSessionSerializer` および test fixture が共通利用する。
     /// </summary>
     /// <remarks>
-    /// ADR-0012 §7「JIT 確定: Serializer = Newtonsoft.Json (Recommended)」+「Discriminator = カスタム JsonConverter (Recommended)」
-    /// に基づく構成(2026-05-13 ユーザー JIT 確定)。
+    /// Newtonsoft.Json をシリアライザとして採用し、<c>"type"</c> discriminator にはカスタム JsonConverter を使用する構成。
     /// <para>
     /// 各 converter は本 class が組み立てる際に固定順で登録され、外部からの差し替えは想定しない
     /// (永続化フォーマットが「Drowsy 専用 JSON」であることを担保するため、JsonConvert.DefaultSettings
@@ -27,7 +26,7 @@ namespace Drowsy.Infrastructure.Persistence
     /// <see cref="StringEnumConverter"/> で名前 serialize(後方互換性 + 可読性)</item>
     /// <item>record (<c>TurnState</c> / <c>PlayerState</c> / <c>GameState</c> / <c>PendingCounteredEffect</c> /
     /// 12 IEffect 派生型 / <c>PersistedSessionV1</c>)は positional ctor の自動解決 + PascalCase property 名で round-trip</item>
-    /// <item><c>PlayerInfluence</c> は専用 <c>PlayerInfluenceJsonConverter</c> 経由(ADR-0023、OriginEffects 追加で複数 ctor になり
+    /// <item><c>PlayerInfluence</c> は専用 <c>PlayerInfluenceJsonConverter</c> 経由(OriginEffects 追加で複数 ctor になり
     /// Newtonsoft 自動 ctor 選択が失敗するため、専用 converter で PascalCase schema + 旧 v1 JSON 後方互換を制御)</item>
     /// </list>
     /// </para>
@@ -65,7 +64,7 @@ namespace Drowsy.Infrastructure.Persistence
             settings.Converters.Add(new HandJsonConverter());
             settings.Converters.Add(new DdpPoolJsonConverter());
 
-            // PlayerInfluence の専用 converter(ADR-0023、複数 ctor で Newtonsoft 標準経路が ctor 自動選択に失敗する問題の解消)
+            // PlayerInfluence の専用 converter(複数 ctor で Newtonsoft 標準経路が ctor 自動選択に失敗する問題の解消)
             settings.Converters.Add(new PlayerInfluenceJsonConverter());
 
             // polymorphic 型 converter(discriminator 方式)

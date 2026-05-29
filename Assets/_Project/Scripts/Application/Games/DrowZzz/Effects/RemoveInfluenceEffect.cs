@@ -7,9 +7,8 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
     /// </summary>
     /// <param name="Target">影響を除去する対象プレイヤー</param>
     /// <remarks>
-    /// ADR-0007 §1.5「継続影響(Influence)」JIT 確定の除去系効果として M2-PR5 で導入。
-    /// カード No.02「緑の侵攻」の「プレイヤーが選択して影響 1 つを消滅させる」に使う(JIT 確定 2026-05-11、
-    /// カードをプレイするプレイヤーが index を action に指定して選択する仕様)。
+    /// 継続影響(Influence)の除去系効果。カード No.02「緑の侵攻」の「プレイヤーが選択して影響 1 つを消滅させる」に使う
+    /// (カードをプレイするプレイヤーが index を action に指定して選択する仕様)。
     /// <para>
     /// 除去の挙動(graceful):
     /// <list type="bullet">
@@ -19,7 +18,7 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
     /// </list>
     /// <c>IsLegalMove</c> 段階で index 範囲を強制チェックしない理由: 影響リストの内容(件数)は action 構築側が
     /// 知らない場合があるため(UI から index=0 を default 送付するケース等)。illegal-move 化は Presentation 層
-    /// (M5)が UI 上で取り得る index を制約する方式と再評価する。
+    /// が UI 上で取り得る index を制約する方式と再評価する。
     /// </para>
     /// </remarks>
     public sealed record RemoveInfluenceEffect(SdpTarget Target) : IEffect;

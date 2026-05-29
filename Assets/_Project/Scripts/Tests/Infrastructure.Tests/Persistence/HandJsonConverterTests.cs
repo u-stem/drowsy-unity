@@ -112,7 +112,7 @@ namespace Drowsy.Infrastructure.Tests.Persistence
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "INF-107")]
         public void Given_不正CardId_When_Deserialize_Then_JsonSerializationException()
         {
-            // Given(`#` 欠如、ADR-0018 schema 違反)
+            // Given(`#` 欠如、schema 違反)
             const string json = "[\"dream\"]";
 
             // When / Then
