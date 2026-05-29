@@ -39,8 +39,7 @@ namespace Drowsy.Application.Tests.Stubs
 
         /// <summary>
         /// `DrowZzzRule` の最小依存(空 `InMemoryCardCatalog` + 標準 `EffectInterpreter`)を
-        /// 組み立てる。M1 互換挙動の維持目的(ADR-0007 §3、constructor 引数の `ICardCatalog<IEffect>` /
-        /// `EffectInterpreter` を満たす最小値)。
+        /// 組み立てる。constructor 引数の `ICardCatalog<IEffect>` / `EffectInterpreter` を満たす最小値。
         /// </summary>
         public static DrowZzzRule NewRule() =>
             new DrowZzzRule(
@@ -52,7 +51,7 @@ namespace Drowsy.Application.Tests.Stubs
         /// 2 枚の Pile を生成、先頭順序保持)。`CardId.Of(CardTypeId.Of(typeId), 0)` を内部で呼ぶ。
         /// </summary>
         /// <remarks>
-        /// <b>注意(ADR-0018 / code-reviewer 提案 5)</b>:本 helper は <c>instance=0 固定</c> で `CardId` を生成するため、
+        /// <b>注意</b>:本 helper は <c>instance=0 固定</c> で `CardId` を生成するため、
         /// 同じ string を複数渡すと <c>(typeId, 0)</c> が重複し、<c>StartGameUseCase</c> が Hand 配布時に
         /// `Hand.Add` の unique 制約で <see cref="ArgumentException"/> を投げる。
         /// 「同種カードを複数枚配布」をテストしたい場合は本 helper を使わず、
@@ -130,14 +129,13 @@ namespace Drowsy.Application.Tests.Stubs
                 [PlayerId.Of("p1")] = 0,
                 [PlayerId.Of("p2")] = 10,
             };
-            // SDP は M2-PR3 で追加(ADR-0009 §「DP 種別」)。デフォルトは全プレイヤー 0 で固定、
+            // SDP のデフォルトは全プレイヤー 0 で固定、
             // 新規 fixture で固有値が必要な場合は `sdp: Dp(p1: 5)` のように明示する。
             var sdpResolved = sdp ?? new Dictionary<PlayerId, int>
             {
                 [PlayerId.Of("p1")] = 0,
                 [PlayerId.Of("p2")] = 0,
             };
-            // DDP / DdpPool は M2-PR4 で追加(ADR-0009 §「DP 種別」/ §「DDP プールの構造」)。
             // DDP 自動抽選機構を検証しないテストはデフォルト DDP=0 / 空 DdpPool で十分。
             var ddpResolved = ddp ?? new Dictionary<PlayerId, int>
             {
@@ -150,7 +148,7 @@ namespace Drowsy.Application.Tests.Stubs
                 [PlayerId.Of("p1")] = Array.Empty<PlayerInfluence>(),
                 [PlayerId.Of("p2")] = Array.Empty<PlayerInfluence>(),
             };
-            // M3-PR2: BedDamages は引数指定なら採用、未指定なら 0/0 固定(ADR-0011 §3、ddp / influences と同パターン)
+            // BedDamages は引数指定なら採用、未指定なら 0/0 固定(ddp / influences と同パターン)
             var bedDamagesResolved = bedDamages ?? new Dictionary<PlayerId, int>
             {
                 [PlayerId.Of("p1")] = 0,

@@ -6,7 +6,6 @@ namespace Drowsy.Application.Games.DrowZzz
     /// <summary>
     /// DrowZzz のアクション階層の基底。
     /// <see cref="IGameAction"/> を実装するマーカー record で、具体アクションは sealed record で派生する。
-    /// 詳細は ADR-0006 §2.1 を参照。
     /// </summary>
     public abstract record DrowZzzAction : IGameAction;
 
@@ -29,22 +28,21 @@ namespace Drowsy.Application.Games.DrowZzz
     /// <param name="Card">場に出すカードの識別子(現プレイヤーの手札に存在することが合法条件)</param>
     /// <param name="Choice">
     /// 選択式カード(<see cref="Drowsy.Application.Games.DrowZzz.Effects.ChoiceEffect"/> を含むカード)の選択肢 index
-    /// (0-based)。非選択式カードでは無視される。M2-PR5 で導入(ADR-0007 §1.5、カード No.02「緑の侵攻」)。
+    /// (0-based)。非選択式カードでは無視される。
     /// </param>
     /// <param name="InfluenceRemovalIndex">
     /// <see cref="Drowsy.Application.Games.DrowZzz.Effects.RemoveInfluenceEffect"/> を含む効果列の評価時に、
-    /// 削除対象の影響 index(0-based)として参照される。範囲外なら no-op(graceful)。M2-PR5 で導入。
+    /// 削除対象の影響 index(0-based)として参照される。範囲外なら no-op(graceful)。
     /// </param>
     /// <param name="TargetCardId">
     /// <see cref="Drowsy.Application.Games.DrowZzz.Effects.ApplyTargetedRestrictionEffect"/> を含む効果列の評価時に、
-    /// 「相手の手札から選択したカード」の <see cref="CardId"/> として参照される(No.04「静寂を纏う」、ADR-0019 PR ②、2026-05-17 で導入)。
+    /// 「相手の手札から選択したカード」の <see cref="CardId"/> として参照される(No.04「静寂を纏う」)。
     /// null は「未指定」を意味し、<see cref="Drowsy.Application.Games.DrowZzz.Effects.ApplyTargetedRestrictionEffect"/>
     /// を含むカードのプレイ時は必須(<see cref="DrowZzzRule.IsLegalMove"/> で防御)。それ以外のカードでは無視される。
     /// </param>
     /// <remarks>
-    /// M2-PR5 で <paramref name="Choice"/> / <paramref name="InfluenceRemovalIndex"/> を追加(両者 default 0 で後方互換維持、
-    /// M1-PR5〜M2-PR4 の単一引数 ctor 呼び出しは全て継続動作)。
-    /// 2026-05-17 PR ② で <paramref name="TargetCardId"/> を追加(default null で後方互換維持)。
+    /// <paramref name="Choice"/> / <paramref name="InfluenceRemovalIndex"/> は default 0 で後方互換維持。
+    /// <paramref name="TargetCardId"/> は default null で後方互換維持。
     /// </remarks>
     public sealed record PlayCardAction(CardId Card, int Choice = 0, int InfluenceRemovalIndex = 0, CardId TargetCardId = null) : DrowZzzAction
     {
@@ -75,56 +73,48 @@ namespace Drowsy.Application.Games.DrowZzz
     /// <param name="Choice">放棄選択肢(<see cref="AbandonChoice.GainSdp"/> / <see cref="AbandonChoice.RepairBed"/>)</param>
     /// <param name="CardIndex">手札から捨てる対象カードの index(0-based、default 0)。範囲外は illegal-move</param>
     /// <remarks>
-    /// ADR-0011 §2 で確定した「放棄」機構の Action 派生型として M3-PR3 で導入。`PlayCardAction` の代替として
-    /// `WaitingForPlay` フェーズで選択可能で、Apply 後は `WaitingForEndTurn` に遷移する(`PlayCardAction` と同じフェーズ遷移)。
+    /// `PlayCardAction` の代替として `WaitingForPlay` フェーズで選択可能で、Apply 後は `WaitingForEndTurn` に遷移する。
     /// <para>
-    /// `IsLegalMove` の合法条件(M3-PR3 で確定、ADR-0011 §2):
+    /// `IsLegalMove` の合法条件:
     /// <list type="bullet">
     /// <item><c>PhaseState == WaitingForPlay</c></item>
     /// <item>手札に 1 枚以上のカード(`Hand.Count > 0`)+ `CardIndex` が `[0, Hand.Count)` 範囲内</item>
-    /// <item><see cref="AbandonChoice.RepairBed"/> 選択時:現プレイヤーの <c>BedDamages > 0%</c>(0% では修繕不可、JIT 確定 2026-05-13)</item>
+    /// <item><see cref="AbandonChoice.RepairBed"/> 選択時:現プレイヤーの <c>BedDamages > 0%</c>(0% では修繕不可)</item>
     /// </list>
     /// </para>
     /// <para>
-    /// 「本能(Instinct)」キーワード対応は M3-PR5 で追加予定(ADR-0011 §4):本能を持つ効果列のカードは
-    /// `CardIndex` で選択できない(`IsLegalMove` で除外)。本 PR(M3-PR3)範囲では制限なし。
+    /// 「本能(Instinct)」キーワードを持つ効果列のカードは `CardIndex` で選択できない(`IsLegalMove` で除外)。
     /// </para>
     /// </remarks>
     public sealed record AbandonAction(AbandonChoice Choice, int CardIndex = 0) : DrowZzzAction;
 
     /// <summary>
     /// 連想(特殊ドロー)アクション。現プレイヤーが宣言し、指定 <paramref name="Card"/> を catalog 経由で
-    /// 直接手札に追加する。通常の山札 Draw とは別の機構(ADR-0011 §1、M3-PR4 で導入)。
+    /// 直接手札に追加する。通常の山札 Draw とは別の機構。
     /// </summary>
     /// <param name="Card">連想で手札に加える <see cref="CardId"/>(連想可能カード:効果列に
     /// <see cref="Drowsy.Application.Games.DrowZzz.Effects.AssociatableMarkerEffect"/> を含むカードのみ)</param>
     /// <remarks>
-    /// ADR-0011 §1 で確定した「連想」機構の Action 派生型として M3-PR4 で導入。本 PR で JIT 確定した 3 項目を反映する
-    /// (2026-05-13、ADR-0011 §1 「JIT 確認待ち」項目):
+    /// 「連想」機構の Action 派生型。合法条件:
     /// <list type="bullet">
-    /// <item><b>連想対象の領域</b>: (c)/(d) <c>ICardCatalog</c> から直接生成 / 別 Pile。連想可能カードは初期山札に含まれず、
+    /// <item><b>連想対象の領域</b>: <c>ICardCatalog</c> から直接生成。連想可能カードは初期山札に含まれず、
     /// catalog 経由のみで手札に追加される(山札 / 捨て札 / 場 / 影響 / DP / Outcome / ベッド破損は全て不変)。</item>
     /// <item><b>FDS 境界</b>: 80 以上(80+ で発動可、<see cref="DrowZzzAssociationConstants.AssociationThreshold"/> = 80)。
-    /// 「FDS」は <see cref="DrowZzzGameSession.TotalPoints"/>(= FDP + DDP + SDP)の用語規約(ADR-0011 §1 / §6)。</item>
+    /// 「FDS」は <see cref="DrowZzzGameSession.TotalPoints"/>(= FDP + DDP + SDP)の用語規約。</item>
     /// <item><b>タイミング</b>: 自ターン中のみ(<see cref="DrowZzzPhaseState.WaitingForDraw"/> /
-    /// <see cref="DrowZzzPhaseState.WaitingForPlay"/> / <see cref="DrowZzzPhaseState.WaitingForEndTurn"/> のいずれかで合法)。
-    /// 相手ターン中は不可(ADR-0006「自分のターン中のみカードプレイ可能」原則を破壊しない、
-    /// 反撃キーワード経路は ADR-0011 §4.3 で M3-PR5 / PR6 の独立スコープ)。</item>
+    /// <see cref="DrowZzzPhaseState.WaitingForPlay"/> / <see cref="DrowZzzPhaseState.WaitingForEndTurn"/> のいずれかで合法)。</item>
     /// </list>
     /// <para>
-    /// 判別方式は ADR-0011 §1 起票時の「初期推奨案 (i) マーカー effect 方式」を採用:
+    /// 判別方式はマーカー effect 方式:
     /// <see cref="Drowsy.Application.Games.DrowZzz.Effects.AssociatableMarkerEffect"/> を効果列に持つカードのみが
     /// <see cref="AssociateAction"/> の対象になる(<see cref="DrowZzzRule.IsLegalMove"/> でチェック)。
-    /// 「就寝カード = <see cref="Drowsy.Application.Games.DrowZzz.Effects.EarlyWinTriggerEffect"/> を持つ」
-    /// (ADR-0010 §5)と同パターン。
     /// </para>
     /// <para>
     /// <see cref="DrowZzzRule.Apply"/> 後は <see cref="DrowZzzPhaseState"/> は変更しない(連想は割り込み式、
     /// 現フェーズ維持)。手札にカードを 1 枚追加する以外の状態変化はない。
     /// </para>
     /// <para>
-    /// 「連想で引いたカードは次の自分のターン以降使用可能」(ADR-0011 §6)という使用制限は M3-PR4 範囲では実装しない:
-    /// 本 PR は「カード追加」に範囲を限定し、使用制限機構は M3-PR6(夢カード統合)で別途設計する。
+    /// 連想で引いたカードは次の自分のターン以降使用可能という使用制限は、使用制限機構で実現する。
     /// </para>
     /// </remarks>
     public sealed record AssociateAction(CardId Card) : DrowZzzAction
@@ -141,28 +131,22 @@ namespace Drowsy.Application.Games.DrowZzz
     }
 
     /// <summary>
-    /// 反撃(Counter)アクション。M3-PR5b で導入(ADR-0011 §4.3)。
+    /// 反撃(Counter)アクション。
     /// 相手プレイヤーが直前にプレイした <see cref="Target"/> カードに対し、本プレイヤーが <see cref="Counter"/> カード
     /// (効果列に <see cref="Drowsy.Application.Games.DrowZzz.Effects.Keyword.Counter"/> を含む)を使って反撃する。
     /// </summary>
     /// <param name="Counter">反撃のためにプレイする現プレイヤーの手札カード(Counter キーワード持ち効果列を含む)</param>
     /// <param name="Target">無効化対象の相手プレイヤーがプレイした Field 上のカード</param>
     /// <remarks>
-    /// JIT 確定 2026-05-13(本 PR で確定):
     /// <list type="bullet">
-    /// <item><b>効果無効化セマンティクス</b>: (C) target カードを捨て札(Discard)へ移動。プレイ済だが効果は走らず、
+    /// <item><b>効果無効化セマンティクス</b>: target カードを捨て札(Discard)へ移動。プレイ済だが効果は走らず、
     /// カードは捨て札に行く。</item>
     /// <item><b>Frenzy vs Counter</b>: target カードの効果列に <see cref="Drowsy.Application.Games.DrowZzz.Effects.Keyword.Frenzy"/> を
     /// 含む KeywordedEffect がある場合、<see cref="DrowZzzRule.IsLegalMove"/> で false(illegal-move で不可)。</item>
     /// </list>
     /// <para>
-    /// 合法フェーズは <see cref="DrowZzzPhaseState.WaitingForCounterResponse"/> のみ
-    /// (ADR-0011 §4.3.3 で確定した「(i) WaitingForCounterResponse PhaseState 追加」採用、JIT 確定 2026-05-13)。
-    /// </para>
-    /// <para>
-    /// 「反撃の反撃」+ 元カード遡及発動(ADR-0011 §4.4)は本 PR(M3-PR5b)範囲外、**M3-PR5c で別途実装**。
-    /// 「Counter キーワード持ち効果の PlayCardAction 経路 skip」(ADR-0011 §4.3.1 自ターン通常プレイで Counter 非付与の
-    /// 効果のみ発動)も本 PR 範囲外、別 PR で対応。
+    /// 合法フェーズは <see cref="DrowZzzPhaseState.WaitingForCounterResponse"/> または
+    /// 「反撃の反撃」経路として <see cref="DrowZzzPhaseState.WaitingForEndTurn"/> + PendingCounteredEffects 非空の場合。
     /// </para>
     /// </remarks>
     public sealed record CounterAction(CardId Counter, CardId Target) : DrowZzzAction
@@ -187,7 +171,7 @@ namespace Drowsy.Application.Games.DrowZzz
     }
 
     /// <summary>
-    /// 反撃応答スキップ(Pass)アクション。M3-PR5b で導入(ADR-0011 §4.3.3)。
+    /// 反撃応答スキップ(Pass)アクション。
     /// <see cref="DrowZzzPhaseState.WaitingForCounterResponse"/> で「反撃しない」を明示的に宣言し、
     /// <see cref="DrowZzzPhaseState.WaitingForEndTurn"/> に遷移する(相手のターン進行を継続)。
     /// </summary>

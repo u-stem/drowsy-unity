@@ -14,7 +14,7 @@ namespace Drowsy.Domain.Game
     /// </summary>
     /// <remarks>
     /// <c>record class</c> として実装し、<c>init</c> setter + バッキングフィールド + <c>value ?? throw</c> で
-    /// コンストラクタ + <c>with</c> 式の両経路で null 防御が走る(PR-3 PlayerState と同パターン、ADR-0004 polyfill 前提)。
+    /// コンストラクタ + <c>with</c> 式の両経路で null 防御が走る(<see cref="Players.PlayerState"/> と同パターン)。
     /// <see cref="Equals(GameState)"/> / <see cref="GetHashCode"/> は record の auto-generated を上書きし、
     /// <see cref="Players"/> を順序付きシーケンス同値で比較する(record auto-equals は <see cref="IReadOnlyList{T}"/> を
     /// 参照同値で比較するため値同値が壊れる)。<c>==</c> / <c>!=</c> / <c>Equals(object)</c> は record の標準実装が
@@ -163,8 +163,8 @@ namespace Drowsy.Domain.Game
         /// 同じく <see cref="PlayerState"/>[] / <see cref="HashSet{T}"/> alloc を排除する。
         /// <para>
         /// 呼び出し側は名前付き引数で意図を明示する(例: <c>WithPlayersAndPilesUnchecked(newPlayers, discard: newDiscard)</c>)。
-        /// <see cref="Pile"/> 引数の <c>null</c> sentinel で「変更なし(既存値継承)」を表現する設計上、ADR-0015 で
-        /// NRT 非採用のため CS8625 等の警告は出ない。
+        /// <see cref="Pile"/> 引数の <c>null</c> sentinel で「変更なし(既存値継承)」を表現する設計上、
+        /// NRT(Nullable Reference Types)を採用していないため CS8625 等の警告は出ない。
         /// </para>
         /// </remarks>
         /// <param name="alreadyValidatedPlayers">既に検証済みの <see cref="PlayerState"/> 配列</param>

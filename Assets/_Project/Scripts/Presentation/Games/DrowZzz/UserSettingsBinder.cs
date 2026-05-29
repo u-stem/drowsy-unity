@@ -11,10 +11,9 @@ namespace Drowsy.Presentation.Games.DrowZzz
     /// <see cref="IUserSettings"/> を双方向バインドする Pure C# クラス(M5-PR6)。
     /// </summary>
     /// <remarks>
-    /// ADR-0016 §4「R3 1.3.0 の利用範囲」+ §11 M5-PR6 で確定。<see cref="DrowZzzGameView"/>(MonoBehaviour)から
+    /// <see cref="DrowZzzGameView"/>(MonoBehaviour)から
     /// UIDocument 依存を切り離し、<see cref="VisualElement"/>(<see cref="Slider"/> / <see cref="DropdownField"/>)と
-    /// <see cref="IUserSettings"/> のみを受け取る Pure C# 設計とすることで EditMode 単体テスト可能にする
-    /// (M5-PR6 着手時 JIT 確定 2026-05-14、ADR-0006 §4 Pure C# 哲学と整合)。
+    /// <see cref="IUserSettings"/> のみを受け取る Pure C# 設計とすることで EditMode 単体テスト可能にする。
     /// <para>
     /// <b>双方向バインドのループ防止</b>:settings → UI 反映は <c>SetValueWithoutNotify</c> を使い
     /// <c>RegisterValueChangedCallback</c> を発火させない。UI → settings は <c>RegisterValueChangedCallback</c>
@@ -23,14 +22,13 @@ namespace Drowsy.Presentation.Games.DrowZzz
     /// </para>
     /// <para>
     /// <b>Language Dropdown の選択肢</b>:<see cref="LanguageCodes.Supported"/>(<c>"ja"</c> / <c>"en"</c>)を
-    /// そのまま <see cref="DropdownField.choices"/> に設定する(コード直接表示、表示名マッピングは Phase 3、
-    /// M5-PR6 着手時 JIT 確定 2026-05-14)。選択肢が Supported のみのため
+    /// そのまま <see cref="DropdownField.choices"/> に設定する(コード直接表示、表示名マッピングは Phase 3)。
+    /// 選択肢が Supported のみのため
     /// <see cref="IUserSettings.SetLanguage"/> が未対応コードで <see cref="ArgumentException"/> を投げる経路は発生しない。
     /// </para>
     /// <para>
     /// <b>Subscribe ライフサイクル</b>:R3 <c>Observable.Subscribe</c> は <see cref="CompositeDisposable"/> で
-    /// 管理し <see cref="Dispose"/> で解放する(ADR-0016 §4、M4-PR6 の <c>PlayerPrefsUserSettings.Dispose</c> 同様の
-    /// パターン)。<c>RegisterValueChangedCallback</c> も <c>UnregisterValueChangedCallback</c> で対称解除する。
+    /// 管理し <see cref="Dispose"/> で解放する。<c>RegisterValueChangedCallback</c> も <c>UnregisterValueChangedCallback</c> で対称解除する。
     /// </para>
     /// </remarks>
     public sealed class UserSettingsBinder : IDisposable

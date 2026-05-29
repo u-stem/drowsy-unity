@@ -13,7 +13,7 @@ using Property = NUnit.Framework.PropertyAttribute;
 namespace Drowsy.Infrastructure.Tests.Games.DrowZzz.Cards
 {
     /// <summary>
-    /// カード No.01「コップ一杯の脅威」(M2-PR3、ADR-0009)の SO 表現と InMemory 表現の同値性検証
+    /// カード No.01「コップ一杯の脅威」の SO 表現と InMemory 表現の同値性検証
     /// (M4-PR4、INF-045)。<see cref="TimeOfDayBranchEffectAsset"/> wrapper 1 段 + 非 wrapper 内側
     /// (<see cref="AdjustSdpEffectAsset"/> / <see cref="DrawCardEffectAsset"/>)が
     /// <see cref="EffectAsset.ToDomain"/> 再帰経路で <see cref="TimeOfDayBranchEffect"/> + 内側 IEffect 群を
@@ -22,14 +22,14 @@ namespace Drowsy.Infrastructure.Tests.Games.DrowZzz.Cards
     /// <remarks>
     /// JIT 確定 2026-05-13(M4-PR4):**テスト内動的構築 のみ**(実 .asset ファイル配置は M4-PR7 / M5 で
     /// Designer ワークフロー実証時に追加)。Application.Tests の `CupOfThreatCardTests` は本 PR で変更しない
-    /// (Pure C# 維持、Ports &amp; Adapters 整合、ADR-0012 §5)。
+    /// (Pure C# 維持、Ports &amp; Adapters 整合)。
     /// </remarks>
     [TestFixture]
     public sealed class CupOfThreatCardCatalogTests
     {
         // ===== ヘルパー: SO 経由 catalog =====
 
-        // ADR-0009 §「コップ一杯の脅威」JIT 共有仕様を SO 表現で構築する。
+        // 「コップ一杯の脅威」を SO 表現で構築する。
         // CardEntryAsset(internal ctor) + EffectAsset 派生型(internal ctor)経由で
         // ScriptableObjectCardCatalog.SetEntriesForTest に渡す。
         private static ScriptableObjectCardCatalog NewSoCatalogWithCardOne()
@@ -62,7 +62,7 @@ namespace Drowsy.Infrastructure.Tests.Games.DrowZzz.Cards
         // 注:Application.Tests の `NewCatalogWithCardOne` を「移植」ではなく「同仕様で再実装」する。
         // Application.Tests 側が変更された場合に Infrastructure.Tests も同期する責任が呼び出し元にある
         // (M4-PR4 code-reviewer P-1 反映 2026-05-13)。Pure C# 哲学維持と Ports & Adapters 整合のため、
-        // ファイル共有でなく重複保持を選択(ADR-0006 §4 / ADR-0012 §5)。
+        // ファイル共有でなく重複保持を選択(Pure C# 哲学 / Ports &amp; Adapters 整合)。
 
         private static InMemoryCardCatalog NewInMemoryCatalogWithCardOne()
         {

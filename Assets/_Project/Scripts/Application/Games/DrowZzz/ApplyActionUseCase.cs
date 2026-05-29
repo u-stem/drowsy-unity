@@ -7,7 +7,6 @@ namespace Drowsy.Application.Games.DrowZzz
     /// <see cref="StartGameUseCase"/>(セッション未生成スタート)とは独立した別系統。
     /// </summary>
     /// <remarks>
-    /// ADR-0006 §3 / §M1-PR6 / §Implementation Notes に基づく。
     /// <see cref="Execute"/> は内部で <see cref="DrowZzzRule.IsLegalMove"/> を検証し、
     /// <c>false</c> の場合は <see cref="InvalidOperationException"/> を投げる(<c>Pile.Draw</c> の空 Pile 例外と同じ防御的パターン)。
     /// <c>true</c> なら <see cref="DrowZzzRule.Apply"/> に委譲する薄い抽象化層。
@@ -32,7 +31,7 @@ namespace Drowsy.Application.Games.DrowZzz
         /// <exception cref="ArgumentNullException">session または action が null</exception>
         /// <exception cref="InvalidOperationException">
         /// <c>rule.IsLegalMove(session, action)</c> が <c>false</c> を返す場合
-        /// (<see cref="StartGameAction"/> 含む、ADR-0006 §3 §IsLegalMove 違反時の方針)
+        /// (<see cref="StartGameAction"/> 含む)
         /// </exception>
         public DrowZzzGameSession Execute(DrowZzzGameSession session, DrowZzzAction action)
         {

@@ -5,7 +5,7 @@ namespace Drowsy.Infrastructure.Games.DrowZzz
 {
     /// <summary>
     /// <see cref="CardEntryAsset.Attributes"/> の要素として <c>Dictionary&lt;string, int&gt;</c> を
-    /// Unity Inspector で編集可能に表現する <c>[Serializable]</c> POCO(M4-PR1 で導入、ADR-0012 §2)。
+    /// Unity Inspector で編集可能に表現する <c>[Serializable]</c> POCO。
     /// </summary>
     /// <remarks>
     /// Unity Inspector は <see cref="System.Collections.Generic.Dictionary{TKey, TValue}"/> を直接

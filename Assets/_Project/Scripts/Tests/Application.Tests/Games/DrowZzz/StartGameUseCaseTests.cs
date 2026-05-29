@@ -35,7 +35,6 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             return new Pile(cards);
         }
 
-        // ADR-0014: ICardCatalog<IEffect> 依存削除 → ADR-0024 で再追加(2026-05-18、No.19「絶対障壁」の開始時自動連想機構)。
         // テスト用にデフォルトでは空 InMemoryCardCatalog を渡し、AssociateToFirstPlayerOnGameStartEffect は発動しない。
         // 開始時連想を検証するテスト(DZ-390〜393)では catalog 引数に専用 catalog を渡す。
         private static StartGameUseCase NewUseCase(
@@ -49,7 +48,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 catalog ?? new InMemoryCardCatalog(Array.Empty<KeyValuePair<CardTypeId, CardData>>()));
         }
 
-        // ADR-0024 開始時連想検証用:catalog に Card "19"(AssociateToFirstPlayerOnGameStartEffect 持ち)を含むヘルパー
+        // 開始時連想検証用:catalog に Card "19"(AssociateToFirstPlayerOnGameStartEffect 持ち)を含むヘルパー
         private static InMemoryCardCatalog NewCatalogWithCard19()
         {
             var typeId = CardTypeId.Of("19");
@@ -153,7 +152,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             // When
             var session = useCase.Execute(NewPlayers("p1", "p2"), NewDeck(20));
             // Then
-            // ADR-0018:Hand.Cards 要素は CardId(instance unique)、本テストの意図は「deck 順に応じた
+            // Hand.Cards 要素は CardId(instance unique)、本テストの意図は「deck 順に応じた
             // 種別を受け取る」検証なので TypeId.Value で比較する(CardId.Value = "<typeId>#<instance>" の
             // instance 部分は配布順序の検証対象ではない)。
             var p0Hand = session.GameState.Players[0].Hand.Cards.Select(c => c.TypeId.Value).ToArray();
@@ -168,7 +167,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             // When
             var session = useCase.Execute(NewPlayers("p1", "p2"), NewDeck(20));
             // Then
-            // ADR-0018:同上、TypeId.Value で比較。
+            // 同上、TypeId.Value で比較。
             var p1Hand = session.GameState.Players[1].Hand.Cards.Select(c => c.TypeId.Value).ToArray();
             Assert.That(p1Hand, Is.EqualTo(new[] { "c2", "c4", "c6", "c8", "c10" }));
         }
@@ -315,7 +314,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-105")]
         public void Given_有効な引数_When_Execute_Then_SecondDrowsyPointsの全値が0で初期化される()
         {
-            // Given(ADR-0009 §「DP 種別」§SDP の「初期値 0」)
+            // Given(SDP の初期値 0)
             var useCase = NewUseCase();
             // When
             var session = useCase.Execute(NewPlayers("p1", "p2"), NewDeck(20));
@@ -323,7 +322,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             Assert.That(session.SecondDrowsyPoints.Values.All(v => v == 0), Is.True);
         }
 
-        // ===== DZ-139: DDP 初期化(M2-PR4 で追加、ADR-0009 §「DP 種別」§DDP)=====
+        // ===== DZ-139: DDP 初期化 =====
 
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-139")]
         public void Given_有効な引数_When_Execute_Then_DrawDrowsyPointsキー集合がplayersと一致する()
@@ -340,7 +339,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-139")]
         public void Given_有効な引数_When_Execute_Then_DrawDrowsyPointsの全値が0で初期化される()
         {
-            // Given(ADR-0009 §「DDP 抽選タイミング」: 初期値 0、Turn 5/9/13/17/21 で累積開始)
+            // Given(DDP 初期値 0、Turn 5/9/13/17/21 で累積開始)
             var useCase = NewUseCase();
             // When
             var session = useCase.Execute(NewPlayers("p1", "p2"), NewDeck(20));
@@ -375,7 +374,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             Assert.That(actualSorted, Is.EqualTo(expectedSorted));
         }
 
-        // ===== DZ-390〜393: ADR-0024 ゲーム開始時自動連想(No.19「絶対障壁」)=====
+        // ===== DZ-390〜393: ゲーム開始時自動連想(No.19「絶対障壁」)=====
 
         [Test, Category("Medium"), Category("Normal"), Property("Requirement", "DZ-390")]
         public void Given_Card19登録catalog_When_StartGameUseCaseExecute_Then_先行プレイヤーHandに含まれる()
@@ -396,7 +395,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var useCase = NewUseCase(catalog: NewCatalogWithCard19());
             // When
             var session = useCase.Execute(NewPlayers("p1", "p2"), NewDeck(20));
-            // Then:session.AssociatedCardIds に CardId.Of("19", 0) 含まれる(ADR-0019 連想由来記録)
+            // Then:session.AssociatedCardIds に CardId.Of("19", 0) 含まれる(連想由来記録)
             Assert.That(session.AssociatedCardIds, Has.Member(CardId.Of(CardTypeId.Of("19"), 0)));
         }
 

@@ -10,7 +10,7 @@ namespace Drowsy.Presentation.Tests.Games.DrowZzz
     /// <see cref="UserSettingsBinder"/> の単体テスト(M5-PR6)。
     /// </summary>
     /// <remarks>
-    /// ADR-0016 §11 M5-PR6「Presentation テストで Subscribe 経路検証」で確定したスコープ。
+    /// Subscribe 経路を EditMode テストで検証するスコープ。
     /// <see cref="UserSettingsBinder"/> は <see cref="VisualElement"/>(<see cref="Slider"/> /
     /// <see cref="DropdownField"/>)と <see cref="IUserSettings"/> のみに依存する Pure C# クラスのため、
     /// EditMode テストで <c>new Slider()</c> / <c>new DropdownField()</c> + <see cref="MockUserSettings"/> を
@@ -20,7 +20,7 @@ namespace Drowsy.Presentation.Tests.Games.DrowZzz
     /// settings → UI の Subscribe 経路(PRES-028)/ Dispose 冪等(PRES-029)。
     /// <b>UI → settings</b> 方向(<c>RegisterValueChangedCallback</c>)は <c>Slider.value</c> setter が
     /// <c>panel != null</c> のときのみ <c>ChangeEvent</c> を発火する UI Toolkit 仕様により、パネル(UIDocument)
-    /// アタッチなしの EditMode 単体テストでは確実に検証できないため手動 QA に委ねる(ADR-0016 §10 と整合)。
+    /// アタッチなしの EditMode 単体テストでは確実に検証できないため手動 QA に委ねる。
     /// </para>
     /// <para>
     /// <see cref="MockUserSettings"/> の各 Observable は <c>ReactiveProperty</c> ベースで Subscribe 時に

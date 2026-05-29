@@ -6,8 +6,8 @@ using UnityEngine;
 namespace Drowsy.Infrastructure.Games.DrowZzz.Effects
 {
     /// <summary>
-    /// <see cref="KeywordedEffect"/>(M3-PR5a、ADR-0011 §4)を Unity SO で表現する POCO
-    /// (M4-PR3 で導入、INF-043 / INF-044)。wrapper effect、<see cref="Inner"/> を <c>[SerializeReference]</c> で再帰保持。
+    /// <see cref="KeywordedEffect"/> を Unity SO で表現する POCO(INF-043 / INF-044)。
+    /// wrapper effect、<see cref="Inner"/> を <c>[SerializeReference]</c> で再帰保持。
     /// </summary>
     /// <remarks>
     /// 「夢」カード(No.00)の夜効果列(`KeywordedEffect([Frenzy, Instinct], EarlyWinTriggerEffect)`)等で使用される

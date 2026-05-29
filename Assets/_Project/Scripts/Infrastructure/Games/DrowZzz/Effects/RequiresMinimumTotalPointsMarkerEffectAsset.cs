@@ -5,8 +5,8 @@ using UnityEngine;
 namespace Drowsy.Infrastructure.Games.DrowZzz.Effects
 {
     /// <summary>
-    /// <see cref="RequiresMinimumTotalPointsMarkerEffect"/>(M3-PR6、ADR-0011 §6)を Unity SO で表現する POCO
-    /// (M4-PR3 で導入、INF-035 / INF-036)。<see cref="int"/> 1 フィールド(<see cref="Threshold"/>)。
+    /// <see cref="RequiresMinimumTotalPointsMarkerEffect"/> を Unity SO で表現する POCO(INF-035 / INF-036)。
+    /// <see cref="int"/> 1 フィールド(<see cref="Threshold"/>)。
     /// </summary>
     /// <remarks>
     /// <see cref="RequiresMinimumTotalPointsMarkerEffect"/> record は <c>Threshold >= 1</c> を ctor / init で検証する。

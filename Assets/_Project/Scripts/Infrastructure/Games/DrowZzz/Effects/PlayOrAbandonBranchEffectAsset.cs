@@ -6,7 +6,7 @@ using UnityEngine;
 namespace Drowsy.Infrastructure.Games.DrowZzz.Effects
 {
     /// <summary>
-    /// <see cref="PlayOrAbandonBranchEffect"/>(ADR-0025、No.20「至上の喜び」、2026-05-18)を Unity SO で表現する POCO。
+    /// <see cref="PlayOrAbandonBranchEffect"/>(No.20「至上の喜び」)を Unity SO で表現する POCO。
     /// wrapper effect(`TimeOfDayBranchEffectAsset` と同パターン)。
     /// </summary>
     /// <remarks>

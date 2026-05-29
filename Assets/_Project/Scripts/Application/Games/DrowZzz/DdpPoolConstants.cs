@@ -6,10 +6,9 @@ namespace Drowsy.Application.Games.DrowZzz
     /// <see cref="DdpPool"/> および <see cref="DrowZzzRule"/> の DDP 抽選機構が依存する DrowZzz 固有定数を集約する。
     /// </summary>
     /// <remarks>
-    /// CLAUDE.md §9「マジックナンバー禁止」/「L1/L2 は <c>&lt;Module&gt;Constants</c> クラスの <c>const</c>」に従い、
-    /// ADR-0009 §「DDP プールの構造」/ §「DDP 抽選タイミング」で確定した数値を命名された <c>const</c> として切り出す。
+    /// マジックナンバー禁止方針に従い、DDP プール構造と DDP 抽選タイミングの数値を命名された <c>const</c> として切り出す。
     /// Domain ではなく Application 層に配置するのは、DDP プール構造 / 抽選タイミングが DrowZzz 固有のゲームルールで
-    /// あり Domain ゲーム非依存原則(ADR-0002)と整合させるため(<see cref="DrowZzzClockConstants"/> と同判断軸)。
+    /// あり Domain ゲーム非依存原則と整合させるため(<see cref="DrowZzzClockConstants"/> と同判断軸)。
     /// <para>
     /// 階層分類は <c>docs/architecture/constants-management.md</c> 参照:
     /// <list type="bullet">
@@ -21,22 +20,21 @@ namespace Drowsy.Application.Games.DrowZzz
     /// </para>
     /// <para>
     /// <b>L3 への移管可能性</b>: 将来 DDP プールの値域 / 枚数 / 抽選タイミングが調整パラメータ化する場合は
-    /// <see cref="Drowsy.Domain.Configuration.IGameConfig"/> へ移管する(<c>docs/todo.md</c> で追跡)。現状は
-    /// 仕様確定済の真の不変量として L2 const に集約する。
+    /// <see cref="Drowsy.Domain.Configuration.IGameConfig"/> へ移管する。現状は仕様確定済の真の不変量として L2 const に集約する。
     /// </para>
     /// </remarks>
     public static class DdpPoolConstants
     {
-        /// <summary>DDP プール初期値の最小値(L2、ADR-0009 §「DDP プールの構造」)。</summary>
+        /// <summary>DDP プール初期値の最小値(L2)。</summary>
         public const int MinValue = -30;
 
-        /// <summary>DDP プール初期値の最大値(L2、ADR-0009 §「DDP プールの構造」)。</summary>
+        /// <summary>DDP プール初期値の最大値(L2)。</summary>
         public const int MaxValue = 30;
 
         /// <summary>DDP プール初期値の刻み(L2、5 刻みで <see cref="MinValue"/> から <see cref="MaxValue"/> まで)。</summary>
         public const int Step = 5;
 
-        /// <summary>DDP プール初期値の各値あたり枚数(L2、ADR-0009 §「DDP プールの構造」)。</summary>
+        /// <summary>DDP プール初期値の各値あたり枚数(L2)。</summary>
         public const int CopiesPerValue = 3;
 
         /// <summary>
@@ -50,13 +48,12 @@ namespace Drowsy.Application.Games.DrowZzz
         public const int TotalPoolSize = DistinctValueCount * CopiesPerValue;
 
         /// <summary>
-        /// DDP 抽選対象ターン番号(L2、ADR-0009 §「DDP 抽選タイミング」: 23:00 / 01:00 / 03:00 / 05:00 / 07:00 =
-        /// Turn 5 / 9 / 13 / 17 / 21)。
+        /// DDP 抽選対象ターン番号(L2、23:00 / 01:00 / 03:00 / 05:00 / 07:00 = Turn 5 / 9 / 13 / 17 / 21)。
         /// </summary>
         /// <remarks>
         /// <c>const</c> 不可な配列のため <c>static readonly</c> + <see cref="IReadOnlyList{T}"/> で公開する
-        /// (CLAUDE.md §9 「L2 は <c>const</c>」原則の例外として spec 内に明記、定数依存セクション参照)。
-        /// 値の集合は ADR-0009 §「DDP 抽選タイミング」と同期し、変更時は ADR 改訂が必要。
+        /// (L2 は <c>const</c> 原則の例外として spec 内に明記)。
+        /// 値の集合は DDP 抽選タイミングと同期し、変更時はルール改定として扱う。
         /// </remarks>
         public static readonly IReadOnlyList<int> DrawRounds = new[] { 5, 9, 13, 17, 21 };
 

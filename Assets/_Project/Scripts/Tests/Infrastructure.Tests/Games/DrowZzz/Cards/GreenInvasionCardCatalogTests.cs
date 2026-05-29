@@ -12,7 +12,7 @@ using Property = NUnit.Framework.PropertyAttribute;
 namespace Drowsy.Infrastructure.Tests.Games.DrowZzz.Cards
 {
     /// <summary>
-    /// カード No.02「緑の侵攻」(M2-PR5、ADR-0007 §1.5)の SO 表現と InMemory 表現の同値性検証
+    /// カード No.02「緑の侵攻」の SO 表現と InMemory 表現の同値性検証
     /// (M4-PR4、INF-046)。<see cref="ChoiceEffectAsset"/>(2 次元再帰、<see cref="EffectBranchAsset"/> 中間型経由)+
     /// <see cref="ApplyInfluenceEffectAsset"/>(<see cref="PlayerInfluenceAsset"/> 中間型経由)+
     /// <see cref="RemoveInfluenceEffectAsset"/> の再帰 ToDomain で <see cref="ChoiceEffect"/> /
@@ -68,7 +68,7 @@ namespace Drowsy.Infrastructure.Tests.Games.DrowZzz.Cards
         // ===== ヘルパー: InMemory 経由 catalog(Application.Tests と仕様共有の InMemory 構築ロジック)=====
         // 注:Application.Tests の `NewCatalogWithCardTwo` を「移植」ではなく「同仕様で再実装」する。
         // Application.Tests 側が変更された場合に Infrastructure.Tests も同期する責任が呼び出し元にある
-        // (M4-PR4 code-reviewer P-1 反映 2026-05-13)。Pure C# 哲学維持(ADR-0006 §4 / ADR-0012 §5)。
+        // (M4-PR4 code-reviewer P-1 反映)。Pure C# 哲学維持。
 
         private static InMemoryCardCatalog NewInMemoryCatalogWithCardTwo()
         {

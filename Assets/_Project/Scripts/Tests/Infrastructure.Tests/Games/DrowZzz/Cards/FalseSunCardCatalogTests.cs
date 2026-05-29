@@ -12,7 +12,7 @@ using Property = NUnit.Framework.PropertyAttribute;
 namespace Drowsy.Infrastructure.Tests.Games.DrowZzz.Cards
 {
     /// <summary>
-    /// カード No.12「偽りの太陽」(2026-05-17、ADR-0022 と同 PR)の SO 表現と InMemory 表現の同値性検証(INF-153)。
+    /// カード No.12「偽りの太陽」の SO 表現と InMemory 表現の同値性検証(INF-153)。
     /// </summary>
     [TestFixture]
     public sealed class FalseSunCardCatalogTests

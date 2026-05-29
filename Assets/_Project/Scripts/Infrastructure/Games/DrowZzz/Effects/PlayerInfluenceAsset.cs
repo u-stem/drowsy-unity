@@ -6,8 +6,7 @@ using UnityEngine;
 namespace Drowsy.Infrastructure.Games.DrowZzz.Effects
 {
     /// <summary>
-    /// <see cref="PlayerInfluence"/> record(M2-PR5、ADR-0007 §1.5)を Unity SO で表現するための中間 POCO
-    /// (M4-PR3 で導入、INF-020 / INF-021)。
+    /// <see cref="PlayerInfluence"/> record を Unity SO で表現するための中間 POCO(INF-020 / INF-021)。
     /// </summary>
     /// <remarks>
     /// <para>

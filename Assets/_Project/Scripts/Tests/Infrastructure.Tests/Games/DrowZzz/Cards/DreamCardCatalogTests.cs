@@ -12,7 +12,7 @@ using Property = NUnit.Framework.PropertyAttribute;
 namespace Drowsy.Infrastructure.Tests.Games.DrowZzz.Cards
 {
     /// <summary>
-    /// カード No.00「夢」(M3-PR6、ADR-0011 §6 / §7)の SO 表現と InMemory 表現の同値性検証
+    /// カード No.00「夢」の SO 表現と InMemory 表現の同値性検証
     /// (M4-PR4、INF-047)。M3 全機構統合カードの SO 化を検証:4 effect 最上位
     /// (<see cref="AssociatableMarkerEffectAsset"/> / <see cref="RequiresMinimumTotalPointsMarkerEffectAsset"/> /
     /// <see cref="UsageRestrictionMarkerEffectAsset"/> / <see cref="TimeOfDayBranchEffectAsset"/>)+
@@ -21,7 +21,7 @@ namespace Drowsy.Infrastructure.Tests.Games.DrowZzz.Cards
     /// </summary>
     /// <remarks>
     /// 本 fixture は M3-PR6 で確立した「夢」カードの 4 effect 構造 + wrapper 再帰 + keyword + nest 4 段以上の
-    /// 統合経路の SO ↔ InMemory 同値性を検証する最終ステージ(ADR-0012 §6 / §9 の M4-PR4 想定通り)。
+    /// 統合経路の SO ↔ InMemory 同値性を検証する最終ステージ。
     /// </remarks>
     [TestFixture]
     public sealed class DreamCardCatalogTests
@@ -37,7 +37,7 @@ namespace Drowsy.Infrastructure.Tests.Games.DrowZzz.Cards
                 attributes: System.Array.Empty<AttributeEntry>(),
                 effects: new EffectAsset[]
                 {
-                    // (1) 連想可能カードであることを示すマーカー(ADR-0011 §1、M3-PR4 確立)
+                    // (1) 連想可能カードであることを示すマーカー
                     new AssociatableMarkerEffectAsset(),
                     // (2) 使用条件:FDS ≥ 100 を要求
                     new RequiresMinimumTotalPointsMarkerEffectAsset(DrowZzzVictoryConstants.EarlyWinScoreThreshold),
@@ -63,7 +63,7 @@ namespace Drowsy.Infrastructure.Tests.Games.DrowZzz.Cards
         // ===== ヘルパー: InMemory 経由 catalog(Application.Tests と仕様共有の InMemory 構築ロジック)=====
         // 注:Application.Tests の `NewCatalogWithDream` を「移植」ではなく「同仕様で再実装」する。
         // Application.Tests 側が変更された場合に Infrastructure.Tests も同期する責任が呼び出し元にある
-        // (M4-PR4 code-reviewer P-1 反映 2026-05-13)。Pure C# 哲学維持(ADR-0006 §4 / ADR-0012 §5)。
+        // (M4-PR4 code-reviewer P-1 反映)。Pure C# 哲学維持。
 
         private static InMemoryCardCatalog NewInMemoryCatalogWithDream()
         {

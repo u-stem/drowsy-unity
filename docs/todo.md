@@ -56,6 +56,25 @@
 
 ## 未着手
 
+- [ ] **`DrowZzzRule.cs`(1,826 行)の責務分割** `priority: medium`
+  - **Why**: M1〜M3 の段階的機能追加で `DrowZzzRule.cs` が 1,826 行に肥大。`Apply(DrawCardAction)` / `Apply(PlayCardAction)` / `Apply(EndTurnAction)` + `IsLegal*` の大量メソッドが 1 ファイルに混在し、可読性・テスト粒度が低下している(リポジトリ整備時のコード構成調査で最大ファイルと判明)
+  - **Done when**:
+    - アクション種別ごと(DrawCard / PlayCard / EndTurn)に `partial class` 分割、または applier クラス抽出
+    - 既存テスト(`DrowZzzRuleTests` 1,083 行)が緑のまま維持
+    - 分割方針を ADR で記録(設計判断のため)
+  - **Notes**: ボイラープレートではなく実装複雑性の反映のため、Phase 3 の本格拡張着手時が分割の好機。コメントではなく構造の問題
+  - **Related**: リポジトリ整備時のコード構成調査(2026-05-29)
+
+- [ ] **Effect dispatcher(`EffectInterpreter` / `EffectJsonConverter`)の source generator 化評価** `priority: low`
+  - **Why**: `EffectInterpreter.cs`(712 行 / 29 case)と `EffectJsonConverter.cs`(457 行)が対称的な巨大 switch dispatcher で、新規 Effect 追加のたびに両方へ手動で case を追加する必要がある。Effect が 25+ 種に増え、今後も増加予定
+  - **Done when**:
+    - Source Generator(または reflection ベース汎用化)で dispatcher を自動生成する PoC
+    - Effect 追加時に interpreter / converter の手動編集が不要になることを確認
+    - WebGL / IL2CPP で動作することを検証(reflection 制約に注意)
+    - 採用判断を ADR で記録
+  - **Notes**: IL2CPP の制約上 reflection より source generator が有力。既存テストの維持が前提
+  - **Related**: リポジトリ整備時のコード構成調査(2026-05-29)
+
 - [ ] **新規 effect の spec md を `docs/specs/games/drowzzz/effects/` 配下に整備** `priority: low`
   - **Why**: Phase 2 完結後の新規 effect 群が xmldoc 中心の文書化に留まっており、effect-level spec md(`adjust-sdp.md` / `apply-influence.md` / `keyworded-effect.md` と同様の形式)が未整備
   - **対象 effect**(2026-05-17 時点):

@@ -10,7 +10,7 @@ namespace Drowsy.Infrastructure.Tests.Persistence
 {
     /// <summary>
     /// <see cref="Converters.CardIdJsonConverter"/> の round-trip + schema 違反異常経路検証
-    /// (ADR-0018 §8 / docs/todo.md「CardIdJsonConverter の負値 instance / 不正 schema 経路に
+    /// (docs/todo.md「CardIdJsonConverter の負値 instance / 不正 schema 経路に
     /// Persistence テストを追加」由来、INF-088〜094)。
     /// </summary>
     /// <remarks>

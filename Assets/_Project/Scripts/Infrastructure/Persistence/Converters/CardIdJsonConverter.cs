@@ -15,9 +15,9 @@ namespace Drowsy.Infrastructure.Persistence.Converters
     /// 介さず直接 string として表現する(JSON 容量と可読性が向上、`{"typeId":"01","instance":0}` ではなく `"01#0"`)。
     /// </para>
     /// <para>
-    /// <b>schema(ADR-0018)</b>:string は <c>"<typeId>#<instance>"</c> 形式。例:<c>"dream#0"</c> / <c>"sheep#3"</c>。
+    /// <b>schema</b>:string は <c>"<typeId>#<instance>"</c> 形式。例:<c>"dream#0"</c> / <c>"sheep#3"</c>。
     /// <c>#</c> を最後に出現する位置で split し、左を <see cref="CardTypeId.Of(string)"/>、右を <see cref="int.Parse(string)"/>
-    /// で復元する(<see cref="CardTypeId"/> 内に <c>#</c> を含まない前提、本 ADR で確定)。schema 違反は
+    /// で復元する(<see cref="CardTypeId"/> 内に <c>#</c> を含まない前提)。schema 違反は
     /// <see cref="JsonSerializationException"/>。
     /// </para>
     /// </remarks>
@@ -50,7 +50,7 @@ namespace Drowsy.Infrastructure.Persistence.Converters
         }
 
         // "<typeId>#<instance>" の split。schema 違反は JsonSerializationException(deserialize 文脈)。
-        // CardTypeId は ADR-0018 の前提により '#' を含まないため、LastIndexOf('#') で安全に split できる。
+        // CardTypeId は '#' を含まないため、LastIndexOf('#') で安全に split できる。
         private static CardId ParseCardIdString(string raw)
         {
             if (string.IsNullOrWhiteSpace(raw))

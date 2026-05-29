@@ -5,7 +5,7 @@ using NUnit.Framework;
 namespace Drowsy.Domain.Tests.Cards
 {
     /// <summary>
-    /// <see cref="CardTypeId"/>(ADR-0018 で新設したカード種別 ID、catalog の lookup key)の単体テスト。
+    /// <see cref="CardTypeId"/>(カード種別 ID、catalog の lookup key)の単体テスト。
     /// </summary>
     /// <remarks>
     /// CTYPE-001(sealed record)はコンパイル時保証で Ubiquitous 免除、本 fixture は防御要件と
@@ -34,7 +34,7 @@ namespace Drowsy.Domain.Tests.Cards
             Assert.Throws<ArgumentException>(() => CardTypeId.Of("   "));
         }
 
-        // ===== CTYPE-005: '#' を含む文字列は ArgumentException(ADR-0018 §8 で予約済の区切り文字) =====
+        // ===== CTYPE-005: '#' を含む文字列は ArgumentException('#' は CardId.Value 区切り文字として予約済み) =====
 
         [Test, Category("Small"), Category("Abnormal"), Property("Requirement", "CTYPE-005")]
         public void Given_シャープを含む文字列_When_Ofを呼ぶ_Then_ArgumentExceptionを投げる()

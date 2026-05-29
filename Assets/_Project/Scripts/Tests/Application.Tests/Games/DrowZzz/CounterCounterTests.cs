@@ -13,7 +13,7 @@ using NUnit.Framework;
 namespace Drowsy.Application.Tests.Games.DrowZzz
 {
     /// <summary>
-    /// 「反撃の反撃」+ 元カード A の効果遡及発動の検証(M3-PR5c、ADR-0011 §4.4)。
+    /// 「反撃の反撃」+ 元カード A の効果遡及発動の検証。
     /// <see cref="PendingCounteredEffect"/> record + <see cref="DrowZzzGameSession.PendingCounteredEffects"/> +
     /// <see cref="CounterAction"/> 経路 2(自ターン <see cref="DrowZzzPhaseState.WaitingForEndTurn"/>) +
     /// <c>EndTurnAction.Apply</c> での Pending 一括クリア

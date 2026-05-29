@@ -54,7 +54,10 @@
         "ProjectSettings/": true,
         "UserSettings/": true,
         "temp/": true,
-        "Temp/": true
+        "Temp/": true,
+        "Builds/": true,
+        "CodeCoverage/": true,
+        "Data/": true
     },
     "files.associations": {
         "*.asset": "yaml",

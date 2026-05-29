@@ -13,8 +13,7 @@ namespace Drowsy.Infrastructure.Persistence.Converters
     /// 対応派生型は本クラス doc の `<list>` ブロック(code-reviewer S-5 反映 2026-05-17、件数明示の陳腐化を避けるため列挙のみ)を参照。
     /// </summary>
     /// <remarks>
-    /// ADR-0012 §7「JIT 確定: Discriminator = カスタム JsonConverter (Recommended)」(2026-05-13 ユーザー JIT 確定)
-    /// に基づく実装。<c>"type"</c> property を discriminator として明示し、Newtonsoft 標準の
+    /// <c>"type"</c> property を discriminator として明示し、Newtonsoft 標準の
     /// <c>TypeNameHandling.$type</c>(完全修飾型名)を採用しないことで JSON の互換性 / 可読性 / リネーム耐性を確保する。
     /// <para>
     /// discriminator value 命名は <c>EffectAsset</c>(M4-PR2/PR3 で確立した SO 側 discriminator)と整合させ、
@@ -32,22 +31,22 @@ namespace Drowsy.Infrastructure.Persistence.Converters
     /// <item><c>RequiresMinimumTotalPointsMarker</c>(<see cref="RequiresMinimumTotalPointsMarkerEffect"/>)</item>
     /// <item><c>UsageRestrictionMarker</c>(<see cref="UsageRestrictionMarkerEffect"/>)</item>
     /// <item><c>AssociatableMarker</c>(<see cref="AssociatableMarkerEffect"/>)</item>
-    /// <item><c>RestrictSpecificCardInfluence</c>(<see cref="RestrictSpecificCardInfluenceEffect"/>、ADR-0019 PR ②)</item>
-    /// <item><c>ApplyTargetedRestriction</c>(<see cref="ApplyTargetedRestrictionEffect"/>、ADR-0019 PR ②)</item>
+    /// <item><c>RestrictSpecificCardInfluence</c>(<see cref="RestrictSpecificCardInfluenceEffect"/>)</item>
+    /// <item><c>ApplyTargetedRestriction</c>(<see cref="ApplyTargetedRestrictionEffect"/>)</item>
     /// <item><c>StackHandCardOnDeckTop</c>(<see cref="StackHandCardOnDeckTopEffect"/>、No.05「喧騒を纏う」2026-05-17)</item>
     /// <item><c>DoubleBedDamageSdpInfluenceMarker</c>(<see cref="DoubleBedDamageSdpInfluenceMarkerEffect"/>、No.06「牙の届かぬ領域」2026-05-17)</item>
     /// <item><c>InvertBedDamageSdpInfluenceMarker</c>(<see cref="InvertBedDamageSdpInfluenceMarkerEffect"/>、No.08「廻るための知恵」2026-05-17)</item>
     /// <item><c>RemoveInvertBedDamageInfluence</c>(<see cref="RemoveInvertBedDamageInfluenceEffect"/>、No.07「知恵の及ばぬ領域」2026-05-17)</item>
-    /// <item><c>RestrictAllUsageAndAbandonInfluenceMarker</c>(<see cref="RestrictAllUsageAndAbandonInfluenceMarkerEffect"/>、No.09「強引過ぎる一手」2026-05-17、ADR-0020 と同 PR)</item>
-    /// <item><c>RestrictDrawCardInfluenceMarker</c>(<see cref="RestrictDrawCardInfluenceMarkerEffect"/>、No.10「安直過ぎる一手」2026-05-17、ADR-0021 と同 PR)</item>
+    /// <item><c>RestrictAllUsageAndAbandonInfluenceMarker</c>(<see cref="RestrictAllUsageAndAbandonInfluenceMarkerEffect"/>、No.09「強引過ぎる一手」)</item>
+    /// <item><c>RestrictDrawCardInfluenceMarker</c>(<see cref="RestrictDrawCardInfluenceMarkerEffect"/>、No.10「安直過ぎる一手」)</item>
     /// <item><c>AdjustSdpByHandCount</c>(<see cref="AdjustSdpByHandCountEffect"/>、No.11「機械仕掛けの冬将軍」2026-05-17)</item>
-    /// <item><c>AdjustSdpAfterPlayCard</c>(<see cref="AdjustSdpAfterPlayCardEffect"/>、No.12「偽りの太陽」2026-05-17、ADR-0022 と同 PR)</item>
-    /// <item><c>AdjustSdpAfterAbandon</c>(<see cref="AdjustSdpAfterAbandonEffect"/>、No.12「偽りの太陽」2026-05-17、ADR-0022 と同 PR)</item>
+    /// <item><c>AdjustSdpAfterPlayCard</c>(<see cref="AdjustSdpAfterPlayCardEffect"/>、No.12「偽りの太陽」)</item>
+    /// <item><c>AdjustSdpAfterAbandon</c>(<see cref="AdjustSdpAfterAbandonEffect"/>、No.12「偽りの太陽」)</item>
     /// <item><c>AssociateSpecificCard</c>(<see cref="AssociateSpecificCardEffect"/>、No.13/14/15「最後の砦Ⅰ/Ⅱ/Ⅲ」2026-05-17)</item>
     /// <item><c>ConditionalApplyOrClearInfluences</c>(<see cref="ConditionalApplyOrClearInfluencesEffect"/>、No.16「自分勝手な審判」2026-05-17)</item>
-    /// <item><c>ReuseInfluenceSource</c>(<see cref="ReuseInfluenceSourceEffect"/>、No.18「対抗手段」2026-05-18、ADR-0023 Echo キーワード初導入)</item>
-    /// <item><c>AssociateToFirstPlayerOnGameStart</c>(<see cref="AssociateToFirstPlayerOnGameStartEffect"/>、No.19「絶対障壁」2026-05-18、ADR-0024 ゲーム開始時自動連想 marker)</item>
-    /// <item><c>PlayOrAbandonBranch</c>(<see cref="PlayOrAbandonBranchEffect"/>、No.20「至上の喜び」2026-05-18、ADR-0025 プレイ時 / 放棄時分岐 wrapper)</item>
+    /// <item><c>ReuseInfluenceSource</c>(<see cref="ReuseInfluenceSourceEffect"/>、No.18「対抗手段」、Echo キーワード)</item>
+    /// <item><c>AssociateToFirstPlayerOnGameStart</c>(<see cref="AssociateToFirstPlayerOnGameStartEffect"/>、No.19「絶対障壁」、ゲーム開始時自動連想 marker)</item>
+    /// <item><c>PlayOrAbandonBranch</c>(<see cref="PlayOrAbandonBranchEffect"/>、No.20「至上の喜び」、プレイ時 / 放棄時分岐 wrapper)</item>
     /// </list>
     /// </para>
     /// <para>
@@ -84,7 +83,7 @@ namespace Drowsy.Infrastructure.Persistence.Converters
                     writer.WritePropertyName("target");
                     serializer.Serialize(writer, e.Target);
                     writer.WritePropertyName("influence");
-                    // PlayerInfluence は専用 PlayerInfluenceJsonConverter で serialize される(ADR-0023、複数 ctor 問題回避)
+                    // PlayerInfluence は専用 PlayerInfluenceJsonConverter で serialize される(複数 ctor 問題回避)
                     serializer.Serialize(writer, e.Influence);
                     break;
 
@@ -242,17 +241,17 @@ namespace Drowsy.Infrastructure.Persistence.Converters
                     break;
 
                 case ReuseInfluenceSourceEffect _:
-                    // ADR-0023 / No.18「対抗手段」:Echo 効果マーカー。フィールドなし。
+                    // No.18「対抗手段」:Echo 効果マーカー。フィールドなし。
                     writer.WriteValue("ReuseInfluenceSource");
                     break;
 
                 case AssociateToFirstPlayerOnGameStartEffect _:
-                    // ADR-0024 / No.19「絶対障壁」:ゲーム開始時自動連想マーカー。フィールドなし。
+                    // No.19「絶対障壁」:ゲーム開始時自動連想マーカー。フィールドなし。
                     writer.WriteValue("AssociateToFirstPlayerOnGameStart");
                     break;
 
                 case PlayOrAbandonBranchEffect e:
-                    // ADR-0025 / No.20「至上の喜び」:プレイ時 / 放棄時の分岐 wrapper(TimeOfDayBranch と同パターン)。
+                    // No.20「至上の喜び」:プレイ時 / 放棄時の分岐 wrapper(TimeOfDayBranch と同パターン)。
                     writer.WriteValue("PlayOrAbandonBranch");
                     writer.WritePropertyName("playEffects");
                     WriteEffectList(writer, e.PlayEffects, serializer);
@@ -294,7 +293,7 @@ namespace Drowsy.Infrastructure.Persistence.Converters
 
                 "ApplyInfluence" => new ApplyInfluenceEffect(
                     RequireToken(jo, "target", typeName).ToObject<SdpTarget>(serializer),
-                    // PlayerInfluence は専用 PlayerInfluenceJsonConverter で deserialize される(ADR-0023)
+                    // PlayerInfluence は専用 PlayerInfluenceJsonConverter で deserialize される(複数 ctor 問題回避)
                     RequireToken(jo, "influence", typeName).ToObject<PlayerInfluence>(serializer)),
 
                 "RemoveInfluence" => new RemoveInfluenceEffect(

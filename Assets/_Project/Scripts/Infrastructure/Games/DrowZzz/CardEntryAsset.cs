@@ -8,7 +8,7 @@ namespace Drowsy.Infrastructure.Games.DrowZzz
 {
     /// <summary>
     /// <see cref="ScriptableObjectCardCatalog"/> の 1 エントリ(= 1 カード)を表す
-    /// <c>[Serializable]</c> POCO(M4-PR1 で導入、ADR-0012 §2)。
+    /// <c>[Serializable]</c> POCO。
     /// Unity Inspector で編集可能なカードデータ + 効果列(<see cref="EffectAsset"/> 配列)の保持を担う。
     /// </summary>
     /// <remarks>
@@ -16,9 +16,8 @@ namespace Drowsy.Infrastructure.Games.DrowZzz
     /// <see cref="ScriptableObjectCardCatalog.Get"/> / <see cref="ScriptableObjectCardCatalog.TryGet"/> 経路で
     /// 呼び出し側へ返却する。
     /// <para>
-    /// 効果列(<see cref="Effects"/>)は M4-PR2 で <c>[SerializeReference] EffectAsset[] _effects</c> を **追加済**
-    /// (ADR-0012 §3 案 (a) `[Serializable]` POCO + 変換層、JIT 確定 2026-05-13、M4-PR2 code-reviewer W-1 反映 2026-05-13)。
-    /// 最初の派生型 <see cref="AdjustSdpEffectAsset"/> を本 PR で導入、残り 11 派生型は M4-PR3 で順次追加する。
+    /// 効果列(<see cref="Effects"/>)は <c>[SerializeReference] EffectAsset[] _effects</c> で
+    /// polymorphic serialize を実現し、Designer が Inspector で複数派生型を選択可能。
     /// </para>
     /// </remarks>
     [Serializable]
@@ -28,7 +27,6 @@ namespace Drowsy.Infrastructure.Games.DrowZzz
         [SerializeField] private string _name;
         [SerializeField] private AttributeEntry[] _attributes;
 
-        // M4-PR2 で追加(ADR-0012 §3 案 (a) `[Serializable]` POCO + 変換層、JIT 確定 2026-05-13):
         // [SerializeReference] で polymorphic serialization を実現し、Designer が Inspector で複数派生型を選択可能。
         // null 要素 / ToDomain 失敗は ScriptableObjectCardCatalog 側で graceful skip(INF-018 / INF-019)。
         [SerializeReference] private EffectAsset[] _effects;

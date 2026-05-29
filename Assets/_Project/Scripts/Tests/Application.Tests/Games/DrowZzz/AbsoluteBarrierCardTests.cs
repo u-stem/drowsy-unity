@@ -12,7 +12,7 @@ using Drowsy.Domain.Players;
 namespace Drowsy.Application.Tests.Games.DrowZzz
 {
     /// <summary>
-    /// カード No.19「絶対障壁」の統合テスト(DZ-394 〜 DZ-396、ADR-0024、2026-05-18 で導入)。
+    /// カード No.19「絶対障壁」の統合テスト(DZ-394 〜 DZ-396)。
     /// Counter + Frenzy 両キーワード持ち(反撃可能 + 被反撃不可)+ ゲーム開始時自動連想 marker。
     /// 開始時自動連想テスト(DZ-390〜393)は <see cref="StartGameUseCaseTests"/> に配置(StartGameUseCase 経路)。
     /// </summary>
@@ -125,7 +125,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var rule = NewRule(NewCatalogWithCard19AndDummyCounter());
             var legal = rule.IsLegalMove(NewCounterSessionWithCard19InField(),
                 new CounterAction(CardId.Of(DummyCounterTypeId, 0), CardId.Of(AbsoluteBarrierTypeId, 0)));
-            // Frenzy 持ち(Card "19")は反撃を受けない、ADR-0011 §4.5
+            // Frenzy 持ち(Card "19")は反撃を受けない
             Assert.That(legal, Is.False);
         }
     }

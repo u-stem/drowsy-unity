@@ -9,7 +9,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz.Effects
     /// <summary>
     /// <see cref="RequiresMinimumTotalPointsMarkerEffect"/> の構造防御 / record 値同値性 /
     /// <see cref="EffectInterpreter.Apply"/> no-op 挙動を検証する(DZ-240 / DZ-241 / DZ-242)。
-    /// ADR-0011 §6 / M3-PR6 で導入。
+    ///
     /// </summary>
     [TestFixture]
     public sealed class RequiresMinimumTotalPointsMarkerEffectTests

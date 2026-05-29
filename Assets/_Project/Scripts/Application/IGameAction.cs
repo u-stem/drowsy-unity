@@ -8,7 +8,6 @@ namespace Drowsy.Application
     /// </summary>
     /// <remarks>
     /// C# の Discriminated Union 風表現を「マーカー interface + sealed record 階層」で代替する設計。
-    /// 詳細は ADR-0006 §1.1 を参照。
     /// </remarks>
     public interface IGameAction
     {

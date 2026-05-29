@@ -6,7 +6,7 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
     /// <summary>
     /// <see cref="Drowsy.Application.Games.DrowZzz.Influences.PlayerInfluence.TickEffect"/> として使われ、
     /// <see cref="DrowZzzRule.IsLegalMove"/> で「<see cref="TargetCardTypeId"/> 一致のカードプレイを illegal 化」する
-    /// マーカー effect(ADR-0019 / No.04「静寂を纏う」、PR ② で導入)。
+    /// マーカー effect(No.04「静寂を纏う」)。
     /// </summary>
     /// <param name="TargetCardTypeId">使用禁止対象のカード型 ID(null 不可)</param>
     /// <remarks>

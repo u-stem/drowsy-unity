@@ -15,7 +15,7 @@ namespace Drowsy.Infrastructure.Tests.Persistence
     /// 既存の Application.Tests の <c>DrowZzzSessionFixtures</c>(M2 以降確立)と仕様共有するが、
     /// 本テスト範囲(Infrastructure 層)では Pure C# 維持の必要なし(Drowsy.Infrastructure.Tests asmdef は
     /// UnityEngine 依存を持つ)。Application.Tests の InMemory パターンを再実装する形で重複保持
-    /// (CardCatalog 系テスト群と同パターン、ADR-0012 §5「Pure C# 哲学維持と Ports &amp; Adapters 整合」)。
+    /// (CardCatalog 系テスト群と同パターン)。
     /// </remarks>
     internal static class DrowZzzSessionTestFixtures
     {

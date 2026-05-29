@@ -10,20 +10,18 @@ namespace Drowsy.Application.Games.DrowZzz
     /// 先頭が次の抽選対象(Top)、末尾が Bottom。全変更操作は新インスタンスを返す純関数。
     /// </summary>
     /// <remarks>
-    /// ADR-0009 §「DDP プールの構造」/ §3「DDP プールの構造と保持」で確定したプール表現。本クラスは
     /// <see cref="Drowsy.Domain.Cards.Pile"/> と同パターン(Shuffle / Draw / 順序付きシーケンス同値の
     /// Equals / GetHashCode)を、`int` 値列向けに再実装する。
     /// <para>
-    /// <b>専用型を新設した理由</b>: ADR-0009 §3 では「Pile 型を再利用」と書かれているが、<c>Pile</c> は
-    /// <c>CardId[]</c> を保持するカード山札専用型で、整数プール (-30〜+30) を直接持つには semantic 違反
-    /// (<c>CardId</c> は <c>string Value</c> ベースの識別子型)。型シグネチャから「DDP プール」が明示され、
-    /// <c>Pile</c>(カード山札)との取り違いを構造的に防ぐ。詳細は <c>dp-mechanism-ddp.md</c> §「設計判断」。
+    /// <b>専用型を新設した理由</b>: <c>Pile</c> は <c>CardId[]</c> を保持するカード山札専用型で、
+    /// 整数プール (-30〜+30) を直接持つには semantic 違反(<c>CardId</c> は <c>string Value</c> ベースの識別子型)。
+    /// 型シグネチャから「DDP プール」が明示され、<c>Pile</c>(カード山札)との取り違いを構造的に防ぐ。
     /// </para>
     /// <para>
-    /// 等値性は順序付きシーケンス同値(<see cref="Pile"/> と同パターン、ADR-0002 §「Domain 集合型の値同値性方針」
-    /// と整合)。<c>System.Collections.Immutable</c> が Unity 6 で internal アクセシビリティのため利用不可、
+    /// 等値性は順序付きシーケンス同値(<see cref="Pile"/> と同パターン)。
+    /// <c>System.Collections.Immutable</c> が Unity 6 で internal アクセシビリティのため利用不可、
     /// 代替として <c>int[]</c> を private で保持し <see cref="Values"/> プロパティ経由で
-    /// <see cref="IReadOnlyList{T}"/> として読み取り専用公開する(<see cref="Pile"/> と同設計)。
+    /// <see cref="IReadOnlyList{T}"/> として読み取り専用公開する。
     /// </para>
     /// </remarks>
     public sealed class DdpPool : IEquatable<DdpPool>

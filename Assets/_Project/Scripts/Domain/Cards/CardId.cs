@@ -3,14 +3,14 @@ using System;
 namespace Drowsy.Domain.Cards
 {
     /// <summary>
-    /// カードの**インスタンス**識別子(deck / hand / field / discard 内で unique)を表す不変値オブジェクト(ADR-0018)。
+    /// カードの**インスタンス**識別子(deck / hand / field / discard 内で unique)を表す不変値オブジェクト。
     /// </summary>
     /// <remarks>
     /// <para>
     /// 旧 Phase 1 設計では <c>CardId.Of(string)</c> 単純文字列型で「catalog の lookup key」と
     /// 「Hand 内 unique 識別子」を兼ねていたが、業界デファクト(Card Type / Card Instance 分離)と
-    /// 乖離した二重意味を持っていた。M5 UI 実機検証で Hand 重複検出エラーが発覚し、ADR-0018 で
-    /// <see cref="CardTypeId"/> を新設して種別 ID を分離、本型は instance unique な ID として再定義した。
+    /// 乖離した二重意味を持っていた。<see cref="CardTypeId"/> を新設して種別 ID を分離し、
+    /// 本型は instance unique な ID として定義する。
     /// </para>
     /// <para>
     /// <b>構造</b>:<c>(CardTypeId TypeId, int Instance)</c> の複合 record。等価性は record 自動生成で
@@ -19,7 +19,7 @@ namespace Drowsy.Domain.Cards
     /// </para>
     /// <para>
     /// <b>catalog lookup</b>:<see cref="ICardCatalog{TEffect}"/> 系 API は引数として <see cref="CardTypeId"/>
-    /// を取る(ADR-0018 §3)。<see cref="CardId"/> から catalog を引く側は <c>cardId.TypeId</c> を渡す。
+    /// を取る。<see cref="CardId"/> から catalog を引く側は <c>cardId.TypeId</c> を渡す。
     /// </para>
     /// <para>
     /// <b>後方互換</b>:旧 <c>CardId.Of(string)</c> API は廃止(breaking change)。永続化 / ログ / 表示用には

@@ -42,7 +42,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             return d;
         }
 
-        // SDP は M2-PR3 で追加(ADR-0009 §「DP 種別」)。引数なし呼び出しで N=2 (p1, p2) の SDP=0 を返す
+        // SDP 引数なし呼び出しで N=2 (p1, p2) の SDP=0 を返す
         // ことで、SDP に関心がない既存テスト(DZ-006〜017 / DZ-036 / DZ-097)の修正を最小化する。
         private static IReadOnlyDictionary<PlayerId, int> Sdp(params (string id, int value)[] pairs)
         {
@@ -62,7 +62,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             return d;
         }
 
-        // DDP は M2-PR4 で追加(ADR-0009 §「DP 種別」)。Sdp と同じパターンで引数なしで N=2 の DDP=0 を返す。
+        // DDP。Sdp と同じパターンで引数なしで N=2 の DDP=0 を返す。
         private static IReadOnlyDictionary<PlayerId, int> Ddp(params (string id, int value)[] pairs)
         {
             if (pairs.Length == 0)
@@ -84,7 +84,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         // 空 DdpPool。多くの既存テストは DDP プール状態に関心がないため、空 Pool を使うことで構築簡略化。
         private static readonly DdpPool EmptyDdpPool = DdpPool.Empty;
 
-        // Influences は M2-PR5 で追加(ADR-0007 §1.5)。Sdp / Ddp と同じパターンで引数なし呼び出しで
+        // Influences。Sdp / Ddp と同じパターンで引数なし呼び出しで
         // N=2 (p1, p2) の空 list を返す。影響を持たせたいテストのみ pairs 指定で構築する。
         private static IReadOnlyDictionary<PlayerId, IReadOnlyList<PlayerInfluence>> Inf(
             params (string id, PlayerInfluence[] influences)[] pairs)
@@ -322,7 +322,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         }
 
         // ===== DZ-097: Session.Clock.RoundNumber と CurrentRound の同義性(N=2)=====
-        // ADR-0008 §2 で確定した computed プロパティ `Clock => new DrowZzzClock(CurrentRound)` の挙動を、
+        // computed プロパティ `Clock => new DrowZzzClock(CurrentRound)` の挙動を、
         // N=2 で Round 1 / 16 / 21 に相当する TurnNumber=1 / 31 / 41 で表明する。
 
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-097")]
@@ -488,7 +488,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-109")]
         public void Given_負のSDP値_When_DrowZzzGameSessionを生成_Then_保持される()
         {
-            // Given(SDP に負値、0 floor 適用なし、ADR-0009 戦略「持ち点低い方が勝ち」と整合)
+            // Given(SDP に負値、0 floor 適用なし)
             var sdp = Sdp(("p1", -20), ("p2", -5));
             // When
             var session = new DrowZzzGameSession(
@@ -588,7 +588,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "DZ-137")]
         public void Given_負のDDP値_When_DrowZzzGameSessionを生成_Then_保持される()
         {
-            // Given(DDP に負値、0 floor 適用なし、ADR-0009 戦略「持ち点低い方が勝ち」と整合)
+            // Given(DDP に負値、0 floor 適用なし)
             var ddp = Ddp(("p1", -20), ("p2", -5));
             // When
             var session = new DrowZzzGameSession(
@@ -825,7 +825,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             Assert.That(sessionA, Is.Not.EqualTo(sessionB));
         }
 
-        // ===== DZ-198: BedDamages プロパティの値保持 / cross-field 検証 / 範囲検証 / Equals 寄与(M3-PR2、ADR-0011 §3)=====
+        // ===== DZ-198: BedDamages プロパティの値保持 / cross-field 検証 / 範囲検証 / Equals 寄与 =====
 
         // BedDamages 構築用ヘルパー(Sdp / Ddp / Inf と同パターン)
         private static IReadOnlyDictionary<PlayerId, int> Bed(params (string id, int value)[] pairs)

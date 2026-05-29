@@ -14,7 +14,7 @@ namespace Drowsy.Application.Tests.Persistence
     /// <see cref="IDrowZzzGameSessionSerializer"/> の契約テスト(M5-PR1)。
     /// </summary>
     /// <remarks>
-    /// ADR-0016 §5.2 で確定した interface 契約(引数検査・例外契約・Async/Sync 等価性)を
+    /// <see cref="IDrowZzzGameSessionSerializer"/> interface 契約(引数検査・例外契約・Async/Sync 等価性)を
     /// <see cref="InMemoryDrowZzzGameSessionSerializer"/> fake 経由で機械検証する。
     /// JSON シリアライズの詳細は Infrastructure.Tests 側の 43 テスト(M4-PR5)で担保。
     /// <para>

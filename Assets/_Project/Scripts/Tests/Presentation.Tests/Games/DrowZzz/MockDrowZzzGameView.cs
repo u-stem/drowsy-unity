@@ -11,7 +11,7 @@ namespace Drowsy.Presentation.Tests.Games.DrowZzz
     /// <see cref="IDrowZzzGameView"/> の Pure C# モック実装(M5-PR2 単体テスト用)。
     /// </summary>
     /// <remarks>
-    /// ADR-0016 §10.1「View モック方針」で確定:Pure C# クラスで実装し、<c>On*Clicked</c> を
+    /// Pure C# クラスで実装し、<c>On*Clicked</c> を
     /// public method で発火、<see cref="Render"/> / <see cref="RenderOutcome"/> 呼び出しを List に蓄積する。
     /// <para>
     /// <b>event 発火 API</b>:Presenter の event subscription を検証するため、テストから event を

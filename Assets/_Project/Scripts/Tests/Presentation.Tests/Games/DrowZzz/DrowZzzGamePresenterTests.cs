@@ -18,7 +18,7 @@ namespace Drowsy.Presentation.Tests.Games.DrowZzz
     /// <see cref="DrowZzzGamePresenter"/> の単体テスト(M5-PR2 で骨格、M5-PR4 で Handler / 新規対戦経路、M5-PR5 で Auto-save)。
     /// </summary>
     /// <remarks>
-    /// ADR-0016 §3.2 / §11 M5-PR2〜PR5 + §10.1 で確定したスコープ:
+    /// テストスコープ:
     /// <list type="bullet">
     /// <item>ctor null 防御 8 件(PRES-002〜007 + PRES-014 / PRES-015)+ savePath 空白防御 1 件(PRES-008)</item>
     /// <item>Start で View event 配線(PRES-009)/ Dispose で解除(PRES-010)/ Dispose 冪等(PRES-013)</item>
@@ -29,7 +29,7 @@ namespace Drowsy.Presentation.Tests.Games.DrowZzz
     /// <para>
     /// <b>UseCase 構築</b>:Presenter ctor は具象 <see cref="StartGameUseCase"/> / <see cref="ApplyActionUseCase"/>
     /// を取るため、本テストでは <c>Drowsy.Application.Tests.Stubs</c>(`IdentityRandom` / `StubGameConfig` /
-    /// `SessionFactory.NewRule`)を再利用して両 UseCase を構築する(ADR-0016 §10.1)。
+    /// `SessionFactory.NewRule`)を再利用して両 UseCase を構築する。
     /// </para>
     /// <para>
     /// <b>BootAsync / AutoSaveAsync の同期完了(本テストが void で書ける理由)</b>:
@@ -55,7 +55,7 @@ namespace Drowsy.Presentation.Tests.Games.DrowZzz
         private static PlayerId[] ValidPlayers() => new[] { PlayerId.Of("p1"), PlayerId.Of("p2") };
 
         /// <summary>
-        /// M5 範囲の N=2 ホットシート roster(<see cref="PlayerRoster"/> wrapper、ADR-0017)。
+        /// M5 範囲の N=2 ホットシート roster(<see cref="PlayerRoster"/> wrapper)。
         /// <see cref="DrowZzzGamePresenter"/> ctor 用。<see cref="StartGameUseCase.Execute"/> へは
         /// <see cref="ValidPlayers"/> を使う(API が <see cref="IReadOnlyList{PlayerId}"/> を要求するため)。
         /// </summary>
@@ -481,7 +481,7 @@ namespace Drowsy.Presentation.Tests.Games.DrowZzz
         [Test, Category("Small"), Category("Normal"), Property("Requirement", "PRES-021")]
         public void Given_bootCompleted_When_DrawClicked_Then_AutoSaveNotInvoked()
         {
-            // Given(Auto-save は EndTurn 後のみ、Draw / Play では行わない:ADR-0016 §8)
+            // Given(Auto-save は EndTurn 後のみ、Draw / Play では行わない)
             var ctx = NewContext();
             Boot(ctx);
 

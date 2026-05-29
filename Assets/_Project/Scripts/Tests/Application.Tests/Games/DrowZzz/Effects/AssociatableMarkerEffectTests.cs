@@ -9,7 +9,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz.Effects
 {
     /// <summary>
     /// <see cref="AssociatableMarkerEffect"/> を <see cref="EffectInterpreter.Apply"/> で評価した時の
-    /// no-op 挙動を検証する(DZ-208)。ADR-0011 §1 / M3-PR4 で導入。
+    /// no-op 挙動を検証する(DZ-208)。
     /// </summary>
     [TestFixture]
     public sealed class AssociatableMarkerEffectTests
@@ -38,7 +38,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz.Effects
             var interpreter = new EffectInterpreter();
             var session = NewSession();
             var next = interpreter.Apply(session, new AssociatableMarkerEffect());
-            // 値同値で完全一致(マーカーは効果を持たない、ADR-0011 §1)
+            // 値同値で完全一致(マーカーは効果を持たない)
             Assert.That(next, Is.EqualTo(session));
         }
 

@@ -5,8 +5,7 @@ using UnityEngine;
 namespace Drowsy.Infrastructure.Games.DrowZzz.Effects
 {
     /// <summary>
-    /// <see cref="RemoveInfluenceEffect"/>(M2-PR5、ADR-0007 §1.5)を Unity SO で表現する POCO
-    /// (M4-PR3 で導入、INF-027 / INF-028)。<see cref="SdpTarget"/> 1 フィールドのみ。
+    /// <see cref="RemoveInfluenceEffect"/> を Unity SO で表現する POCO(INF-027 / INF-028)。<see cref="SdpTarget"/> 1 フィールドのみ。
     /// </summary>
     [Serializable]
     public sealed class RemoveInfluenceEffectAsset : EffectAsset

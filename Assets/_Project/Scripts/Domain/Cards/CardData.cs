@@ -11,7 +11,7 @@ namespace Drowsy.Domain.Cards
     /// <c>record</c> ではなく <c>sealed class</c> として実装する。理由は <see cref="Attributes"/> (内部 <see cref="Dictionary{TKey, TValue}"/>) の
     /// 等値比較を順序非依存マルチセット同値で行うために <see cref="Equals(CardData)"/> /
     /// <see cref="GetHashCode"/> の独自 override が必須であり、record の auto-equals では
-    /// 参照同値となり値同値が壊れるため。詳細は ADR-0002。
+    /// 参照同値となり値同値が壊れるため。
     /// </remarks>
     public sealed class CardData : IEquatable<CardData>
     {

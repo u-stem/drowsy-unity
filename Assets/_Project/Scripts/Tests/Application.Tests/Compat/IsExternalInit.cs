@@ -2,7 +2,7 @@
 //
 // 本ファイルは Domain assembly の Compat/IsExternalInit.cs と同内容のコピーである。
 // `internal` polyfill は assembly 境界を越えないため、record + init を使う各 assembly で
-// 個別に shim を保持する必要がある (ADR-0004 §「他 assembly での扱い」)。
+// 個別に shim を保持する必要がある。
 //
 // Drowsy.Application.Tests は IGameActionTests / IGameRuleTests のダミー record
 // (`sealed record DummyAction` / `sealed record DummySession(int Counter)` 等) で

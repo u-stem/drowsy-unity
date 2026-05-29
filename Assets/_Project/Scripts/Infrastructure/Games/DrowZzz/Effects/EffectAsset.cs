@@ -4,8 +4,7 @@ using Drowsy.Application.Games.DrowZzz.Effects;
 namespace Drowsy.Infrastructure.Games.DrowZzz.Effects
 {
     /// <summary>
-    /// Unity SO で <see cref="IEffect"/> 派生 record 群を表現するための <c>[Serializable]</c> POCO 基底
-    /// (M4-PR2 で導入、ADR-0012 §3 案 (a) `[Serializable]` POCO + 変換層、JIT 確定 2026-05-13)。
+    /// Unity SO で <see cref="IEffect"/> 派生 record 群を表現するための <c>[Serializable]</c> POCO 基底。
     /// </summary>
     /// <remarks>
     /// <para>
@@ -17,13 +16,11 @@ namespace Drowsy.Infrastructure.Games.DrowZzz.Effects
     /// <para>
     /// 評価経路:<see cref="ScriptableObjectCardCatalog.GetEffects"/> は <c>RebuildCache</c> 時に各 entry の
     /// <c>EffectAsset[]</c> を walk して <see cref="ToDomain"/> を呼び、結果の <see cref="IEffect"/> をキャッシュする
-    /// (CardData と同パターン)。<see cref="EffectInterpreter"/> 側は本 PR 範囲では変更なし(既存 record 群を
-    /// そのまま受け取る、ADR-0012 §3 案 (a) の利点)。
+    /// (CardData と同パターン)。<see cref="EffectInterpreter"/> 側は既存 record 群をそのまま受け取る。
     /// </para>
     /// <para>
-    /// 派生型は M4-PR2 で <see cref="AdjustSdpEffectAsset"/>(最初の 1 派生型)、M4-PR3 で残り 11 派生型を順次対応する
-    /// (ADR-0012 §9 PR 分割計画)。wrapper effect(<c>TimeOfDayBranchEffect</c> / <c>ChoiceEffect</c> /
-    /// <c>KeywordedEffect</c>)の Inner 表現方式は M4-PR3 着手時に JIT 確定する(ADR-0012 §「M4-PR3 着手時の JIT 確認項目」)。
+    /// wrapper effect(<c>TimeOfDayBranchEffect</c> / <c>ChoiceEffect</c> /
+    /// <c>KeywordedEffect</c>)は Inner 効果を <c>[SerializeReference]</c> で再帰的に保持する。
     /// </para>
     /// </remarks>
     [Serializable]

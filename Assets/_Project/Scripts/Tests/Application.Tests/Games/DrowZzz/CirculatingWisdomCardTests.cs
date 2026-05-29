@@ -147,7 +147,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             // Given(p1 が Card "08" を手札 index 0 に保持)
             var rule = NewRule(NewCatalogWithCardEight());
             var session = NewSession();
-            // When / Then(Instinct = 放棄対象不可、ADR-0011 §4.2、DZ-238 同パターン)
+            // When / Then(Instinct = 放棄対象不可、DZ-238 同パターン)
             Assert.That(rule.IsLegalMove(session, new AbandonAction(AbandonChoice.GainSdp, CardIndex: 0)), Is.False);
         }
 

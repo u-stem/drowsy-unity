@@ -23,7 +23,7 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
     /// <item>(1) <see cref="PlayCardAction.TargetCardId"/> が指定されていること</item>
     /// <item>(2) <see cref="Source"/> プレイヤーの手札に <see cref="PlayCardAction.TargetCardId"/> が含まれていること</item>
     /// <item>(3) <see cref="PlayCardAction.TargetCardId"/> が <c>session.AssociatedCardIds</c> に含まれていないこと
-    /// (連想由来は選択不可、ADR-0019 PR ② で確立した除外パターンと共通)</item>
+    /// (連想由来は選択不可)</item>
     /// </list>
     /// </para>
     /// </remarks>

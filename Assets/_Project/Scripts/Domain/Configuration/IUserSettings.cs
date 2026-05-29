@@ -8,14 +8,9 @@ namespace Drowsy.Domain.Configuration
     /// <see cref="Save"/> の対称 API で提供する。
     /// </summary>
     /// <remarks>
-    /// ADR-0012 §8 + M4-PR6 着手時の JIT 確定(2026-05-13)に基づく interface。
     /// 実装側は Setter 呼び出し時に対応 <see cref="Observable{T}"/> を発火させ、
     /// <see cref="Save"/> で永続化先(PlayerPrefs 等)に書き出す責務を持つ。
-    /// R3 を Domain.asmdef に含める判断は M4-PR6 着手時の JIT 確定で
-    /// 「Unity デファクト = Drowsy.Domain.asmdef に R3 を入れる」を採用したことに基づく
-    /// (CLAUDE.md §4 が R3 を VContainer / UniTask と並ぶコア採用 lib と確定済、
-    /// CLAUDE.md §5「Domain は純粋 C# (`noEngineReferences: true`)」は
-    /// 「UnityEngine 非依存」を主旨とした規約で R3 自体は Pure C# library のため整合)。
+    /// R3 は Pure C# library のため Domain.asmdef の <c>noEngineReferences: true</c>(UnityEngine 非依存)と整合する。
     /// </remarks>
     public interface IUserSettings
     {

@@ -11,7 +11,7 @@ using Property = NUnit.Framework.PropertyAttribute;
 namespace Drowsy.Infrastructure.Tests.Games.DrowZzz.Cards
 {
     /// <summary>
-    /// カード No.19「絶対障壁」(ADR-0024、2026-05-18)の SO 表現と InMemory 表現の同値性検証(INF-164)。
+    /// カード No.19「絶対障壁」の SO 表現と InMemory 表現の同値性検証(INF-164)。
     /// Counter + Frenzy 両キーワード持ち + AssociateToFirstPlayerOnGameStartEffect の 2 件最上位構成。
     /// </summary>
     [TestFixture]

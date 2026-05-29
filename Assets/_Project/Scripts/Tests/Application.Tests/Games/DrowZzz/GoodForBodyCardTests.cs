@@ -202,20 +202,20 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var session = sessionInPlay with { PhaseState = DrowZzzPhaseState.WaitingForEndTurn };
             // When
             var next = rule.Apply(session, new EndTurnAction());
-            // Then(ADR-0020:p2 Tick で TickEffect 適用のみ、count は p2 自身の EndTurn まで Perpetual のまま)
+            // Then(p2 Tick で TickEffect 適用のみ、count は p2 自身の EndTurn まで Perpetual のまま)
             Assert.That(next.Influences[PlayerId.Of("p2")][0].RemainingCount, Is.EqualTo(InfluenceConstants.Perpetual));
         }
 
         [Test, Category("Medium"), Category("Normal"), Property("Requirement", "DZ-253")]
         public void Given_永続影響Plus4をp1のみが保有_p1current_When_p1がEndTurnでp2フェーズへ_Then_p1の影響はDecrementでPerpetualマイナス1()
         {
-            // Given(p1 のみ NightInfluence 保有、ADR-0020:p1 EndTurn 冒頭で p1 自身の Influences が Decrement される)
+            // Given(p1 のみ NightInfluence 保有、p1 EndTurn 冒頭で p1 自身の Influences が Decrement される)
             var rule = NewRule(NewCatalogWithCardThree());
             var sessionInPlay = NewSessionWithCardInHand(turnNumber: 1, p1Influences: new[] { NightInfluence() });
             var session = sessionInPlay with { PhaseState = DrowZzzPhaseState.WaitingForEndTurn };
             // When
             var next = rule.Apply(session, new EndTurnAction());
-            // Then(ADR-0020:p1 自身の EndTurn 冒頭の Decrement で count -1、Perpetual - 1)
+            // Then(p1 自身の EndTurn 冒頭の Decrement で count -1、Perpetual - 1)
             Assert.That(next.Influences[PlayerId.Of("p1")][0].RemainingCount, Is.EqualTo(InfluenceConstants.Perpetual - 1));
         }
 
@@ -256,7 +256,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var session = sessionInPlay with { PhaseState = DrowZzzPhaseState.WaitingForEndTurn };
             // When
             var next = rule.Apply(session, new EndTurnAction());
-            // Then(ADR-0020:p2 Tick で TickEffect 適用のみ、count は p2 自身の EndTurn まで Perpetual のまま)
+            // Then(p2 Tick で TickEffect 適用のみ、count は p2 自身の EndTurn まで Perpetual のまま)
             Assert.That(next.Influences[PlayerId.Of("p2")][0].RemainingCount, Is.EqualTo(InfluenceConstants.Perpetual));
         }
     }

@@ -12,8 +12,8 @@ namespace Drowsy.Application.Tests.Stubs
     /// <see cref="IDrowZzzGameSessionSerializer"/> のインメモリ fake 実装。
     /// </summary>
     /// <remarks>
-    /// ADR-0016 §5.2「<c>IDrowZzzGameSessionSerializer</c> interface 抽出」の契約テストおよび M5-PR2 以降の
-    /// Presenter 単体テストで利用する。実 Infrastructure は Newtonsoft.Json + ファイル I/O だが、本 fake は
+    /// <c>IDrowZzzGameSessionSerializer</c> interface の契約テストおよび Presenter 単体テストで利用する。
+    /// 実 Infrastructure は Newtonsoft.Json + ファイル I/O だが、本 fake は
     /// <c>Dictionary&lt;string, DrowZzzGameSession&gt;</c> をストアにして path をキーに直接保持する。
     /// <para>
     /// <b>変換なし</b>:本 fake は session を「そのまま保存し、そのまま返す」設計とし、JSON round-trip 等の
@@ -21,7 +21,7 @@ namespace Drowsy.Application.Tests.Stubs
     /// が担保するのは「<see cref="IDrowZzzGameSessionSerializer"/> の契約(引数検査・例外型・Async/同期の等価性)」のみ。
     /// </para>
     /// <para>
-    /// <b>例外契約</b>:Infrastructure 実装と同一の例外型を投げる(ADR-0016 §5.2):
+    /// <b>例外契約</b>:Infrastructure 実装と同一の例外型を投げる:
     /// <list type="bullet">
     /// <item><c>session</c> が null → <see cref="ArgumentNullException"/></item>
     /// <item><c>path</c> が null・空・空白のみ → <see cref="ArgumentException"/></item>

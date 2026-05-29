@@ -8,13 +8,12 @@ namespace Drowsy.Domain.Game
     /// のいずれかで派生する sealed record 階層。
     /// </summary>
     /// <remarks>
-    /// ADR-0010 §2 で新設。Domain 層に配置する理由は「勝者がいる / 引き分け」というゲーム終了状態が
-    /// ゲーム非依存の汎用概念であり、<see cref="Drowsy.Application.IGameRule{TAction, TSession}"/> の generic 性質と整合するため
-    /// (ADR-0002 Domain ゲーム非依存原則と矛盾しない)。
+    /// Domain 層に配置する理由は「勝者がいる / 引き分け」というゲーム終了状態が
+    /// ゲーム非依存の汎用概念であり、<see cref="Drowsy.Application.IGameRule{TAction, TSession}"/> の generic 性質と整合するため。
     /// <para>
     /// 「未終了」は <c>GameOutcome?</c> の <c>null</c> で表現し、本階層には派生型を作らない:
     /// 「ゲームが終わっている事実」と「終わり方」を <see cref="GameOutcome"/> 階層に閉じ込め、
-    /// 「終わっていない事実」は <c>null</c> という C# 言語機能で表現する方が API が単純(ADR-0010 §1 / §2)。
+    /// 「終わっていない事実」は <c>null</c> という C# 言語機能で表現する方が API が単純。
     /// </para>
     /// </remarks>
     public abstract record GameOutcome;
@@ -24,8 +23,8 @@ namespace Drowsy.Domain.Game
     /// </summary>
     /// <param name="Winner">勝者の <see cref="PlayerId"/>。null 不可。</param>
     /// <remarks>
-    /// null 防御の二重ガード(positional ctor 経由のバッキングフィールド初期化式 + init setter 本体)を採用
-    /// (M1 進行中に確立した record + positional + 二重ガードパターン、ADR-0006 §M1)。
+    /// null 防御の二重ガード(positional ctor 経由のバッキングフィールド初期化式 + init setter 本体)を採用する
+    /// (record + positional + 二重ガードパターン)。
     /// Application 層の <c>PlayCardAction</c> / <c>PlayerInfluence</c> 等も同パターン。
     /// </remarks>
     public sealed record WinnerOutcome(PlayerId Winner) : GameOutcome
@@ -45,7 +44,7 @@ namespace Drowsy.Domain.Game
     /// </summary>
     /// <remarks>
     /// フィールドなしのマーカー的派生型。record auto-equals により <see cref="DrawOutcome"/> 同士は常に等価。
-    /// ADR-0010 §7 で「引き分けは tiebreaker なし」と確定したため、本 record は付帯情報を持たない。
+    /// 引き分けは tiebreaker なしのため、本 record は付帯情報を持たない。
     /// </remarks>
     public sealed record DrawOutcome : GameOutcome;
 }

@@ -6,15 +6,14 @@ using UnityEngine;
 namespace Drowsy.Infrastructure.Games.DrowZzz.Effects
 {
     /// <summary>
-    /// <see cref="TimeOfDayBranchEffect"/>(M2-PR3、ADR-0008)を Unity SO で表現する POCO
-    /// (M4-PR3 で導入、INF-039 / INF-040)。wrapper effect。
+    /// <see cref="TimeOfDayBranchEffect"/> を Unity SO で表現する POCO(INF-039 / INF-040)。wrapper effect。
     /// </summary>
     /// <remarks>
     /// 「コップ一杯の脅威」(No.01)の夜・朝分岐に使用。<see cref="NightEffects"/> / <see cref="MorningEffects"/> を
     /// <c>[SerializeReference] EffectAsset[]</c> で再帰的に保持し、<see cref="ToDomain"/> で各要素の
     /// <see cref="EffectAsset.ToDomain"/> を呼んで <see cref="IEffect"/>[] に変換する(JIT 確定 2026-05-13)。
     /// null 要素 / ToDomain 失敗は <see cref="ArgumentException"/> として伝播し、上位
-    /// <see cref="ScriptableObjectCardCatalog.BuildEffectsFromAssets"/> で graceful skip(INF-018 / INF-019)。
+    /// <see cref="ScriptableObjectCardCatalog.BuildEffectsFromAssets"/> で graceful skip される。
     /// </remarks>
     [Serializable]
     public sealed class TimeOfDayBranchEffectAsset : EffectAsset

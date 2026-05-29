@@ -11,7 +11,7 @@ using Property = NUnit.Framework.PropertyAttribute;
 namespace Drowsy.Infrastructure.Tests.Games.DrowZzz.Cards
 {
     /// <summary>
-    /// カード No.04「静寂を纏う」(ADR-0019 PR ②)の SO 表現と InMemory 表現の同値性検証
+    /// カード No.04「静寂を纏う」の SO 表現と InMemory 表現の同値性検証
     /// (INF-138)。<see cref="TimeOfDayBranchEffectAsset"/> の夜・朝再帰 + 各分岐内
     /// <see cref="AdjustSdpEffectAsset"/> ×2 + <see cref="ApplyTargetedRestrictionEffectAsset"/>(動的影響付与)の
     /// 再帰 ToDomain で <see cref="TimeOfDayBranchEffect"/> + <see cref="AdjustSdpEffect"/> +

@@ -14,7 +14,7 @@ using Drowsy.Domain.Players;
 namespace Drowsy.Application.Tests.Games.DrowZzz
 {
     /// <summary>
-    /// カード No.20「至上の喜び」の統合テスト(DZ-398〜404、ADR-0025、2026-05-18 で導入)。
+    /// カード No.20「至上の喜び」の統合テスト(DZ-398〜404)。
     /// `PlayOrAbandonBranchEffect` 機構の初導入カード:プレイ時 +20/-20 + 自爆 Marker、放棄時 +4/+6(AbandonChoice 累積)。
     /// </summary>
     [TestFixture]
@@ -185,7 +185,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         [Test, Category("Medium"), Category("Normal"), Property("Requirement", "DZ-404")]
         public void Given_Card20_When_Abandon_Then_Influences_変動なし()
         {
-            // AbandonEffects に ApplyInfluenceEffect なし、放棄経路では甲影響は付与されない(ADR-0025 累積モデル)
+            // AbandonEffects に ApplyInfluenceEffect なし、放棄経路では甲影響は付与されない
             var rule = NewRule();
             var next = rule.Apply(NewAbandonSession(), new AbandonAction(CardIndex: 0, Choice: AbandonChoice.GainSdp));
             Assert.That(next.Influences[PlayerId.Of("p1")].Count, Is.EqualTo(0));

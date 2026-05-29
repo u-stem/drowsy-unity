@@ -12,7 +12,7 @@ using NUnit.Framework;
 namespace Drowsy.Application.Tests.Games.DrowZzz
 {
     /// <summary>
-    /// カード No.04「静寂を纏う」の統合テスト(DZ-260 〜 DZ-268、ADR-0019 PR ②)。
+    /// カード No.04「静寂を纏う」の統合テスト(DZ-260 〜 DZ-268)。
     /// 時間帯分岐 + <see cref="ApplyTargetedRestrictionEffect"/>(動的影響付与)+
     /// <see cref="RestrictSpecificCardInfluenceEffect"/>(特定カード使用禁止 marker)の組み合わせを
     /// `IsLegalPlayCard` 拡張(TargetCardId 必須 / 相手手札所持 / AssociatedCardIds 除外)と統合的に検証する。
@@ -231,7 +231,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var session = NewSession(
                 turnNumber: 1,
                 associatedCardIds: new[] { CardId.Of(TargetTypeId, 0) });
-            // When / Then(連想由来は選択不可、ADR-0019 PR ②)
+            // When / Then(連想由来は選択不可)
             Assert.That(rule.IsLegalMove(session, new PlayCardAction(
                 CardId.Of(SilenceTypeId, 0),
                 TargetCardId: CardId.Of(TargetTypeId, 0))), Is.False);
@@ -275,13 +275,13 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             Assert.That(rule.IsLegalMove(session, new PlayCardAction(CardId.Of(TargetTypeId, 0))), Is.False);
         }
 
-        // ===== DZ-268: カウント 1 Marker は p2 フェーズ全体で機能、p2 EndTurn で除去(ADR-0020)=====
+        // ===== DZ-268: カウント 1 Marker は p2 フェーズ全体で機能、p2 EndTurn で除去 =====
 
         [Test, Category("Medium"), Category("Normal"), Property("Requirement", "DZ-268")]
         public void Given_カウント1の使用禁止Influence_When_自フェーズTick_Then_カウント1で残存()
         {
             // Given(p2 が「Card "X" 使用禁止」Influence カウント 1 保有、p1 が WaitingForEndTurn → EndTurn で p2 自フェーズへ)
-            // ADR-0020:p2 Tick で TickEffect (marker no-op) 適用、count 1 のまま。除去は p2 自身の EndTurn まで遅延。
+            // p2 Tick で TickEffect (marker no-op) 適用、count 1 のまま。除去は p2 自身の EndTurn まで遅延。
             // これにより p2 フェーズ中の IsLegalPlayCard が本 Influence を Walk して Card "X" を illegal 化できる。
             var rule = NewRule(NewCatalogWithCardFour());
             var influence = new PlayerInfluence(
@@ -292,7 +292,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var session = sessionInPlay with { PhaseState = DrowZzzPhaseState.WaitingForEndTurn };
             // When
             var next = rule.Apply(session, new EndTurnAction());
-            // Then(ADR-0020:count=1 marker は p2 フェーズで機能、count=1 のまま残存)
+            // Then(count=1 marker は p2 フェーズで機能、count=1 のまま残存)
             Assert.That(next.Influences[PlayerId.Of("p2")].Count, Is.EqualTo(1));
             Assert.That(next.Influences[PlayerId.Of("p2")][0].RemainingCount, Is.EqualTo(1));
         }

@@ -12,7 +12,7 @@ using Property = NUnit.Framework.PropertyAttribute;
 namespace Drowsy.Infrastructure.Tests.Games.DrowZzz.Cards
 {
     /// <summary>
-    /// カード No.09「強引過ぎる一手」(2026-05-17、ADR-0020 と同 PR)の SO 表現と InMemory 表現の同値性検証(INF-147)。
+    /// カード No.09「強引過ぎる一手」の SO 表現と InMemory 表現の同値性検証(INF-147)。
     /// </summary>
     [TestFixture]
     public sealed class ForcePlayCardCatalogTests

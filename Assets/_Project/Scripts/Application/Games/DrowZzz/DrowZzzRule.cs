@@ -13,35 +13,31 @@ namespace Drowsy.Application.Games.DrowZzz
     /// DrowZzz の状態遷移ルール。<see cref="IGameRule{TAction, TSession}"/> の DrowZzz 具象実装。
     /// </summary>
     /// <remarks>
-    /// M1-PR6 段階で M1 範囲の全 Action 種別が実装済:
+    /// 全 Action 種別が実装済:
     /// <list type="bullet">
-    /// <item><see cref="IsLegalMove"/>: <see cref="StartGameAction"/> → <c>false</c>(M1-PR3、<c>StartGameUseCase</c> 経由で扱うため)、
-    /// <see cref="DrawCardAction"/> → <c>WaitingForDraw</c> のみ <c>true</c>(M1-PR4)、
-    /// <see cref="PlayCardAction"/> → <c>WaitingForPlay</c> かつ現プレイヤーの <c>Hand</c> に <c>Card</c> がある場合 <c>true</c>(M1-PR5)、
-    /// <see cref="EndTurnAction"/> → <c>WaitingForEndTurn</c> のみ <c>true</c>(M1-PR6)。</item>
+    /// <item><see cref="IsLegalMove"/>: <see cref="StartGameAction"/> → <c>false</c>(<c>StartGameUseCase</c> 経由で扱うため)、
+    /// <see cref="DrawCardAction"/> → <c>WaitingForDraw</c> のみ <c>true</c>、
+    /// <see cref="PlayCardAction"/> → <c>WaitingForPlay</c> かつ現プレイヤーの <c>Hand</c> に <c>Card</c> がある場合 <c>true</c>、
+    /// <see cref="EndTurnAction"/> → <c>WaitingForEndTurn</c> のみ <c>true</c>。</item>
     /// <item><see cref="Apply"/>: <see cref="DrawCardAction"/> / <see cref="PlayCardAction"/> / <see cref="EndTurnAction"/> を実装済。
-    /// <see cref="StartGameAction"/> は <c>StartGameUseCase</c> 経由で扱うため本 Rule の <see cref="Apply"/> ルートには来ない設計、
-    /// ADR-0006 §Implementation Notes。
+    /// <see cref="StartGameAction"/> は <c>StartGameUseCase</c> 経由で扱うため本 Rule の <see cref="Apply"/> ルートには来ない設計。
     /// 将来 DrowZzz の Action 種別を新規追加する場合、<c>_</c> ケースの <see cref="NotImplementedException"/> が守る。</item>
     /// </list>
     /// 引数 (<paramref name="session"/> / <paramref name="action"/>) の null は <see cref="ArgumentNullException"/>。
-    /// (M1-PR4 で全 Action 種別共通の null 検証として導入、M1-PR3 reviewer 申し送り N-7 反映)
     /// <para>
-    /// M2-PR1 で constructor injection に <see cref="ICardCatalog{TEffect}"/>(<c>TEffect = IEffect</c>)/
-    /// <see cref="EffectInterpreter"/> を追加(ADR-0007 §3)。<see cref="PlayCardAction"/> の Apply 後、
-    /// catalog から効果列を取得し、<c>Aggregate</c> で左から順に逐次評価する。効果 0 個なら M1 と完全互換。
+    /// constructor injection に <see cref="ICardCatalog{TEffect}"/>(<c>TEffect = IEffect</c>)/
+    /// <see cref="EffectInterpreter"/> を保持。<see cref="PlayCardAction"/> の Apply 後、
+    /// catalog から効果列を取得し、<c>Aggregate</c> で左から順に逐次評価する。効果 0 個なら完全互換。
     /// </para>
     /// <para>
-    /// M2-PR4 で <see cref="EndTurnAction"/> Apply 内に DDP 自動抽選機構を追加(ADR-0009 §4)。
+    /// <see cref="EndTurnAction"/> Apply 内に DDP 自動抽選機構を持つ。
     /// ターン境界(<c>newTurn.CurrentPlayerIndex == 0</c>)を検出し、新ターン番号が
     /// <see cref="DdpPoolConstants.DrawRounds"/> に含まれる場合は <c>DdpPool</c> 先頭から N (= player count) 枚を
-    /// 抽選してプレイヤー順に <c>DrawDrowsyPoints</c> に累積する(自動進行、ADR-0009 §4 採用案 A)。
-    /// rng は <see cref="StartGameUseCase"/> で <c>DdpPool</c> を事前 Shuffle 済みのため Rule 内では不要、
-    /// constructor は ADR-0007 §3 の 2 引数を維持する(本 PR で ADR-0009 §4 の「rng を Rule に注入する案」を
-    /// 「StartGame での事前 Shuffle で十分」と再評価、PR description に記録)。
+    /// 抽選してプレイヤー順に <c>DrawDrowsyPoints</c> に累積する(自動進行)。
+    /// rng は <see cref="StartGameUseCase"/> で <c>DdpPool</c> を事前 Shuffle 済みのため Rule 内では不要。
     /// </para>
     /// <para>
-    /// M2-PR5 で 3 つの新機構を追加(ADR-0007 §1.5「継続影響」):
+    /// 継続影響機構:
     /// <list type="bullet">
     /// <item><b>選択式カード対応</b>: <see cref="PlayCardAction.Choice"/> を読んで <see cref="ChoiceEffect"/> を unwrap
     /// (interpreter には届かない、ApplyPlayCard 内で展開)。範囲外 Choice は illegal-move 扱い(IsLegalMove で false)。</item>
@@ -53,13 +49,10 @@ namespace Drowsy.Application.Games.DrowZzz
     /// </list>
     /// </para>
     /// <para>
-    /// ADR-0020(2026-05-17)で <c>RemainingCount</c> 減算タイミングを「Tick 直後」から
-    /// 「<see cref="EndTurnAction"/> 実行時のフェーズ終了側」へ移動。具体的には <see cref="ApplyEndTurn"/> の冒頭
+    /// <c>RemainingCount</c> 減算タイミングは <see cref="ApplyEndTurn"/> の冒頭
     /// (PendingClear 直後、<c>Turn.Next</c> 前)で旧 current プレイヤーの全 Influences に対して
     /// <c>RemainingCount -= 1</c>、0 到達なら除去する(<c>DecrementInfluencesForCurrentPlayer</c>)。
-    /// これにより「カウント N = 自フェーズ N 回機能」が Marker 系 Influence(<c>IsLegalMove</c> で「存在時」効果を発揮する型)
-    /// の N=1 でも成立する(No.09「強引過ぎる一手」のカウント1 Marker 機能化が動機)。
-    /// カウント N ≥ 2 のカード(No.02 / No.04 / No.06 / No.07 / No.08)は発動回数不変。
+    /// これにより「カウント N = 自フェーズ N 回機能」が Marker 系 Influence の N=1 でも成立する。
     /// </para>
     /// </remarks>
     public sealed class DrowZzzRule : IGameRule<DrowZzzAction, DrowZzzGameSession>
@@ -94,29 +87,29 @@ namespace Drowsy.Application.Games.DrowZzz
             {
                 throw new ArgumentNullException(nameof(action));
             }
-            // M3-PR1: ゲーム終了後はいかなる Action も illegal(ADR-0010 §6、Round 22 への遷移ブロックも兼ねる)
+            // ゲーム終了後はいかなる Action も illegal(Round 22 への遷移ブロックも兼ねる)
             if (session.IsTerminated)
             {
                 return false;
             }
             return action switch
             {
-                StartGameAction => false, // ADR-0006 §Implementation Notes §StartGameUseCase の IsLegalMove 経由での扱い
+                StartGameAction => false, // StartGameUseCase 経由で扱う
                 DrawCardAction => IsLegalDraw(session),
                 PlayCardAction p => IsLegalPlayCard(session, p),
                 EndTurnAction => IsLegalEndTurn(session),
-                AbandonAction a => IsLegalAbandon(session, a),  // M3-PR3: 放棄(代替ターン行動)、ADR-0011 §2
-                AssociateAction a => IsLegalAssociate(session, a),  // M3-PR4: 連想(特殊ドロー)、ADR-0011 §1
-                CounterAction c => IsLegalCounter(session, c),  // M3-PR5b: 反撃、ADR-0011 §4.3
-                PassCounterAction => session.PhaseState == DrowZzzPhaseState.WaitingForCounterResponse,  // M3-PR5b: 反撃応答スキップ
+                AbandonAction a => IsLegalAbandon(session, a),  // 放棄(代替ターン行動)
+                AssociateAction a => IsLegalAssociate(session, a),  // 連想(特殊ドロー)
+                CounterAction c => IsLegalCounter(session, c),  // 反撃
+                PassCounterAction => session.PhaseState == DrowZzzPhaseState.WaitingForCounterResponse,  // 反撃応答スキップ
                 _ => throw new NotImplementedException(
                     $"DrowZzzRule.IsLegalMove ({action.GetType().Name}) は M1 範囲では到達不可。将来 DrowZzzAction 派生型を追加する PR で対応する"),
             };
         }
 
-        // DrawCardAction の合法性(ADR-0021 で No.10「安直過ぎる一手」対応で追加):
+        // DrawCardAction の合法性:
         // (1) PhaseState == WaitingForDraw
-        // (2) ADR-0021:現プレイヤーが RestrictDrawCardInfluenceMarkerEffect を保有していたら illegal
+        // (2) 現プレイヤーが RestrictDrawCardInfluenceMarkerEffect を保有していたら illegal
         //     (山札からの手段ドロー禁止、進行不能化は EndTurnAction の全フェーズ合法化で回避)
         private static bool IsLegalDraw(DrowZzzGameSession session)
         {
@@ -133,12 +126,12 @@ namespace Drowsy.Application.Games.DrowZzz
             return true;
         }
 
-        // EndTurnAction の合法性(ADR-0021):
+        // EndTurnAction の合法性:
         // (1) 通常合法経路:PhaseState == WaitingForEndTurn
         // (2) stuck 化脱出弁:現プレイヤーが stuck 化 Marker(No.09 RestrictAllUsageAndAbandon / No.10 RestrictDrawCard)を保有
         //     → PhaseState によらず合法化(WaitingForDraw / WaitingForPlay のいずれでも)
         //     ただし WaitingForCounterResponse は対象外(相手ターン中の応答フェーズで PendingCounteredEffects を持つ可能性があり、
-        //     EndTurn による強制破棄を避ける、code-reviewer W-3 反映 2026-05-17)。
+        //     EndTurn による強制破棄を避ける)。
         //     通常プレイ時は (2) が false で従来通り (1) のみ合法、ゲームバランス維持。
         private static bool IsLegalEndTurn(DrowZzzGameSession session)
         {
@@ -147,7 +140,7 @@ namespace Drowsy.Application.Games.DrowZzz
                 return true;
             }
             // WaitingForCounterResponse は相手ターン中の反撃応答フェーズ。current プレイヤーが stuck Marker を
-            // 保有していても EndTurn を許可しない(PendingCounteredEffects の強制破棄リスク回避、ADR-0021 §設計意図)。
+            // 保有していても EndTurn を許可しない(PendingCounteredEffects の強制破棄リスク回避)。
             if (session.PhaseState == DrowZzzPhaseState.WaitingForCounterResponse)
             {
                 return false;
@@ -157,22 +150,20 @@ namespace Drowsy.Application.Games.DrowZzz
             return HasAnyStuckCausingInfluence(session.Influences[currentPlayerId]);
         }
 
-        // AssociateAction の合法性(M3-PR4、ADR-0011 §1、JIT 確定 2026-05-13):
+        // AssociateAction の合法性:
         // (1) PhaseState は 3 種すべて(WaitingForDraw / WaitingForPlay / WaitingForEndTurn)で合法
         //     = 「自ターン中のいつでも」。本メソッドは「現プレイヤー視点で session が WaitingForXxx のいずれか」のみを判定し、
-        //       「呼び出し主体が現プレイヤーか」のチェックは呼び出し側 UseCase が currentPlayerIndex に対して行う設計
-        //       (ADR-0006 §3 / IsLegalMove 一般原則:`session.Players[CurrentPlayerIndex]` が暗黙の actor)。
+        //       「呼び出し主体が現プレイヤーか」のチェックは呼び出し側 UseCase が currentPlayerIndex に対して行う設計。
         //       相手ターン中(自分が currentPlayer でない場合)に本メソッドが true を返しうるが、それは現プレイヤー視点で
-        //       合法という意味であり、呼び出し主体の判定とは別軸(ADR-0011 §1 / ADR-0006「自ターン中のみ」原則と整合)。
+        //       合法という意味であり、呼び出し主体の判定とは別軸。
         // (2) TotalPoints[currentPlayer] >= AssociationThreshold(= 80)
         // (3) action.Card が catalog に登録されている + 効果列に AssociatableMarkerEffect を含む
         // 修飾子: `_catalog` を使用するため non-static(cf. `IsLegalAbandon` / `ApplyAbandon` は catalog 不要で `static`)
         private bool IsLegalAssociate(DrowZzzGameSession session, AssociateAction action)
         {
-            // (1) PhaseState チェック:自ターン中のフェーズ 3 値のみ許可(ADR-0011 §1 / ADR-0006「自ターン中のみ」原則)
-            //     M3-PR5b で WaitingForCounterResponse を追加したが、これは「相手ターン中の反撃応答フェーズ」のため
-            //     連想(自ターン中行動)は不可。本排他リストは明示的に WaitingForCounterResponse を除外する形で書く
-            //     (W-2 反映 2026-05-13:enum 4 値時代に対応、設計意図を明示)。
+            // (1) PhaseState チェック:自ターン中のフェーズ 3 値のみ許可
+            //     WaitingForCounterResponse は「相手ターン中の反撃応答フェーズ」のため
+            //     連想(自ターン中行動)は不可。本排他リストは明示的に WaitingForCounterResponse を除外する形で書く。
             if (session.PhaseState != DrowZzzPhaseState.WaitingForDraw
                 && session.PhaseState != DrowZzzPhaseState.WaitingForPlay
                 && session.PhaseState != DrowZzzPhaseState.WaitingForEndTurn)
@@ -191,9 +182,9 @@ namespace Drowsy.Application.Games.DrowZzz
             {
                 return false;
             }
-            // (4) 現プレイヤーの Hand に既に同じ CardId が含まれていない(C-1 post-Phase2 レビュー反映)
+            // (4) 現プレイヤーの Hand に既に同じ CardId が含まれていない
             //     後段 ApplyAssociate での Hand.Add が ArgumentException を生 throw して呼び出し側に
-            //     露出する経路を IsLegalMove で構造的に防ぐ(Hand.Add の重複拒否は HAND-005、ADR-0018 で正当化)。
+            //     露出する経路を IsLegalMove で構造的に防ぐ。
             if (session.GameState.Players[currentIndex].Hand.Contains(action.Card))
             {
                 return false;
@@ -209,13 +200,12 @@ namespace Drowsy.Application.Games.DrowZzz
             return false;
         }
 
-        // AbandonAction の合法性(M3-PR3、ADR-0011 §2):
+        // AbandonAction の合法性:
         // (1) PhaseState == WaitingForPlay(PlayCardAction の代替フェーズ)
         // (2) 手札に 1 枚以上のカード + CardIndex が範囲内
-        // (3) AbandonChoice.RepairBed 選択時のみ、現プレイヤーの BedDamages > 0%(JIT 確定 2026-05-13:0% では修繕不可)
-        // (4) M3-PR5a 追加: 対象カードの効果列に Keyword.Instinct を含む KeywordedEffect が含まれていない(ADR-0011 §4.2)
-        // 修飾子: `_catalog` を使用するため non-static(M3-PR5a で Instinct チェックを追加した時点で static → non-static、
-        // cf. `ApplyAbandonGainSdp` / `ApplyAbandonRepairBed` は catalog 不要で static のまま)
+        // (3) AbandonChoice.RepairBed 選択時のみ、現プレイヤーの BedDamages > 0%(0% では修繕不可)
+        // (4) 対象カードの効果列に Keyword.Instinct を含む KeywordedEffect が含まれていない
+        // 修飾子: `_catalog` を使用するため non-static(cf. `ApplyAbandonGainSdp` / `ApplyAbandonRepairBed` は catalog 不要で static のまま)
         private bool IsLegalAbandon(DrowZzzGameSession session, AbandonAction action)
         {
             if (session.PhaseState != DrowZzzPhaseState.WaitingForPlay)
@@ -228,7 +218,7 @@ namespace Drowsy.Application.Games.DrowZzz
             {
                 return false;
             }
-            // No.09「強引過ぎる一手」(ADR-0020 と同 PR、2026-05-17):
+            // No.09「強引過ぎる一手」:
             // 現プレイヤーが RestrictAllUsageAndAbandonInfluenceMarkerEffect の Influence を保有していたら
             // AbandonAction も illegal 化する(「放棄」をテキスト上で明示禁止)。
             var currentPlayerId = session.GameState.Players[currentIndex].Id;
@@ -238,17 +228,16 @@ namespace Drowsy.Application.Games.DrowZzz
             }
             if (action.Choice == AbandonChoice.RepairBed)
             {
-                // 0% では修繕不可(JIT 確定 2026-05-13、(b) 不可選択を採用)
+                // 0% では修繕不可
                 if (session.BedDamages[currentPlayerId] <= DrowZzzBedConstants.MinBedDamagePercent)
                 {
                     return false;
                 }
             }
-            // M3-PR5a: Instinct キーワードを効果列に含むカードは「捨てる対象」として選択不可(ADR-0011 §4.2)。
+            // Instinct キーワードを効果列に含むカードは「捨てる対象」として選択不可。
             // 効果列を再帰的に walk:
             //  - top-level: KeywordedEffect で Instinct を持つ → true
-            //  - TimeOfDayBranchEffect: NightEffects / MorningEffects の両方を walk(「夢」カードの NightEffects 内
-            //    に KeywordedEffect が nest されるパターン、ADR-0011 §6 想定)
+            //  - TimeOfDayBranchEffect: NightEffects / MorningEffects の両方を walk
             //  - ChoiceEffect: 全 branch を walk
             //  - KeywordedEffect (Instinct なし): Inner も walk(nested KeywordedEffect 対応)
             var targetCard = currentHand.Cards[action.CardIndex];
@@ -260,11 +249,10 @@ namespace Drowsy.Application.Games.DrowZzz
             return true;
         }
 
-        // 汎用キーワード検出ヘルパー(M3-PR5a で `HasInstinctKeyword` 専用、M3-PR5b で汎用化、
-        // ADR-0011 §4 / M3-PR5a code-reviewer P-3 反映):
+        // 汎用キーワード検出ヘルパー:
         // 効果列を再帰的に walk して、KeywordedEffect で指定 keyword を含むものを探す。
         // 既存 wrapper effect(TimeOfDayBranchEffect / ChoiceEffect)の nest にも対応。
-        // M3-PR5a: Instinct(放棄機構)/ M3-PR5b: Counter(相手手札判定)/ Frenzy(target 判定)で共通利用。
+        // Instinct(放棄機構)/ Counter(相手手札判定)/ Frenzy(target 判定)で共通利用。
         private static bool HasKeywordInEffects(IReadOnlyList<IEffect> effects, Keyword keyword)
         {
             for (int i = 0; i < effects.Count; i++)
@@ -310,7 +298,7 @@ namespace Drowsy.Application.Games.DrowZzz
         }
 
         /// <summary>
-        /// 与えられた <paramref name="session"/> がゲーム終了状態かどうかを返す。M3-PR1 で追加(ADR-0010 §1)。
+        /// 与えられた <paramref name="session"/> がゲーム終了状態かどうかを返す。
         /// </summary>
         /// <param name="session">問い合わせ対象のセッション</param>
         /// <returns><see cref="DrowZzzGameSession.Outcome"/> が非 null なら <c>true</c></returns>
@@ -325,7 +313,7 @@ namespace Drowsy.Application.Games.DrowZzz
         }
 
         /// <summary>
-        /// 与えられた <paramref name="session"/> から勝者を返す。M3-PR1 で追加(ADR-0010 §1)。
+        /// 与えられた <paramref name="session"/> から勝者を返す。
         /// </summary>
         /// <param name="session">問い合わせ対象のセッション</param>
         /// <returns>
@@ -356,10 +344,10 @@ namespace Drowsy.Application.Games.DrowZzz
 
         // PlayCardAction の合法性: WaitingForPlay フェーズ + 現プレイヤーの Hand に Card が含まれる
         // + (選択式カードなら) Choice が ChoiceEffect.Branches の範囲内
-        // + (M3-PR6) RequiresMinimumTotalPointsMarkerEffect(T) があれば TotalPoints >= T
-        // + (M3-PR6) UsageRestrictionMarkerEffect が効果列にあり、かつ自プレイヤーの Influences が
+        // + RequiresMinimumTotalPointsMarkerEffect(T) があれば TotalPoints >= T
+        // + UsageRestrictionMarkerEffect が効果列にあり、かつ自プレイヤーの Influences が
         //   UsageRestrictionMarkerEffect を TickEffect として保有していれば illegal(連想後の使用制限)
-        // M2-PR5: Choice 範囲外を illegal-move 化(InfluenceRemovalIndex は範囲外でも graceful no-op するため illegal 化しない)
+        // Choice 範囲外を illegal-move 化(InfluenceRemovalIndex は範囲外でも graceful no-op するため illegal 化しない)
         private bool IsLegalPlayCard(DrowZzzGameSession session, PlayCardAction action)
         {
             if (session.PhaseState != DrowZzzPhaseState.WaitingForPlay)
@@ -372,7 +360,7 @@ namespace Drowsy.Application.Games.DrowZzz
             {
                 return false;
             }
-            // No.09「強引過ぎる一手」(ADR-0020 と同 PR、2026-05-17):
+            // No.09「強引過ぎる一手」:
             // 現プレイヤーが RestrictAllUsageAndAbandonInfluenceMarkerEffect の Influence を保有していたら、
             // CardId に関わらずすべての PlayCardAction を illegal 化する(乙に付与された影響保有者は手段を使えない)。
             if (HasUsageAndAbandonRestrictionInfluence(session.Influences[currentPlayerId]))
@@ -382,8 +370,8 @@ namespace Drowsy.Application.Games.DrowZzz
             // 効果列の最上位 scan を 1 ループで完結させる(ChoiceEffect 範囲チェック +
             // RequiresMinimumTotalPointsMarkerEffect 閾値チェック + UsageRestrictionMarkerEffect 存在判定 +
             // ApplyTargetedRestrictionEffect 存在判定を同時に行う)。
-            // M3-PR6 JIT 確定 2026-05-14:walk スコープは「最上位のみ」(wrapper effect の inner には walk しない、
-            // 将来 nested 配置が必要なカードが出てきた時点で再帰化、ADR-0011 §6 / `HasKeywordInEffect` と同方針)。
+            // walk スコープは「最上位のみ」(wrapper effect の inner には walk しない、
+            // 将来 nested 配置が必要なカードが出てきた時点で再帰化、`HasKeywordInEffect` と同方針)。
             var effects = _catalog.GetEffects(action.Card.TypeId);
             bool hasUsageRestrictionMarker = false;
             bool hasApplyTargetedRestriction = false;
@@ -401,7 +389,7 @@ namespace Drowsy.Application.Games.DrowZzz
                 }
                 else if (e is RequiresMinimumTotalPointsMarkerEffect req)
                 {
-                    // 閾値未満なら illegal(ADR-0011 §6、「夢」FDS ≥ 100 等の使用条件)
+                    // 閾値未満なら illegal(「夢」FDS ≥ 100 等の使用条件)
                     if (session.TotalPoints(currentPlayerId) < req.Threshold)
                     {
                         return false;
@@ -413,7 +401,7 @@ namespace Drowsy.Application.Games.DrowZzz
                 }
                 else if (e is ApplyTargetedRestrictionEffect)
                 {
-                    // No.04「静寂を纏う」系:プレイ時に action.TargetCardId が必須(ADR-0019 PR ②)。
+                    // No.04「静寂を纏う」系:プレイ時に action.TargetCardId が必須。
                     // TimeOfDayBranchEffect 内の夜・朝両方に同 effect が含まれる場合でも、IsLegal は静的に
                     // 「TargetCardId が指定されていること」のみ検証(時間帯別の効果有無は ApplyPlayCard で実行時判定)。
                     hasApplyTargetedRestriction = true;
@@ -426,14 +414,14 @@ namespace Drowsy.Application.Games.DrowZzz
                 }
                 else if (IsReuseEffectMarker(e))
                 {
-                    // ADR-0023 / No.18「対抗手段」:Echo 効果は現プレイヤーの保有 Influence を選択して再使用するため、
+                    // No.18「対抗手段」:Echo 効果は現プレイヤーの保有 Influence を選択して再使用するため、
                     // (1) 現プレイヤーの Influences が空でないこと
                     // (2) action.Choice が Influences の範囲内であること
                     // を必須とする。本 flag を立てて後段でまとめて検証(Influences[currentPlayerId] の一回参照に集約)。
                     hasReuseEffect = true;
                 }
             }
-            // ADR-0023:Echo 効果カード(No.18 等)の追加検証
+            // Echo 効果カード(No.18 等)の追加検証
             if (hasReuseEffect)
             {
                 var currentInfluences = session.Influences[currentPlayerId];
@@ -448,19 +436,19 @@ namespace Drowsy.Application.Games.DrowZzz
             }
             // 連想後使用制限チェック:カード側が marker を持ち、かつ自プレイヤーが該当 Influence を保有している時のみ illegal。
             // (marker 単独では illegal にしない。Influence 単独でも、対象カードに marker がなければ illegal にしない。
-            // 両者揃った時のみ「このカードは連想後の使用制限中」と判定、ADR-0011 §6 JIT 確定 2026-05-14)
+            // 両者揃った時のみ「このカードは連想後の使用制限中」と判定)
             if (hasUsageRestrictionMarker
                 && HasUsageRestrictionInfluence(session.Influences[currentPlayerId]))
             {
                 return false;
             }
-            // ADR-0019 PR ②:自プレイヤーが RestrictSpecificCardInfluenceEffect を保有していて、その TargetCardTypeId が
+            // 自プレイヤーが RestrictSpecificCardInfluenceEffect を保有していて、その TargetCardTypeId が
             // 本 action.Card.TypeId と一致する場合は illegal(「静寂を纏う」由来の特定カード使用禁止)。
             if (HasSpecificCardRestrictionInfluence(session.Influences[currentPlayerId], action.Card.TypeId))
             {
                 return false;
             }
-            // ADR-0019 PR ②:ApplyTargetedRestrictionEffect 持ちカードプレイ時の追加検証(相手手札を対象)。
+            // ApplyTargetedRestrictionEffect 持ちカードプレイ時の追加検証(相手手札を対象)。
             if (hasApplyTargetedRestriction
                 && !IsLegalTargetCardId(session, action, sourceTarget: SdpTarget.Opponent, currentIndex))
             {
@@ -476,12 +464,11 @@ namespace Drowsy.Application.Games.DrowZzz
             return true;
         }
 
-        // TargetCardId 系効果の共通検証ヘルパー(2026-05-17 No.05 着手で共通化):
+        // TargetCardId 系効果の共通検証ヘルパー:
         //  (1) action.TargetCardId が指定されている
-        //  (2) action.TargetCardId が action.Card と等しくない(プレイ中のカード自体を TargetCardId にしない、code-reviewer W-2 反映)
+        //  (2) action.TargetCardId が action.Card と等しくない(プレイ中のカード自体を TargetCardId にしない)
         //  (3) action.TargetCardId が sourceTarget プレイヤー(Self or Opponent、N=2 想定)の手札に含まれる
-        //  (4) action.TargetCardId が session.AssociatedCardIds に含まれない(連想由来除外、ADR-0019)
-        // ADR-0019 §補足「N>2 拡張時の TargetCardId 解決」も同方針で sourceTarget enum 拡張で対応可能。
+        //  (4) action.TargetCardId が session.AssociatedCardIds に含まれない(連想由来除外)
         private static bool IsLegalTargetCardId(
             DrowZzzGameSession session,
             PlayCardAction action,
@@ -524,7 +511,7 @@ namespace Drowsy.Application.Games.DrowZzz
         }
 
         // 自プレイヤーの Influences に DoubleBedDamageSdpInfluenceMarkerEffect を TickEffect として持つものがあるかを判定する
-        // (No.06「牙の届かぬ領域」、2026-05-17)。`ApplyBedDamageToCurrentPlayer` 内のベッド破損 SDP 計算 2 倍化判定で利用。
+        // (No.06「牙の届かぬ領域」)。`ApplyBedDamageToCurrentPlayer` 内のベッド破損 SDP 計算 2 倍化判定で利用。
         private static bool HasDoubleBedDamageInfluence(IReadOnlyList<PlayerInfluence> influences)
         {
             for (int i = 0; i < influences.Count; i++)
@@ -538,8 +525,8 @@ namespace Drowsy.Application.Games.DrowZzz
         }
 
         // 自プレイヤーの Influences に InvertBedDamageSdpInfluenceMarkerEffect を TickEffect として持つものを **件数カウント** する
-        // (No.08「廻るための知恵」、2026-05-17)。`ApplyBedDamageToCurrentPlayer` 内の符号反転奇偶判定で利用
-        // (1 件=反転 / 2 件=元に戻る / 3 件=反転、オーナー JIT 確定 2026-05-17「そのたびに ± が変わる」セマンティクス)。
+        // (No.08「廻るための知恵」)。`ApplyBedDamageToCurrentPlayer` 内の符号反転奇偶判定で利用
+        // (1 件=反転 / 2 件=元に戻る / 3 件=反転)。
         // No.06「2 倍化」が bool 検出(複数保有時も 2 倍止まり)なのと対照的な設計。
         private static int CountInvertBedDamageInfluence(IReadOnlyList<PlayerInfluence> influences)
         {
@@ -555,7 +542,7 @@ namespace Drowsy.Application.Games.DrowZzz
         }
 
         // 自プレイヤーの Influences に RestrictSpecificCardInfluenceEffect を TickEffect として持ち、
-        // かつその TargetCardTypeId が target に一致するものがあるかを判定する(ADR-0019 PR ②、No.04「静寂を纏う」)。
+        // かつその TargetCardTypeId が target に一致するものがあるかを判定する(No.04「静寂を纏う」)。
         private static bool HasSpecificCardRestrictionInfluence(
             IReadOnlyList<PlayerInfluence> influences,
             CardTypeId target)
@@ -572,7 +559,7 @@ namespace Drowsy.Application.Games.DrowZzz
         }
 
         // 対象プレイヤーの Influences に RestrictAllUsageAndAbandonInfluenceMarkerEffect を TickEffect として持つものが
-        // あるかを判定する(No.09「強引過ぎる一手」、2026-05-17 / ADR-0020 と同 PR)。
+        // あるかを判定する(No.09「強引過ぎる一手」)。
         // PlayCardAction / CounterAction / AbandonAction の 3 メソッド経路で actor の influences を walk する用途。
         private static bool HasUsageAndAbandonRestrictionInfluence(IReadOnlyList<PlayerInfluence> influences)
         {
@@ -587,7 +574,7 @@ namespace Drowsy.Application.Games.DrowZzz
         }
 
         // 対象プレイヤーの Influences に RestrictDrawCardInfluenceMarkerEffect を TickEffect として持つものが
-        // あるかを判定する(No.10「安直過ぎる一手」、2026-05-17 / ADR-0021 と同 PR)。
+        // あるかを判定する(No.10「安直過ぎる一手」)。
         // DrawCardAction の IsLegalMove 経路で current player の influences を walk する用途。
         private static bool HasRestrictDrawCardInfluence(IReadOnlyList<PlayerInfluence> influences)
         {
@@ -601,14 +588,14 @@ namespace Drowsy.Application.Games.DrowZzz
             return false;
         }
 
-        // 現プレイヤーが「stuck 化を引き起こす Marker」を 1 つでも保有しているかを判定する(ADR-0021)。
+        // 現プレイヤーが「stuck 化を引き起こす Marker」を 1 つでも保有しているかを判定する。
         // PhaseState の遷移経路を構造的にブロックする Marker(現状 2 種類):
         //  - RestrictAllUsageAndAbandonInfluenceMarkerEffect(No.09):WaitingForPlay 脱出経路を両方封鎖
         //  - RestrictDrawCardInfluenceMarkerEffect(No.10):WaitingForDraw 脱出経路を封鎖
         // 本ヘルパーが true を返す状態のとき、EndTurnAction を全フェーズで合法化することで stuck を回避する(脱出弁)。
         // 判定軸は PlayerInfluence.TickEffect の具体型(is チェック、ホワイトリスト方式)。
         // 将来 stuck 化 Marker が TickEffect ではなく別フィールドや別 effect 階層で表現されるケースが出た場合は、
-        // 本 is チェック + ADR-0021 §「stuck 化を引き起こす Marker」リストを同時に更新する(code-reviewer S-5 反映 2026-05-17)。
+        // 本 is チェックと stuck 化 Marker リストを同時に更新する。
         private static bool HasAnyStuckCausingInfluence(IReadOnlyList<PlayerInfluence> influences)
         {
             for (int i = 0; i < influences.Count; i++)
@@ -624,7 +611,7 @@ namespace Drowsy.Application.Games.DrowZzz
         }
 
         // 自プレイヤーの Influences に UsageRestrictionMarkerEffect を TickEffect として持つものがあるかを判定する。
-        // M3-PR6、ADR-0011 §6:連想で付与された PlayerInfluence(OwnPhaseStart, UsageRestrictionMarkerEffect, 1) の検出経路。
+        // 連想で付与された PlayerInfluence(OwnPhaseStart, UsageRestrictionMarkerEffect, 1) の検出経路。
         private static bool HasUsageRestrictionInfluence(IReadOnlyList<PlayerInfluence> influences)
         {
             for (int i = 0; i < influences.Count; i++)
@@ -640,12 +627,11 @@ namespace Drowsy.Application.Games.DrowZzz
         /// <summary>
         /// 与えられた <paramref name="session"/> 状態に <paramref name="action"/> を適用した次セッションを返す。
         /// 呼び出し側は事前に <see cref="IsLegalMove"/> で合法性を確認する想定だが、
-        /// Rule 内部でも防御的に検証し違反時は <see cref="InvalidOperationException"/> を投げる
-        /// (ADR-0006 §3 §IsLegalMove 違反時の方針)。
+        /// Rule 内部でも防御的に検証し違反時は <see cref="InvalidOperationException"/> を投げる。
         /// </summary>
         /// <remarks>
         /// <see cref="StartGameAction"/> は <c>ApplyActionUseCase</c> の <see cref="IsLegalMove"/> チェックで事前排除されるため
-        /// 通常は本 <see cref="Apply"/> ルートに到達しない設計(ADR-0006 §Implementation Notes)。
+        /// 通常は本 <see cref="Apply"/> ルートに到達しない設計。
         /// もし直接呼ばれた場合は <see cref="NotImplementedException"/> が投げられる(`_` ケースのフォールバック)。
         /// </remarks>
         /// <exception cref="ArgumentNullException">session または action が null</exception>
@@ -661,7 +647,7 @@ namespace Drowsy.Application.Games.DrowZzz
             {
                 throw new ArgumentNullException(nameof(action));
             }
-            // M3-PR1: 防御的検証(ADR-0006 §3 / ADR-0010 §6)。IsLegalMove が先にガードする想定だが、
+            // 防御的検証。IsLegalMove が先にガードする想定だが、
             // 直接 Apply を呼ぶ呼び出し側(テスト経路 / 将来の利用側)に対しても illegal 状態を明示する。
             if (session.IsTerminated)
             {
@@ -673,21 +659,21 @@ namespace Drowsy.Application.Games.DrowZzz
                 DrawCardAction => ApplyDrawCard(session),
                 PlayCardAction p => ApplyPlayCard(session, p),
                 EndTurnAction => ApplyEndTurn(session),
-                AbandonAction a => ApplyAbandon(session, a),  // M3-PR3: 放棄(代替ターン行動)、ADR-0011 §2
-                AssociateAction a => ApplyAssociate(session, a),  // M3-PR4: 連想(特殊ドロー)、ADR-0011 §1
-                CounterAction c => ApplyCounter(session, c),  // M3-PR5b: 反撃、ADR-0011 §4.3
-                PassCounterAction => ApplyPassCounter(session),  // M3-PR5b: 反撃応答スキップ
+                AbandonAction a => ApplyAbandon(session, a),  // 放棄(代替ターン行動)
+                AssociateAction a => ApplyAssociate(session, a),  // 連想(特殊ドロー)
+                CounterAction c => ApplyCounter(session, c),  // 反撃
+                PassCounterAction => ApplyPassCounter(session),  // 反撃応答スキップ
                 _ => throw new NotImplementedException(
                     $"DrowZzzRule.Apply ({action.GetType().Name}) は M1 範囲では到達不可 (StartGameAction は StartGameUseCase 経由)。将来 DrowZzzAction 派生型を追加する PR で対応する"),
             };
         }
 
-        // AssociateAction の状態遷移(M3-PR4、ADR-0011 §1):
+        // AssociateAction の状態遷移:
         // (1) action.Card を catalog から取得し、現プレイヤーの Hand.Add で手札に追加
         // (2) PhaseState / Field / Deck / Discard / DDP / SDP / Influences / BedDamages / Outcome は不変
         //     (連想は「割り込み式」、現フェーズを維持して手札にカードを 1 枚追加するだけ)
         // 防御的検証は IsLegalAssociate と同じ 3 段(PhaseState / TotalPoints / catalog + marker)を踏襲し、
-        // 違反時は InvalidOperationException を投げる(ADR-0006 §3 / Apply 防御パターン)。
+        // 違反時は InvalidOperationException を投げる(Apply 防御パターン)。
         // 修飾子: `_catalog` を使用するため non-static(cf. `ApplyAbandon` / `ApplyDrawCard` は catalog 不要で `static`)
         private DrowZzzGameSession ApplyAssociate(DrowZzzGameSession session, AssociateAction action)
         {
@@ -712,10 +698,8 @@ namespace Drowsy.Application.Games.DrowZzz
                 throw new InvalidOperationException(
                     $"AssociateAction.Card ({action.Card.Value}) は catalog に登録されていません");
             }
-            // M3-PR6: AssociatableMarker と UsageRestrictionMarker を 1 ループで同時検出する。
-            // (M3-PR4 では AssociatableMarker のみだったため単独 scan で十分だったが、本 PR で UsageRestriction を追加した
-            // 際、検出ロジックを 1 ループに合流させてマーカー追加時の誤用パターン(両 scan の片方だけ更新する等)を防ぐ。
-            // M3-PR6 code-reviewer W-3 反映 2026-05-14)
+            // AssociatableMarker と UsageRestrictionMarker を 1 ループで同時検出する
+            // (検出ロジックを 1 ループに合流させてマーカー追加時の誤用パターンを防ぐ)。
             var effects = _catalog.GetEffects(action.Card.TypeId);
             bool hasAssociatableMarker = false;
             bool hasUsageRestrictionMarker = false;
@@ -736,10 +720,9 @@ namespace Drowsy.Application.Games.DrowZzz
                     $"AssociateAction.Card ({action.Card.Value}) は連想可能カードではありません " +
                     "(効果列に AssociatableMarkerEffect が含まれていない、ADR-0011 §1)");
             }
-            // C-1 post-Phase2 レビュー反映:既に Hand に含まれている CardId を再連想すると
+            // 既に Hand に含まれている CardId を再連想すると
             // 後段 Hand.Add で生 ArgumentException が露出する。IsLegalAssociate と同じ防御を
-            // ApplyAssociate にも対称的に入れて InvalidOperationException で統一する(Apply 経路は
-            // ADR-0006 §3 の「IsLegalMove を呼ばず各 ApplyXxx 内で冗長検証」設計に従う)。
+            // ApplyAssociate にも対称的に入れて InvalidOperationException で統一する。
             if (currentPlayer.Hand.Contains(action.Card))
             {
                 throw new InvalidOperationException(
@@ -747,10 +730,9 @@ namespace Drowsy.Application.Games.DrowZzz
                     "(同一 CardId の重複連想は不可、HAND-005 / ADR-0018)");
             }
 
-            // (0) ADR-0019:連想された CardId を session.AssociatedCardIds に永続記録する(Add only、Remove なし)。
-            //     後続 PR ② で No.04「静寂を纏う」が「連想由来は選択不可」検証に利用する。
-            //     既存 set に同一 CardId が含まれていても HashSet 性質で冪等(本経路の発生条件は ADR-0018 + IsLegalAssociate
-            //     の Hand 重複防御により構造的に起きないが、防御コピー経路の安全性として整合)。
+            // (0) 連想された CardId を session.AssociatedCardIds に永続記録する(Add only、Remove なし)。
+            //     No.04「静寂を纏う」が「連想由来は選択不可」検証に利用する。
+            //     既存 set に同一 CardId が含まれていても HashSet 性質で冪等。
             var newAssociatedCardIds = new HashSet<CardId>(session.AssociatedCardIds);
             newAssociatedCardIds.Add(action.Card);
 
@@ -770,12 +752,11 @@ namespace Drowsy.Application.Games.DrowZzz
             // 構造的に保証しているため WithPlayersUnchecked 経由で防御コピーをスキップする。
             var newGameState = session.GameState.WithPlayersUnchecked(newPlayers);
 
-            // (2) M3-PR6:対象カードの効果列に UsageRestrictionMarkerEffect があれば、自プレイヤーに使用制限 Influence を付与する
-            //     (ADR-0011 §6、JIT 確定 2026-05-14:候補 C `PlayerInfluence` 流用で「次の自分のターン以降」を表現)。
+            // (2) 対象カードの効果列に UsageRestrictionMarkerEffect があれば、自プレイヤーに使用制限 Influence を付与する
+            //     (`PlayerInfluence` 流用で「次の自分のターン以降」を表現)。
             //     最上位 scan で本 marker を検出 → PlayerInfluence(OwnPhaseStart, UsageRestrictionMarkerEffect, 1) を末尾追加。
-            //     `RemainingCount=1` で次の自フェーズ Tick 時に 0 になり除去される(N=2 想定で相手 1 フェーズ経由後の自フェーズ、
-            //     N>2 拡張時の対応は `docs/todo.md` で追跡、M3-PR6 code-reviewer W-4 反映 2026-05-14)。
-            // ADR-0019:GameState 差し替えと同タイミングで AssociatedCardIds も差し替える(with 式は init setter で
+            //     `RemainingCount=1` で次の自フェーズ Tick 時に 0 になり除去される(N=2 想定で相手 1 フェーズ経由後の自フェーズ)。
+            // GameState 差し替えと同タイミングで AssociatedCardIds も差し替える(with 式は init setter で
             // ValidateAndCopyAssociatedCardIds を再走させて防御コピーを行う、構築済 HashSet を渡しても安全)。
             var newSession = session with { GameState = newGameState, AssociatedCardIds = newAssociatedCardIds };
             if (hasUsageRestrictionMarker)
@@ -809,12 +790,12 @@ namespace Drowsy.Application.Games.DrowZzz
             return newSession;
         }
 
-        // AbandonAction の状態遷移(M3-PR3、ADR-0011 §2):
+        // AbandonAction の状態遷移:
         // (1) 現プレイヤーの手札から CardIndex のカードを除去 → Discard に AddTop
         // (2) Choice に応じて SDP +5 (GainSdp) or BedDamages -20% (RepairBed、下限 0%)
         // (3) PhaseState = WaitingForEndTurn(PlayCardAction と同じフェーズ遷移)
-        // (4) M3-PR5a: Instinct を含むカードを CardIndex 対象として指定した場合は InvalidOperationException
-        // 修飾子: `_catalog` を使用するため non-static(IsLegalAbandon と対称、M3-PR5a で static → non-static、
+        // (4) Instinct を含むカードを CardIndex 対象として指定した場合は InvalidOperationException
+        // 修飾子: `_catalog` を使用するため non-static(IsLegalAbandon と対称、
         // cf. `ApplyAbandonGainSdp` / `ApplyAbandonRepairBed` / `ApplyDrawCard` は catalog 不要で static のまま)
         private DrowZzzGameSession ApplyAbandon(DrowZzzGameSession session, AbandonAction action)
         {
@@ -827,7 +808,7 @@ namespace Drowsy.Application.Games.DrowZzz
             int currentIndex = session.GameState.Turn.CurrentPlayerIndex;
             var currentPlayer = session.GameState.Players[currentIndex];
 
-            // ADR-0022 snapshot ベース walk(`OnOwnAbandonAfter`):本 Abandon で新規付与された影響は対象外。
+            // Reactive Tick walk(`OnOwnAbandonAfter`)用 snapshot:本 Abandon で新規付与された影響は対象外。
             // 実際の AbandonAction では本カードプレイで influence 付与は行われないが、対称性 + 将来拡張性のため snapshot を取る。
             var preInfluencesSnapshot = session.Influences.TryGetValue(currentPlayer.Id, out var preInfs)
                 ? preInfs
@@ -845,7 +826,7 @@ namespace Drowsy.Application.Games.DrowZzz
                 throw new InvalidOperationException(
                     $"AbandonChoice.RepairBed は BedDamages > 0% でのみ合法です (現在: {session.BedDamages[currentPlayer.Id]}%、ADR-0011 §2 JIT 確定)");
             }
-            // M3-PR5a: Instinct を含むカードを捨て対象として指定した場合は illegal(ADR-0011 §4.2)
+            // Instinct を含むカードを捨て対象として指定した場合は illegal
             var instinctTarget = currentPlayer.Hand.Cards[action.CardIndex];
             if (HasKeywordInEffects(_catalog.GetEffects(instinctTarget.TypeId), Keyword.Instinct))
             {
@@ -883,11 +864,11 @@ namespace Drowsy.Application.Games.DrowZzz
                     $"DrowZzzRule.ApplyAbandon: 未知の AbandonChoice ({action.Choice})、将来 enum 拡張時に case 追加"),
             };
 
-            // (3) ADR-0025:放棄したカードに `PlayOrAbandonBranchEffect` が含まれていれば AbandonEffects を追加発動
+            // (3) 放棄したカードに `PlayOrAbandonBranchEffect` が含まれていれば AbandonEffects を追加発動
             // (AbandonChoice 適用後の累積モデル、AbandonChoice を上書きしない)。
-            // 走査スコープは最上位 effects のみ(wrapper 内側は再帰しない、ADR-0024 と同方針)。
+            // 走査スコープは最上位 effects のみ(wrapper 内側は再帰しない)。
             // context は EffectContext.Default(=CurrentCardEffects=null)で、放棄時付与の Influence は OriginEffects 空 list
-            // (ADR-0023 連鎖 Reuse 防止と同方針、放棄時の Reuse はカード仕様として想定外)。
+            // (連鎖 Reuse 防止と同方針、放棄時の Reuse はカード仕様として想定外)。
             var afterAbandonEffects = afterChoice;
             var abandonedEffects = _catalog.GetEffects(discardCard.TypeId);
             foreach (var effect in abandonedEffects)
@@ -901,10 +882,9 @@ namespace Drowsy.Application.Games.DrowZzz
                 }
             }
 
-            // ADR-0022:Reactive Tick walk(`OnOwnAbandonAfter` トリガー)。
+            // Reactive Tick walk(`OnOwnAbandonAfter` トリガー)。
             // preInfluencesSnapshot に対して walk するため、本 Abandon で新規付与された影響は対象外。
-            // 終了済 session(将来 Abandon 経路で Outcome 確定が入った場合のリグレッション防御、
-            // code-reviewer W-2 反映 2026-05-17、`ApplyPlayCard` と対称)。
+            // 終了済 session(将来 Abandon 経路で Outcome 確定が入った場合のリグレッション防御、`ApplyPlayCard` と対称)。
             if (afterAbandonEffects.IsTerminated)
             {
                 return afterAbandonEffects;
@@ -980,11 +960,9 @@ namespace Drowsy.Application.Games.DrowZzz
         // PlayCardAction の状態遷移:
         // 現プレイヤーの Hand から指定 Card を Remove → Field に AddTop で追加 + PhaseState = WaitingForEndTurn。
         // GameState.Turn / Deck は不変。
-        // M2-PR1 で末尾に効果評価を追加: catalog から取得した IEffect 列を左から順に Aggregate で適用する。
-        // 効果 0 個なら afterPlay がそのまま返るため M1 完全互換(ADR-0007 §3)。
-        // M2-PR5 で 2 つの拡張:
-        //  (1) ChoiceEffect を unwrap して action.Choice が指す branch のみ評価(範囲外は IsLegalMove で防御済)
-        //  (2) EffectContext(action.InfluenceRemovalIndex) を interpreter に thread
+        // catalog から取得した IEffect 列を左から順に Aggregate で適用する(効果 0 個なら afterPlay がそのまま返る)。
+        // ChoiceEffect は unwrap して action.Choice が指す branch のみ評価(範囲外は IsLegalMove で防御済)。
+        // EffectContext(action.InfluenceRemovalIndex) を interpreter に thread する。
         private DrowZzzGameSession ApplyPlayCard(DrowZzzGameSession session, PlayCardAction action)
         {
             // 防御的 IsLegalMove 検証 (PhaseState + Card 不在の両方を分けて投げる、原因明示のため)
@@ -998,7 +976,7 @@ namespace Drowsy.Application.Games.DrowZzz
             int currentIndex = gameState.Turn.CurrentPlayerIndex;
             var current = gameState.Players[currentIndex];
 
-            // ADR-0022 snapshot ベース walk:アクション開始時の影響 list を取得しておく(本 PlayCard で新規付与された
+            // Reactive Tick walk 用 snapshot:アクション開始時の影響 list を取得しておく(本 PlayCard で新規付与された
             // 影響は snapshot 外で対象外、「付与時の本アクション自身への適用回避」を構造的に保証)。
             var preInfluencesSnapshot = session.Influences.TryGetValue(current.Id, out var preInfs)
                 ? preInfs
@@ -1013,7 +991,7 @@ namespace Drowsy.Application.Games.DrowZzz
             // 手札から指定 Card を Remove(防御検証で Card 存在確認済のため Remove は成功する)
             var updatedPlayer = current with { Hand = current.Hand.Remove(action.Card) };
 
-            // Field に AddTop (直近プレイカードが Field.Cards[0]、ADR は ADR-0006 §M1-PR5 補足、JIT 確定 2026-05-11)
+            // Field に AddTop (直近プレイカードが Field.Cards[0])
             var newField = gameState.Field.AddTop(action.Card);
 
             // Players 配列を新しい配列に置換
@@ -1033,26 +1011,26 @@ namespace Drowsy.Application.Games.DrowZzz
                 PhaseState = DrowZzzPhaseState.WaitingForEndTurn,
             };
 
-            // M2-PR1: プレイされたカードの効果列を catalog から取得し、左から順に Interpreter で逐次評価。
-            // M2-PR5: ChoiceEffect は unwrap して action.Choice の branch のみ評価(interpreter には届かない)。
-            //         EffectContext(InfluenceRemovalIndex) を interpreter に thread し、RemoveInfluenceEffect に届ける。
-            // 2026-05-17 PR ②: TargetCardId を context に thread し、ApplyTargetedRestrictionEffect に届ける(No.04「静寂を纏う」)。
+            // プレイされたカードの効果列を catalog から取得し、左から順に Interpreter で逐次評価。
+            // ChoiceEffect は unwrap して action.Choice の branch のみ評価(interpreter には届かない)。
+            // EffectContext(InfluenceRemovalIndex) を interpreter に thread し、RemoveInfluenceEffect に届ける。
+            // TargetCardId を context に thread し、ApplyTargetedRestrictionEffect に届ける(No.04「静寂を纏う」)。
             var rawEffects = _catalog.GetEffects(action.Card.TypeId);
-            // ADR-0023:CurrentCardEffects を context に詰めて、Influence 付与経路で OriginEffects を動的注入する。
+            // CurrentCardEffects を context に詰めて、Influence 付与経路で OriginEffects を動的注入する(Echo 対応)。
             var context = new EffectContext(action.InfluenceRemovalIndex, action.TargetCardId, rawEffects);
             var currentSession = afterPlay;
             foreach (var effect in rawEffects)
             {
                 if (IsReuseEffectMarker(effect))
                 {
-                    // ADR-0023:Echo 解決経路。現プレイヤーの保有 Influence[action.Choice] の OriginEffects を
+                    // Echo 解決経路。現プレイヤーの保有 Influence[action.Choice] の OriginEffects を
                     // 本プレイヤー Self 起点で再 EffectInterpreter + 選択 Influence を除去。
-                    // IsLegalMove で範囲チェック済(本カード No.18 をプレイする時点で Influences 空 / Choice 範囲外は illegal)。
+                    // IsLegalMove で範囲チェック済(No.18 をプレイする時点で Influences 空 / Choice 範囲外は illegal)。
                     currentSession = ApplyEchoReuse(currentSession, currentIndex, action.Choice);
                 }
                 else if (effect is PlayOrAbandonBranchEffect po)
                 {
-                    // ADR-0025:プレイ時 / 放棄時の分岐 wrapper。プレイ経路では PlayEffects のみ unwrap して逐次評価。
+                    // プレイ時 / 放棄時の分岐 wrapper。プレイ経路では PlayEffects のみ unwrap して逐次評価。
                     // AbandonEffects は ApplyAbandon 経路で別途処理される(本ループでは無視)。
                     foreach (var inner in po.PlayEffects)
                     {
@@ -1078,14 +1056,14 @@ namespace Drowsy.Application.Games.DrowZzz
                 }
             }
 
-            // M3-PR5b: PlayCardAction 後の PhaseState 分岐(ADR-0011 §4.3.3、JIT 確定 2026-05-13 候補 (i) 採用):
+            // PlayCardAction 後の PhaseState 分岐:
             //  - 相手プレイヤーの手札に Counter キーワード持ち効果列を含むカードが 1 枚以上 → WaitingForCounterResponse 遷移
-            //  - 0 枚 → WaitingForEndTurn(従来通り、既存テスト破壊回避)
+            //  - 0 枚 → WaitingForEndTurn(従来通り)
             // currentSession の PhaseState を再判定して上書き(効果評価後の最終 PhaseState を決定)
             // Outcome が設定済(EarlyWinTriggerEffect 等で勝利確定)の場合は遷移しない(終了済 session はそのまま返却)
             if (!currentSession.IsTerminated && currentSession.PhaseState == DrowZzzPhaseState.WaitingForEndTurn)
             {
-                // counterPlayerIndex の命名を IsLegalCounter / ApplyCounter と統一(P-1 反映 2026-05-13)
+                // counterPlayerIndex の命名を IsLegalCounter / ApplyCounter と統一
                 int counterPlayerIndex = currentIndex == 0 ? 1 : 0;
                 if (counterPlayerIndex < currentSession.GameState.Players.Count)
                 {
@@ -1097,11 +1075,11 @@ namespace Drowsy.Application.Games.DrowZzz
                 }
             }
 
-            // ADR-0022:Reactive Tick walk(`OnOwnPlayCardAfter` トリガー)。
+            // Reactive Tick walk(`OnOwnPlayCardAfter` トリガー)。
             // preInfluencesSnapshot に対して walk するため、本 PlayCard 内で `ApplyInfluence` により新規付与された
             // 影響は対象外(snapshot ベース walk)。
             // 終了済 session(EarlyWinTriggerEffect 等で Outcome 確定後)は Reactive walk を skip し、
-            // 終了済 session の SDP を改変しないようガード(code-reviewer W-2 反映 2026-05-17、ADR-0010 §6 と整合)。
+            // 終了済 session の SDP を改変しないようガード。
             if (currentSession.IsTerminated)
             {
                 return currentSession;
@@ -1109,8 +1087,8 @@ namespace Drowsy.Application.Games.DrowZzz
             return ApplyReactiveInfluencesAfter(currentSession, preInfluencesSnapshot, InfluenceTrigger.OnOwnPlayCardAfter);
         }
 
-        // ADR-0023:Echo 効果マーカー判別(直接 or `KeywordedEffect` 越し)。
-        // 本カード No.18「対抗手段」は `KeywordedEffect([Echo], ReuseInfluenceSourceEffect)` 構造で、
+        // Echo 効果マーカー判別(直接 or `KeywordedEffect` 越し)。
+        // No.18「対抗手段」は `KeywordedEffect([Echo], ReuseInfluenceSourceEffect)` 構造で、
         // 効果列 walk 内で本判別が true なら通常 EffectInterpreter ではなく `ApplyEchoReuse` を呼ぶ。
         private static bool IsReuseEffectMarker(IEffect effect)
         {
@@ -1118,7 +1096,7 @@ namespace Drowsy.Application.Games.DrowZzz
                 || (effect is KeywordedEffect kw && IsReuseEffectMarker(kw.Inner));
         }
 
-        // ADR-0023:Echo 解決ヘルパー。
+        // Echo 解決ヘルパー。
         // (1) 現プレイヤーの保有 Influence[choice] を取得
         // (2) その OriginEffects を Self 起点(= current = 本カード使用者)で再 EffectInterpreter
         //     - `ChoiceEffect` → `Branches[0]` 固定
@@ -1140,7 +1118,7 @@ namespace Drowsy.Application.Games.DrowZzz
                     "(IsLegalPlayCard で防御されているはずの経路、ADR-0023 §6)");
             }
             var selected = influences[choice];
-            // OriginEffects を Reuse 評価(CurrentCardEffects = null で連鎖 Reuse 防止、ADR-0023 §5)
+            // OriginEffects を Reuse 評価(CurrentCardEffects = null で連鎖 Reuse 防止)
             var reuseContext = EffectContext.Default;
             var current = session;
             foreach (var origin in selected.OriginEffects)
@@ -1150,10 +1128,10 @@ namespace Drowsy.Application.Games.DrowZzz
             // 選択 Influence を除去(Reuse 評価で新規 Influence が末尾追加されている可能性があるため、
             // 除去対象 list は Reuse 後の current.Influences[currentId] から取る。
             // 末尾追加 invariant により、元 index `choice` の要素は Reuse 後も同じ index に位置する)
-            // **将来の保守**:OriginEffects 内に `RemoveInfluenceEffect(Self)` が含まれると(現カード No.02 等の
+            // 将来の保守:OriginEffects 内に `RemoveInfluenceEffect(Self)` が含まれると(現カード No.02 等の
             // `RemoveInfluenceEffect(Opponent)` 経路は影響なしだが)前置除去で index が前にシフトし、本除去が
             // 別の Influence を消す経路が発生する。Phase 3 以降で `RemoveInfluenceEffect(Self)` を直接
-            // OriginEffects に持つカードが追加された時点で、選択 Influence の参照保持 + 参照同等性比較に切り替え要(ADR-0023 §「Phase 3 候補」)。
+            // OriginEffects に持つカードが追加された時点で、選択 Influence の参照保持 + 参照同等性比較に切り替え要。
             var currentInfluencesAfterReuse = current.Influences.TryGetValue(currentId, out var afterInfs)
                 ? afterInfs
                 : System.Array.Empty<PlayerInfluence>();
@@ -1181,7 +1159,7 @@ namespace Drowsy.Application.Games.DrowZzz
             return current with { Influences = newInfluences };
         }
 
-        // ADR-0023:Reuse 中の単一 effect 評価(再帰)。
+        // Reuse 中の単一 effect 評価(再帰)。
         // `ChoiceEffect` は `Branches[0]` 固定、`KeywordedEffect` は Inner 再帰、`ReuseInfluenceSourceEffect` は no-op。
         // それ以外は通常 EffectInterpreter.Apply に委譲(reuseContext.CurrentCardEffects = null で連鎖 Reuse 防止)。
         private DrowZzzGameSession ApplyReuseEffect(DrowZzzGameSession session, IEffect effect, EffectContext reuseContext)
@@ -1193,7 +1171,7 @@ namespace Drowsy.Application.Games.DrowZzz
                 case ChoiceEffect ce:
                     {
                         var current = session;
-                        // Reuse 中の ChoiceEffect は Branches[0] 固定(ADR-0023 §5 簡素化、Phase 3 候補で再評価)。
+                        // Reuse 中の ChoiceEffect は Branches[0] 固定(Phase 3 候補で再評価)。
                         // 構築時に Branches.Count >= 2 が保証されているため Branches[0] 参照は常に安全。
                         foreach (var inner in ce.Branches[0])
                         {
@@ -1208,13 +1186,12 @@ namespace Drowsy.Application.Games.DrowZzz
             }
         }
 
-        // ADR-0022:Reactive Influence Tick walk。
+        // Reactive Influence Tick walk。
         // snapshot として渡された influences のうち、指定 trigger に一致する TickEffect を順次 Interpreter で適用する。
         // 本メソッド呼び出し時点で session.Influences が更新されていても、snapshot 内の影響のみが対象
-        // (本アクションで新規付与された影響は snapshot に含まれず対象外、ADR-0022 §4)。
+        // (本アクションで新規付与された影響は snapshot に含まれず対象外)。
         // current player(= 影響保有者、Reactive trigger はアクション主体に対してのみ発動)を前提。
-        // **設計前提(code-reviewer W-4 反映 2026-05-17)**:呼び出し時点の PhaseState(`WaitingForEndTurn` /
-        // `WaitingForCounterResponse`)を Reactive effect が変更してはならない。現状の Reactive effect は SDP 操作のみで
+        // 設計前提:呼び出し時点の PhaseState を Reactive effect が変更してはならない。現状の Reactive effect は SDP 操作のみで
         // PhaseState / Outcome に作用しないため整合するが、将来 PhaseState 遷移を伴う Reactive effect を追加する場合は
         // 本前提を再評価(ApplyPlayCard 内 WaitingForCounterResponse 遷移判定の後に走るため、上書きリスクあり)。
         private DrowZzzGameSession ApplyReactiveInfluencesAfter(
@@ -1239,11 +1216,10 @@ namespace Drowsy.Application.Games.DrowZzz
             return current;
         }
 
-        // 相手プレイヤーの手札に Counter キーワード持ち効果列を含むカードがあるか(M3-PR5b、ADR-0011 §4.3.3):
+        // 相手プレイヤーの手札に Counter キーワード持ち効果列を含むカードがあるか:
         // Hand 内の各 CardId について catalog から効果列を取得し、HasKeywordInEffects(_, Counter) で判定。
-        // 1 枚でも見つかれば true、なければ false(後者は従来の WaitingForEndTurn 遷移を維持、既存テスト破壊回避)。
-        // 修飾子: `_catalog` を使用するため non-static(P-2 反映、cf. HasKeywordInEffects / HasKeywordInEffect は
-        // catalog 非依存で static)
+        // 1 枚でも見つかれば true、なければ false(後者は従来の WaitingForEndTurn 遷移を維持)。
+        // 修飾子: `_catalog` を使用するため non-static(cf. HasKeywordInEffects / HasKeywordInEffect は catalog 非依存で static)
         private bool HasCounterCardInHand(Hand hand)
         {
             for (int i = 0; i < hand.Count; i++)
@@ -1257,16 +1233,16 @@ namespace Drowsy.Application.Games.DrowZzz
             return false;
         }
 
-        // CounterAction の合法性(M3-PR5b で経路 1 / M3-PR5c で経路 2 追加、ADR-0011 §4.3 / §4.4):
+        // CounterAction の合法性:
         //
-        // 経路 1: 反撃 B(相手ターン中、PhaseState == WaitingForCounterResponse)— M3-PR5b 確定
+        // 経路 1: 反撃 B(相手ターン中、PhaseState == WaitingForCounterResponse)
         //   (1) PhaseState == WaitingForCounterResponse
         //   (2) action.Counter が **反撃側プレイヤー(相手 counterPlayerIndex = 1 - currentIndex)** の手札に存在
         //   (3) action.Counter の効果列に Counter キーワードを含む
         //   (4) action.Target が Field.Cards[0](直近プレイ)
-        //   (5) action.Target の効果列に Frenzy を含まない(Frenzy vs Counter は illegal-move、ADR-0011 §4.5)
+        //   (5) action.Target の効果列に Frenzy を含まない(Frenzy vs Counter は illegal-move)
         //
-        // 経路 2: 反撃の反撃 C(自ターン中、PhaseState == WaitingForEndTurn + Pending 非空)— M3-PR5c、ADR-0011 §4.4
+        // 経路 2: 反撃の反撃 C(自ターン中、PhaseState == WaitingForEndTurn + Pending 非空)
         //   (1) PhaseState == WaitingForEndTurn
         //   (2) PendingCounteredEffects 非空、かつ最後のエントリの CounterCard == action.Target
         //       (LIFO で「最後に登録された B」を打ち消す semantics、N=2 想定で最後のエントリのみ照合)
@@ -1285,8 +1261,8 @@ namespace Drowsy.Application.Games.DrowZzz
             };
         }
 
-        // 経路 1 の合法判定(M3-PR5b の挙動を維持):反撃側プレイヤー = N=2 想定で currentIndex の相手側。
-        // W-1 反映 2026-05-13:WaitingForCounterResponse 中の currentPlayerIndex は元の PlayCard 側プレイヤーを指す。
+        // 経路 1 の合法判定:反撃側プレイヤー = N=2 想定で currentIndex の相手側。
+        // WaitingForCounterResponse 中の currentPlayerIndex は元の PlayCard 側プレイヤーを指す。
         // 反撃を打つのは「currentPlayer の相手」で、N=2 想定で一意決定する。
         private bool IsLegalCounterAsCounter(DrowZzzGameSession session, CounterAction action)
         {
@@ -1301,10 +1277,10 @@ namespace Drowsy.Application.Games.DrowZzz
             {
                 return false;
             }
-            // No.09「強引過ぎる一手」(ADR-0020 と同 PR、2026-05-17):
+            // No.09「強引過ぎる一手」:
             // 反撃を打つプレイヤー(= counterPlayerIndex = currentIndex の相手)が
             // RestrictAllUsageAndAbandonInfluenceMarkerEffect を保有していたら CounterAction も illegal 化する
-            // (オーナー JIT 確定 2026-05-17:「使用」に CounterAction も含む)。
+            // (「使用」に CounterAction も含む)。
             var counterPlayerId = session.GameState.Players[counterPlayerIndex].Id;
             if (HasUsageAndAbandonRestrictionInfluence(session.Influences[counterPlayerId]))
             {
@@ -1316,13 +1292,13 @@ namespace Drowsy.Application.Games.DrowZzz
             {
                 return false;
             }
-            // (4) Target は Field 先頭(直近プレイ、ADR-0006 §M1-PR5 補足 AddTop)
+            // (4) Target は Field 先頭(直近プレイ、AddTop 規約)
             var field = session.GameState.Field;
             if (field.Count == 0 || !field.Cards[0].Equals(action.Target))
             {
                 return false;
             }
-            // (5) Target の効果列に Frenzy を含まない(Frenzy は反撃を受けない、ADR-0011 §4.5)
+            // (5) Target の効果列に Frenzy を含まない(Frenzy は反撃を受けない)
             var targetEffects = _catalog.GetEffects(action.Target.TypeId);
             if (HasKeywordInEffects(targetEffects, Keyword.Frenzy))
             {
@@ -1331,7 +1307,7 @@ namespace Drowsy.Application.Games.DrowZzz
             return true;
         }
 
-        // 経路 2 の合法判定(M3-PR5c、ADR-0011 §4.4 / JIT 確定 2026-05-12):
+        // 経路 2 の合法判定:
         // 自ターン中の WaitingForEndTurn フェーズで、最後に登録された Pending の B を action.Target に取って反撃の反撃を行う。
         // currentIndex は元 A プレイヤー(= 反撃の反撃を打つ側 = 自ターンの主体)、N=2 で一意。
         private bool IsLegalCounterAsCounterCounter(DrowZzzGameSession session, CounterAction action)
@@ -1354,7 +1330,7 @@ namespace Drowsy.Application.Games.DrowZzz
             {
                 return false;
             }
-            // No.09「強引過ぎる一手」(ADR-0020 と同 PR、2026-05-17):
+            // No.09「強引過ぎる一手」:
             // 反撃の反撃を打つプレイヤー(= currentIndex = A プレイヤー、自ターン中)が
             // RestrictAllUsageAndAbandonInfluenceMarkerEffect を保有していたら CounterAction も illegal 化する。
             var currentPlayerId = session.GameState.Players[currentIndex].Id;
@@ -1377,16 +1353,16 @@ namespace Drowsy.Application.Games.DrowZzz
             return true;
         }
 
-        // CounterAction の状態遷移(M3-PR5b で経路 1 / M3-PR5c で経路 2 追加、ADR-0011 §4.3 / §4.4):
+        // CounterAction の状態遷移:
         //
         // 経路 1: 反撃 B(相手ターン中、PhaseState == WaitingForCounterResponse)— M3-PR5b 確定
         //   (1) 反撃側プレイヤー(N=2 で currentIndex の相手側)の手札から action.Counter を Remove → Discard へ
         //   (2) Field 先頭(action.Target = A)を Remove → Discard へ(無効化セマンティクス C、JIT 確定 2026-05-13)
         //   (3) PhaseState → WaitingForEndTurn(currentIndex は変更せず、元プレイヤーのターン進行に戻る)
-        //   (4) M3-PR5c で追加:PendingCounteredEffects に (CounterCard=action.Counter, OriginalCard=action.Target,
-        //       OriginalEffects=A の効果列) を追加(遡及発動用、ADR-0011 §4.4)
+        //   (4) PendingCounteredEffects に (CounterCard=action.Counter, OriginalCard=action.Target,
+        //       OriginalEffects=A の効果列) を追加(遡及発動用)
         //
-        // 経路 2: 反撃の反撃 C(自ターン中、PhaseState == WaitingForEndTurn)— M3-PR5c、ADR-0011 §4.4
+        // 経路 2: 反撃の反撃 C(自ターン中、PhaseState == WaitingForEndTurn)
         //   (1) 現プレイヤー(= A プレイヤー、自ターン中)の手札から action.Counter を Remove → Discard へ
         //   (2) Field は変更しない(B はすでに Discard 済、A もすでに Discard 済、再移動なし)
         //   (3) PendingCounteredEffects から最後エントリ(= 打ち消し対象 B のエントリ)を取り出し、削除
@@ -1403,7 +1379,7 @@ namespace Drowsy.Application.Games.DrowZzz
             };
         }
 
-        // 経路 1 の状態遷移(M3-PR5b の挙動 + M3-PR5c で PendingCounteredEffects 登録を追加)。
+        // 経路 1 の状態遷移(PendingCounteredEffects 登録を含む)。
         private DrowZzzGameSession ApplyCounterAsCounter(DrowZzzGameSession session, CounterAction action)
         {
             // 防御的 IsLegalMove 検証(IsLegalCounterAsCounter と同じ 5 段)
@@ -1432,7 +1408,7 @@ namespace Drowsy.Application.Games.DrowZzz
                     $"CounterAction の Target ({action.Target.Value}) は Field 先頭ではありません");
             }
             // 遡及発動用に A の効果列を catalog から取得し、Frenzy 検証で兼用しつつ Pending 登録用の Snapshot として保持する
-            // (P-1 反映 2026-05-12:変数 originalEffects は Frenzy 判定にも使う、効果列を 2 回取得しない設計)。
+            // (変数 originalEffects は Frenzy 判定にも使う、効果列を 2 回取得しない設計)。
             var originalEffects = _catalog.GetEffects(action.Target.TypeId);
             if (HasKeywordInEffects(originalEffects, Keyword.Frenzy))
             {
@@ -1445,9 +1421,8 @@ namespace Drowsy.Application.Games.DrowZzz
             // (2) Field 先頭の Target カードを Draw で取り出し → Discard へ
             //     (Pile に任意位置 Remove API はなく、IsLegalCounter で Field.Cards[0] == Target を検証済のため Draw で安全)
             var (drawnTarget, newField) = field.Draw();
-            // App W-1 post-Phase2 レビュー反映:Pile.Draw() の契約上 drawnTarget == field.Cards[0] が
-            // 保証されており IsLegalCounter で == action.Target も確認済だが、将来 Pile.Draw() 仕様が
-            // 変わった際の無声バグを防ぐ防御アサート(Domain 契約変更を即座に検出する)。
+            // Pile.Draw() の契約上 drawnTarget == field.Cards[0] が保証されており IsLegalCounter で == action.Target も確認済だが、
+            // 将来 Pile.Draw() 仕様が変わった際の無声バグを防ぐ防御アサート(Domain 契約変更を即座に検出する)。
             if (!drawnTarget.Equals(action.Target))
             {
                 throw new InvalidOperationException(
@@ -1463,7 +1438,7 @@ namespace Drowsy.Application.Games.DrowZzz
             // Top-2 残対応:Players + Field + Discard の 3 フィールド複合 with を 1 段に集約
             var newGameState = session.GameState.WithPlayersAndPilesUnchecked(
                 newPlayers, discard: newDiscard, field: newField);
-            // (4) M3-PR5c: PendingCounteredEffects に (B, A, A の効果列) を末尾追加(遡及発動用、ADR-0011 §4.4)
+            // (4) PendingCounteredEffects に (B, A, A の効果列) を末尾追加(遡及発動用)
             var existingPending = session.PendingCounteredEffects;
             var newPending = new PendingCounteredEffect[existingPending.Count + 1];
             for (int i = 0; i < existingPending.Count; i++)
@@ -1483,7 +1458,7 @@ namespace Drowsy.Application.Games.DrowZzz
             };
         }
 
-        // 経路 2 の状態遷移(M3-PR5c、ADR-0011 §4.4 / JIT 確定 2026-05-12):反撃の反撃 C と元 A の効果遡及発動。
+        // 経路 2 の状態遷移:反撃の反撃 C と元 A の効果遡及発動。
         private DrowZzzGameSession ApplyCounterAsCounterCounter(DrowZzzGameSession session, CounterAction action)
         {
             // 防御的 IsLegalMove 検証(IsLegalCounterAsCounterCounter と同じ 4 段)
@@ -1541,10 +1516,9 @@ namespace Drowsy.Application.Games.DrowZzz
                 PendingCounteredEffects = newPending,
                 // PhaseState は WaitingForEndTurn 維持(C プレイで Pending 消化、続いて EndTurnAction 待ち)
             };
-            // (4) OriginalEffects を順次 Apply(遡及発動、ADR-0011 §4.4)
+            // (4) OriginalEffects を順次 Apply(遡及発動)
             //     遡及発動時の context は EffectContext.Default(元 A プレイ時の Choice / InfluenceRemovalIndex は保存していないため)
-            //     N=2 想定で context 依存の動的効果(RemoveInfluenceEffect 等)が遡及発動に巻き込まれるケースは想定外、
-            //     必要なら ADR §4.4 拡張で context スナップショット保存を検討(本 PR では Default で十分)
+            //     N=2 想定で context 依存の動的効果(RemoveInfluenceEffect 等)が遡及発動に巻き込まれるケースは想定外
             foreach (var effect in lastEntry.OriginalEffects)
             {
                 currentSession = _interpreter.Apply(currentSession, effect);
@@ -1552,7 +1526,7 @@ namespace Drowsy.Application.Games.DrowZzz
             return currentSession;
         }
 
-        // PassCounterAction の状態遷移(M3-PR5b、ADR-0011 §4.3.3):
+        // PassCounterAction の状態遷移:
         // PhaseState を WaitingForEndTurn に遷移するのみ(他状態すべて不変、相手のターン進行を継続)
         private static DrowZzzGameSession ApplyPassCounter(DrowZzzGameSession session)
         {
@@ -1567,15 +1541,12 @@ namespace Drowsy.Application.Games.DrowZzz
         // EndTurnAction の状態遷移:
         // GameState.Turn を Next(playerCount) で次フェーズへ進行 + PhaseState = WaitingForDraw。
         // Players / Deck / Discard / Field / FirstDrowsyPoints / SecondDrowsyPoints は不変。
-        // ターン上限 (MaxRoundNumber) 判定は本 PR では行わない (M3 で実装、ADR-0006 §7)。
-        // M2-PR4: ターン境界 (CurrentPlayerIndex == 0) で新ターン番号が DDP 抽選対象に該当する場合、
-        // DdpPool 先頭から N (= player count) 枚を抽選してプレイヤー順に DrawDrowsyPoints へ累積する
-        // (ADR-0009 §4 採用案 A、DZ-141 / DZ-142 / DZ-143 / DZ-144)。
-        // M2-PR5: 上記 DDP 抽選後、新 CurrentPlayerIndex が指すプレイヤーの保有影響を Tick する
-        // (InfluenceTrigger.OwnPhaseStart、ADR-0007 §1.5)。
+        // ターン境界 (CurrentPlayerIndex == 0) で新ターン番号が DDP 抽選対象に該当する場合、
+        // DdpPool 先頭から N (= player count) 枚を抽選してプレイヤー順に DrawDrowsyPoints へ累積する。
+        // DDP 抽選後、新 CurrentPlayerIndex が指すプレイヤーの保有影響を Tick する(InfluenceTrigger.OwnPhaseStart)。
         private DrowZzzGameSession ApplyEndTurn(DrowZzzGameSession session)
         {
-            // 防御的 IsLegalMove 検証(ADR-0021:IsLegalEndTurn と整合、stuck 化 Marker 保有時は全フェーズで合法)
+            // 防御的 IsLegalMove 検証(IsLegalEndTurn と整合、stuck 化 Marker 保有時は全フェーズで合法)
             if (!IsLegalEndTurn(session))
             {
                 throw new InvalidOperationException(
@@ -1583,18 +1554,16 @@ namespace Drowsy.Application.Games.DrowZzz
                     $"(現フェーズ: {session.PhaseState}、ADR-0021)");
             }
 
-            // M3-PR5c: PendingCounteredEffects の未消化エントリを自ターン終了時に一括破棄(ADR-0011 §4.4 / JIT 確定 2026-05-12)。
+            // PendingCounteredEffects の未消化エントリを自ターン終了時に一括破棄。
             // ターン進行(GameState.Turn.Next)前にクリアすることで、「このターンに残った Pending を破棄してから次ターンへ」
             // という意味論を明確化する(次ターンの主体に古い Pending が引き継がれない)。
             var sessionAfterPendingClear = session.PendingCounteredEffects.Count == 0
                 ? session
                 : session with { PendingCounteredEffects = System.Array.Empty<PendingCounteredEffect>() };
 
-            // ADR-0020: 旧 current プレイヤー(自フェーズを終了するプレイヤー)の Influences すべてに対して
+            // 旧 current プレイヤー(自フェーズを終了するプレイヤー)の Influences すべてに対して
             // RemainingCount -= 1、0 到達なら除去。Turn.Next の前に実行することで、
             // 「フェーズ N で機能した影響を、そのフェーズ終了時にカウントダウンする」セマンティクスを実現する。
-            // 旧仕様(Tick 内で count -1)では Marker 系 Influence の count=1 が自フェーズ開始時に
-            // 即除去されて IsLegalMove で参照できなくなる問題があった(本 ADR で根本対処)。
             var sessionAfterDecrement = DecrementInfluencesForCurrentPlayer(sessionAfterPendingClear);
 
             var gameState = sessionAfterDecrement.GameState;
@@ -1607,10 +1576,10 @@ namespace Drowsy.Application.Games.DrowZzz
                 PhaseState = DrowZzzPhaseState.WaitingForDraw,
             };
 
-            // M3-PR2: 自フェーズ開始時のベッド破損による SDP マイナス(ADR-0011 §3 / §5「順序保証」の最先頭)。
+            // 自フェーズ開始時のベッド破損による SDP マイナス。
             // 新 current player の BedDamages を `/ BedDamageRatePerSdp` で SDP マイナスに換算、SDP から減算する
             // (整数除算で切り捨て、0% なら 0 マイナス = no-op)。
-            // ADR-0011 §5 順序保証では「ベッドダメージ → DDP 抽選 → 影響 Tick → 終了判定」の順序が確定。
+            // 「ベッドダメージ → DDP 抽選 → 影響 Tick → 終了判定」の順序保証。
             nextSession = ApplyBedDamageToCurrentPlayer(nextSession);
 
             // ターン境界での DDP 自動抽選トリガー(MC/DC ケース 1):
@@ -1624,18 +1593,18 @@ namespace Drowsy.Application.Games.DrowZzz
                 nextSession = DrawDdpForAllPlayers(nextSession);
             }
 
-            // M2-PR5 + ADR-0020: 新フェーズの current player が保有する影響を Tick(OwnPhaseStart)。
+            // 新フェーズの current player が保有する影響を Tick(OwnPhaseStart)。
             // 0 件なら no-op、影響を持つ場合は順次 TickEffect 適用のみ(RemainingCount は不変、
-            // count -1 は ADR-0020 で本メソッド冒頭の DecrementInfluencesForCurrentPlayer に移動)。
+            // count -1 は本メソッド冒頭の DecrementInfluencesForCurrentPlayer に移動)。
             nextSession = TickInfluencesForCurrentPlayer(nextSession);
 
-            // M3-PR1: Round 21 完了検出 + Outcome 設定(ADR-0010 §4(b))。
+            // Round 21 完了検出 + Outcome 設定。
             // 「ターン境界(CurrentPlayerIndex == 0)で新 RoundNumber > MaxRoundNumber(22 以上)」が終了時勝利の境界。
             //   - RoundNumber は Clock の単位(全プレイヤー 1 巡 = 1 ターン、Clock.RoundNumber)
             //   - TurnNumber は Domain の単位(1 プレイヤー 1 行動 = 1 フェーズ、TurnState.TurnNumber)
             //   - N=2 で Round 22 到達は TurnNumber=43 / CurrentPlayerIndex=0 の瞬間
             // TotalPoints を比較し、低い方を WinnerOutcome、等値なら DrawOutcome を session に設定する。
-            // ADR-0010 §4「順序保証」の通り、DDP 抽選(3.)/ 影響 Tick(4.)の後に評価する。
+            // DDP 抽選 → 影響 Tick の後に評価する(順序保証)。
             if (newTurn.CurrentPlayerIndex == 0
                 && nextSession.Clock.RoundNumber > DrowZzzClockConstants.MaxRoundNumber)
             {
@@ -1645,7 +1614,7 @@ namespace Drowsy.Application.Games.DrowZzz
             return nextSession;
         }
 
-        // M3-PR2: 自フェーズ開始時のベッド破損による SDP マイナス計算(ADR-0011 §3 / §5)。
+        // 自フェーズ開始時のベッド破損による SDP マイナス計算。
         // 新 current player の BedDamages を `/ DrowZzzBedConstants.BedDamageRatePerSdp` で SDP マイナスに換算。
         // 例: BedDamages[p1]=40% なら `40 / 5 = 8`、SDP[p1] -= 8 を適用。
         // 0% なら計算結果 0 で session 不変返却(no-op、graceful)。
@@ -1661,22 +1630,20 @@ namespace Drowsy.Application.Games.DrowZzz
                     $"内部不変条件違反: BedDamages に PlayerId {currentPlayerId.Value} のキーがありません(cross-field 検証の漏れ)");
             }
             int sdpDamage = bedDamagePercent / DrowZzzBedConstants.BedDamageRatePerSdp;
-            // No.08「廻るための知恵」(2026-05-17):現プレイヤーの Influences に
+            // No.08「廻るための知恵」:現プレイヤーの Influences に
             // InvertBedDamageSdpInfluenceMarkerEffect を保有していたら、保有数の奇偶で符号反転する。
-            // 1 件 = 反転 / 2 件 = 元に戻る / 3 件 = 反転(オーナー JIT 確定 2026-05-17、「廻るための知恵は 3 枚なので
-            // 1 プレイヤーに対して 3 つ同じ影響が付く可能性がある、そのたびに ± が変わる」)。
+            // 1 件 = 反転 / 2 件 = 元に戻る / 3 件 = 反転。
             int invertCount = CountInvertBedDamageInfluence(session.Influences[currentPlayerId]);
             if (invertCount % 2 == 1)
             {
                 sdpDamage = -sdpDamage;
             }
-            // No.06「牙の届かぬ領域」(2026-05-17):現プレイヤーの Influences に
+            // No.06「牙の届かぬ領域」:現プレイヤーの Influences に
             // DoubleBedDamageSdpInfluenceMarkerEffect を含むなら、sdpDamage を 2 倍化する。
             // 既存 BedDamage 計算経路を 1 箇所に集約しているため、将来「ベッド破損 SDP プラス変換 effect」が
-            // 追加された場合も計算結果に対する 2 倍化が共通経路で honor される(オーナー JIT 共有 2026-05-17)。
-            // 注意:複数保有時も 2 倍止まり(bool 検出、累積乗算なし、code-reviewer W-1 反映 2026-05-17、
-            // untouchable-realm.md §「複数保有時 / 境界ケースの注記」参照)。
-            // 順序:**逆転(符号反転)→ 2 倍化** の順で適用(オーナー JIT 確定 2026-05-17、SDP -8 → +8 → +16)。
+            // 追加された場合も計算結果に対する 2 倍化が共通経路で honor される。
+            // 複数保有時も 2 倍止まり(bool 検出、累積乗算なし)。
+            // 順序:**逆転(符号反転)→ 2 倍化** の順で適用(SDP -8 → +8 → +16)。
             if (HasDoubleBedDamageInfluence(session.Influences[currentPlayerId]))
             {
                 sdpDamage *= 2;
@@ -1687,7 +1654,7 @@ namespace Drowsy.Application.Games.DrowZzz
                 // 反転(× -1)後・2 倍化後でも 0 のままなら no-op(0 × -1 = 0、0 × 2 = 0、code-reviewer W-1 反映 2026-05-17)。
                 return session;
             }
-            // SDP を damage 分減算(0 floor なし、ADR-0009 「持ち点低い方が勝ち」と整合、SDP は負値許容)
+            // SDP を damage 分減算(0 floor なし、「持ち点低い方が勝ち」と整合、SDP は負値許容)
             var newSdp = new Dictionary<PlayerId, int>(session.SecondDrowsyPoints.Count);
             foreach (var kv in session.SecondDrowsyPoints)
             {
@@ -1698,7 +1665,7 @@ namespace Drowsy.Application.Games.DrowZzz
 
         // 終了時勝利の Outcome を決定する: 各プレイヤーの TotalPoints を比較し、
         // (a) 低い方が一意なら WinnerOutcome(lower)、(b) 等値なら DrawOutcome を返す。
-        // tiebreaker は ADR-0010 §7 で「設けない」と確定済(両者同点で朝を迎えた = 引き分け、SDP / DDP / FDP 個別比較なし)。
+        // tiebreaker は設けない(両者同点で朝を迎えた = 引き分け、SDP / DDP / FDP 個別比較なし)。
         // N>2 拡張時は本メソッドの「2 名比較」を「最小値プレイヤー集合」探索に一般化する必要(現状 N=2 想定)。
         private static GameOutcome DetermineEndOfGameOutcome(DrowZzzGameSession session)
         {
@@ -1720,7 +1687,7 @@ namespace Drowsy.Application.Games.DrowZzz
 
         // ターン境界 DDP 抽選: GameState.Players 順に 1 枚ずつ DdpPool 先頭から取り出し、
         // 各プレイヤーの DrawDrowsyPoints に累積する。プールは事前 Shuffle 済(StartGameUseCase)
-        // のため Draw 順は決定論的で rng 不要(ADR-0009 §4 採用案 A 補足、PR description 参照)。
+        // のため Draw 順は決定論的で rng 不要。
         private static DrowZzzGameSession DrawDdpForAllPlayers(DrowZzzGameSession session)
         {
             var pool = session.DdpPool;
@@ -1733,8 +1700,7 @@ namespace Drowsy.Application.Games.DrowZzz
 
             foreach (var player in session.GameState.Players)
             {
-                // 防御的: プール枯渇は ADR-0009 §「DDP プール枯渇可能性チェック」で
-                // 現状想定下では発生しない(総抽選 5 × N=2 = 10 ≤ プール 39)が、
+                // 防御的: プール枯渇は現状想定下では発生しない(総抽選 5 × N=2 = 10 ≤ プール 39)が、
                 // DdpPool.Draw が InvalidOperationException を投げる(Pile.Draw と同パターン)。
                 var (drawn, remaining) = pool.Draw();
                 ddpAccumulator[player.Id] = ddpAccumulator[player.Id] + drawn;
@@ -1748,12 +1714,11 @@ namespace Drowsy.Application.Games.DrowZzz
             };
         }
 
-        // M2-PR5 + ADR-0020: 新フェーズの current player が保有する影響を Tick する(InfluenceTrigger.OwnPhaseStart)。
+        // 新フェーズの current player が保有する影響を Tick する(InfluenceTrigger.OwnPhaseStart)。
         // - list 先頭から順に評価(FIFO)
         // - 各影響の TickEffect を Interpreter で適用 + 適用後の session を持ち越し
         // - 他プレイヤーの影響は不変
-        // - **ADR-0020 で RemainingCount 減算は本メソッドから DecrementInfluencesForCurrentPlayer に移動**
-        //   (本メソッドは TickEffect 適用のみ、Influences の構造変更なし)
+        // - RemainingCount 減算は DecrementInfluencesForCurrentPlayer に移動済(本メソッドは TickEffect 適用のみ)
         // 影響 0 件なら session 不変返却(graceful no-op)。
         private DrowZzzGameSession TickInfluencesForCurrentPlayer(DrowZzzGameSession session)
         {
@@ -1766,7 +1731,7 @@ namespace Drowsy.Application.Games.DrowZzz
             }
 
             // OwnPhaseStart の影響のみを評価対象とする(将来トリガー拡張時に他種類は素通し)。
-            // ADR-0020 後は TickEffect 適用のみ、Influences 構造は不変。
+            // TickEffect 適用のみ、Influences 構造は不変。
             var current = session;
             for (int i = 0; i < currentInfluences.Count; i++)
             {
@@ -1783,13 +1748,12 @@ namespace Drowsy.Application.Games.DrowZzz
             return current;
         }
 
-        // ADR-0020: 旧 current プレイヤー(= フェーズを終了するプレイヤー)の Influences すべてに対して
+        // 旧 current プレイヤー(= フェーズを終了するプレイヤー)の Influences すべてに対して
         // RemainingCount -= 1 を適用し、0 到達なら除去する。ApplyEndTurn の冒頭(PendingClear 直後、Turn.Next 前)で呼ばれる。
         // - 全 InfluenceTrigger に対して一律 -1(将来トリガー拡張時も「N 回機能 → N 回 -1 で除去」の意味論を保つ)
         // - 他プレイヤーの影響は不変
         // - 影響 0 件なら session 不変返却(graceful no-op)
-        // - Perpetual (= int.MaxValue) に対しても一律 -1(`InfluenceConstants.Perpetual` の xmldoc が示す通り、
-        //   1 ゲーム上限 42 回 -1 では 0 到達しない前提のため、特別扱いなしで設計上問題なし。code-reviewer W-3 反映 2026-05-17)
+        // - Perpetual (= int.MaxValue) に対しても一律 -1(1 ゲーム上限 42 回 -1 では 0 到達しない前提のため、特別扱いなし)
         private static DrowZzzGameSession DecrementInfluencesForCurrentPlayer(DrowZzzGameSession session)
         {
             int currentIndex = session.GameState.Turn.CurrentPlayerIndex;

@@ -26,7 +26,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
     {
         // ===== ヘルパー =====
 
-        // ADR-0009 §「コップ一杯の脅威」JIT 共有仕様に従い、CardId "01" を登録する InMemoryCardCatalog を生成
+        // CardId "01"「コップ一杯の脅威」を登録する InMemoryCardCatalog を生成
         private static InMemoryCardCatalog NewCatalogWithCardOne()
         {
             var card01 = new CardData("コップ一杯の脅威", new Dictionary<string, int>());

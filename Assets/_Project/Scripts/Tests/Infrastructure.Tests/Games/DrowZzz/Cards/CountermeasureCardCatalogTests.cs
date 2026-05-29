@@ -11,7 +11,7 @@ using Property = NUnit.Framework.PropertyAttribute;
 namespace Drowsy.Infrastructure.Tests.Games.DrowZzz.Cards
 {
     /// <summary>
-    /// カード No.18「対抗手段」(ADR-0023、2026-05-18)の SO 表現と InMemory 表現の同値性検証(INF-163)。
+    /// カード No.18「対抗手段」の SO 表現と InMemory 表現の同値性検証(INF-163)。
     /// Echo キーワード機構初の本物カード(KeywordedEffect([Echo], ReuseInfluenceSourceEffect))。
     /// </summary>
     [TestFixture]

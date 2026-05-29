@@ -12,7 +12,7 @@ namespace Drowsy.Domain.Cards
     /// <see cref="System.Collections.Immutable"/> が Unity 6 で利用不可のため独自に防御コピーで不変性を担保する。
     /// 全変更操作(<see cref="Add"/> / <see cref="Remove"/>)は新しい <see cref="Hand"/> を返す純関数。
     /// 等値性は順序付きシーケンス同値で <see cref="Equals(Hand)"/> / <see cref="GetHashCode"/> /
-    /// <see cref="op_Equality"/> / <see cref="op_Inequality"/> を override する(設計判断は ADR-0002)。
+    /// <see cref="op_Equality"/> / <see cref="op_Inequality"/> を override する。
     /// </remarks>
     public sealed class Hand : IEquatable<Hand>
     {

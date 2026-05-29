@@ -2,7 +2,6 @@ namespace Drowsy.Domain.Configuration
 {
     /// <summary>
     /// <see cref="IUserSettings"/> の default 値と音量 clamp range を保持する定数。
-    /// ADR-0012 §8 + M4-PR6 着手時の JIT 確定(2026-05-13)に基づく値。
     /// </summary>
     /// <remarks>
     /// CLAUDE.md §9「定数管理方針」**L4(ユーザー設定の default 値)** に該当。

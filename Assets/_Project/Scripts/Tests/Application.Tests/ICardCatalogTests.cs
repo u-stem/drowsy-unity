@@ -9,11 +9,11 @@ namespace Drowsy.Application.Tests
     [TestFixture]
     public sealed class ICardCatalogTests
     {
-        // ICardCatalog<TEffect> の契約検証用ダミー実装 (M2-PR1 で ジェネリック化、ADR-0007 §2)。
+        // ICardCatalog<TEffect> の契約検証用ダミー実装(ジェネリック化済み)。
         // TEffect = IEffect を採用 (DrowZzz 専用)。
         private sealed class DummyCatalog : ICardCatalog<IEffect>
         {
-            // ADR-0018:catalog の lookup key は CardTypeId(catalog の責務「種別 → CardData」を型で明示)。
+            // catalog の lookup key は CardTypeId(catalog の責務「種別 → CardData」を型で明示)。
             private readonly Dictionary<CardTypeId, CardData> _store = new Dictionary<CardTypeId, CardData>();
             private readonly Dictionary<CardTypeId, IReadOnlyList<IEffect>> _effects =
                 new Dictionary<CardTypeId, IReadOnlyList<IEffect>>();
@@ -30,7 +30,7 @@ namespace Drowsy.Application.Tests
             public IReadOnlyList<IEffect> GetEffects(CardTypeId typeId) =>
                 _effects.TryGetValue(typeId, out var list) ? list : System.Array.Empty<IEffect>();
 
-            // ADR-0024:`RegisteredCardTypeIds` インターフェース追加に伴うダミー実装(`_store.Keys` 防御コピー)。
+            // `RegisteredCardTypeIds` インターフェース追加に伴うダミー実装(`_store.Keys` 防御コピー)。
             public IReadOnlyCollection<CardTypeId> RegisteredCardTypeIds => System.Linq.Enumerable.ToList(_store.Keys);
         }
 

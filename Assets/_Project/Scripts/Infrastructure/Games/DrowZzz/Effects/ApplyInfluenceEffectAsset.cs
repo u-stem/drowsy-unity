@@ -5,8 +5,7 @@ using UnityEngine;
 namespace Drowsy.Infrastructure.Games.DrowZzz.Effects
 {
     /// <summary>
-    /// <see cref="ApplyInfluenceEffect"/>(M2-PR5、ADR-0007 §1.5)を Unity SO で表現する POCO
-    /// (M4-PR3 で導入、ADR-0012 §3、INF-025 / INF-026)。
+    /// <see cref="ApplyInfluenceEffect"/> を Unity SO で表現する POCO(INF-025 / INF-026)。
     /// </summary>
     /// <remarks>
     /// 「緑の侵攻」(No.02)の継続影響付与に使用された <see cref="ApplyInfluenceEffect"/> の SO 対応。

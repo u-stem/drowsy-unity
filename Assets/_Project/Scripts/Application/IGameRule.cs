@@ -10,10 +10,9 @@ namespace Drowsy.Application
     /// 各ゲームの実装(例: <c>DrowZzzRule</c>)が具象型でこの interface を実装する。
     /// </summary>
     /// <remarks>
-    /// M1 では <see cref="IsLegalMove"/> / <see cref="Apply"/> の 2 メソッドのみで起動。
-    /// M3-PR1 で <see cref="IsTerminated"/> / <see cref="GetWinner"/> を追加(ADR-0010 §1)、
-    /// generic interface への第一回拡張。<c>EnumerateLegalActions</c> 等の AI / UI ヒント用 API は YAGNI で見送る。
-    /// 詳細は ADR-0006 §1.2 / ADR-0010 §1 を参照。
+    /// <see cref="IsLegalMove"/> / <see cref="Apply"/> の 2 メソッドで起動する基本骨格を持ち、
+    /// <see cref="IsTerminated"/> / <see cref="GetWinner"/> でゲーム終了状態を問う拡張を含む。
+    /// <c>EnumerateLegalActions</c> 等の AI / UI ヒント用 API は YAGNI で見送る。
     /// </remarks>
     /// <typeparam name="TAction">ゲーム固有のアクション型(<see cref="IGameAction"/> を実装)</typeparam>
     /// <typeparam name="TSession">ゲーム固有のセッション型(完全状態 / オラクルビュー)</typeparam>
@@ -34,15 +33,14 @@ namespace Drowsy.Application
         TSession Apply(TSession session, TAction action);
 
         /// <summary>
-        /// 与えられた <paramref name="session"/> がゲーム終了状態かどうかを返す。副作用なしの純関数
-        /// (M3-PR1 で追加、ADR-0010 §1)。
+        /// 与えられた <paramref name="session"/> がゲーム終了状態かどうかを返す。副作用なしの純関数。
         /// </summary>
         /// <param name="session">問い合わせ対象のセッション</param>
         /// <returns>終了済みなら <c>true</c>、未終了なら <c>false</c></returns>
         bool IsTerminated(TSession session);
 
         /// <summary>
-        /// 与えられた <paramref name="session"/> から勝者を返す。副作用なしの純関数(M3-PR1 で追加、ADR-0010 §1)。
+        /// 与えられた <paramref name="session"/> から勝者を返す。副作用なしの純関数。
         /// </summary>
         /// <param name="session">問い合わせ対象のセッション</param>
         /// <returns>

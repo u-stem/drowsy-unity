@@ -2,10 +2,10 @@
 //
 // 本ファイルは Domain assembly の Compat/IsExternalInit.cs と同内容のコピーである。
 // `internal` polyfill は assembly 境界を越えないため、record + init を使う各 assembly で
-// 個別に shim を保持する必要がある (ADR-0004 §「他 assembly での扱い」)。
+// 個別に shim を保持する必要がある(internal polyfill は assembly 境界を越えないため)。
 //
-// Drowsy.Application は M1-PR2 から DrowZzzAction 階層 / DrowZzzGameSession 等の
-// record + init を導入するため、本 polyfill が必須となる。
+// Drowsy.Application は DrowZzzAction 階層 / DrowZzzGameSession 等の
+// record + init を使用するため、本 polyfill が必須となる。
 //
 // 採用根拠: docs/adr/0004-init-setter-polyfill.md
 // 撤去条件: 同 ADR §「撤去条件」を参照。

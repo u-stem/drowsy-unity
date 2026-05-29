@@ -4,13 +4,12 @@ using System.Collections.Generic;
 namespace Drowsy.Application.Games.DrowZzz.Effects
 {
     /// <summary>
-    /// 1 件以上の <see cref="Keyword"/> を <see cref="Inner"/> 効果に付与するラッパー record(ADR-0011 §4)。
+    /// 1 件以上の <see cref="Keyword"/> を <see cref="Inner"/> 効果に付与するラッパー record。
     /// 効果単位でキーワード(狂乱 / 本能 / 反撃)を付与する設計を表現する。
     /// </summary>
     /// <remarks>
-    /// ADR-0011 §4「配置の判断(JIT 確定 2026-05-12)」で採用案 (b) として確定。`TimeOfDayBranchEffect` /
-    /// `ChoiceEffect` と同パターンで、既存 effect を wrap する設計。「効果単位で 0 個以上のキーワードを付与」は
-    /// 「キーワードを持つ効果は本 record で wrap する、持たない効果は wrap しない」と解釈し、
+    /// `TimeOfDayBranchEffect` / `ChoiceEffect` と同パターンで、既存 effect を wrap する設計。
+    /// 「キーワードを持つ効果は本 record で wrap する、持たない効果は wrap しない」設計で、
     /// 本 record では <see cref="Keywords"/> が **1 件以上必須**(空 list で wrap する意味がないため、
     /// <see cref="ChoiceEffect.Branches"/> の「2 件以上」と同じ「無意味な wrap を防ぐ」防御)。
     /// <para>
@@ -63,7 +62,7 @@ namespace Drowsy.Application.Games.DrowZzz.Effects
         {
             Keywords = keywords;
             Inner = inner;
-            // Keyword 空 list は wrap する意味がない(ADR-0011 §4 解釈、ChoiceEffect.Branches.Count >= 2 と同パターン)
+            // Keyword 空 list は wrap する意味がない(ChoiceEffect.Branches.Count >= 2 と同パターン)
             if (_keywords.Count == 0)
             {
                 throw new ArgumentException(

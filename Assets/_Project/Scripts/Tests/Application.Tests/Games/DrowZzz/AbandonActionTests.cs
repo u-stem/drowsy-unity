@@ -209,7 +209,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                 rule.Apply(session, new AbandonAction(AbandonChoice.RepairBed)));
         }
 
-        // ===== DZ-213: Instinct を含むカードは AbandonAction の CardIndex 対象から除外(M3-PR5a、ADR-0011 §4.2)=====
+        // ===== DZ-213: Instinct を含むカードは AbandonAction の CardIndex 対象から除外 =====
 
         // Instinct 効果列を持つカード c1 を catalog に登録した rule(c2 は効果列なし = Instinct なし)
         private static DrowZzzRule NewRuleWithInstinctOnC1()
@@ -297,7 +297,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_TimeOfDayBranch内にInstinct_When_IsLegalMove_Then_false()
         {
             // TimeOfDayBranchEffect の NightEffects に KeywordedEffect([Instinct], _) が nest されているケース
-            // (ADR-0011 §6「夢」カードの想定パターン、再帰 walk で検出される)
+            // (「夢」カードの想定パターン、TimeOfDayBranch 内の再帰 walk で検出される)
             var entries = new[]
             {
                 new KeyValuePair<CardTypeId, CardData>(CardTypeId.Of("c1"), new CardData("nested instinct", new Dictionary<string, int>())),

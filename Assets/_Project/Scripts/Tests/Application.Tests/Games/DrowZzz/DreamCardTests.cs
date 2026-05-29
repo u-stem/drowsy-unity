@@ -13,8 +13,8 @@ using NUnit.Framework;
 namespace Drowsy.Application.Tests.Games.DrowZzz
 {
     /// <summary>
-    /// カード No.00「夢」の統合テスト(DZ-230 〜 DZ-238、M3-PR6 完成 PR、ADR-0011 §6 / §7)。
-    /// 連想機構(M3-PR4)・キーワード能力(M3-PR5a〜c)・早期勝利機構(M3-PR1)・時刻分岐(M2-PR3)を
+    /// カード No.00「夢」の統合テスト(DZ-230 〜 DZ-238)。
+    /// 連想機構・キーワード能力・早期勝利機構・時刻分岐を
     /// 統合的に動作させる「夢」カードの end-to-end 動作を検証する。
     /// </summary>
     /// <remarks>
@@ -27,7 +27,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
     {
         // ===== ヘルパー =====
 
-        // ADR-0011 §6 で確定した「夢」カードの効果列で InMemoryCardCatalog を生成。
+        // 「夢」カードの効果列で InMemoryCardCatalog を生成。
         // initial deck には含めない(連想専用)が catalog 登録のみ行う(DZ-228 / DZ-229)。
         private static InMemoryCardCatalog NewCatalogWithDream()
         {
@@ -149,7 +149,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
             var session = NewSessionWithoutDream(totalPoints: 80, phase: DrowZzzPhaseState.WaitingForDraw);
             // When
             var next = rule.Apply(session, new AssociateAction(CardId.Of(CardTypeId.Of("00"), 0)));
-            // Then(N=2 想定で「次の自分のフェーズ」= 相手 1 フェーズ経由分の 1 を期待、ADR-0011 §6 JIT 確定)
+            // Then(N=2 想定で「次の自分のフェーズ」= 相手 1 フェーズ経由分の 1 を期待)
             Assert.That(next.Influences[PlayerId.Of("p1")][0].RemainingCount, Is.EqualTo(1));
         }
 
@@ -204,10 +204,10 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
         public void Given_自フェーズTick後_When_夢のIsLegalMove_Then_true()
         {
             // Given:p1 が UsageRestriction Influence(RemainingCount=1)保有 / WaitingForEndTurn
-            // ADR-0020 後:p1 が EndTurnAction → 冒頭で p1 Decrement(count 1→0 で除去)→ Turn.Next で p2 へ →
+            // p1 が EndTurnAction → 冒頭で p1 Decrement(count 1→0 で除去)→ Turn.Next で p2 へ →
             // p2 一連の行動 → p2 EndTurn → 戻って p1 自フェーズの WaitingForPlay 段階では Influence なし状態。
-            // 簡素化のため、Tick 後の状態を直接構築せず Apply 経路で再現する(M2-PR5 / ADR-0020 で Tick 経路を確立、
-            // 本テストでは UsageRestriction 消滅後の最終フェーズ WaitingForPlay 段階の IsLegalMove のみを assertion)。
+            // 簡素化のため、Tick 後の状態を直接構築せず Apply 経路で再現する
+            // (本テストでは UsageRestriction 消滅後の最終フェーズ WaitingForPlay 段階の IsLegalMove のみを assertion)。
             var catalog = NewCatalogWithDream();
             var rule = new DrowZzzRule(catalog, new EffectInterpreter());
             var session = NewSessionWithDreamInHand(
@@ -352,7 +352,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz
                     new IEffect[]
                     {
                         // Counter キーワードを持つカードであることを表す最低限の効果列。Inner は IsLegalCounter で
-                        // 評価されない(Keywords の有無のみ走査、ADR-0011 §4.3 / M3-PR5b)ため delta=0 のダミーで十分。
+                        // 評価されない(Keywords の有無のみ走査)ため delta=0 のダミーで十分。
                         // M3-PR6 code-reviewer P-4 反映 2026-05-14:意図を明示するコメント追加。
                         new KeywordedEffect(
                             new[] { Keyword.Counter },

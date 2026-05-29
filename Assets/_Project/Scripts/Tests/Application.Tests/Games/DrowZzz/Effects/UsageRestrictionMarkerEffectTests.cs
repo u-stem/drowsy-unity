@@ -8,7 +8,7 @@ namespace Drowsy.Application.Tests.Games.DrowZzz.Effects
     /// <summary>
     /// <see cref="UsageRestrictionMarkerEffect"/> の record 値同値性 /
     /// <see cref="EffectInterpreter.Apply"/> no-op 挙動を検証する(DZ-244 / DZ-245)。
-    /// ADR-0011 §6 / M3-PR6 で導入。2 役兼用 marker の単体挙動を確認(統合動作は DreamCardTests でカバー)。
+    /// 2 役兼用 marker の単体挙動を確認(統合動作は DreamCardTests でカバー)。
     /// </summary>
     [TestFixture]
     public sealed class UsageRestrictionMarkerEffectTests

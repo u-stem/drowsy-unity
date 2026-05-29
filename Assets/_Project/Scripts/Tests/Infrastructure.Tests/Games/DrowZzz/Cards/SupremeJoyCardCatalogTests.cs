@@ -12,7 +12,7 @@ using Property = NUnit.Framework.PropertyAttribute;
 namespace Drowsy.Infrastructure.Tests.Games.DrowZzz.Cards
 {
     /// <summary>
-    /// カード No.20「至上の喜び」(ADR-0025、2026-05-18)の SO 表現と InMemory 表現の同値性検証(INF-165)。
+    /// カード No.20「至上の喜び」の SO 表現と InMemory 表現の同値性検証(INF-165)。
     /// PlayOrAbandonBranchEffect 1 件最上位:PlayEffects 3 件 + AbandonEffects 2 件。
     /// </summary>
     [TestFixture]
